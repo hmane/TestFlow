@@ -1,0 +1,69 @@
+/**
+ * RequestTypeSelector styles
+ */
+
+.request-type-selector {
+  background-color: #faf9f8;
+  min-height: 100vh;
+
+  &__workflow-preview {
+    margin-top: 32px;
+    padding: 24px;
+    background-color: #ffffff;
+    border: 1px solid #edebe9;
+    border-radius: 4px;
+  }
+}
+
+.request-type-card {
+  &:hover:not(&--selected) {
+    border-color: #a19f9d !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  &--selected {
+    box-shadow: 0 4px 12px rgba(0, 120, 212, 0.15);
+  }
+
+  ul {
+    list-style-type: disc;
+
+    li {
+      margin-bottom: 4px;
+    }
+  }
+}
+
+.workflow-stepper-preview {
+  // Workflow stepper inherits styles from WorkflowStepper component
+}
+
+// Animation for card selection
+@keyframes selectCard {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.request-type-card--selected {
+  animation: selectCard 0.3s ease;
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .request-type-selector {
+    min-height: auto;
+
+    .request-type-card {
+      ul {
+        font-size: 12px;
+      }
+    }
+  }
+}

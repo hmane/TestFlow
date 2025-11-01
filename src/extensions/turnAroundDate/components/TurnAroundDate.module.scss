@@ -1,0 +1,248 @@
+/**
+ * TurnAroundDate Styles
+ *
+ * Styles for turnaround date field customizer components
+ * - Full-width colored container with date display
+ * - Hover card with detailed information
+ * - Color-coded backgrounds (green/yellow/red/gray)
+ */
+
+/* ============================================
+   DATE CONTAINER (Full-width colored background)
+   ============================================ */
+
+.dateContainer {
+  position: relative;
+  width: 100%;
+  min-width: 150px;
+  max-width: 300px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   DATE TEXT CONTAINER
+   ============================================ */
+
+.dateTextContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0 12px;
+}
+
+.dateText {
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================================
+   COLOR VARIANTS (Full container backgrounds)
+   ============================================ */
+
+/* Green - On track (2+ days remaining) */
+.green {
+  background: linear-gradient(135deg, #107c10 0%, #13a10e 100%);
+}
+
+/* Yellow - Due soon (today or tomorrow) */
+.yellow {
+  background: linear-gradient(135deg, #ffaa44 0%, #ffc83d 100%);
+}
+
+/* Red - Overdue */
+.red {
+  background: linear-gradient(135deg, #d13438 0%, #a4262c 100%);
+}
+
+/* Gray - No target date */
+.gray {
+  background: linear-gradient(135deg, #8a8886 0%, #605e5c 100%);
+}
+
+/* ============================================
+   HOVER CARD STYLES
+   ============================================ */
+
+.hoverCard {
+  width: 340px;
+  max-width: 90vw;
+  background: #ffffff;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 16px;
+}
+
+/* Card Header */
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.dateBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Card Content */
+.cardContent {
+  margin-bottom: 0;
+}
+
+.fieldRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.fieldLabel {
+  font-weight: 600;
+  color: #605e5c;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 120px;
+  font-size: 12px;
+}
+
+.fieldValue {
+  color: #323130;
+  flex: 1;
+  word-break: break-word;
+  font-size: 12px;
+}
+
+/* Rush Request Section */
+.rushSection {
+  padding: 8px;
+  background: #fde7e9;
+  border-left: 3px solid #d13438;
+  border-radius: 4px;
+}
+
+.rushHeader {
+  display: flex;
+  align-items: center;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+
+@media (max-width: 480px) {
+  .dateContainer {
+    min-width: 120px;
+    max-width: 250px;
+    height: 24px;
+  }
+
+  .dateText {
+    font-size: 11px;
+  }
+
+  .hoverCard {
+    width: 300px;
+    padding: 12px;
+  }
+
+  .fieldLabel,
+  .fieldValue {
+    font-size: 11px;
+    min-width: 100px;
+  }
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+  .dateContainer {
+    border: 2px solid currentColor;
+  }
+
+  .dateBadge {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Focus Visible */
+.dateContainer:focus-visible {
+  outline: 2px solid #0078d4;
+  outline-offset: 2px;
+}
+
+/* ============================================
+   DARK THEME SUPPORT
+   ============================================ */
+
+@media (prefers-color-scheme: dark) {
+  .hoverCard {
+    background: #292827;
+    color: #ffffff;
+  }
+
+  .fieldLabel {
+    color: #d2d0ce;
+  }
+
+  .fieldValue {
+    color: #ffffff;
+  }
+
+  .dateBadge {
+    filter: brightness(0.9);
+  }
+
+  .rushSection {
+    background: #3d2426;
+    border-left-color: #d13438;
+  }
+}
+
+/* ============================================
+   PRINT STYLES
+   ============================================ */
+
+@media print {
+  .dateContainer {
+    box-shadow: none;
+    border: 1px solid #c8c6c4;
+  }
+
+  .hoverCard {
+    display: none;
+  }
+}

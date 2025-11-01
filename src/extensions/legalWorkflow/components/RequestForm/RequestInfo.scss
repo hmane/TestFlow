@@ -1,0 +1,432 @@
+/**
+ * RequestInfo styles
+ * Modern, clean design with smooth animations
+ */
+
+.request-info {
+  background: linear-gradient(135deg, #fafbfc 0%, #f3f4f6 100%);
+  min-height: 100vh;
+  padding-bottom: 40px;
+
+  // Card styling
+  .ms-Card {
+    background-color: #ffffff;
+    border: 1px solid #e1e4e8;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    &:hover {
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.05);
+      transform: translateY(-1px);
+    }
+  }
+
+  // Workflow stepper card
+  .workflow-stepper-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border: 2px solid #e1e4e8;
+  }
+
+  // Form section card
+  .form-section-card {
+    position: relative;
+    overflow: hidden;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: linear-gradient(180deg, #0078d4 0%, #106ebe 100%);
+    }
+
+    .section-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, #e6f2ff 0%, #cce4ff 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+
+      &:hover {
+        transform: scale(1.1);
+        background: linear-gradient(135deg, #cce4ff 0%, #b3d9ff 100%);
+      }
+    }
+  }
+
+  // Approvals card (outside form)
+  .approvals-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fffe 100%);
+    border: 2px solid #e1e4e8;
+    border-left: 4px solid #0078d4;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    margin-top: 24px;
+    animation: slideInUp 0.4s ease;
+
+    .ms-Icon {
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    &:hover {
+      border-left-color: #106ebe;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  // Action buttons card
+  .action-buttons-card {
+    position: sticky;
+    bottom: 20px;
+    z-index: 100;
+    background-color: #ffffff;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.05);
+    border: 2px solid #e1e4e8;
+    border-top: 3px solid #0078d4;
+    margin-top: 24px;
+    animation: slideInUp 0.5s ease;
+
+    button {
+      font-weight: 600;
+      transition: all 0.2s ease;
+
+      &:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+      }
+
+      &:active:not(:disabled) {
+        transform: translateY(0);
+      }
+    }
+
+    // Grouped sections styling
+    .ms-Separator {
+      margin: 16px 0;
+    }
+  }
+
+  // Message bar styling
+  .ms-MessageBar {
+    border-radius: 6px;
+    border-left-width: 4px;
+    animation: slideInDown 0.3s ease;
+  }
+
+  // SPForm component overrides
+  .dx-texteditor,
+  .dx-selectbox,
+  .dx-datebox,
+  .dx-textarea,
+  .dx-tagbox {
+    .dx-texteditor-input-container {
+      border-radius: 4px;
+    }
+
+    &.dx-state-focused {
+      .dx-texteditor-input-container {
+        border-color: #0078d4;
+        box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.1);
+      }
+    }
+
+    &.dx-invalid {
+      .dx-texteditor-input-container {
+        border-color: #d13438;
+        box-shadow: 0 0 0 3px rgba(209, 52, 56, 0.1);
+      }
+    }
+  }
+
+  // Switch styling
+  .dx-switch {
+    .dx-switch-handle {
+      transition: all 0.3s ease;
+    }
+
+    &.dx-state-active {
+      .dx-switch-container {
+        background-color: #0078d4;
+      }
+    }
+  }
+
+  // People picker styling
+  .ms-BasePicker {
+    border-radius: 4px;
+    border: 1px solid #d2d0ce;
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: #a19f9d;
+    }
+
+    &:focus-within {
+      border-color: #0078d4;
+      box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.1);
+    }
+  }
+
+  
+  // Form label enhancements
+  .ms-Label {
+    font-weight: 600;
+    color: #323130;
+    margin-bottom: 4px;
+
+    &.is-required::after {
+      content: ' *';
+      color: #d13438;
+      padding-left: 4px;
+    }
+  }
+
+  // Character count styling - ensure right alignment
+  // Target Text component that appears after DevExtreme fields
+  .dx-texteditor + .ms-Text,
+  .dx-textarea + .ms-Text,
+  .dx-textbox + .ms-Text {
+    text-align: right !important;
+    display: block;
+    width: 100%;
+  }
+
+  // Error message styling
+  .dx-invalid-message {
+    color: #d13438;
+    font-size: 12px;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    animation: shakeX 0.5s ease;
+
+    &::before {
+      content: '\E783';
+      font-family: 'FabricMDL2Icons';
+    }
+  }
+
+  // spfx-toolkit FormError inline display
+  .spfx-form-error {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #d13438;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    animation: slideInDown 0.3s ease;
+
+    .spfx-form-error-icon {
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .spfx-form-error-text {
+      flex: 1;
+      line-height: 1.4;
+    }
+  }
+
+  // Separator styling
+  .ms-Separator {
+    &::before {
+      background: linear-gradient(90deg, #e1e4e8 0%, transparent 100%);
+    }
+  }
+
+  // Collapsible section animation
+  .form-section-card {
+    .ms-Stack:not(:first-child) {
+      animation: slideInDown 0.3s ease;
+    }
+  }
+
+  // Responsive design
+  @media (max-width: 768px) {
+    padding: 16px 0;
+
+    .ms-Stack-inner > * {
+      margin-left: -8px;
+      margin-right: -8px;
+    }
+
+    .form-section-card {
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+
+      &::before {
+        display: none;
+      }
+    }
+
+    .approvals-card {
+      border-radius: 0;
+      border-left: 4px solid #0078d4;
+      border-right: none;
+      margin-top: 0;
+      margin-left: -8px;
+      margin-right: -8px;
+
+      .ms-Stack {
+        padding: 16px !important;
+      }
+    }
+
+    .action-buttons-card {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      margin: 0;
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+      border-bottom: none;
+      z-index: 1000;
+
+      .ms-Stack {
+        padding: 16px !important;
+
+        &[class*='horizontal'] {
+          flex-direction: column;
+          align-items: stretch !important;
+        }
+
+        button {
+          width: 100%;
+          margin-bottom: 8px;
+
+          &:last-child {
+            margin-bottom: 0;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Animations
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+@keyframes shakeX {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-5px);
+  }
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(5px);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+// Print styles
+@media print {
+  .request-info {
+    background: #ffffff;
+
+    .action-buttons-card {
+      display: none;
+    }
+
+    .approvals-card {
+      box-shadow: none;
+      border: 1px solid #d2d0ce;
+      page-break-inside: avoid;
+    }
+
+    .ms-MessageBar {
+      display: none;
+    }
+
+    .form-section-card {
+      box-shadow: none;
+      border: 1px solid #d2d0ce;
+      page-break-inside: avoid;
+    }
+  }
+}
+
+// Accessibility enhancements
+.request-info {
+  *:focus {
+    outline: 2px solid #0078d4;
+    outline-offset: 2px;
+  }
+
+  button:focus {
+    box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.3);
+  }
+}
+
+// Loading state
+.request-info--loading {
+  pointer-events: none;
+  opacity: 0.6;
+
+  &::after {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.8);
+    z-index: 9999;
+    cursor: wait;
+  }
+}

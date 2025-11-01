@@ -1,0 +1,55 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx-build/config.2.0.schema.json",
+  "version": "2.0",
+  "bundles": {
+    "legal-workflow-form-customizer": {
+      "components": [
+        {
+          "entrypoint": "./lib/extensions/legalWorkflow/LegalWorkflowFormCustomizer.js",
+          "manifest": "./src/extensions/legalWorkflow/LegalWorkflowFormCustomizer.manifest.json"
+        }
+      ]
+    },
+    "request-title-field-customizer": {
+      "components": [
+        {
+          "entrypoint": "./lib/extensions/requestTitle/RequestTitleFieldCustomizer.js",
+          "manifest": "./src/extensions/requestTitle/RequestTitleFieldCustomizer.manifest.json"
+        }
+      ]
+    },
+    "request-id-field-customizer": {
+      "components": [
+        {
+          "entrypoint": "./lib/extensions/requestId/RequestIdFieldCustomizer.js",
+          "manifest": "./src/extensions/requestId/RequestIdFieldCustomizer.manifest.json"
+        }
+      ]
+    },
+    "request-status-field-customizer": {
+      "components": [
+        {
+          "entrypoint": "./lib/extensions/requestStatus/RequestStatusFieldCustomizer.js",
+          "manifest": "./src/extensions/requestStatus/RequestStatusFieldCustomizer.manifest.json"
+        }
+      ]
+    },
+    "turn-around-date-field-customizer": {
+      "components": [
+        {
+          "entrypoint": "./lib/extensions/turnAroundDate/TurnAroundDateFieldCustomizer.js",
+          "manifest": "./src/extensions/turnAroundDate/TurnAroundDateFieldCustomizer.manifest.json"
+        }
+      ]
+    }
+  },
+  "externals": {},
+  "localizedResources": {
+    "LegalWorkflowFormCustomizerStrings": "lib/extensions/legalWorkflow/loc/{locale}.js",
+    "ControlStrings": "node_modules/@pnp/spfx-controls-react/lib/loc/{locale}.js",
+    "RequestTitleFieldCustomizerStrings": "lib/extensions/requestTitle/loc/{locale}.js",
+    "RequestIdFieldCustomizerStrings": "lib/extensions/requestId/loc/{locale}.js",
+    "RequestStatusFieldCustomizerStrings": "lib/extensions/requestStatus/loc/{locale}.js",
+    "TurnAroundDateFieldCustomizerStrings": "lib/extensions/turnAroundDate/loc/{locale}.js"
+  }
+}

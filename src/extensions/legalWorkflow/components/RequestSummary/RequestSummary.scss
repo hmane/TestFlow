@@ -1,0 +1,258 @@
+/**
+ * RequestSummary Component Styles
+ */
+
+.request-summary {
+  width: 100%;
+
+  .summary-header-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f3f9fd 100%);
+    border: 2px solid #0078d4;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 120, 212, 0.15);
+    margin-bottom: 24px;
+    animation: slideInDown 0.4s ease;
+
+    .summary-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #e6f2ff 0%, #cce4ff 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    button {
+      transition: all 0.2s ease;
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 120, 212, 0.2);
+      }
+
+      &:active {
+        transform: translateY(0);
+      }
+    }
+  }
+
+  .summary-section-card {
+    background-color: #ffffff;
+    border: 1px solid #e1e4e8;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+    animation: fadeInUp 0.5s ease;
+
+    &:hover {
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+      transform: translateY(-2px);
+    }
+
+    // Section icons
+    .ms-Icon {
+      transition: transform 0.3s ease;
+    }
+
+    &:hover .ms-Icon {
+      transform: scale(1.1);
+    }
+  }
+
+  .summary-info-card {
+    background-color: #f3f9fd;
+    border: 1px solid #cce4ff;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    animation: fadeInUp 0.6s ease;
+  }
+
+  // Field display styling
+  .ms-Label {
+    font-weight: 600;
+    color: #323130;
+    margin-bottom: 4px;
+  }
+
+  // Badge styling (handled inline but we can add global styles)
+  .badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-right: 8px;
+    margin-bottom: 8px;
+    animation: scaleIn 0.3s ease;
+  }
+
+  // Approval card styling
+  .ms-Card {
+    transition: all 0.2s ease;
+
+    &:hover {
+      transform: scale(1.02);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  // Separator styling
+  .ms-Separator {
+    &::before {
+      background: linear-gradient(90deg, #e1e4e8 0%, transparent 100%);
+    }
+  }
+
+  // Animations
+  @keyframes slideInDown {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes pulse {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  // Responsive design
+  @media (max-width: 768px) {
+    padding: 0 8px;
+
+    .summary-header-card {
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+      margin-bottom: 16px;
+
+      .ms-Stack {
+        padding: 16px !important;
+      }
+
+      .summary-icon {
+        width: 48px;
+        height: 48px;
+
+        .ms-Icon {
+          font-size: 24px !important;
+        }
+      }
+    }
+
+    .summary-section-card {
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+      margin-bottom: 16px;
+
+      .ms-Stack {
+        padding: 16px !important;
+      }
+    }
+
+    .summary-info-card {
+      border-radius: 0;
+      border-left: none;
+      border-right: none;
+      margin-bottom: 16px;
+
+      .ms-Stack {
+        padding: 12px 16px !important;
+      }
+    }
+  }
+
+  // Print styles
+  @media print {
+    .summary-header-card {
+      box-shadow: none;
+      border: 2px solid #000;
+      page-break-inside: avoid;
+
+      button {
+        display: none;
+      }
+
+      .summary-icon {
+        animation: none;
+      }
+    }
+
+    .summary-section-card {
+      box-shadow: none;
+      border: 1px solid #000;
+      page-break-inside: avoid;
+      animation: none;
+
+      &:hover {
+        transform: none;
+      }
+    }
+
+    .summary-info-card {
+      box-shadow: none;
+      border: 1px solid #000;
+      page-break-inside: avoid;
+    }
+  }
+
+  // High contrast mode support
+  @media (prefers-contrast: high) {
+    .summary-header-card {
+      border: 3px solid currentColor;
+    }
+
+    .summary-section-card {
+      border: 2px solid currentColor;
+    }
+
+    .summary-info-card {
+      border: 2px solid currentColor;
+    }
+  }
+
+  // Accessibility enhancements
+  *:focus-visible {
+    outline: 2px solid #0078d4;
+    outline-offset: 2px;
+  }
+
+  button:focus-visible {
+    box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.3);
+  }
+}

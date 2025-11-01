@@ -1,0 +1,113 @@
+/**
+ * CloseoutForm styles
+ * Extends RequestInfo styles
+ */
+
+.closeout-form {
+  // Inherit all styles from request-info
+
+  // Closeout section with green theme
+  #section-closeout-information {
+    border-left: 4px solid #107c10;
+
+    .section-icon {
+      background: linear-gradient(135deg, #e6f7e6 0%, #ccefcc 100%);
+    }
+  }
+
+  // Icon color override for closeout theme
+  .section-icon {
+    i {
+      color: #107c10 !important;
+    }
+  }
+
+  // Review results section
+  #section-review-results {
+    .form-value {
+      .ms-Stack {
+        i {
+          font-size: 16px;
+        }
+      }
+    }
+  }
+
+  // Outcome badge styling
+  .outcome-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-weight: 600;
+
+    &.approved {
+      background-color: #e6f7e6;
+      color: #107c10;
+    }
+
+    &.rejected {
+      background-color: #fde7e9;
+      color: #d13438;
+    }
+
+    &.pending {
+      background-color: #fff4e6;
+      color: #ff8c00;
+    }
+  }
+
+  // Success button styling
+  .action-buttons-card {
+    button[type='submit'] {
+      &:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 124, 16, 0.3);
+      }
+    }
+  }
+
+  // Character count styling - ensure right alignment
+  // Target Text component that appears after DevExtreme fields
+  .dx-texteditor + .ms-Text,
+  .dx-textarea + .ms-Text,
+  .dx-textbox + .ms-Text {
+    text-align: right !important;
+    display: block;
+    width: 100%;
+  }
+
+  // spfx-toolkit FormError inline display
+  .spfx-form-error {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #d13438;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    animation: slideInDown 0.3s ease;
+
+    .spfx-form-error-icon {
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .spfx-form-error-text {
+      flex: 1;
+      line-height: 1.4;
+    }
+  }
+}
+
+// Animation
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

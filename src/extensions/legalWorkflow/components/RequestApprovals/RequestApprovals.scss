@@ -1,0 +1,102 @@
+/**
+ * RequestApprovals Component Styles
+ */
+
+.approvals-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fffe 100%);
+  border: 2px solid #e1e4e8;
+  border-left: 4px solid #0078d4;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  animation: slideInUp 0.4s ease;
+  transition: all 0.3s ease;
+
+  &:hover {
+    border-left-color: #106ebe;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  // Icon animation
+  .ms-Icon {
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  // Separator styling
+  .ms-Separator {
+    &::before {
+      background: linear-gradient(90deg, #e1e4e8 0%, transparent 100%);
+    }
+  }
+
+  // Loading state
+  &.loading {
+    pointer-events: none;
+    opacity: 0.6;
+  }
+}
+
+// Animation for slide in from bottom
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Pulse animation for icon
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .approvals-card {
+    margin-top: 16px;
+    margin-left: -8px;
+    margin-right: -8px;
+    border-radius: 0;
+    border-left: 4px solid #0078d4;
+    border-right: none;
+
+    .ms-Stack {
+      padding: 16px !important;
+    }
+  }
+}
+
+// Print styles
+@media print {
+  .approvals-card {
+    box-shadow: none;
+    border: 1px solid #d2d0ce;
+    page-break-inside: avoid;
+
+    .ms-Icon {
+      animation: none;
+    }
+  }
+}
+
+// High contrast mode support
+@media (prefers-contrast: high) {
+  .approvals-card {
+    border: 3px solid currentColor;
+    border-left-width: 6px;
+  }
+}
+
+// Accessibility enhancements
+*:focus-visible {
+  outline: 2px solid #0078d4;
+  outline-offset: 2px;
+}

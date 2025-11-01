@@ -1,0 +1,279 @@
+/**
+ * ApprovalSection Component Styles
+ */
+
+.approval-section {
+  width: 100%;
+
+  .approval-item-card {
+    position: relative;
+    transition: all 0.2s ease-in-out;
+    border: 1px solid #edebe9;
+    border-radius: 4px;
+    background-color: #ffffff;
+
+    &:hover {
+      box-shadow: 0 3.2px 7.2px rgba(0, 0, 0, 0.132), 0 0.6px 1.8px rgba(0, 0, 0, 0.108);
+      border-color: #d2d0ce;
+    }
+
+    // Remove button hover effect
+    .ms-Button--icon {
+      &:hover {
+        background-color: #fef6f6;
+      }
+    }
+  }
+
+  .approval-summary-card {
+    background-color: #f3f2f1;
+    border: 1px solid #edebe9;
+    border-radius: 4px;
+    margin-top: 8px;
+  }
+
+  // Form container customization
+  .ms-Stack {
+    // Ensure proper spacing
+    &.form-container {
+      .form-item {
+        margin-bottom: 16px;
+      }
+    }
+  }
+
+  // Message bar customization
+  .ms-MessageBar {
+    border-radius: 4px;
+    margin-bottom: 12px;
+
+    &.ms-MessageBar--warning {
+      background-color: #fff4ce;
+      border-left: 4px solid #ffaa44;
+    }
+
+    &.ms-MessageBar--info {
+      background-color: #f3f2f1;
+      border-left: 4px solid #0078d4;
+    }
+  }
+
+  // Primary button customization
+  .ms-Button--primary {
+    transition: all 0.2s ease-in-out;
+
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0, 120, 212, 0.2);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+
+  // Icon button customization for delete
+  .ms-Button--icon {
+    transition: all 0.2s ease-in-out;
+
+    &:hover {
+      transform: scale(1.1);
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+  }
+
+  // Accessibility focus states
+  *:focus-visible {
+    outline: 2px solid #0078d4;
+    outline-offset: 2px;
+  }
+
+  // Responsive design
+  @media (max-width: 768px) {
+    .approval-item-card {
+      .ms-Stack {
+        padding: 16px !important;
+      }
+    }
+
+    .ms-Button--primary {
+      width: 100%;
+    }
+  }
+
+  // File upload area customization within approval items
+  .approval-file-upload {
+    .compact-drop-zone {
+      border: 2px dashed #c8c6c4;
+      border-radius: 4px;
+      padding: 16px;
+      background-color: #faf9f8;
+      transition: all 0.2s ease-in-out;
+
+      &:hover {
+        border-color: #0078d4;
+        background-color: #f3f2f1;
+      }
+
+      &.dragging {
+        border-color: #0078d4;
+        background-color: #deecf9;
+        border-style: solid;
+      }
+
+      &.disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+    }
+
+    .file-list {
+      margin-top: 12px;
+      padding: 12px;
+      background-color: #f3f2f1;
+      border-radius: 4px;
+
+      .file-list-title {
+        font-weight: 600;
+        color: #323130;
+        margin-bottom: 8px;
+      }
+
+      .file-items {
+        .file-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 8px 12px;
+          background-color: #ffffff;
+          border: 1px solid #edebe9;
+          border-radius: 4px;
+          margin-bottom: 8px;
+          transition: all 0.2s ease-in-out;
+
+          &:last-child {
+            margin-bottom: 0;
+          }
+
+          &:hover {
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border-color: #c8c6c4;
+          }
+
+          &.existing-file {
+            .file-name {
+              color: #0078d4;
+              cursor: pointer;
+
+              &:hover {
+                text-decoration: underline;
+              }
+            }
+          }
+
+          .file-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+
+            .file-icon {
+              display: flex;
+              align-items: center;
+            }
+
+            .file-details {
+              display: flex;
+              flex-direction: column;
+              gap: 4px;
+
+              .file-name {
+                font-weight: 500;
+                color: #323130;
+                word-break: break-word;
+              }
+
+              .file-size {
+                color: #605e5c;
+                font-size: 12px;
+              }
+            }
+          }
+
+          .file-actions {
+            display: flex;
+            align-items: center;
+
+            .remove-file-btn {
+              color: #a4262c;
+
+              &:hover {
+                color: #d13438;
+                background-color: #fef6f6;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Animation for adding/removing items
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .approval-item-card {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  // High contrast mode support
+  @media (prefers-contrast: high) {
+    .approval-item-card {
+      border: 2px solid currentColor;
+    }
+
+    .ms-MessageBar {
+      border-left-width: 6px;
+    }
+
+    .ms-Button--primary {
+      border: 2px solid currentColor;
+    }
+  }
+
+  // Print styles
+  @media print {
+    .approval-item-card {
+      page-break-inside: avoid;
+      box-shadow: none;
+      border: 1px solid #000;
+    }
+
+    .ms-Button {
+      display: none;
+    }
+
+    .approval-file-upload {
+      .compact-drop-zone {
+        display: none;
+      }
+    }
+  }
+}

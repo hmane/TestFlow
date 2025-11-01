@@ -1,0 +1,19 @@
+{
+  "@microsoft/generator-sharepoint": {
+    "plusBeta": false,
+    "isCreatingSolution": false,
+    "nodeVersion": "22.14.0",
+    "sdksVersions": {},
+    "version": "1.21.1",
+    "libraryName": "legal-workflow",
+    "libraryId": "877d48f8-af3b-4965-be4c-d9c00cf239b2",
+    "environment": "spo",
+    "packageManager": "npm",
+    "solutionName": "legal-workflow",
+    "solutionShortDescription": "legal-workflow description",
+    "skipFeatureDeployment": true,
+    "isDomainIsolated": false,
+    "componentType": "extension",
+    "extensionType": "FieldCustomizer"
+  }
+}

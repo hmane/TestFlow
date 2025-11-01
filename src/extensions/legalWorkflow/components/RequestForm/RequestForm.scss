@@ -1,0 +1,175 @@
+/**
+ * RequestForm styles
+ */
+
+.request-form {
+  background-color: #faf9f8;
+  min-height: 100vh;
+
+  &__workflow-card {
+    background-color: #ffffff;
+    border: 1px solid #edebe9;
+    border-radius: 4px;
+    padding: 16px;
+  }
+
+  // Form sections
+  form {
+    .ms-Card {
+      background-color: #ffffff;
+      border: 1px solid #edebe9;
+      border-radius: 4px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      transition: box-shadow 0.2s ease;
+
+      &:hover {
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      }
+    }
+  }
+
+  // Field styling
+  .ms-TextField,
+  .ms-Dropdown {
+    margin-bottom: 8px;
+  }
+
+  .ms-Label {
+    font-weight: 600;
+    color: #323130;
+  }
+
+  // Error messages
+  .ms-TextField-errorMessage,
+  .ms-Dropdown-errorMessage {
+    color: #a4262c;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+
+  // Toggle styling
+  .ms-Toggle {
+    margin-bottom: 8px;
+
+    .ms-Toggle-label {
+      font-weight: 600;
+      color: #323130;
+    }
+  }
+
+  // Date picker styling
+  .ms-DatePicker {
+    .ms-TextField {
+      margin-bottom: 0;
+    }
+  }
+
+  // Button group
+  .ms-Stack.ms-Stack--horizontal {
+    button {
+      transition: all 0.2s ease;
+
+      &:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      &:active:not(:disabled) {
+        transform: translateY(0);
+      }
+    }
+  }
+
+  // Message bar styling
+  .ms-MessageBar {
+    margin-bottom: 16px;
+    border-radius: 4px;
+  }
+
+  // Section headers
+  .ms-Text[class*='xLarge'] {
+    color: #323130;
+    border-bottom: 2px solid #edebe9;
+    padding-bottom: 8px;
+    margin-bottom: 16px;
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .request-form {
+    .ms-Stack.ms-Stack--horizontal {
+      flex-direction: column;
+      align-items: stretch !important;
+
+      button {
+        width: 100%;
+        margin-bottom: 8px;
+      }
+    }
+
+    form .ms-Card {
+      margin-left: -8px;
+      margin-right: -8px;
+    }
+  }
+}
+
+// Print styles
+@media print {
+  .request-form {
+    background-color: #ffffff;
+
+    button {
+      display: none;
+    }
+
+    .ms-MessageBar {
+      display: none;
+    }
+  }
+}
+
+// Loading state overlay
+.request-form--loading {
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.7);
+    z-index: 1000;
+  }
+}
+
+// Auto-save indicator
+@keyframes autoSave {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+}
+
+.request-form__auto-save-indicator {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 8px 16px;
+  background-color: #107c10;
+  color: #ffffff;
+  border-radius: 4px;
+  font-size: 12px;
+  z-index: 1000;
+  animation: autoSave 2s ease;
+}

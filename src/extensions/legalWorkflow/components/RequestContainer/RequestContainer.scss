@@ -1,0 +1,156 @@
+/**
+ * RequestContainer styles
+ */
+
+.request-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #faf9f8;
+
+  &--with-drawer {
+    position: relative;
+  }
+
+  &__main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  &__comments-panel {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: #ffffff;
+    border-left: 1px solid #edebe9;
+  }
+
+  &__comments-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+
+  &__drawer-toggle {
+    position: relative;
+  }
+
+  &__placeholder {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+  }
+}
+
+// DevExtreme Drawer overrides
+.dx-drawer {
+  height: 100vh;
+
+  .dx-drawer-panel-content {
+    height: 100%;
+  }
+
+  .dx-drawer-wrapper {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  // Drawer animation
+  .dx-drawer-shader {
+    background-color: rgba(0, 0, 0, 0.3);
+    transition: background-color 0.3s ease;
+  }
+}
+
+// Comments panel styling
+.request-container__comments-panel {
+  // PnP ListItemComments overrides
+  .ql-container {
+    min-height: 100px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .ql-editor {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  // Comment list styling
+  .ms-List {
+    max-height: calc(100vh - 300px);
+    overflow-y: auto;
+  }
+
+  .ms-ListItem {
+    border-bottom: 1px solid #edebe9;
+    padding: 12px 0;
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+}
+
+// Floating toggle button animation
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 120, 212, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(0, 120, 212, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 120, 212, 0);
+  }
+}
+
+.request-container__drawer-toggle button {
+  animation: pulse 2s infinite;
+
+  &:hover {
+    animation: none;
+    box-shadow: 0 4px 12px rgba(0, 120, 212, 0.3);
+  }
+}
+
+// Responsive design
+@media (max-width: 1024px) {
+  .dx-drawer[data-dx-drawer-opened='true'] {
+    .dx-drawer-panel-content {
+      width: 350px !important;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .dx-drawer[data-dx-drawer-opened='true'] {
+    .dx-drawer-panel-content {
+      width: 100% !important;
+      max-width: 320px;
+    }
+  }
+
+  .request-container__comments-content {
+    padding: 12px;
+  }
+}
+
+// Print styles
+@media print {
+  .request-container__comments-panel {
+    display: none;
+  }
+
+  .request-container__drawer-toggle {
+    display: none;
+  }
+
+  .dx-drawer-shader {
+    display: none;
+  }
+}

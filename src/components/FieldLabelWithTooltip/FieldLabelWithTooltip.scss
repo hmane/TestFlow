@@ -1,0 +1,62 @@
+/**
+ * FieldLabelWithTooltip Component Styles
+ */
+
+.field-label-with-tooltip {
+  margin-bottom: 6px;
+
+  .ms-Label {
+    display: inline-flex;
+    align-items: center;
+
+    // Required indicator
+    .ms-Label-required {
+      color: #d13438;
+      padding-left: 4px;
+    }
+  }
+
+  .ms-Icon {
+    transition: all 0.2s ease;
+
+    &:focus {
+      outline: 2px solid #0078d4;
+      outline-offset: 2px;
+      border-radius: 2px;
+    }
+
+    &:hover {
+      transform: scale(1.1);
+    }
+
+    &:active {
+      transform: scale(0.95);
+    }
+  }
+}
+
+// Tooltip styling overrides
+.ms-Tooltip {
+  .ms-Tooltip-content {
+    max-width: 300px;
+    padding: 12px 16px;
+    font-size: 14px;
+    line-height: 1.5;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+}
+
+// Accessibility - reduce motion
+@media (prefers-reduced-motion: reduce) {
+  .field-label-with-tooltip .ms-Icon {
+    transition: none;
+
+    &:hover {
+      transform: none;
+    }
+
+    &:active {
+      transform: none;
+    }
+  }
+}

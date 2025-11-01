@@ -1,0 +1,13 @@
+.legalWorkflow {
+  // Use normal document flow - don't hide SharePoint header/navigation
+  width: 100%;
+  min-height: 100vh;
+  background-color: #faf9f8;
+
+  // Remove SharePoint's default padding to use full width
+  margin: 0;
+  padding: 0;
+
+  // Ensure proper rendering
+  box-sizing: border-box;
+}

@@ -1,0 +1,196 @@
+/**
+ * PriorSubmissionPicker Component Styles
+ */
+
+.prior-submission-picker {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+
+  .search-container {
+    width: 100%;
+    margin-bottom: 16px;
+    position: relative;
+
+    .loading-container,
+    .no-results-container {
+      margin-top: 12px;
+      padding: 12px 16px;
+      background-color: #f3f2f1;
+      border: 1px solid #edebe9;
+      border-radius: 4px;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .no-results-container {
+      background-color: #fff4ce;
+      border-color: #ffb900;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(-4px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  }
+
+  // Dropdown item styling
+  .prior-submission-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    border-bottom: 1px solid #edebe9;
+
+    &:hover {
+      background-color: #f3f2f1;
+    }
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .ms-Stack {
+      width: 100%;
+    }
+
+    .ms-Text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 100%;
+    }
+  }
+
+  // Selected requests section
+  .selected-requests {
+    margin-top: 16px;
+    padding: 0;
+
+    .selected-request-card {
+      background-color: #ffffff;
+      border: 1px solid #d2d0ce;
+      border-radius: 4px;
+      padding: 12px 16px;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+      &:hover {
+        border-color: #0078d4;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .ms-Stack {
+        width: 100%;
+      }
+
+      .ms-Link {
+        font-weight: 600;
+        color: #0078d4;
+        text-decoration: none;
+        cursor: pointer;
+
+        &:hover {
+          text-decoration: underline;
+          color: #106ebe;
+        }
+
+        &:active {
+          color: #005a9e;
+        }
+      }
+
+      .ms-Text {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 100%;
+      }
+
+      .ms-IconButton {
+        color: #605e5c;
+        transition: all 0.2s ease;
+
+        &:hover {
+          color: #d13438;
+          background-color: #fef6f6;
+        }
+
+        &:active {
+          color: #a4262c;
+        }
+      }
+    }
+  }
+}
+
+// DevExtreme autocomplete overrides
+.dx-autocomplete {
+  .dx-texteditor-input {
+    font-size: 14px;
+    padding: 8px 12px;
+  }
+
+  .dx-texteditor-buttons-container {
+    padding-right: 8px;
+  }
+}
+
+// DevExtreme dropdown list overrides
+.dx-list {
+  .dx-list-item {
+    padding: 0 !important;
+    border-bottom: none !important;
+
+    &:hover {
+      background-color: transparent !important;
+    }
+  }
+
+  .dx-list-item-content {
+    padding: 0 !important;
+  }
+}
+
+// Responsive design
+@media (max-width: 768px) {
+  .prior-submission-picker {
+    .selected-request-card {
+      padding: 10px 12px;
+
+      .ms-Stack {
+        flex-direction: column;
+        align-items: flex-start !important;
+
+        > .ms-Stack {
+          width: 100%;
+        }
+      }
+    }
+
+    .prior-submission-item {
+      padding: 10px 12px;
+
+      .ms-Stack-inner {
+        flex-direction: column;
+        align-items: flex-start !important;
+      }
+    }
+  }
+}
+
+// Loading state
+.prior-submission-picker {
+  .dx-loadpanel-content {
+    border-radius: 4px;
+  }
+
+  .dx-loadpanel-message {
+    font-size: 14px;
+    color: #323130;
+  }
+}
