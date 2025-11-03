@@ -18,9 +18,12 @@ import { Lists } from '@sp/Lists';
 import { RequestsFields } from '@sp/listFields/RequestsFields';
 import { manageRequestPermissions } from './azureFunctionService';
 import { loadRequestById } from './requestLoadService';
+import { batchUploadFiles, deleteFile, renameFile } from './documentService';
 
 import type { ILegalRequest } from '@appTypes/requestTypes';
 import { RequestStatus, ReviewOutcome } from '@appTypes/workflowTypes';
+import { ApprovalType } from '@appTypes/approvalTypes';
+import type { IStagedDocument, IDocument } from '../stores/documentsStore';
 
 // Type aliases for review outcomes
 type LegalReviewOutcome = ReviewOutcome;
@@ -36,6 +39,159 @@ function isEmptyValue(value: any): boolean {
     value === '' ||
     (Array.isArray(value) && value.length === 0)
   );
+}
+
+/**
+ * Map approvals array to individual SharePoint fields
+ *
+ * Each approval type is stored as separate fields in SharePoint:
+ * - Communications: RequiresCommunicationsApproval, CommunicationsApprover, CommunicationsApprovalDate
+ * - Portfolio Manager: HasPortfolioManagerApproval, PortfolioManager, PortfolioManagerApprovalDate
+ * - Research Analyst: HasResearchAnalystApproval, ResearchAnalyst, ResearchAnalystApprovalDate
+ * - SME: HasSMEApproval, SubjectMatterExpert, SMEApprovalDate
+ * - Performance: HasPerformanceApproval, PerformanceApprover, PerformanceApprovalDate
+ * - Other: HasOtherApproval, OtherApproval, OtherApprovalDate, OtherApprovalTitle
+ *
+ * IMPORTANT: This function does NOT validate data completeness.
+ * - Boolean flag is set to true if approval exists in array (regardless of data)
+ * - Approver/date fields are saved as-is, even if empty/null (for draft mode)
+ * - Validation happens in the form layer before submission, not here
+ * - Documents are uploaded separately via processPendingDocuments()
+ */
+function mapApprovalsToSharePointFields(
+  updater: ReturnType<typeof createSPUpdater>,
+  newApprovals: ILegalRequest['approvals'],
+  originalApprovals?: ILegalRequest['approvals']
+): void {
+  // Create lookup maps for easy access
+  const newApprovalsMap = new Map<ApprovalType, any>();
+  const originalApprovalsMap = new Map<ApprovalType, any>();
+
+  // Populate new approvals map
+  if (newApprovals && Array.isArray(newApprovals)) {
+    for (let i = 0; i < newApprovals.length; i++) {
+      const approval = newApprovals[i];
+      if (approval && approval.type) {
+        newApprovalsMap.set(approval.type, approval);
+      }
+    }
+  }
+
+  // Populate original approvals map
+  if (originalApprovals && Array.isArray(originalApprovals)) {
+    for (let i = 0; i < originalApprovals.length; i++) {
+      const approval = originalApprovals[i];
+      if (approval && approval.type) {
+        originalApprovalsMap.set(approval.type, approval);
+      }
+    }
+  }
+
+  // Map Communications approval
+  const commApproval = newApprovalsMap.get(ApprovalType.Communications);
+  const origCommApproval = originalApprovalsMap.get(ApprovalType.Communications);
+
+  // Set boolean to true if approval exists in array (no validation)
+  updater.set('RequiresCommunicationsApproval', !!commApproval, !!origCommApproval);
+
+  if (commApproval) {
+    // Validate approver has id before saving (same pattern as other approvers)
+    const approverValue = commApproval.approver && commApproval.approver.id ? commApproval.approver : null;
+    const origApproverValue = origCommApproval?.approver && origCommApproval.approver.id ? origCommApproval.approver : null;
+    updater.set('CommunicationsApprover', approverValue, origApproverValue);
+    updater.set('CommunicationsApprovalDate', commApproval.approvalDate, origCommApproval?.approvalDate);
+  } else if (origCommApproval) {
+    // Approval was removed - clear the fields
+    const origApproverValue = origCommApproval.approver && origCommApproval.approver.id ? origCommApproval.approver : null;
+    updater.set('CommunicationsApprover', null, origApproverValue);
+    updater.set('CommunicationsApprovalDate', null, origCommApproval.approvalDate);
+  }
+
+  // Map Portfolio Manager approval
+  const pmApproval = newApprovalsMap.get(ApprovalType.PortfolioManager);
+  const origPmApproval = originalApprovalsMap.get(ApprovalType.PortfolioManager);
+
+  updater.set('HasPortfolioManagerApproval', !!pmApproval, !!origPmApproval);
+
+  if (pmApproval) {
+    const approverValue = pmApproval.approver && pmApproval.approver.id ? pmApproval.approver : null;
+    const origApproverValue = origPmApproval?.approver && origPmApproval.approver.id ? origPmApproval.approver : null;
+    updater.set('PortfolioManager', approverValue, origApproverValue);
+    updater.set('PortfolioManagerApprovalDate', pmApproval.approvalDate, origPmApproval?.approvalDate);
+  } else if (origPmApproval) {
+    updater.set('PortfolioManager', null, origPmApproval.approver);
+    updater.set('PortfolioManagerApprovalDate', null, origPmApproval.approvalDate);
+  }
+
+  // Map Research Analyst approval
+  const raApproval = newApprovalsMap.get(ApprovalType.ResearchAnalyst);
+  const origRaApproval = originalApprovalsMap.get(ApprovalType.ResearchAnalyst);
+
+  updater.set('HasResearchAnalystApproval', !!raApproval, !!origRaApproval);
+
+  if (raApproval) {
+    const approverValue = raApproval.approver && raApproval.approver.id ? raApproval.approver : null;
+    const origApproverValue = origRaApproval?.approver && origRaApproval.approver.id ? origRaApproval.approver : null;
+    updater.set('ResearchAnalyst', approverValue, origApproverValue);
+    updater.set('ResearchAnalystApprovalDate', raApproval.approvalDate, origRaApproval?.approvalDate);
+  } else if (origRaApproval) {
+    updater.set('ResearchAnalyst', null, origRaApproval.approver);
+    updater.set('ResearchAnalystApprovalDate', null, origRaApproval.approvalDate);
+  }
+
+  // Map Subject Matter Expert approval
+  const smeApproval = newApprovalsMap.get(ApprovalType.SubjectMatterExpert);
+  const origSmeApproval = originalApprovalsMap.get(ApprovalType.SubjectMatterExpert);
+
+  updater.set('HasSMEApproval', !!smeApproval, !!origSmeApproval);
+
+  if (smeApproval) {
+    const approverValue = smeApproval.approver && smeApproval.approver.id ? smeApproval.approver : null;
+    const origApproverValue = origSmeApproval?.approver && origSmeApproval.approver.id ? origSmeApproval.approver : null;
+    updater.set('SubjectMatterExpert', approverValue, origApproverValue);
+    updater.set('SMEApprovalDate', smeApproval.approvalDate, origSmeApproval?.approvalDate);
+  } else if (origSmeApproval) {
+    updater.set('SubjectMatterExpert', null, origSmeApproval.approver);
+    updater.set('SMEApprovalDate', null, origSmeApproval.approvalDate);
+  }
+
+  // Map Performance approval
+  const perfApproval = newApprovalsMap.get(ApprovalType.Performance);
+  const origPerfApproval = originalApprovalsMap.get(ApprovalType.Performance);
+
+  updater.set('HasPerformanceApproval', !!perfApproval, !!origPerfApproval);
+
+  if (perfApproval) {
+    const approverValue = perfApproval.approver && perfApproval.approver.id ? perfApproval.approver : null;
+    const origApproverValue = origPerfApproval?.approver && origPerfApproval.approver.id ? origPerfApproval.approver : null;
+    updater.set('PerformanceApprover', approverValue, origApproverValue);
+    updater.set('PerformanceApprovalDate', perfApproval.approvalDate, origPerfApproval?.approvalDate);
+  } else if (origPerfApproval) {
+    updater.set('PerformanceApprover', null, origPerfApproval.approver);
+    updater.set('PerformanceApprovalDate', null, origPerfApproval.approvalDate);
+  }
+
+  // Map Other approval
+  const otherApproval = newApprovalsMap.get(ApprovalType.Other);
+  const origOtherApproval = originalApprovalsMap.get(ApprovalType.Other);
+
+  updater.set('HasOtherApproval', !!otherApproval, !!origOtherApproval);
+
+  if (otherApproval) {
+    const approverValue = otherApproval.approver && otherApproval.approver.id ? otherApproval.approver : null;
+    const origApproverValue = origOtherApproval?.approver && origOtherApproval.approver.id ? origOtherApproval.approver : null;
+    updater.set('OtherApproval', approverValue, origApproverValue);
+    updater.set('OtherApprovalDate', otherApproval.approvalDate, origOtherApproval?.approvalDate);
+    // Other approval has a custom title field
+    const otherTyped = otherApproval as any;
+    const origOtherTyped = origOtherApproval as any;
+    updater.set('OtherApprovalTitle', otherTyped.approvalTitle, origOtherTyped?.approvalTitle);
+  } else if (origOtherApproval) {
+    updater.set('OtherApproval', null, origOtherApproval.approver);
+    updater.set('OtherApprovalDate', null, origOtherApproval.approvalDate);
+    const origOtherTyped = origOtherApproval as any;
+    updater.set('OtherApprovalTitle', null, origOtherTyped?.approvalTitle);
+  }
 }
 
 /**
@@ -121,13 +277,14 @@ export function buildRequestUpdatePayload(
     updater.set('ReviewAudience', request.reviewAudience, originalRequest.reviewAudience);
     updater.set('IsRushRequest', request.isRushRequest, originalRequest.isRushRequest);
     updater.set('RushRationale', request.rushRationale, originalRequest.rushRationale);
-    updater.set(
-      'RequiresCommunicationsApproval',
-      request.requiresCommunicationsApproval,
-      originalRequest.requiresCommunicationsApproval
-    );
     updater.set('Status', request.status, originalRequest.status);
     updater.set('Department', request.department, originalRequest.department);
+
+    // Attorney fields - validate that attorney has id before saving
+    const attorneyValue = request.attorney && request.attorney.id ? request.attorney : null;
+    const origAttorneyValue = originalRequest.attorney && originalRequest.attorney.id ? originalRequest.attorney : null;
+    updater.set('Attorney', attorneyValue, origAttorneyValue);
+    updater.set('AttorneyAssignNotes', request.attorneyAssignNotes, originalRequest.attorneyAssignNotes);
 
     // Multi-choice field - pass array directly (not wrapped with {results: []})
     // SPUpdater automatically wraps multi-value fields in SharePoint format
@@ -140,6 +297,10 @@ export function buildRequestUpdatePayload(
     // SPUpdater handles ID extraction and {results: []} wrapping automatically
     updater.set('PriorSubmissionsId', request.priorSubmissions, originalRequest.priorSubmissions);
     updater.set('AdditionalParty', request.additionalParty, originalRequest.additionalParty);
+
+    // Map approvals array to individual SharePoint fields
+    // This handles RequiresCommunicationsApproval and all approval-specific fields
+    mapApprovalsToSharePointFields(updater, request.approvals, originalRequest.approvals);
 
     // Get updates from SPUpdater (includes automatic change detection)
     const updates = updater.getUpdates();
@@ -162,9 +323,21 @@ export function buildRequestUpdatePayload(
       SubmissionType: request.submissionType,
       ReviewAudience: request.reviewAudience,
       IsRushRequest: request.isRushRequest,
-      RequiresCommunicationsApproval: request.requiresCommunicationsApproval,
       Status: request.status,
     };
+
+    // Map approvals for new request
+    // Use updater to ensure proper SharePoint field formatting
+    const tempUpdater = createSPUpdater();
+    mapApprovalsToSharePointFields(tempUpdater, request.approvals);
+    const approvalFields = tempUpdater.getUpdates();
+
+    // Merge approval fields into payload
+    for (const key in approvalFields) {
+      if (Object.prototype.hasOwnProperty.call(approvalFields, key)) {
+        payload[key] = approvalFields[key];
+      }
+    }
 
     // Add optional fields only if they have values
     if (request.submissionItem) {
@@ -208,6 +381,18 @@ export function buildRequestUpdatePayload(
 
     if (request.trackingId) {
       payload.TrackingId = request.trackingId;
+    }
+
+    // Attorney fields - validate that attorney has id before saving
+    if (request.attorney) {
+      const attorneyValue = request.attorney && request.attorney.id ? request.attorney : null;
+      if (attorneyValue) {
+        payload.Attorney = attorneyValue;
+      }
+    }
+
+    if (request.attorneyAssignNotes) {
+      payload.AttorneyAssignNotes = request.attorneyAssignNotes;
     }
 
     return payload;
@@ -309,6 +494,116 @@ export async function generateRequestId(): Promise<string> {
 }
 
 /**
+ * Process pending document operations (uploads, deletes, renames)
+ *
+ * This function should be called after the request is successfully saved.
+ * It processes all pending document operations from documentsStore.
+ *
+ * @param itemId - Request item ID
+ * @param stagedFiles - Staged files to upload (from documentsStore)
+ * @param filesToDelete - Files to delete (from documentsStore)
+ * @param filesToRename - Files to rename (from documentsStore)
+ * @returns Promise resolving to processing results
+ */
+export async function processPendingDocuments(
+  itemId: number,
+  stagedFiles: IStagedDocument[] = [],
+  filesToDelete: IDocument[] = [],
+  filesToRename: Array<{ file: IDocument; newName: string }> = []
+): Promise<{
+  uploadSuccess: number;
+  uploadErrors: number;
+  deleteSuccess: number;
+  deleteErrors: number;
+  renameSuccess: number;
+  renameErrors: number;
+}> {
+  const results = {
+    uploadSuccess: 0,
+    uploadErrors: 0,
+    deleteSuccess: 0,
+    deleteErrors: 0,
+    renameSuccess: 0,
+    renameErrors: 0,
+  };
+
+  try {
+    // 1. Upload staged files
+    if (stagedFiles.length > 0) {
+      SPContext.logger.info('Processing pending file uploads', {
+        itemId,
+        count: stagedFiles.length,
+      });
+
+      const filesForUpload = stagedFiles.map(staged => ({
+        file: staged.file,
+        documentType: staged.documentType,
+      }));
+
+      const uploadResult = await batchUploadFiles(
+        filesForUpload,
+        itemId,
+        (fileId, progress, status) => {
+          SPContext.logger.info('Upload progress', { fileId, progress, status });
+        },
+        (fileId, result) => {
+          SPContext.logger.info('Upload complete', { fileId, success: result.success });
+        }
+      );
+
+      results.uploadSuccess = uploadResult.successCount;
+      results.uploadErrors = uploadResult.errorCount;
+    }
+
+    // 2. Delete files
+    if (filesToDelete.length > 0) {
+      SPContext.logger.info('Processing pending file deletions', {
+        itemId,
+        count: filesToDelete.length,
+      });
+
+      for (const file of filesToDelete) {
+        try {
+          await deleteFile(file);
+          results.deleteSuccess++;
+        } catch (error) {
+          SPContext.logger.error('Failed to delete file', error, { fileName: file.name });
+          results.deleteErrors++;
+        }
+      }
+    }
+
+    // 3. Rename files
+    if (filesToRename.length > 0) {
+      SPContext.logger.info('Processing pending file renames', {
+        itemId,
+        count: filesToRename.length,
+      });
+
+      for (const { file, newName } of filesToRename) {
+        try {
+          await renameFile(file, newName);
+          results.renameSuccess++;
+        } catch (error) {
+          SPContext.logger.error('Failed to rename file', error, {
+            oldName: file.name,
+            newName,
+          });
+          results.renameErrors++;
+        }
+      }
+    }
+
+    SPContext.logger.success('Pending document operations completed', results);
+
+    return results;
+  } catch (error) {
+    SPContext.logger.error('Failed to process pending documents', error, { itemId });
+    throw error;
+  }
+}
+
+/**
  * Generic save request (flexible, no validation)
  *
  * Updates any fields without business logic or permission management.
@@ -319,6 +614,10 @@ export async function generateRequestId(): Promise<string> {
  * @param itemId - SharePoint list item ID
  * @param data - Request data to update (full or partial)
  * @param originalData - Optional original data for change detection
+ * @param processDocuments - Optional: process pending document operations after save
+ * @param stagedFiles - Optional: staged files to upload
+ * @param filesToDelete - Optional: files to delete
+ * @param filesToRename - Optional: files to rename
  * @returns Promise resolving to save result with updated request data
  */
 export async function saveRequest(

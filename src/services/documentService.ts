@@ -10,6 +10,7 @@
 
 import { SPContext } from 'spfx-toolkit';
 import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
+import 'spfx-toolkit/lib/utilities/context/pnpImports/files';
 
 import { Lists } from '@sp/Lists';
 
@@ -32,37 +33,87 @@ const DEFAULT_LIBRARY_TITLE = Lists.RequestDocuments.Title;
  * - Attachments (Review/Supplemental): RequestDocuments/{itemId}/
  * - Approvals: RequestDocuments/{itemId}/{ApprovalType}/
  */
-export function getDocumentFolderPath(itemId: number, documentType: DocumentType): string {
+export function getDocumentFolderPath(itemId: number, documentType: DocumentType | string): string {
+  const normalizedType = String(documentType);
+
+  SPContext.logger.info('getDocumentFolderPath called', {
+    itemId,
+    documentType,
+    normalizedType,
+    documentTypeOf: typeof documentType,
+  });
+
   // Attachments go to root level
-  if (documentType === DocumentType.Review || documentType === DocumentType.Supplemental) {
-    return `${itemId}`;
+  if (normalizedType === DocumentType.Review || normalizedType === 'Review') {
+    const path = `${itemId}`;
+    SPContext.logger.info('Review folder path (root level)', { path, documentType });
+    return path;
+  }
+
+  if (normalizedType === DocumentType.Supplemental || normalizedType === 'Supplemental') {
+    const path = `${itemId}`;
+    SPContext.logger.info('Supplemental folder path (root level)', { path, documentType });
+    return path;
   }
 
   // Approvals go to subfolders
-  const approvalFolder = getApprovalFolderName(documentType);
-  return `${itemId}/${approvalFolder}`;
+  const approvalFolder = getApprovalFolderName(normalizedType);
+  const path = `${itemId}/${approvalFolder}`;
+  SPContext.logger.info('Approval folder path (subfolder)', { path, documentType, approvalFolder });
+  return path;
 }
 
 /**
  * Get approval folder name from DocumentType
+ * Also handles string values by normalizing them
  */
-function getApprovalFolderName(documentType: DocumentType): string {
-  switch (documentType) {
-    case DocumentType.CommunicationApproval:
-      return 'CommunicationApproval';
-    case DocumentType.PortfolioManagerApproval:
-      return 'PortfolioManagerApproval';
-    case DocumentType.ResearchAnalystApproval:
-      return 'ResearchAnalystApproval';
-    case DocumentType.SubjectMatterExpertApproval:
-      return 'SubjectMatterExpertApproval';
-    case DocumentType.PerformanceApproval:
-      return 'PerformanceApproval';
-    case DocumentType.OtherApproval:
-      return 'OtherApproval';
-    default:
-      return 'Unknown';
+function getApprovalFolderName(documentType: DocumentType | string): string {
+  // Normalize string to DocumentType enum value
+  const normalizedType = String(documentType);
+
+  SPContext.logger.info('getApprovalFolderName called', {
+    documentType,
+    normalizedType,
+    documentTypeOf: typeof documentType,
+    expectedCommunicationApproval: DocumentType.CommunicationApproval,
+    matches: normalizedType === DocumentType.CommunicationApproval,
+  });
+
+  // Use string comparison for more robust matching
+  if (normalizedType === DocumentType.CommunicationApproval || normalizedType === 'Communication Approval') {
+    return 'CommunicationsApproval';
   }
+  if (normalizedType === DocumentType.PortfolioManagerApproval || normalizedType === 'Portfolio Manager Approval') {
+    return 'PortfolioManagerApproval';
+  }
+  if (normalizedType === DocumentType.ResearchAnalystApproval || normalizedType === 'Research Analyst Approval') {
+    return 'ResearchAnalystApproval';
+  }
+  if (normalizedType === DocumentType.SubjectMatterExpertApproval || normalizedType === 'Subject Matter Expert Approval') {
+    return 'SubjectMatterExpertApproval';
+  }
+  if (normalizedType === DocumentType.PerformanceApproval || normalizedType === 'Performance Approval') {
+    return 'PerformanceApproval';
+  }
+  if (normalizedType === DocumentType.OtherApproval || normalizedType === 'Other Approval') {
+    return 'OtherApproval';
+  }
+
+  // If we get here, it's not an approval type - ERROR!
+  SPContext.logger.error('CRITICAL: Non-approval document type passed to getApprovalFolderName', {
+    documentType,
+    normalizedType,
+    allApprovalTypes: [
+      DocumentType.CommunicationApproval,
+      DocumentType.PortfolioManagerApproval,
+      DocumentType.ResearchAnalystApproval,
+      DocumentType.SubjectMatterExpertApproval,
+      DocumentType.PerformanceApproval,
+      DocumentType.OtherApproval,
+    ],
+  });
+
+  throw new Error(`Invalid approval document type: ${normalizedType}. This should never happen!`);
 }
 
 /**
@@ -164,7 +215,9 @@ export async function uploadFile(
   folderPath: string,
   file: File,
   onProgress?: (progress: number) => void,
-  conflictResolution: ConflictResolution = ConflictResolution.Skip
+  conflictResolution: ConflictResolution = ConflictResolution.Skip,
+  documentType?: DocumentType,
+  requestItemId?: number
 ): Promise<IUploadResult> {
   try {
     SPContext.logger.info('Uploading file', {
@@ -196,6 +249,36 @@ export async function uploadFile(
       file,
       { Overwrite: shouldOverwrite }
     );
+
+    // Set DocumentType and Request fields if provided
+    if (documentType || requestItemId) {
+      try {
+        const listItem = await uploadResult.file.getItem();
+        const updatePayload: any = {};
+
+        if (documentType) {
+          updatePayload.DocumentType = documentType;
+        }
+
+        if (requestItemId) {
+          // Set Request lookup field (points to Requests list)
+          updatePayload.RequestId = requestItemId;
+        }
+
+        await listItem.update(updatePayload);
+        SPContext.logger.info('Document metadata set', {
+          fileName: file.name,
+          documentType,
+          requestItemId
+        });
+      } catch (updateError) {
+        SPContext.logger.warn('Failed to set document metadata', {
+          fileName: file.name,
+          error: updateError
+        });
+        // Don't fail the upload if field update fails
+      }
+    }
 
     // Call progress callback
     if (onProgress) {
@@ -266,7 +349,9 @@ export async function batchUploadFiles(
           folderPath,
           file,
           (progress) => onFileProgress(fileId, progress, 'uploading' as FileOperationStatus),
-          ConflictResolution.Overwrite
+          ConflictResolution.Overwrite,
+          documentType,
+          itemId
         );
 
         if (uploadResult.success) {
@@ -324,79 +409,153 @@ export async function batchUploadFiles(
 }
 
 /**
- * Load documents for specific type or all attachments
+ * Load ALL documents recursively from RequestDocuments/{itemId} using CAML query
+ * Much faster than loading documents individually - returns all documents in one call
  */
 export async function loadDocuments(
   itemId: number,
-  documentType?: DocumentType,
+  documentType?: DocumentType, // Ignored - kept for backward compatibility
   libraryTitle: string = DEFAULT_LIBRARY_TITLE
 ): Promise<IDocument[]> {
   try {
     const sp = SPContext.sp;
     const library = sp.web.lists.getByTitle(libraryTitle);
 
-    // Get library root
+    // Get library root folder path
     const libraryUrl = await library.rootFolder.select('ServerRelativeUrl')();
     const libraryServerRelativeUrl = libraryUrl.ServerRelativeUrl;
+    const folderPath = `${libraryServerRelativeUrl}/${itemId}`;
 
-    let folderPath: string;
+    SPContext.logger.info('Loading ALL documents recursively with CAML query', {
+      itemId,
+      libraryServerRelativeUrl,
+      folderPath,
+    });
 
-    if (documentType) {
-      // Load specific type
-      folderPath = getDocumentFolderPath(itemId, documentType);
-    } else {
-      // Load all attachments (Review + Supplemental at root level)
-      folderPath = `${itemId}`;
-    }
+    // Build CAML query to get all files (not folders) recursively from RequestDocuments/{itemId}
+    // Use FSObjType = 0 to get files only, and FileDirRef to match the folder
+    const camlQuery = `
+      <View Scope="RecursiveAll">
+        <Query>
+          <Where>
+            <And>
+              <Eq>
+                <FieldRef Name="FSObjType" />
+                <Value Type="Integer">0</Value>
+              </Eq>
+              <BeginsWith>
+                <FieldRef Name="FileDirRef" />
+                <Value Type="Text">${folderPath}</Value>
+              </BeginsWith>
+            </And>
+          </Where>
+        </Query>
+        <ViewFields>
+          <FieldRef Name="ID" />
+          <FieldRef Name="FileLeafRef" />
+          <FieldRef Name="FileRef" />
+          <FieldRef Name="FileDirRef" />
+          <FieldRef Name="File_x0020_Size" />
+          <FieldRef Name="Created" />
+          <FieldRef Name="Modified" />
+          <FieldRef Name="UniqueId" />
+          <FieldRef Name="DocumentType" />
+          <FieldRef Name="Author" />
+          <FieldRef Name="Editor" />
+        </ViewFields>
+        <RowLimit>5000</RowLimit>
+      </View>`;
 
-    const folderServerRelativePath = `${libraryServerRelativeUrl}/${folderPath}`;
+    // Use renderListDataAsStream for better performance
+    const result = await library.renderListDataAsStream({
+      ViewXml: camlQuery,
+    });
 
-    try {
-      const folder = sp.web.getFolderByServerRelativePath(folderServerRelativePath);
-      const files = await folder.files
-        .select(
-          'Name',
-          'ServerRelativeUrl',
-          'Length',
-          'TimeCreated',
-          'TimeLastModified',
-          'UniqueId',
-          'ListItemAllFields/Id',
-          'ListItemAllFields/DocumentType',
-          'ListItemAllFields/Author/Title',
-          'ListItemAllFields/Author/EMail',
-          'ListItemAllFields/Editor/Title',
-          'ListItemAllFields/Editor/EMail'
-        )
-        .expand('ListItemAllFields/Author', 'ListItemAllFields/Editor')();
+    SPContext.logger.info('CAML query returned', {
+      count: result.Row?.length || 0,
+      hasRow: !!result.Row,
+    });
 
-      const documents: IDocument[] = files.map((file: any) => ({
-        name: file.Name,
-        url: `${SPContext.webAbsoluteUrl}${file.ServerRelativeUrl}`,
-        size: file.Length,
-        timeCreated: file.TimeCreated,
-        timeLastModified: file.TimeLastModified || file.TimeCreated,
-        uniqueId: file.UniqueId,
-        createdBy: file.ListItemAllFields?.Author?.Title || 'Unknown',
-        createdByEmail: file.ListItemAllFields?.Author?.EMail,
-        modifiedBy: file.ListItemAllFields?.Editor?.Title || 'Unknown',
-        modifiedByEmail: file.ListItemAllFields?.Editor?.EMail,
-        listItemId: file.ListItemAllFields?.Id,
-        documentType: (file.ListItemAllFields?.DocumentType as DocumentType) || documentType || DocumentType.Review,
-      }));
-
-      SPContext.logger.success('Documents loaded', {
-        count: documents.length,
-        itemId,
-        documentType,
-      });
-
-      return documents;
-    } catch (folderError) {
-      // Folder doesn't exist, return empty array
-      SPContext.logger.info('Folder not found (no documents)', { itemId, documentType });
+    // Check if we got any results
+    if (!result.Row || result.Row.length === 0) {
+      SPContext.logger.info('No documents found', { itemId, folderPath });
       return [];
     }
+
+    // Map renderListDataAsStream results to IDocument
+    const documents: IDocument[] = result.Row.map((row: any) => {
+      // Extract file info from renderListDataAsStream format
+      const fileName = row.FileLeafRef;
+      const serverRelativeUrl = row.FileRef;
+      const fileDirRef = row.FileDirRef;
+      const fileSize = parseInt(row.File_x0020_Size || '0', 10);
+
+      SPContext.logger.info('Raw SharePoint row', {
+        ID: row.ID,
+        FileLeafRef: row.FileLeafRef,
+        FileRef: row.FileRef,
+        DocumentType: row.DocumentType,
+        hasDocumentType: !!row.DocumentType,
+      });
+
+      // Determine document type
+      // Documents MUST have DocumentType field set
+      let docType: DocumentType;
+
+      if (row.DocumentType) {
+        docType = row.DocumentType as DocumentType;
+        SPContext.logger.info('✅ Document type from field', { fileName, docType });
+      } else {
+        SPContext.logger.error('❌ CRITICAL: Document missing DocumentType field! Skipping this document.', {
+          fileName,
+          fileDirRef,
+          itemId: row.ID,
+          serverRelativeUrl,
+        });
+        return null as any;
+      }
+
+      // Build absolute URL
+      const urlParts = SPContext.webAbsoluteUrl.split('/');
+      const protocol = urlParts[0]; // "https:"
+      const domain = urlParts[2]; // "tenant.sharepoint.com"
+      const documentUrl = `${protocol}//${domain}${serverRelativeUrl}`;
+
+      const doc: IDocument = {
+        name: fileName,
+        url: documentUrl,
+        size: fileSize,
+        timeCreated: row.Created,
+        timeLastModified: row.Modified || row.Created,
+        uniqueId: row.UniqueId,
+        createdBy: row.Author?.[0]?.title || 'Unknown',
+        createdByEmail: row.Author?.[0]?.email || '',
+        modifiedBy: row.Editor?.[0]?.title || 'Unknown',
+        modifiedByEmail: row.Editor?.[0]?.email || '',
+        listItemId: parseInt(row.ID, 10),
+        documentType: docType,
+      };
+
+      SPContext.logger.info('Mapped document', {
+        name: doc.name,
+        type: doc.documentType,
+        size: doc.size,
+        url: doc.url,
+        listItemId: doc.listItemId,
+      });
+
+      return doc;
+    })
+    .filter(doc => doc !== null); // Remove any null entries (documents without DocumentType)
+
+    SPContext.logger.success('✅ Documents loaded successfully', {
+      count: documents.length,
+      itemId,
+      documentType,
+      documentTypes: documents.map(d => d.documentType),
+    });
+
+    return documents;
   } catch (error) {
     SPContext.logger.error('Failed to load documents', error, { itemId, documentType });
     throw error;
@@ -412,8 +571,9 @@ export async function deleteFile(file: IDocument): Promise<void> {
 
     const sp = SPContext.sp;
 
-    // Extract server-relative path from URL
-    const serverRelativeUrl = file.url.replace(SPContext.webAbsoluteUrl, '');
+    // Extract server-relative path from absolute URL
+    const urlObj = new URL(file.url);
+    const serverRelativeUrl = urlObj.pathname;
 
     await sp.web.getFileByServerRelativePath(serverRelativeUrl).delete();
 
@@ -433,20 +593,57 @@ export async function renameFile(file: IDocument, newName: string): Promise<void
       oldName: file.name,
       newName,
       url: file.url,
+      documentType: file.documentType,
+      listItemId: file.listItemId,
     });
 
     const sp = SPContext.sp;
 
-    // Extract server-relative path
-    const serverRelativeUrl = file.url.replace(SPContext.webAbsoluteUrl, '');
+    // Extract server-relative path from absolute URL
+    // file.url format: "https://tenant.sharepoint.com/sites/SiteName/RequestDocuments/1/file.pdf"
+    // We need: "/sites/SiteName/RequestDocuments/1/file.pdf"
+    const urlObj = new URL(file.url);
+    const serverRelativeUrl = urlObj.pathname;
 
-    // Use moveTo to rename in same folder
-    const folder = serverRelativeUrl.substring(0, serverRelativeUrl.lastIndexOf('/'));
-    const newServerRelativePath = `${folder}/${newName}`;
+    SPContext.logger.info('Extracted server-relative URL', {
+      absoluteUrl: file.url,
+      serverRelativeUrl,
+    });
 
-    await (sp.web.getFileByServerRelativePath(serverRelativeUrl) as any).moveTo(newServerRelativePath, true);
+    // Get the file and its list item
+    const spFile = sp.web.getFileByServerRelativePath(serverRelativeUrl);
+    const listItem = await spFile.getItem();
 
-    SPContext.logger.success('File renamed', { oldName: file.name, newName });
+    // Check current DocumentType value
+    const currentItem = await listItem.select('DocumentType', 'FileLeafRef')();
+    SPContext.logger.info('Current list item before update', {
+      fileLeafRef: currentItem.FileLeafRef,
+      documentType: currentItem.DocumentType,
+    });
+
+    // Rename by updating FileLeafRef field
+    // IMPORTANT: Must explicitly include DocumentType to preserve it during rename
+    const updateData = {
+      FileLeafRef: newName,
+      DocumentType: file.documentType,
+    };
+
+    SPContext.logger.info('Updating list item with', updateData);
+
+    await listItem.update(updateData);
+
+    // Verify the update was successful
+    const updatedItem = await listItem.select('DocumentType', 'FileLeafRef')();
+    SPContext.logger.info('List item after update', {
+      fileLeafRef: updatedItem.FileLeafRef,
+      documentType: updatedItem.DocumentType,
+    });
+
+    SPContext.logger.success('File renamed successfully', {
+      oldName: file.name,
+      newName,
+      documentType: file.documentType,
+    });
   } catch (error) {
     SPContext.logger.error('File rename failed', error, { oldName: file.name, newName });
     throw error;

@@ -48,44 +48,48 @@ $neutral-lighter: #faf9f8;
     }
   }
 
-  // Card Header: Large Icon + Document Name
+  // Card Header: File Icon + Document Name + Size
   .card-header {
     display: flex;
     align-items: flex-start;
     gap: 12px;
-    min-height: 32px;
+    min-height: 40px;
 
     .file-icon {
       flex-shrink: 0;
-      width: 32px;
-      height: 32px;
+      width: 40px;
+      height: 40px;
       display: flex;
       align-items: center;
       justify-content: center;
 
       img {
-        max-width: 32px;
-        max-height: 32px;
+        max-width: 40px;
+        max-height: 40px;
       }
     }
 
     .file-name-wrapper {
       flex: 1;
       min-width: 0; // Allow text truncation
+      max-width: 100%; // Prevent overflow
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      overflow: hidden; // Contain children
     }
 
-    .file-name,
-    .file-name-link {
-      font-size: 16px;
+    .file-name {
+      font-size: 15px;
       font-weight: 600;
       color: $neutral-primary;
-      text-decoration: none;
       line-height: 1.4;
       word-break: break-word;
       display: -webkit-box;
-      -webkit-line-clamp: 3; // Max 3 lines for larger text
+      -webkit-line-clamp: 3; // Max 3 lines
       -webkit-box-orient: vertical;
       overflow: hidden;
+      cursor: default; // New files not clickable
 
       &.deleted {
         text-decoration: line-through;
@@ -93,58 +97,110 @@ $neutral-lighter: #faf9f8;
       }
     }
 
+    // Wrapper for multiline link
     .file-name-link {
-      cursor: pointer;
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      overflow: hidden;
 
-      &:hover {
-        text-decoration: underline;
-        color: $primary-color;
+      // Target all elements inside DocumentLink component
+      * {
+        max-width: 100% !important;
       }
-    }
 
-    .file-name {
-      cursor: default; // New files not clickable
+      // Target the actual link inside DocumentLink component
+      a, span {
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        color: $neutral-primary !important;
+        text-decoration: none !important;
+        line-height: 1.4 !important;
+        word-break: break-word !important;
+        white-space: normal !important;
+        overflow-wrap: break-word !important;
+        display: -webkit-box !important;
+        -webkit-line-clamp: 3 !important; // Max 3 lines
+        -webkit-box-orient: vertical !important;
+        overflow: hidden !important;
+        max-width: 100% !important;
+        cursor: pointer !important;
+
+        &:hover {
+          text-decoration: underline !important;
+          color: $primary-color !important;
+        }
+      }
+
+      &.deleted a,
+      &.deleted span {
+        text-decoration: line-through !important;
+        color: $neutral-tertiary !important;
+        cursor: default !important;
+
+        &:hover {
+          text-decoration: line-through !important;
+          color: $neutral-tertiary !important;
+        }
+      }
     }
   }
 
-  // Card Center: User Persona + Timestamp (stacked)
+  // Card Center: User Persona + User Info (horizontal layout)
   .card-center {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 8px 0;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
     border-top: 1px solid $neutral-lighter;
     border-bottom: 1px solid $neutral-lighter;
 
-    .persona-container {
-      display: flex;
-      align-items: center;
+    .persona-avatar {
+      flex-shrink: 0;
     }
 
-    .timestamp-container {
-      margin-left: 40px; // Align with persona name (32px avatar + 8px gap)
+    .user-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0; // Allow truncation
+
+      .user-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: $neutral-primary;
+        line-height: 1.2;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
 
       .relative-time {
-        font-size: 13px;
+        font-size: 12px;
         color: $neutral-secondary;
         cursor: help;
-        border-bottom: 1px dotted $neutral-tertiary;
+        line-height: 1.2;
       }
-    }
-
-    .type-change-container {
-      margin-left: 40px; // Align with persona name
 
       .type-change {
-        font-size: 12px;
+        font-size: 11px;
         color: $warning-color;
         font-weight: 600;
         font-style: italic;
+        line-height: 1.2;
       }
     }
   }
 
-  // Card Footer: File Size + Badges + Quick Actions + ECB Menu
+  // Spacer for new cards (to match height of existing cards)
+  .card-center-spacer {
+    height: 64px; // Match height of card-center (12px top + 40px content + 12px bottom)
+    border-top: 1px solid $neutral-lighter;
+    border-bottom: 1px solid $neutral-lighter;
+  }
+
+  // Card Footer: Badges + Quick Actions + ECB Menu
   .card-footer {
     display: flex;
     align-items: center;
@@ -159,9 +215,9 @@ $neutral-lighter: #faf9f8;
       min-width: 0; // Allow truncation
 
       .file-size {
-        font-size: 13px;
-        font-weight: 500;
+        font-size: 12px;
         color: $neutral-secondary;
+        font-weight: 400;
         white-space: nowrap;
       }
     }
@@ -228,14 +284,20 @@ $neutral-lighter: #faf9f8;
 
   // Visual States
   &.card--new {
-    opacity: 0.85;
-    background: $neutral-lighter;
+    background: rgba($primary-color, 0.03);
     border-style: dashed;
     border-color: $primary-color;
+    box-shadow: none;
+
+    &:hover {
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+      border-color: $primary-color;
+    }
   }
 
   &.card--modified {
     border-left: 4px solid $warning-color;
+    background: rgba($warning-color, 0.02);
   }
 
   &.card--deleted {
@@ -243,7 +305,8 @@ $neutral-lighter: #faf9f8;
     background: rgba($error-color, 0.05);
     border-color: $error-color;
 
-    .file-name {
+    .file-name,
+    .file-name-link {
       text-decoration: line-through;
     }
   }
@@ -253,15 +316,15 @@ $neutral-lighter: #faf9f8;
     transform: scale(0.98);
   }
 
-  // Badges (inline in footer)
+  // Badges (inline in footer) - refined styling
   .card-badge {
     display: inline-block;
-    padding: 3px 8px;
-    font-size: 10px;
-    font-weight: 600;
-    border-radius: 3px;
+    padding: 2px 8px;
+    font-size: 9px;
+    font-weight: 700;
+    border-radius: 2px;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.6px;
     white-space: nowrap;
 
     &.badge-new {
@@ -269,10 +332,144 @@ $neutral-lighter: #faf9f8;
       color: white;
     }
 
+    &.badge-updated {
+      background: #0078d4; // Blue for updated files
+      color: white;
+    }
+
     &.badge-pending {
       background: $warning-color;
       color: white;
     }
+  }
+}
+
+/* ==========================================================================
+   Document Hover Card
+   ========================================================================== */
+
+.document-hover-card {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+  border: 1px solid #e1dfdd;
+
+  .ms-Callout-main {
+    background: white;
+    border-radius: 8px;
+  }
+
+  // Ensure UserPersona avatars render properly in hover card
+  [class*="UserPersona"] {
+    flex-shrink: 0;
+  }
+
+  // Smooth hover transitions
+  animation: fadeIn 0.2s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ==========================================================================
+   DropZoneCard Component
+   ========================================================================== */
+
+.drop-zone-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  min-height: 200px;
+  border: 2px dashed $neutral-tertiary;
+  border-radius: 8px;
+  background: $neutral-lighter;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  box-sizing: border-box; // Essential for proper width calculation
+
+  // Full width variant (when only element in container)
+  &.drop-zone-card--full-width {
+    grid-column: 1 / -1; // Span all columns
+    width: 100%;
+    max-width: 100%; // Prevent overflow
+  }
+
+  // Compact variant (shown at beginning when documents exist)
+  &.drop-zone-card--compact {
+    min-height: 100px;
+    padding: 16px 12px;
+
+    .drop-icon {
+      font-size: 28px;
+    }
+
+    .drop-text {
+      font-size: 13px;
+    }
+
+    .drop-subtext {
+      font-size: 11px;
+    }
+  }
+
+  &:hover,
+  &.hovered {
+    border-color: $primary-color;
+    background: rgba($primary-color, 0.05);
+    box-shadow: 0 2px 8px rgba($primary-color, 0.1);
+
+    .drop-icon {
+      transform: scale(1.1);
+      color: $primary-color;
+    }
+
+    .drop-text {
+      color: $primary-color;
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid $primary-color;
+    outline-offset: 2px;
+  }
+
+  &.drop-zone-card--active {
+    border-color: $primary-color;
+    border-width: 3px;
+    background: rgba($primary-color, 0.08);
+    animation: pulse-border 1.5s ease-in-out infinite;
+  }
+
+  .drop-icon {
+    transition: all 0.2s ease;
+  }
+
+  .drop-text {
+    transition: color 0.2s ease;
+  }
+
+  .drop-subtext {
+    color: $neutral-secondary;
+  }
+}
+
+@keyframes pulse-border {
+  0%,
+  100% {
+    border-color: $primary-color;
+  }
+  50% {
+    border-color: rgba($primary-color, 0.5);
   }
 }
 
@@ -342,6 +539,9 @@ $neutral-lighter: #faf9f8;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 12px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 
     &.collapsed {
       display: none;
@@ -424,6 +624,9 @@ $neutral-lighter: #faf9f8;
     border-radius: 4px;
     background: white;
     min-height: 120px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 }
 
@@ -562,6 +765,9 @@ $neutral-lighter: #faf9f8;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 12px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 }
 
@@ -575,40 +781,48 @@ $neutral-lighter: #faf9f8;
     gap: 10px;
 
     .card-header {
+      gap: 10px;
+      min-height: 36px;
+
       .file-icon {
-        width: 28px;
-        height: 28px;
+        width: 36px;
+        height: 36px;
 
         img {
-          max-width: 28px;
-          max-height: 28px;
+          max-width: 36px;
+          max-height: 36px;
         }
       }
 
-      .file-name,
-      .file-name-link {
+      .file-name {
         font-size: 14px;
+      }
+
+      .file-name-link a,
+      .file-name-link span {
+        font-size: 14px !important;
       }
     }
 
-    .card-center {
-      .persona-container {
-        // Persona size handled by component prop
-      }
+    .card-footer .footer-left .file-size {
+      font-size: 11px;
+    }
 
-      .timestamp-container {
-        margin-left: 36px; // Adjust for smaller avatar (28px + 8px)
+    .card-center {
+      gap: 10px;
+      padding: 10px 0;
+
+      .user-info {
+        .user-name {
+          font-size: 13px;
+        }
 
         .relative-time {
-          font-size: 12px;
+          font-size: 11px;
         }
-      }
-
-      .type-change-container {
-        margin-left: 36px;
 
         .type-change {
-          font-size: 11px;
+          font-size: 10px;
         }
       }
     }
@@ -616,12 +830,6 @@ $neutral-lighter: #faf9f8;
     .card-footer {
       flex-wrap: wrap;
       gap: 8px;
-
-      .footer-left {
-        .file-size {
-          font-size: 12px;
-        }
-      }
 
       .quick-actions {
         .quick-action-btn {
@@ -666,30 +874,48 @@ $neutral-lighter: #faf9f8;
 
     .card-header {
       gap: 8px;
+      min-height: 32px;
 
       .file-icon {
-        width: 24px;
-        height: 24px;
+        width: 32px;
+        height: 32px;
 
         img {
-          max-width: 24px;
-          max-height: 24px;
+          max-width: 32px;
+          max-height: 32px;
         }
       }
 
-      .file-name,
-      .file-name-link {
+      .file-name {
         font-size: 13px;
+      }
+
+      .file-name-link a,
+      .file-name-link span {
+        font-size: 13px !important;
       }
     }
 
-    .card-center {
-      .timestamp-container {
-        margin-left: 32px; // Adjust for smaller avatar (24px + 8px)
-      }
+    .card-footer .footer-left .file-size {
+      font-size: 10px;
+    }
 
-      .type-change-container {
-        margin-left: 32px;
+    .card-center {
+      gap: 8px;
+      padding: 8px 0;
+
+      .user-info {
+        .user-name {
+          font-size: 12px;
+        }
+
+        .relative-time {
+          font-size: 10px;
+        }
+
+        .type-change {
+          font-size: 9px;
+        }
       }
     }
 
@@ -702,6 +928,11 @@ $neutral-lighter: #faf9f8;
           min-width: 32px; // Maintain touch-friendly size
         }
       }
+    }
+
+    .card-badge {
+      font-size: 8px;
+      padding: 2px 6px;
     }
   }
 

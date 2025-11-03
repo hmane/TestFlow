@@ -15,12 +15,11 @@
 
 import {
   ILegalRequest,
-  IPrincipal,
-  RequestType,
+  RequestType
 } from '@appTypes/index';
 import { useWorkflowStepper } from '@components/WorkflowStepper/useWorkflowStepper';
-import { RequestFormProvider } from '@contexts/RequestFormContext';
 import { useNotification } from '@contexts/NotificationContext';
+import { RequestFormProvider } from '@contexts/RequestFormContext';
 import {
   Icon,
   MessageBar,
@@ -31,19 +30,19 @@ import {
 import { useRequestStore } from '@stores/requestStore';
 import { useSubmissionItemsStore } from '@stores/submissionItemsStore';
 import * as React from 'react';
-import { useForm, FormProvider as RHFFormProvider, FieldError } from 'react-hook-form';
+import { FieldError, FormProvider as RHFFormProvider, useForm } from 'react-hook-form';
 import { SPContext } from 'spfx-toolkit';
 import { Card } from 'spfx-toolkit/lib/components/Card';
-import { FormProvider as SPFormProvider, FormErrorSummary } from 'spfx-toolkit/lib/components/spForm';
+import { FormErrorSummary, FormProvider as SPFormProvider } from 'spfx-toolkit/lib/components/spForm';
 import type { IRequestFormProps } from '../RequestContainer';
-import { useRequestInfoActions } from './useRequestInfoActions';
+import './RequestInfo.scss';
 import {
   AdditionalPartiesSection,
   BasicInfoSection,
   DistributionAudienceSection,
   PriorSubmissionsSection,
 } from './RequestInfoSections';
-import './RequestInfo.scss';
+import { useRequestInfoActions } from './useRequestInfoActions';
 
 /**
  * Shared style constants to prevent recreation on every render
@@ -56,39 +55,6 @@ const MESSAGE_BAR_STYLES = { root: { borderRadius: '4px' } };
 const PAGE_TITLE_STYLES = { root: { fontWeight: 600 as const, color: '#323130' } };
 const REQUEST_ID_TEXT_STYLES = { root: { color: '#605e5c' } };
 const FORM_SECTIONS_TOKENS = { childrenGap: 20 };
-
-const mapPrincipalToControllerValue = (principal: IPrincipal): any => {
-  if (!principal) {
-    return undefined;
-  }
-
-  const numericId = Number(principal.id);
-  const hasNumericId = !isNaN(numericId);
-  const titleFallback = principal.title ?? principal.email ?? principal.loginName ?? principal.value;
-  const loginFallback = principal.loginName ?? principal.value ?? principal.email ?? principal.title;
-  const safeTitle = titleFallback || (principal.id ? `User ${principal.id}` : undefined);
-  const safeLogin = loginFallback || (principal.id ? String(principal.id) : undefined);
-
-  if (!safeTitle && !safeLogin) {
-    return undefined;
-  }
-
-  return {
-    ...principal,
-    title: safeTitle ?? '',
-    loginName: safeLogin,
-    value: principal.value ?? safeLogin ?? safeTitle ?? '',
-    id: principal.id,
-    Id: hasNumericId ? numericId : undefined,
-    Title: safeTitle ?? '',
-    EMail: principal.email,
-    Email: principal.email,
-    Name: safeLogin ?? safeTitle ?? '',
-    LoginName: safeLogin ?? safeTitle ?? '',
-    key: safeLogin ?? safeTitle ?? '',
-    text: safeTitle ?? safeLogin ?? '',
-  };
-};
 
 /**
  * RequestInfo Component
@@ -110,6 +76,8 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
     // resolver: zodResolver(requestInformationSchema),
     defaultValues: currentRequest || ({
       additionalParty: [],
+      approvals: [],
+      requiresCommunicationsApproval: false,
       requestTitle: '',
       purpose: '',
       submissionType: '',
@@ -132,54 +100,40 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
     setValue,
     setError,
     clearErrors,
+    reset,
   } = formMethods;
 
   React.useEffect(() => {
     if (!currentRequest) {
       return;
     }
+
     if (process.env.NODE_ENV !== 'production') {
-      SPContext.logger.info('RequestInfo: currentRequest.additionalParty (raw)', currentRequest.additionalParty);
-    }
-
-    // submissionItem is now a text field, no lookup mapping needed
-    if (currentRequest.submissionItem) {
-      setValue('submissionItem', currentRequest.submissionItem, {
-        shouldDirty: false,
+      SPContext.logger.info('RequestInfo: Resetting form with currentRequest data', {
+        hasApprovals: Array.isArray(currentRequest.approvals),
+        approvalsCount: currentRequest.approvals?.length || 0,
+        approvals: currentRequest.approvals,
       });
     }
 
-    if (currentRequest.submissionItemOther) {
-      setValue('submissionItemOther', currentRequest.submissionItemOther, {
-        shouldDirty: false,
-      });
-    }
+    // Use reset() to update the entire form including field arrays
+    // This properly syncs useFieldArray state
+    reset(currentRequest, {
+      keepDirtyValues: false, // Don't keep dirty values, use loaded data
+      keepErrors: false, // Clear any errors
+    });
 
-    // Always ensure additionalParty is an array (even if empty)
-    if (Array.isArray(currentRequest.additionalParty)) {
-      if (currentRequest.additionalParty.length > 0) {
-        const enriched = currentRequest.additionalParty
-          .map(mapPrincipalToControllerValue)
-          .filter(Boolean);
-
-        if (enriched.length > 0) {
-          if (process.env.NODE_ENV !== 'production') {
-            SPContext.logger.info('RequestInfo: Setting additionalParty form value', enriched);
-          }
-          setValue('additionalParty', enriched as ILegalRequest['additionalParty'], {
-            shouldDirty: false,
-          });
-        } else {
-          setValue('additionalParty', [], { shouldDirty: false });
-        }
-      } else {
-        setValue('additionalParty', [], { shouldDirty: false });
-      }
-    } else {
-      // If undefined, set to empty array
-      setValue('additionalParty', [], { shouldDirty: false });
+    if (process.env.NODE_ENV !== 'production') {
+      // Verify the form was reset by reading values back
+      setTimeout(() => {
+        const currentFormValues = watch();
+        SPContext.logger.info('RequestInfo: Form values after reset', {
+          approvals: currentFormValues.approvals,
+          requiresCommunicationsApproval: currentFormValues.requiresCommunicationsApproval,
+        });
+      }, 100);
     }
-  }, [currentRequest, setValue]);
+  }, [currentRequest, reset, watch]);
 
   const readFormValues = React.useCallback(() => watch(), [watch]);
 

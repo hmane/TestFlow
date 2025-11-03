@@ -16,6 +16,10 @@ import type {
   FileOperationStatus,
 } from '../services/approvalFileService';
 import { DocumentType } from '../types/documentTypes';
+import {
+  loadDocuments as loadDocumentsFromService,
+} from '../services/documentService';
+import * as documentService from '../services/documentService';
 
 /**
  * Existing file interface (from SharePoint)
@@ -81,6 +85,7 @@ export interface IUploadProgress {
   progress: number; // 0-100
   error?: string;
   retryCount: number;
+  maxRetries: number;
 }
 
 /**
@@ -107,6 +112,7 @@ interface IDocumentsState {
 
   // Upload tracking
   isLoading: boolean;
+  isUploading: boolean;                          // Track if uploads are currently in progress
   uploadProgress: Map<string, IUploadProgress>;  // Track per-file progress
   retryCount: Map<string, number>;               // Retry attempts per file
 
@@ -165,6 +171,7 @@ const initialState = {
   filesToRename: [],
   filesToChangeType: [],
   isLoading: false,
+  isUploading: false,
   uploadProgress: new Map<string, IUploadProgress>(),
   retryCount: new Map<string, number>(),
   error: undefined,
@@ -179,53 +186,68 @@ export const useDocumentsStore = create<IDocumentsState>()(
       ...initialState,
 
       /**
-       * Load documents for specific type or all attachments
+       * Load ALL documents for an item (CAML query loads all recursively)
+       * Note: documentType parameter is kept for backward compatibility but ignored
        */
       loadDocuments: async (itemId: number, documentType?: DocumentType): Promise<void> => {
         set({ isLoading: true, error: undefined });
 
         try {
-          SPContext.logger.info('Loading documents', { itemId, documentType });
+          SPContext.logger.info('Loading all documents', { itemId });
 
-          // TODO: Implement document loading from SharePoint
-          // This will be implemented in documentService.ts
+          // Load ALL documents recursively from RequestDocuments/{itemId}
+          // The service now uses CAML query to load all files in one call
+          const loadedDocs = await loadDocumentsFromService(itemId);
 
-          // For now, just clear loading state
-          set({ isLoading: false });
+          // Group documents by type (ES5 compatible)
+          const groupedDocs = new Map<DocumentType, IDocument[]>();
+          for (let i = 0; i < loadedDocs.length; i++) {
+            const doc = loadedDocs[i];
+            const existing = groupedDocs.get(doc.documentType) || [];
+            existing.push(doc);
+            groupedDocs.set(doc.documentType, existing);
+          }
 
-          SPContext.logger.success('Documents loaded successfully', { itemId, documentType });
+          // Replace the documents Map with newly loaded docs
+          set({
+            documents: groupedDocs,
+            isLoading: false,
+          });
+
+          SPContext.logger.success('All documents loaded successfully', {
+            itemId,
+            totalCount: loadedDocs.length,
+            typeCount: groupedDocs.size,
+          });
         } catch (error: unknown) {
           const errorMessage = error instanceof Error ? error.message : 'Failed to load documents';
-          SPContext.logger.error('Failed to load documents', error, { itemId, documentType });
+          SPContext.logger.error('Failed to load documents', error, { itemId });
           set({ error: errorMessage, isLoading: false });
         }
       },
 
       /**
-       * Load all documents for an item
+       * Load all documents for an item (alias for loadDocuments)
+       * Both functions now do the same thing since CAML query loads all documents
        */
       loadAllDocuments: async (itemId: number): Promise<void> => {
-        set({ isLoading: true, error: undefined });
-
-        try {
-          SPContext.logger.info('Loading all documents', { itemId });
-
-          // TODO: Implement loading all document types
-
-          set({ isLoading: false });
-
-          SPContext.logger.success('All documents loaded successfully', { itemId });
-        } catch (error: unknown) {
-          const errorMessage = error instanceof Error ? error.message : 'Failed to load documents';
-          SPContext.logger.error('Failed to load all documents', error, { itemId });
-          set({ error: errorMessage, isLoading: false });
-        }
+        return get().loadDocuments(itemId);
       },
 
       /**
        * Stage files for upload
        */
       stageFiles: (files: File[], documentType: DocumentType, itemId?: number): void => {
+        // CRITICAL: Log the documentType being received
+        SPContext.logger.info('🔵 stageFiles called', {
+          count: files.length,
+          documentType,
+          documentTypeValue: String(documentType),
+          documentTypeOf: typeof documentType,
+          itemId: itemId || 'new draft',
+          fileNames: files.map(f => f.name),
+        });
+
         const newStaged: IStagedDocument[] = files.map((file, index) => ({
           id: `staged-${Date.now()}-${index}`,
           file,
@@ -239,10 +261,10 @@ export const useDocumentsStore = create<IDocumentsState>()(
           stagedFiles: [...state.stagedFiles, ...newStaged],
         }));
 
-        SPContext.logger.info('Files staged for upload', {
+        SPContext.logger.info('✅ Files staged successfully', {
           count: files.length,
           documentType,
-          itemId: itemId || 'new draft',
+          stagedFileDocTypes: newStaged.map(s => ({ id: s.id, type: s.documentType })),
         });
       },
 
@@ -395,20 +417,115 @@ export const useDocumentsStore = create<IDocumentsState>()(
           return;
         }
 
+        // Set uploading state and clear previous upload progress
+        set({
+          isUploading: true,
+          uploadProgress: new Map<string, IUploadProgress>(),
+          error: undefined
+        });
+
         try {
           SPContext.logger.info('Starting batch file upload', {
             count: state.stagedFiles.length,
             itemId,
           });
 
-          // TODO: Implement actual upload logic in documentService.ts
-          // For now, just log
+          // Import batchUploadFiles dynamically to avoid circular dependency
+          const { batchUploadFiles } = await import('../services/documentService');
+
+          // Prepare files for upload
+          const filesForUpload = state.stagedFiles.map(staged => ({
+            file: staged.file,
+            documentType: staged.documentType,
+          }));
+
+          // Upload with progress tracking
+          await batchUploadFiles(
+            filesForUpload,
+            itemId,
+            // onFileProgress callback
+            (fileId: string, progress: number, status: FileOperationStatus) => {
+              // Update upload progress Map
+              set(currentState => {
+                const newProgress = new Map<string, IUploadProgress>();
+                currentState.uploadProgress.forEach((value, key) => {
+                  newProgress.set(key, value);
+                });
+
+                // Find the staged file to get the filename (ES5 compatible)
+                let stagedFile: typeof currentState.stagedFiles[0] | undefined;
+                for (let i = 0; i < currentState.stagedFiles.length; i++) {
+                  const sf = currentState.stagedFiles[i];
+                  if (`upload-${sf.file.name}` === fileId || fileId.indexOf(sf.file.name) !== -1) {
+                    stagedFile = sf;
+                    break;
+                  }
+                }
+                const fileName = stagedFile ? stagedFile.file.name : 'Unknown';
+
+                newProgress.set(fileId, {
+                  fileId,
+                  fileName,
+                  status,
+                  progress,
+                  error: undefined,
+                  retryCount: currentState.retryCount.get(fileId) || 0,
+                  maxRetries: 2, // Default max retries
+                });
+
+                return { uploadProgress: newProgress };
+              });
+
+              // Call external progress callback
+              if (onProgress) {
+                onProgress(fileId, progress, status);
+              }
+            },
+            // onFileComplete callback
+            (fileId: string, result: any) => {
+              SPContext.logger.info('File upload complete', {
+                fileId,
+                success: result.success,
+                fileName: result.fileName
+              });
+
+              if (!result.success && result.error) {
+                // Update progress with error
+                set(currentState => {
+                  const newProgress = new Map<string, IUploadProgress>();
+                  currentState.uploadProgress.forEach((value, key) => {
+                    newProgress.set(key, value);
+                  });
+
+                  const existing = newProgress.get(fileId);
+                  if (existing) {
+                    newProgress.set(fileId, {
+                      ...existing,
+                      status: 'error' as FileOperationStatus,
+                      error: result.error,
+                    });
+                  }
+
+                  return { uploadProgress: newProgress };
+                });
+              }
+            }
+          );
+
+          // Clear staged files after successful upload
+          set({
+            stagedFiles: [],
+            isUploading: false
+          });
 
           SPContext.logger.success('Batch upload completed', { itemId });
         } catch (error: unknown) {
           const errorMessage = error instanceof Error ? error.message : 'Upload failed';
           SPContext.logger.error('Batch upload failed', error, { itemId });
-          set({ error: errorMessage });
+          set({
+            error: errorMessage,
+            isUploading: false
+          });
           throw error;
         }
       },
@@ -474,6 +591,23 @@ export const useDocumentsStore = create<IDocumentsState>()(
 
       /**
        * Rename pending files
+       *
+       * IMPORTANT: This function must be called when saving/submitting the form
+       * Example usage in form save handler:
+       *
+       * ```typescript
+       * const { renamePendingFiles } = useDocumentsStore();
+       *
+       * const handleSave = async () => {
+       *   // Save form data first
+       *   await saveRequest(itemId, formData);
+       *
+       *   // Then process document operations
+       *   await renamePendingFiles();  // Rename files in SharePoint
+       *   // await deletePendingFiles();  // Delete marked files
+       *   // await changeTypePendingFiles(itemId);  // Move files between types
+       * };
+       * ```
        */
       renamePendingFiles: async (): Promise<void> => {
         const state = get();
@@ -485,11 +619,64 @@ export const useDocumentsStore = create<IDocumentsState>()(
         try {
           SPContext.logger.info('Renaming files', { count: state.filesToRename.length });
 
-          // TODO: Implement rename logic in documentService.ts
+          // Capture itemIds and affected types BEFORE processing
+          const itemIds = new Set<number>();
+          const affectedTypes = new Set<DocumentType>();
 
+          for (let i = 0; i < state.filesToRename.length; i++) {
+            const renameInfo = state.filesToRename[i];
+            affectedTypes.add(renameInfo.file.documentType);
+
+            // Extract itemId from file URL or metadata
+            if (renameInfo.file.listItemId) {
+              itemIds.add(renameInfo.file.listItemId);
+            }
+          }
+
+          // Rename each file
+          const renamePromises: Array<Promise<void>> = [];
+
+          for (let i = 0; i < state.filesToRename.length; i++) {
+            const renameInfo = state.filesToRename[i];
+
+            SPContext.logger.info('Renaming file', {
+              oldName: renameInfo.file.name,
+              newName: renameInfo.newName,
+              documentType: renameInfo.file.documentType,
+            });
+
+            // Call documentService.renameFile
+            renamePromises.push(
+              documentService.renameFile(renameInfo.file, renameInfo.newName)
+            );
+          }
+
+          // Wait for all renames to complete
+          await Promise.all(renamePromises);
+
+          SPContext.logger.success('All files renamed successfully');
+
+          // Clear pending renames
           set({ filesToRename: [] });
 
-          SPContext.logger.success('Files renamed successfully');
+          // Wait for SharePoint to update its index and clear cache
+          // SharePoint may take time to propagate metadata changes
+          SPContext.logger.info('Waiting for SharePoint to update index...');
+          await new Promise(resolve => setTimeout(resolve, 1500));
+
+          // Reload documents for each affected type and itemId combination
+          const reloadPromises: Array<Promise<void>> = [];
+          itemIds.forEach((itemId) => {
+            affectedTypes.forEach((docType) => {
+              SPContext.logger.info('Reloading documents', { itemId, docType });
+              reloadPromises.push(get().loadDocuments(itemId, docType));
+            });
+          });
+
+          if (reloadPromises.length > 0) {
+            await Promise.all(reloadPromises);
+            SPContext.logger.success('Documents reloaded after rename');
+          }
         } catch (error: unknown) {
           SPContext.logger.error('File rename failed', error);
           throw error;

@@ -8,18 +8,22 @@
  * - Enhanced header showing document counts when collapsed
  */
 
+import { Icon, IconButton, Separator, Stack, Text } from '@fluentui/react';
 import * as React from 'react';
-import { Stack, Text, Icon, IconButton, Separator } from '@fluentui/react';
 import { SPContext } from 'spfx-toolkit';
 import { Card } from 'spfx-toolkit/lib/components/Card';
 
 import { Lists } from '@sp/Lists';
 
 import { DocumentUpload } from '../../../../components/DocumentUpload';
-import { useDocumentsStore } from '../../../../stores/documentsStore';
 import { useRequestFormContext } from '../../../../contexts/RequestFormContext';
 import { usePermissions } from '../../../../hooks/usePermissions';
-import { RequestStatus, LegalReviewStatus, ComplianceReviewStatus } from '../../../../types/workflowTypes';
+import { useDocumentsStore } from '../../../../stores/documentsStore';
+import {
+  ComplianceReviewStatus,
+  LegalReviewStatus,
+  RequestStatus,
+} from '../../../../types/workflowTypes';
 
 /**
  * RequestDocuments Component Props
@@ -45,7 +49,6 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
 
   // Get documents from store
   const { documents, getPendingCounts } = useDocumentsStore();
-
   // State for collapsible section
   const [isCollapsed, setIsCollapsed] = React.useState(defaultCollapsed || false);
 
@@ -98,7 +101,15 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
 
     // Default: read-only
     return true;
-  }, [isAdmin, isAttorney, isComplianceUser, isSubmitter, status, legalReviewStatus, complianceReviewStatus]);
+  }, [
+    isAdmin,
+    isAttorney,
+    isComplianceUser,
+    isSubmitter,
+    status,
+    legalReviewStatus,
+    complianceReviewStatus,
+  ]);
 
   // Update collapsed state when defaultCollapsed prop changes
   React.useEffect(() => {
@@ -119,7 +130,8 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
     const supplementalCounts = getPendingCounts('Supplemental' as any);
 
     const reviewTotal = reviewCounts.newCount + (documents.get('Review' as any)?.length || 0);
-    const supplementalTotal = supplementalCounts.newCount + (documents.get('Supplemental' as any)?.length || 0);
+    const supplementalTotal =
+      supplementalCounts.newCount + (documents.get('Supplemental' as any)?.length || 0);
     const total = reviewTotal + supplementalTotal;
 
     return {
@@ -147,7 +159,9 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
       parts.push(`${documentCounts.supplemental} Supplemental`);
     }
 
-    return `${documentCounts.total} document${documentCounts.total === 1 ? '' : 's'} • ${parts.join(', ')}`;
+    return `${documentCounts.total} document${documentCounts.total === 1 ? '' : 's'} • ${parts.join(
+      ', '
+    )}`;
   }, [documentCounts]);
 
   /**
@@ -160,9 +174,12 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
   /**
    * Handle error
    */
-  const handleError = React.useCallback((error: string) => {
-    SPContext.logger.error('Attachment error', new Error(error), { itemId });
-  }, [itemId]);
+  const handleError = React.useCallback(
+    (error: string) => {
+      SPContext.logger.error('Attachment error', new Error(error), { itemId });
+    },
+    [itemId]
+  );
 
   return (
     <Stack
@@ -174,24 +191,24 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
         },
       }}
     >
-      <Card id="attachments-card" className="attachments-card">
+      <Card id='attachments-card' className='attachments-card'>
         <Stack tokens={{ childrenGap: 16 }} styles={{ root: { padding: '24px' } }}>
           {/* Header */}
           <Stack
             horizontal
-            verticalAlign="center"
-            horizontalAlign="space-between"
+            verticalAlign='center'
+            horizontalAlign='space-between'
             onClick={() => setIsCollapsed(!isCollapsed)}
             styles={{ root: { cursor: 'pointer' } }}
           >
-            <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 12 }}>
-              <Icon iconName="Attach" styles={{ root: { fontSize: '20px', color: '#0078d4' } }} />
+            <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
+              <Icon iconName='Attach' styles={{ root: { fontSize: '20px', color: '#0078d4' } }} />
               <Stack tokens={{ childrenGap: 4 }}>
-                <Text variant="xLarge" styles={{ root: { fontWeight: 600 } }}>
+                <Text variant='xLarge' styles={{ root: { fontWeight: 600 } }}>
                   Attachments
                 </Text>
                 {isCollapsed && (
-                  <Text variant="small" styles={{ root: { color: '#605e5c' } }}>
+                  <Text variant='small' styles={{ root: { color: '#605e5c' } }}>
                     {collapsedSummary}
                   </Text>
                 )}
@@ -215,10 +232,24 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
                 maxFiles={50}
                 maxFileSize={250 * 1024 * 1024} // 250MB
                 allowedExtensions={[
-                  'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
-                  'jpg', 'jpeg', 'png', 'gif', 'bmp',
-                  'txt', 'rtf', 'csv',
-                  'zip', 'msg', 'eml',
+                  'pdf',
+                  'doc',
+                  'docx',
+                  'xls',
+                  'xlsx',
+                  'ppt',
+                  'pptx',
+                  'jpg',
+                  'jpeg',
+                  'png',
+                  'gif',
+                  'bmp',
+                  'txt',
+                  'rtf',
+                  'csv',
+                  'zip',
+                  'msg',
+                  'eml',
                 ]}
                 onFilesChange={handleFilesChange}
                 onError={handleError}
@@ -227,7 +258,7 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
               {/* Read-only indicator (only show when truly read-only and not in Draft) */}
               {isReadOnly && status && status !== RequestStatus.Draft && (
                 <Text
-                  variant="small"
+                  variant='small'
                   styles={{
                     root: {
                       color: '#605e5c',

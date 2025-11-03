@@ -26,6 +26,7 @@ import {
   ComplianceReviewStatus,
   ReviewOutcome,
 } from '@appTypes/workflowTypes';
+import { ApprovalType, type Approval } from '@appTypes/approvalTypes';
 
 // Type aliases for review outcomes
 type LegalReviewOutcome = ReviewOutcome;
@@ -195,7 +196,6 @@ export async function loadRequestById(itemId: number): Promise<ILegalRequest> {
 
     // Map to ILegalRequest using extractor
     const request = mapRequestListItemToRequest(mergedItem);
-
     SPContext.logger.success('RequestLoadService: Request loaded successfully', { itemId });
 
     return request;
@@ -204,6 +204,118 @@ export async function loadRequestById(itemId: number): Promise<ILegalRequest> {
     SPContext.logger.error('RequestLoadService: Failed to load request', error, { itemId });
     throw error; // Re-throw without wrapping to avoid nested error messages
   }
+}
+
+/**
+ * Build approvals array from individual SharePoint approval fields
+ *
+ * Each approval type is stored as separate fields in SharePoint.
+ * This function reconstructs the approvals array from those individual fields.
+ *
+ * IMPORTANT: Adds approval to array if boolean flag is true, regardless of data completeness.
+ * - If approver is null/empty, uses empty approver object (for draft mode)
+ * - This allows the approval section to render even if not fully filled in
+ * - Matches the save behavior which saves partial approval data
+ *
+ * @param extractor - SPExtractor for the SharePoint item
+ * @returns Array of Approval objects
+ */
+function buildApprovalsArrayFromFields(extractor: ReturnType<typeof createSPExtractor>): Approval[] {
+  const approvals: Approval[] = [];
+
+  // Communications approval
+  const requiresCommApproval = extractor.boolean(RequestsFields.RequiresCommunicationsApproval, false);
+  if (requiresCommApproval) {
+    const commApprover = extractor.user(RequestsFields.CommunicationsApprover);
+    const commDate = extractor.date(RequestsFields.CommunicationsApprovalDate);
+    // Add approval to array if boolean is true (even if approver is empty - draft mode)
+    approvals.push({
+      type: ApprovalType.Communications,
+      approver: commApprover || { id: '', email: '', title: '' },
+      approvalDate: commDate,
+      documentId: '', // Documents are loaded separately
+      notes: '',
+    } as any);
+  }
+
+  // Portfolio Manager approval
+  const hasPortfolioMgrApproval = extractor.boolean(RequestsFields.HasPortfolioManagerApproval, false);
+  if (hasPortfolioMgrApproval) {
+    const pmApprover = extractor.user(RequestsFields.PortfolioManager);
+    const pmDate = extractor.date(RequestsFields.PortfolioManagerApprovalDate);
+
+    approvals.push({
+      type: ApprovalType.PortfolioManager,
+      approver: pmApprover || { id: '', email: '', title: '' },
+      approvalDate: pmDate,
+      documentId: '',
+      notes: '',
+    } as any);
+  }
+
+  // Research Analyst approval
+  const hasResearchAnalystApproval = extractor.boolean(RequestsFields.HasResearchAnalystApproval, false);
+  if (hasResearchAnalystApproval) {
+    const raApprover = extractor.user(RequestsFields.ResearchAnalyst);
+    const raDate = extractor.date(RequestsFields.ResearchAnalystApprovalDate);
+
+    approvals.push({
+      type: ApprovalType.ResearchAnalyst,
+      approver: raApprover || { id: '', email: '', title: '' },
+      approvalDate: raDate,
+      documentId: '',
+      notes: '',
+    } as any);
+  }
+
+  // SME approval
+  const hasSMEApproval = extractor.boolean(RequestsFields.HasSMEApproval, false);
+  if (hasSMEApproval) {
+    const smeApprover = extractor.user(RequestsFields.SubjectMatterExpert);
+    const smeDate = extractor.date(RequestsFields.SMEApprovalDate);
+
+    approvals.push({
+      type: ApprovalType.SubjectMatterExpert,
+      approver: smeApprover || { id: '', email: '', title: '' },
+      approvalDate: smeDate,
+      documentId: '',
+      notes: '',
+    } as any);
+  }
+
+  // Performance approval
+  const hasPerformanceApproval = extractor.boolean(RequestsFields.HasPerformanceApproval, false);
+  if (hasPerformanceApproval) {
+    const perfApprover = extractor.user(RequestsFields.PerformanceApprover);
+    const perfDate = extractor.date(RequestsFields.PerformanceApprovalDate);
+
+    approvals.push({
+      type: ApprovalType.Performance,
+      approver: perfApprover || { id: '', email: '', title: '' },
+      approvalDate: perfDate,
+      documentId: '',
+      notes: '',
+    } as any);
+  }
+
+  // Other approval
+  const hasOtherApproval = extractor.boolean(RequestsFields.HasOtherApproval, false);
+  if (hasOtherApproval) {
+    const otherApprover = extractor.user(RequestsFields.OtherApproval);
+    const otherDate = extractor.date(RequestsFields.OtherApprovalDate);
+    const otherTitle = extractor.string(RequestsFields.OtherApprovalTitle);
+
+    approvals.push({
+      type: ApprovalType.Other,
+      approver: otherApprover || { id: '', email: '', title: '' },
+      approvalDate: otherDate,
+      documentId: '',
+      notes: '',
+      approvalTitle: otherTitle || '',
+    } as any);
+  }
+
+  return approvals;
 }
 
 /**
@@ -329,5 +441,8 @@ export function mapRequestListItemToRequest(item: any): ILegalRequest {
     submittedForReviewOn: extractor.date(RequestsFields.SubmittedForReviewOn),
     submittedToAssignAttorneyBy: extractor.user(RequestsFields.SubmittedToAssignAttorneyBy),
     submittedToAssignAttorneyOn: extractor.date(RequestsFields.SubmittedToAssignAttorneyOn),
+
+    // Approvals array - build from individual SharePoint fields
+    approvals: buildApprovalsArrayFromFields(extractor),
   };
 }

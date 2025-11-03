@@ -69,6 +69,7 @@ import {
 import { DocumentUpload } from '../../../../components/DocumentUpload';
 import type { ILegalRequest } from '../../../../types';
 import { ApprovalType } from '../../../../types/approvalTypes';
+import { DocumentType } from '../../../../types/documentTypes';
 import './ApprovalSection.scss';
 
 /**
@@ -77,6 +78,35 @@ import './ApprovalSection.scss';
 const TODAY = new Date(); // Create once at module level
 const MAX_APPROVAL_DOCUMENTS = 10; // Maximum number of documents per approval
 const CHECKMARK_ICON_STYLES = { root: { fontSize: '16px', color: '#107c10' } };
+
+/**
+ * Map ApprovalType to DocumentType for proper folder organization
+ *
+ * This ensures approval documents are uploaded to the correct folder:
+ * - Communications → RequestDocuments/{itemId}/CommunicationsApproval/
+ * - Portfolio Manager → RequestDocuments/{itemId}/PortfolioManagerApproval/
+ * - etc.
+ */
+function getDocumentTypeFromApprovalType(approvalType: ApprovalType): DocumentType {
+  switch (approvalType) {
+    case ApprovalType.Communications:
+      return DocumentType.CommunicationApproval;
+    case ApprovalType.PortfolioManager:
+      return DocumentType.PortfolioManagerApproval;
+    case ApprovalType.ResearchAnalyst:
+      return DocumentType.ResearchAnalystApproval;
+    case ApprovalType.SubjectMatterExpert:
+      return DocumentType.SubjectMatterExpertApproval;
+    case ApprovalType.Performance:
+      return DocumentType.PerformanceApproval;
+    case ApprovalType.Other:
+      return DocumentType.OtherApproval;
+    default:
+      // This should never happen, but fallback to a safe value
+      SPContext.logger.warn('Unknown approval type, using CommunicationApproval as fallback', { approvalType });
+      return DocumentType.CommunicationApproval;
+  }
+}
 const APPROVAL_TITLE_STYLES = { root: { fontWeight: 600 as const, color: '#323130' } };
 const COMM_APPROVAL_LABEL_STYLES = { root: { fontWeight: 600 as const, color: '#323130', fontSize: '14px' } };
 const DESC_TEXT_STYLES = { root: { color: '#605e5c' } };
@@ -163,6 +193,13 @@ const AdditionalApprovalItem: React.FC<IAdditionalApprovalItemProps> = ({
   // Type-safe control for SPField components
   const formControl = control as any;
 
+  // Watch the approver value for this approval to use in key prop
+  const approver = useWatch({
+    control,
+    name: `approvals.${index}.approver` as const,
+  });
+
+  
   // Note: File management is now handled by DocumentUpload component via documentsStore
   /**
    * Get approval type display name
@@ -239,6 +276,7 @@ const AdditionalApprovalItem: React.FC<IAdditionalApprovalItemProps> = ({
             Approved By
           </FormLabel>
           <SPUserField
+            key={`approver-${index}-${approver?.id || 'empty'}`}
             name={`approvals.${index}.approver` as const}
             control={formControl}
             placeholder='Search for approver'
@@ -270,7 +308,7 @@ const AdditionalApprovalItem: React.FC<IAdditionalApprovalItemProps> = ({
         <FormItem>
           <FormLabel isRequired>Approval Documents</FormLabel>
           <DocumentUpload
-            documentType={`Approval-${approvalTypeName}-${index}` as any}
+            documentType={getDocumentTypeFromApprovalType(approvalType)}
             itemId={requestId ? parseInt(requestId, 10) : undefined}
             siteUrl={SPContext.webAbsoluteUrl}
             documentLibraryTitle={Lists.RequestDocuments.Title}
@@ -529,6 +567,7 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
                   Approved By
                 </FormLabel>
                 <SPUserField
+                  key={`comm-approver-${communicationsApprovalIndex}-${approvals?.[communicationsApprovalIndex]?.approver?.id || 'empty'}`}
                   name={`approvals.${communicationsApprovalIndex}.approver` as const}
                   control={formControl}
                   placeholder='Search for approver'
@@ -560,7 +599,7 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
               <FormItem>
                 <FormLabel isRequired>Approval Documents</FormLabel>
                 <DocumentUpload
-                  documentType={"Approval-Communications" as any}
+                  documentType={DocumentType.CommunicationApproval}
                   itemId={requestId ? parseInt(requestId, 10) : undefined}
                   siteUrl={SPContext.webAbsoluteUrl}
                   documentLibraryTitle={Lists.RequestDocuments.Title}

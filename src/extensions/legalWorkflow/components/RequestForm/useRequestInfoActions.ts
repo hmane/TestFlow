@@ -8,6 +8,7 @@ import { saveRequestSchema, submitRequestSchema } from '@schemas/requestSchema';
 import { SPContext } from 'spfx-toolkit';
 
 import type { IValidationError } from '@contexts/RequestFormContext';
+import { useDocumentsStore } from '../../../../stores/documentsStore';
 
 interface IRequestInfoActionsOptions {
   itemId?: number;
@@ -162,9 +163,33 @@ export const useRequestInfoActions = ({
 }: IRequestInfoActionsOptions): IRequestInfoActionsResult => {
   const [validationErrors, setValidationErrors] = React.useState<IValidationError[]>([]);
 
+  // Get document operations from store
+  const { renamePendingFiles, deletePendingFiles } = useDocumentsStore();
+
   const completeSave = React.useCallback(async (): Promise<void> => {
     try {
+      // Process document operations BEFORE save to avoid state being cleared by reload
+      SPContext.logger.info('RequestInfo: Processing document operations before save');
+
+      try {
+        await renamePendingFiles();
+        SPContext.logger.success('RequestInfo: Documents renamed successfully');
+      } catch (docError: unknown) {
+        SPContext.logger.error('RequestInfo: Document rename failed', docError);
+        // Don't fail the whole save if document operations fail
+      }
+
+      try {
+        await deletePendingFiles();
+        SPContext.logger.success('RequestInfo: Documents deleted successfully');
+      } catch (docError: unknown) {
+        SPContext.logger.error('RequestInfo: Document deletion failed', docError);
+        // Don't fail the whole save if document operations fail
+      }
+
+      // Now save the form - reload will show already-renamed files
       const savedItemId = await saveAsDraft();
+
       showSuccessNotification?.('Draft saved successfully!');
       SPContext.logger.success('RequestInfo: Draft saved', { itemId: savedItemId });
 
@@ -187,12 +212,33 @@ export const useRequestInfoActions = ({
       showErrorNotification?.(errorMessage);
       throw error;
     }
-  }, [itemId, saveAsDraft, showSuccessNotification, showErrorNotification]);
+  }, [itemId, saveAsDraft, renamePendingFiles, deletePendingFiles, showSuccessNotification, showErrorNotification]);
 
   const completeSubmit = React.useCallback(async (): Promise<void> => {
     try {
+      // Process document operations BEFORE submit to avoid state being cleared by reload
+      SPContext.logger.info('RequestInfo: Processing document operations before submit');
+
+      try {
+        await renamePendingFiles();
+        SPContext.logger.success('RequestInfo: Documents renamed successfully');
+      } catch (docError: unknown) {
+        SPContext.logger.error('RequestInfo: Document rename failed', docError);
+        // Don't fail the whole submit if document operations fail
+      }
+
+      try {
+        await deletePendingFiles();
+        SPContext.logger.success('RequestInfo: Documents deleted successfully');
+      } catch (docError: unknown) {
+        SPContext.logger.error('RequestInfo: Document deletion failed', docError);
+        // Don't fail the whole submit if document operations fail
+      }
+
+      // Now submit the form - reload will show already-renamed files
       // TODO: swap placeholder once submit workflow is implemented
       await saveAsDraft();
+
       showSuccessNotification?.('Request submitted successfully!');
       SPContext.logger.success('RequestInfo: Request submitted successfully');
     } catch (error: unknown) {
@@ -201,7 +247,7 @@ export const useRequestInfoActions = ({
       showErrorNotification?.(errorMessage);
       throw error;
     }
-  }, [saveAsDraft, showSuccessNotification, showErrorNotification]);
+  }, [saveAsDraft, renamePendingFiles, deletePendingFiles, showSuccessNotification, showErrorNotification]);
 
 
   const validateSubmission = React.useCallback(

@@ -11,12 +11,13 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 
 import type { IExistingFile } from './documentsStore';
+import { useDocumentsStore } from './documentsStore';
 import type {
   IStagedFile,
   IFileToDelete,
 } from '../services/approvalFileService';
 import { loadRequestById } from '../services/requestLoadService';
-import { saveDraft, saveRequest } from '../services/requestSaveService';
+import { saveDraft, saveRequest, processPendingDocuments } from '../services/requestSaveService';
 import type {
   Approval,
   IComplianceReview,
@@ -361,6 +362,57 @@ export const useRequestStore = create<IRequestState>()(
             });
           }
 
+          // Process pending document operations after successful save
+          const documentsStore = useDocumentsStore.getState();
+          if (documentsStore.hasPendingOperations()) {
+            SPContext.logger.info('Processing pending document operations', {
+              itemId: result.itemId,
+            });
+
+            try {
+              // 1. Upload staged files using documentsStore (with progress tracking)
+              if (documentsStore.stagedFiles.length > 0) {
+                await documentsStore.uploadPendingFiles(
+                  result.itemId,
+                  (fileId, progress, status) => {
+                    SPContext.logger.info('Upload progress', { fileId, progress, status });
+                  }
+                );
+              }
+
+              // 2. Process deletes and renames
+              const filesToDelete = documentsStore.filesToDelete;
+              const filesToRename = documentsStore.filesToRename.map(rename => ({
+                file: rename.file,
+                newName: rename.newName,
+              }));
+
+              if (filesToDelete.length > 0 || filesToRename.length > 0) {
+                const docResults = await processPendingDocuments(
+                  result.itemId,
+                  [], // Empty array - uploads already handled
+                  filesToDelete,
+                  filesToRename
+                );
+
+                SPContext.logger.success('Document operations completed', docResults);
+              }
+
+              // Clear pending operations after successful processing
+              documentsStore.clearPendingOperations();
+
+              // Reload documents from SharePoint to display uploaded files
+              await documentsStore.loadAllDocuments(result.itemId);
+              SPContext.logger.info('Documents reloaded after upload', { itemId: result.itemId });
+            } catch (docError) {
+              // Log error but don't fail the entire save
+              SPContext.logger.error('Document processing failed (request was saved)', docError, {
+                itemId: result.itemId,
+              });
+              // Note: We don't throw here because the request was successfully saved
+            }
+          }
+
           return result.itemId;
 
         } catch (error: unknown) {
@@ -462,6 +514,57 @@ export const useRequestStore = create<IRequestState>()(
               isDirty: false,
               isSaving: false,
             });
+          }
+
+          // Process pending document operations after successful save
+          const documentsStore = useDocumentsStore.getState();
+          if (documentsStore.hasPendingOperations()) {
+            SPContext.logger.info('Processing pending document operations', {
+              itemId: state.itemId,
+            });
+
+            try {
+              // 1. Upload staged files using documentsStore (with progress tracking)
+              if (documentsStore.stagedFiles.length > 0) {
+                await documentsStore.uploadPendingFiles(
+                  state.itemId,
+                  (fileId, progress, status) => {
+                    SPContext.logger.info('Upload progress', { fileId, progress, status });
+                  }
+                );
+              }
+
+              // 2. Process deletes and renames
+              const filesToDelete = documentsStore.filesToDelete;
+              const filesToRename = documentsStore.filesToRename.map(rename => ({
+                file: rename.file,
+                newName: rename.newName,
+              }));
+
+              if (filesToDelete.length > 0 || filesToRename.length > 0) {
+                const docResults = await processPendingDocuments(
+                  state.itemId,
+                  [], // Empty array - uploads already handled
+                  filesToDelete,
+                  filesToRename
+                );
+
+                SPContext.logger.success('Document operations completed', docResults);
+              }
+
+              // Clear pending operations after successful processing
+              documentsStore.clearPendingOperations();
+
+              // Reload documents from SharePoint to display uploaded files
+              await documentsStore.loadAllDocuments(state.itemId);
+              SPContext.logger.info('Documents reloaded after upload', { itemId: state.itemId });
+            } catch (docError) {
+              // Log error but don't fail the entire save
+              SPContext.logger.error('Document processing failed (request was saved)', docError, {
+                itemId: state.itemId,
+              });
+              // Note: We don't throw here because the request was successfully saved
+            }
           }
 
         } catch (error: unknown) {

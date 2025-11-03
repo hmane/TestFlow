@@ -69,14 +69,14 @@ export interface ILegalRequest {
   priorSubmissions?: SPLookup[];
   priorSubmissionNotes?: string;
   dateOfFirstUse?: Date;
-  additionalParty?: IPrincipal[];
+additionalParty?: IPrincipal[];
   totalTurnaroundDays?: number;
   expectedTurnaroundDate?: Date;
 
   // Approvals - Communications
   requiresCommunicationsApproval: boolean;
   communicationsApprovalDate?: Date;
-  communicationsApprover?: IPrincipal;
+communicationsApprover?: IPrincipal;
 
   // Approvals - Portfolio Manager
   hasPortfolioManagerApproval: boolean;

@@ -42,6 +42,7 @@ export interface IDocumentUploadProps {
 export interface IDocumentCardProps {
   document: IDocument;                 // Document to display
   isNew?: boolean;                     // Is this a new (not yet uploaded) file?
+  isUpdating?: boolean;                // Is this replacing an existing file (overwrite)?
   isPending?: boolean;                 // Has pending changes (rename/type change)?
   isDeleted?: boolean;                 // Marked for deletion?
   isDragging?: boolean;                // Currently being dragged?
@@ -50,12 +51,17 @@ export interface IDocumentCardProps {
 
   // Callbacks
   onRename?: (newName: string) => void;
+  onCancelRename?: () => void;          // Cancel pending rename
   onDelete?: () => void;
   onDownload?: () => void;
   onChangeType?: (newType: DocumentType) => void;
   onUndoDelete?: () => void;
   onDragStart?: (e: React.DragEvent) => void;
   onDragEnd?: (e: React.DragEvent) => void;
+
+  // Data for validation
+  allDocuments?: IDocument[];           // All documents (for duplicate checking)
+  stagedFiles?: Array<{ name: string; documentType: DocumentType; uniqueId?: string }>; // Staged files
 
   // Config
   showTypeChange?: boolean;            // Show "Change Type" in menu (Attachment mode only)
@@ -95,7 +101,7 @@ export interface IDocumentGroupProps {
  * Document action types
  */
 export interface DocumentAction {
-  type: 'rename' | 'delete' | 'download' | 'changeType' | 'undoDelete';
+  type: 'rename' | 'delete' | 'download' | 'changeType' | 'undoDelete' | 'cancelRename';
   documentId: string;
   data?: unknown;                      // Action-specific data
 }

@@ -26,10 +26,12 @@ import {
 } from '@fluentui/react';
 
 import { Lists } from '@sp/Lists';
+import { SPContext } from 'spfx-toolkit';
 
 import { useDocumentsStore, type IDocument, type IStagedDocument } from '../../stores/documentsStore';
 import { DocumentType } from '../../types/documentTypes';
 import { DocumentCard } from './DocumentCard';
+import { DropZoneCard } from './DropZoneCard';
 import { DocumentTypeDialog } from './DocumentTypeDialog';
 import { DuplicateFileDialog } from './DuplicateFileDialog';
 import { UploadProgressDialog } from './UploadProgressDialog';
@@ -88,20 +90,24 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
     stagedFiles,
     filesToDelete,
     filesToRename,
+    isUploading,
+    uploadProgress,
     loadDocuments,
     stageFiles,
     removeStagedFile,
     markForDeletion,
     undoDelete,
     markForRename,
+    cancelRename,
     markForTypeChange,
     getPendingCounts,
+    retryUpload,
+    skipUpload,
   } = useDocumentsStore();
 
   // Local state
   const [isTypeDialogOpen, setIsTypeDialogOpen] = React.useState(false);
   const [isDuplicateDialogOpen, setIsDuplicateDialogOpen] = React.useState(false);
-  const [isProgressDialogOpen, setIsProgressDialogOpen] = React.useState(false);
   const [pendingFiles, setPendingFiles] = React.useState<File[]>([]);
   const [pendingTargetType, setPendingTargetType] = React.useState<DocumentType | undefined>();
   const [duplicateFiles, setDuplicateFiles] = React.useState<string[]>([]);
@@ -391,11 +397,11 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
         for (let i = 0; i < e.target.files.length; i++) {
           filesArray.push(e.target.files[i]);
         }
-        void handleFilesSelected(filesArray);
+        void handleFilesSelected(filesArray, pendingTargetType);
         e.target.value = ''; // Reset input
       }
     },
-    [handleFilesSelected]
+    [handleFilesSelected, pendingTargetType]
   );
 
   /**
@@ -503,8 +509,9 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
     setIsDuplicateDialogOpen(false);
     setValidationError(undefined); // Clear any validation errors
 
-    // Remove staged file duplicates before staging new files
-    // (New files will replace them)
+    // Remove duplicate staged files before staging new files
+    // Note: We DON'T mark existing SharePoint documents for deletion
+    // Instead, the new staged file will "replace" the existing one (shown with UPDATED badge)
     const duplicateFileNamesLower = new Set(duplicateFiles.map(name => name.toLowerCase()));
     const typeToCheck = pendingTargetType || documentType || DocumentType.Review;
 
@@ -623,6 +630,13 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
           }
           break;
 
+        case 'cancelRename':
+          cancelRename(doc.uniqueId);
+          if (onFilesChange) {
+            onFilesChange();
+          }
+          break;
+
         case 'changeType':
           if (action.data && typeof action.data === 'string') {
             markForTypeChange([doc], action.data as DocumentType);
@@ -642,7 +656,7 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
           break;
       }
     },
-    [documents, markForRename, markForDeletion, undoDelete, markForTypeChange, onFilesChange]
+    [documents, markForRename, cancelRename, markForDeletion, undoDelete, markForTypeChange, onFilesChange]
   );
 
   /**
@@ -782,6 +796,50 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
     const docs = getDocumentsByType(documentType as any);
     const staged = stagedFiles.filter(function(sf) { return sf.documentType === documentType; });
 
+    // Build set of staged file names (for detecting replacements)
+    const stagedFileNames = new Set<string>();
+    for (let i = 0; i < staged.length; i++) {
+      stagedFileNames.add(staged[i].file.name.toLowerCase());
+    }
+
+    // Build set of existing file names (for detecting replacements)
+    const existingFileNames = new Set<string>();
+    for (let i = 0; i < docs.length; i++) {
+      if (docs[i] && docs[i].name) {
+        existingFileNames.add(docs[i].name.toLowerCase());
+      }
+    }
+
+    // Sort existing documents by modified date (newest first)
+    // Filter out documents that will be replaced by staged files
+    const sortedDocs = docs
+      .filter(function(doc) {
+        // Skip documents with no name
+        if (!doc || !doc.name) return false;
+        // Hide existing doc if there's a staged file with same name (will be replaced)
+        return !stagedFileNames.has(doc.name.toLowerCase());
+      })
+      .sort(function(a, b) {
+        const dateA = typeof a.timeLastModified === 'string' ? new Date(a.timeLastModified) : a.timeLastModified || new Date(0);
+        const dateB = typeof b.timeLastModified === 'string' ? new Date(b.timeLastModified) : b.timeLastModified || new Date(0);
+        return dateB.getTime() - dateA.getTime();
+      });
+
+    const hasDocuments = docs.length > 0 || staged.length > 0;
+
+    // CRITICAL DEBUG: Log approval mode rendering
+    SPContext.logger.info('🔍 renderApprovalMode', {
+      documentType,
+      documentTypeValue: String(documentType),
+      docsCount: docs.length,
+      stagedCount: staged.length,
+      allStagedFilesCount: stagedFiles.length,
+      stagedFilesForThisType: staged.map(sf => ({
+        fileName: sf.file.name,
+        documentType: sf.documentType,
+      })),
+    });
+
     return (
       <div className="document-upload document-upload--approval-mode">
         {label && (
@@ -789,67 +847,39 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
             {label}
           </Text>
         )}
+        {/* Description only (no button in approval mode) */}
         {description && (
           <Text variant="small" styles={{ root: { color: '#605e5c', marginBottom: '16px' } }}>
             {description}
           </Text>
         )}
 
-        {/* Upload Zone */}
-        {!isReadOnly && (
-          <div
-            className="upload-zone"
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <Stack horizontalAlign="center" tokens={{ childrenGap: 8 }}>
-              <IconButton
-                iconProps={{ iconName: 'CloudUpload' }}
-                styles={{ root: { fontSize: '32px', color: '#0078d4' } }}
-              />
-              <Text variant="medium">Drag and drop files here or click to browse</Text>
-              <Text variant="small" styles={{ root: { color: '#605e5c' } }}>
-                Maximum {maxFiles} files, {Math.round(maxFileSize / 1024 / 1024)}MB each
-              </Text>
-            </Stack>
-          </div>
-        )}
-
-        {/* Documents Grid */}
-        {(docs.length > 0 || staged.length > 0) && (
-          <div className="cards-container">
-            {docs.map(doc => {
-              const isDeleted = filesToDelete.some(fd => fd.uniqueId === doc.uniqueId);
-
-              // ES5 compatible: Manual loop instead of .find()
-              let renameInfo: any = null;
-              for (let i = 0; i < filesToRename.length; i++) {
-                if (filesToRename[i].file.uniqueId === doc.uniqueId) {
-                  renameInfo = filesToRename[i];
-                  break;
-                }
+        {/* Documents Grid (includes DropZoneCard) */}
+        <div
+          className="cards-container"
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+        >
+          {/* Drop Zone Card - always shown when not read-only */}
+          {!isReadOnly && (
+            <DropZoneCard
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onClick={() => fileInputRef.current?.click()}
+              className={
+                isDragging
+                  ? 'drop-zone-card--active'
+                  : hasDocuments
+                  ? 'drop-zone-card--compact'
+                  : 'drop-zone-card--full-width'
               }
+            />
+          )}
 
-              return (
-                <DocumentCard
-                  key={doc.uniqueId}
-                  document={doc}
-                  isDeleted={isDeleted}
-                  isPending={!!renameInfo}
-                  pendingName={renameInfo ? renameInfo.newName : undefined}
-                  showTypeChange={false}
-                  isReadOnly={isReadOnly}
-                  onRename={(newName) => handleDocumentAction({ type: 'rename', documentId: doc.uniqueId, data: newName })}
-                  onDelete={() => handleDocumentAction({ type: 'delete', documentId: doc.uniqueId })}
-                  onDownload={() => handleDocumentAction({ type: 'download', documentId: doc.uniqueId })}
-                  onUndoDelete={isDeleted ? () => handleDocumentAction({ type: 'undoDelete', documentId: doc.uniqueId }) : undefined}
-                />
-              );
-            })}
-
-            {/* Staged files */}
-            {staged.map((stagedFile) => {
+          {/* Staged files (NEW) - shown first */}
+          {staged.map((stagedFile) => {
               const tempDoc = {
                 name: stagedFile.file.name,
                 url: '',
@@ -861,11 +891,15 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
                 documentType: stagedFile.documentType,
               };
 
+              // Check if this staged file is replacing an existing file (overwrite)
+              const isReplacingExisting = existingFileNames.has(stagedFile.file.name.toLowerCase());
+
               return (
                 <DocumentCard
                   key={stagedFile.id}
                   document={tempDoc as any}
                   isNew={true}
+                  isUpdating={isReplacingExisting}
                   isReadOnly={isReadOnly}
                   onDelete={() => {
                     removeStagedFile(stagedFile.id);
@@ -887,8 +921,40 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
                 />
               );
             })}
-          </div>
-        )}
+
+          {/* Existing documents - sorted by modified date (newest first) */}
+          {sortedDocs.map(doc => {
+              const isDeleted = filesToDelete.some(fd => fd.uniqueId === doc.uniqueId);
+
+              // ES5 compatible: Manual loop instead of .find()
+              let renameInfo: any = null;
+              for (let i = 0; i < filesToRename.length; i++) {
+                if (filesToRename[i].file.uniqueId === doc.uniqueId) {
+                  renameInfo = filesToRename[i];
+                  break;
+                }
+              }
+
+              return (
+                <DocumentCard
+                  key={doc.uniqueId}
+                  document={doc}
+                  isDeleted={isDeleted}
+                  isPending={!!renameInfo}
+                  pendingName={renameInfo ? renameInfo.newName : undefined}
+                  showTypeChange={false}
+                  isReadOnly={isReadOnly}
+                  allDocuments={sortedDocs}
+                  stagedFiles={stagedFiles.map(sf => ({ name: sf.file.name, documentType: sf.documentType, uniqueId: sf.id }))}
+                  onRename={(newName) => handleDocumentAction({ type: 'rename', documentId: doc.uniqueId, data: newName })}
+                  onCancelRename={() => handleDocumentAction({ type: 'cancelRename', documentId: doc.uniqueId })}
+                  onDelete={() => handleDocumentAction({ type: 'delete', documentId: doc.uniqueId })}
+                  onDownload={() => handleDocumentAction({ type: 'download', documentId: doc.uniqueId })}
+                  onUndoDelete={isDeleted ? () => handleDocumentAction({ type: 'undoDelete', documentId: doc.uniqueId }) : undefined}
+                />
+              );
+            })}
+        </div>
 
         {/* Hidden file input */}
         <input
@@ -904,15 +970,69 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
   };
 
   /**
+   * Check if document type is an approval type (defensive filter)
+   */
+  const isApprovalDocumentType = React.useCallback((docType: DocumentType): boolean => {
+    return (
+      docType === DocumentType.CommunicationApproval ||
+      docType === DocumentType.PortfolioManagerApproval ||
+      docType === DocumentType.ResearchAnalystApproval ||
+      docType === DocumentType.SubjectMatterExpertApproval ||
+      docType === DocumentType.PerformanceApproval ||
+      docType === DocumentType.OtherApproval
+    );
+  }, []);
+
+  /**
    * Render Attachment Mode
    */
   const renderAttachmentMode = () => {
-    const reviewDocs = getDocumentsByType(DocumentType.Review);
-    const reviewStaged = stagedFiles.filter(function(sf) { return sf.documentType === DocumentType.Review; });
+    // CRITICAL DEBUG: Log all staged files to see what's in the store
+    SPContext.logger.info('🔍 renderAttachmentMode - ALL STAGED FILES', {
+      totalStagedCount: stagedFiles.length,
+      allStagedFiles: stagedFiles.map(sf => ({
+        id: sf.id,
+        fileName: sf.file.name,
+        documentType: sf.documentType,
+        documentTypeValue: String(sf.documentType),
+      })),
+    });
+
+    // Get documents and apply defensive filtering to exclude approval documents
+    // This ensures approval docs never appear in attachment sections even if data store has them
+    const allReviewDocs = getDocumentsByType(DocumentType.Review);
+    const reviewDocs = allReviewDocs.filter(function(doc) {
+      // Explicitly exclude approval document types (defensive)
+      return !isApprovalDocumentType(doc.documentType);
+    });
+
+    // Also filter staged files to exclude approval documents (defensive)
+    const allReviewStaged = stagedFiles.filter(function(sf) { return sf.documentType === DocumentType.Review; });
+
+    SPContext.logger.info('🔍 Review section filtering', {
+      allStagedFilesCount: stagedFiles.length,
+      matchingReviewTypeCount: allReviewStaged.length,
+      matchingReviewFiles: allReviewStaged.map(sf => ({
+        fileName: sf.file.name,
+        documentType: sf.documentType,
+      })),
+    });
+
+    const reviewStaged = allReviewStaged.filter(function(sf) {
+      return !isApprovalDocumentType(sf.documentType);
+    });
     const reviewPending = getPendingCounts(DocumentType.Review);
 
-    const suppDocs = getDocumentsByType(DocumentType.Supplemental);
-    const suppStaged = stagedFiles.filter(function(sf) { return sf.documentType === DocumentType.Supplemental; });
+    const allSuppDocs = getDocumentsByType(DocumentType.Supplemental);
+    const suppDocs = allSuppDocs.filter(function(doc) {
+      // Explicitly exclude approval document types (defensive)
+      return !isApprovalDocumentType(doc.documentType);
+    });
+    // Also filter staged files to exclude approval documents (defensive)
+    const allSuppStaged = stagedFiles.filter(function(sf) { return sf.documentType === DocumentType.Supplemental; });
+    const suppStaged = allSuppStaged.filter(function(sf) {
+      return !isApprovalDocumentType(sf.documentType);
+    });
     const suppPending = getPendingCounts(DocumentType.Supplemental);
 
     // Calculate total document count
@@ -943,34 +1063,16 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
         );
       }
 
-      // Interactive empty state - drag and click enabled
+      // Interactive empty state - use DropZoneCard in a container (full width)
       return (
-        <div
-          className={`empty-upload-zone ${isDragging ? 'dragging' : ''}`}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onDragEnter={handleDragEnter}
-          onDragLeave={handleDragLeave}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <Stack horizontalAlign="center" tokens={{ childrenGap: 12 }}>
-            <IconButton
-              iconProps={{ iconName: 'CloudUpload' }}
-              styles={{ root: { fontSize: '48px', color: '#0078d4', pointerEvents: 'none' } }}
-            />
-            <Text variant="xLarge" styles={{ root: { fontWeight: 600 } }}>
-              Upload Documents
-            </Text>
-            <Text variant="medium" styles={{ root: { color: '#605e5c' } }}>
-              Drag and drop files here or click to browse
-            </Text>
-            <Text variant="small" styles={{ root: { color: '#a19f9d' } }}>
-              Maximum {maxFiles} files • {Math.round(maxFileSize / 1024 / 1024)}MB each
-            </Text>
-            <Text variant="small" styles={{ root: { color: '#a19f9d' } }}>
-              Supported: {allowedExtensions.slice(0, 5).join(', ')}{allowedExtensions.length > 5 ? ', ...' : ''}
-            </Text>
-          </Stack>
+        <div className="cards-container">
+          <DropZoneCard
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onClick={() => fileInputRef.current?.click()}
+            className={isDragging ? 'drop-zone-card--active drop-zone-card--full-width' : 'drop-zone-card--full-width'}
+          />
         </div>
       );
     };
@@ -983,7 +1085,9 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
       documentType: DocumentType,
       docs: IDocument[],
       staged: IStagedDocument[],
-      pending: { newCount: number; modifiedCount: number; deletedCount: number }
+      pending: { newCount: number; modifiedCount: number; deletedCount: number },
+      allDocs: IDocument[],
+      allStaged: IStagedDocument[]
     ) => {
       const sectionTotal = docs.length + staged.length;
       if (sectionTotal === 0) return null;
@@ -1025,6 +1129,28 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
 
           {/* Documents Grid */}
           <div className="cards-container">
+            {/* Drop Zone Card - shown when dragging files */}
+            {!isReadOnly && isDragging && (
+              <DropZoneCard
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  // Handle drop with type selection for this section
+                  handleDrop(e);
+                  // Show type dialog to select which type
+                  setPendingTargetType(documentType);
+                }}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onClick={() => {
+                  // Set the target type and open file browser
+                  setPendingTargetType(documentType);
+                  fileInputRef.current?.click();
+                }}
+                className={isDropTarget ? 'drop-zone-card--active' : ''}
+              />
+            )}
+
             {/* Existing documents */}
             {docs.map(doc => {
               const isDeleted = filesToDelete.some(fd => fd.uniqueId === doc.uniqueId);
@@ -1048,7 +1174,10 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
                   showTypeChange={true}
                   isReadOnly={isReadOnly}
                   isDragging={draggedDocId === doc.uniqueId}
+                  allDocuments={allDocs}
+                  stagedFiles={allStaged.map(sf => ({ name: sf.file.name, documentType: sf.documentType, uniqueId: sf.id }))}
                   onRename={(newName) => handleDocumentAction({ type: 'rename', documentId: doc.uniqueId, data: newName })}
+                  onCancelRename={() => handleDocumentAction({ type: 'cancelRename', documentId: doc.uniqueId })}
                   onDelete={() => handleDocumentAction({ type: 'delete', documentId: doc.uniqueId })}
                   onDownload={() => handleDocumentAction({ type: 'download', documentId: doc.uniqueId })}
                   onChangeType={(newType) => handleDocumentAction({ type: 'changeType', documentId: doc.uniqueId, data: newType })}
@@ -1144,7 +1273,15 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
             )}
 
             {/* Review Documents Section */}
-            {renderDocumentSection('Review Documents', DocumentType.Review, reviewDocs, reviewStaged, reviewPending)}
+            {renderDocumentSection(
+              'Review Documents',
+              DocumentType.Review,
+              reviewDocs,
+              reviewStaged,
+              reviewPending,
+              reviewDocs.concat(suppDocs),
+              reviewStaged.concat(suppStaged)
+            )}
 
             {/* Divider */}
             {reviewDocs.length + reviewStaged.length > 0 && suppDocs.length + suppStaged.length > 0 && (
@@ -1152,7 +1289,15 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
             )}
 
             {/* Supplemental Documents Section */}
-            {renderDocumentSection('Supplemental Documents', DocumentType.Supplemental, suppDocs, suppStaged, suppPending)}
+            {renderDocumentSection(
+              'Supplemental Documents',
+              DocumentType.Supplemental,
+              suppDocs,
+              suppStaged,
+              suppPending,
+              reviewDocs.concat(suppDocs),
+              reviewStaged.concat(suppStaged)
+            )}
 
             {/* Drop hint overlay */}
             {isDragging && (
@@ -1242,12 +1387,19 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
       />
 
       <UploadProgressDialog
-        isOpen={isProgressDialogOpen}
-        uploadProgress={new Map()}
-        onRetry={() => {}}
-        onSkip={() => {}}
-        onClose={() => setIsProgressDialogOpen(false)}
-        canClose={true}
+        isOpen={isUploading}
+        uploadProgress={uploadProgress}
+        onRetry={(fileId) => {
+          void retryUpload(fileId);
+        }}
+        onSkip={(fileId) => {
+          skipUpload(fileId);
+        }}
+        onClose={() => {
+          // Progress dialog can only be closed when all uploads are complete
+          // isUploading will be automatically set to false by the store
+        }}
+        canClose={!isUploading}
       />
     </>
   );
