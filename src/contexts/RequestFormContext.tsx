@@ -37,8 +37,8 @@ export interface IRequestFormContextValue {
   handleSubmit: UseFormHandleSubmit<ILegalRequest>;
   onSubmit: (data: ILegalRequest) => void | Promise<void>;
   onSaveDraft: () => void | Promise<void>;
-  onPutOnHold?: () => void | Promise<void>;
-  onCancelRequest?: () => void | Promise<void>;
+  onPutOnHold?: (reason: string) => void | Promise<void>;
+  onCancelRequest?: (reason: string) => void | Promise<void>;
   onClose?: () => void;
   setValidationErrors: (errors: IValidationError[]) => void;
 }

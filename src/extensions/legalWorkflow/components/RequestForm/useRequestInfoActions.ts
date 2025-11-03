@@ -9,6 +9,7 @@ import { SPContext } from 'spfx-toolkit';
 
 import type { IValidationError } from '@contexts/RequestFormContext';
 import { useDocumentsStore } from '../../../../stores/documentsStore';
+import { useRequestStore } from '../../../../stores/requestStore';
 
 interface IRequestInfoActionsOptions {
   itemId?: number;
@@ -25,8 +26,8 @@ interface IRequestInfoActionsResult {
   onSubmit: (data: ILegalRequest) => Promise<void>;
   handleSaveDraft: () => Promise<void>;
   handleClose: () => void;
-  handleCancelRequest: () => Promise<void>;
-  handlePutOnHold: () => Promise<void>;
+  handleCancelRequest: (reason: string) => Promise<void>;
+  handlePutOnHold: (reason: string) => Promise<void>;
   validationErrors: IValidationError[];
   setValidationErrors: React.Dispatch<React.SetStateAction<IValidationError[]>>;
 }
@@ -165,6 +166,9 @@ export const useRequestInfoActions = ({
 
   // Get document operations from store
   const { renamePendingFiles, deletePendingFiles } = useDocumentsStore();
+
+  // Get workflow actions from request store
+  const { cancelRequest, holdRequest: putRequestOnHold } = useRequestStore();
 
   const completeSave = React.useCallback(async (): Promise<void> => {
     try {
@@ -343,31 +347,49 @@ export const useRequestInfoActions = ({
     }
   }, []);
 
-  const handleCancelRequest = React.useCallback(async (): Promise<void> => {
-    try {
-      SPContext.logger.info('RequestInfo: Canceling request');
-      // TODO: Implement cancel request in store
-      showSuccessNotification?.('Request canceled successfully!');
-      SPContext.logger.success('RequestInfo: Request canceled successfully');
-    } catch (error: unknown) {
-      SPContext.logger.error('RequestInfo: Cancel request failed', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to cancel request';
-      showErrorNotification?.(errorMessage);
-    }
-  }, [showSuccessNotification, showErrorNotification]);
+  const handleCancelRequest = React.useCallback(
+    async (reason: string): Promise<void> => {
+      if (!itemId) {
+        SPContext.logger.warn('RequestInfo: Cannot cancel request - no item ID');
+        showErrorNotification?.('Cannot cancel request: Item ID not found');
+        return;
+      }
 
-  const handlePutOnHold = React.useCallback(async (): Promise<void> => {
-    try {
-      SPContext.logger.info('RequestInfo: Putting request on hold');
-      // TODO: Implement put on hold in store
-      showSuccessNotification?.('Request put on hold successfully!');
-      SPContext.logger.success('RequestInfo: Request put on hold successfully');
-    } catch (error: unknown) {
-      SPContext.logger.error('RequestInfo: Put on hold failed', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to put request on hold';
-      showErrorNotification?.(errorMessage);
-    }
-  }, [showSuccessNotification, showErrorNotification]);
+      try {
+        SPContext.logger.info('RequestInfo: Canceling request', { itemId, reason });
+        await cancelRequest(reason);
+        showSuccessNotification?.('Request canceled successfully!');
+        SPContext.logger.success('RequestInfo: Request canceled successfully');
+      } catch (error: unknown) {
+        SPContext.logger.error('RequestInfo: Cancel request failed', error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to cancel request';
+        showErrorNotification?.(errorMessage);
+      }
+    },
+    [itemId, cancelRequest, showSuccessNotification, showErrorNotification]
+  );
+
+  const handlePutOnHold = React.useCallback(
+    async (reason: string): Promise<void> => {
+      if (!itemId) {
+        SPContext.logger.warn('RequestInfo: Cannot put request on hold - no item ID');
+        showErrorNotification?.('Cannot put request on hold: Item ID not found');
+        return;
+      }
+
+      try {
+        SPContext.logger.info('RequestInfo: Putting request on hold', { itemId, reason });
+        await putRequestOnHold(reason);
+        showSuccessNotification?.('Request put on hold successfully!');
+        SPContext.logger.success('RequestInfo: Request put on hold successfully');
+      } catch (error: unknown) {
+        SPContext.logger.error('RequestInfo: Put on hold failed', error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to put request on hold';
+        showErrorNotification?.(errorMessage);
+      }
+    },
+    [itemId, putRequestOnHold, showSuccessNotification, showErrorNotification]
+  );
 
   return {
     onSubmit,
