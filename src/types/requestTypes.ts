@@ -9,6 +9,18 @@ import type { IComplianceReview, ILegalReview } from './reviewTypes';
 import type { RequestStatus, ReviewAudience } from './workflowTypes';
 
 /**
+ * Time tracking owner types
+ * Represents who currently owns the request at a given stage
+ */
+export type TimeTrackingOwner = 'Attorney' | 'Reviewer' | 'Submitter';
+
+/**
+ * Time tracking stage types
+ * Represents the workflow stages where time is tracked separately
+ */
+export type TimeTrackingStage = 'LegalIntake' | 'LegalReview' | 'ComplianceReview' | 'Closeout';
+
+/**
  * Request type options
  */
 export enum RequestType {
@@ -115,6 +127,8 @@ communicationsApprover?: IPrincipal;
   legalReviewNotes?: string;
   legalStatusUpdatedBy?: IPrincipal;
   legalStatusUpdatedOn?: Date;
+  legalReviewCompletedOn?: Date;
+  legalReviewCompletedBy?: IPrincipal;
 
   // Legacy legal review object (for backwards compatibility)
   legalReview?: ILegalReview;
@@ -127,6 +141,8 @@ communicationsApprover?: IPrincipal;
   isRetailUse?: boolean;
   complianceStatusUpdatedBy?: IPrincipal;
   complianceStatusUpdatedOn?: Date;
+  complianceReviewCompletedOn?: Date;
+  complianceReviewCompletedBy?: IPrincipal;
 
   // Legacy compliance review object (for backwards compatibility)
   complianceReview?: IComplianceReview;
@@ -154,6 +170,36 @@ communicationsApprover?: IPrincipal;
   submittedToAssignAttorneyOn?: Date;
   submittedForReviewBy?: IPrincipal;
   submittedForReviewOn?: Date;
+
+  // Time Tracking - Legal Intake
+  /** Business hours spent by legal admin during legal intake stage */
+  legalIntakeLegalAdminHours?: number;
+  /** Business hours spent by submitter during legal intake stage */
+  legalIntakeSubmitterHours?: number;
+
+  // Time Tracking - Legal Review
+  /** Business hours spent by attorney during legal review stage */
+  legalReviewAttorneyHours?: number;
+  /** Business hours spent by submitter during legal review stage */
+  legalReviewSubmitterHours?: number;
+
+  // Time Tracking - Compliance Review
+  /** Business hours spent by compliance reviewer during compliance review stage */
+  complianceReviewReviewerHours?: number;
+  /** Business hours spent by submitter during compliance review stage */
+  complianceReviewSubmitterHours?: number;
+
+  // Time Tracking - Closeout
+  /** Business hours spent by closeout reviewer during closeout stage */
+  closeoutReviewerHours?: number;
+  /** Business hours spent by submitter during closeout stage */
+  closeoutSubmitterHours?: number;
+
+  // Time Tracking - Totals
+  /** Total business hours spent by all reviewers (attorney + compliance + closeout) */
+  totalReviewerHours?: number;
+  /** Total business hours spent by submitter across all stages */
+  totalSubmitterHours?: number;
 
   // Documents
   documents?: IRequestDocument[];
@@ -249,6 +295,9 @@ export interface IRequestListItem {
   LegalStatusUpdatedById?: number;
   LegalReviewOutcome?: string;
   LegalReviewNotes?: string;
+  LegalReviewCompletedOn?: string;
+  LegalReviewCompletedById?: number;
+  LegalReviewCompletedBy?: { Id: number; Title: string; EMail?: string };
 
   // Compliance review
   ComplianceReviewStatus?: string;
@@ -258,6 +307,9 @@ export interface IRequestListItem {
   ComplianceReviewNotes?: string;
   IsForesideReviewRequired?: boolean;
   IsRetailUse?: boolean;
+  ComplianceReviewCompletedOn?: string;
+  ComplianceReviewCompletedById?: number;
+  ComplianceReviewCompletedBy?: { Id: number; Title: string; EMail?: string };
 
   // Closeout
   TrackingId?: string;

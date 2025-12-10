@@ -9,6 +9,7 @@
 
 import * as React from 'react';
 import { Stack, Text } from '@fluentui/react';
+import { SPContext } from 'spfx-toolkit';
 import { UserPersona } from 'spfx-toolkit/lib/components/UserPersona';
 import { GroupViewer } from 'spfx-toolkit/lib/components/GroupViewer';
 import type { IWaitingOnDisplayProps } from '../types';
@@ -75,7 +76,7 @@ export const WaitingOnDisplay: React.FC<IWaitingOnDisplayProps> = React.memo(({
               size={24}
               onError={(error) => {
                 // Fallback: Just show group name as text
-                console.warn('GroupViewer error:', error);
+                SPContext.logger.error('GroupViewer error', error);
               }}
             />
 

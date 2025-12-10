@@ -71,7 +71,6 @@ export default class LegalWorkflowFormCustomizer extends BaseFormCustomizer<ILeg
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       Log.error(LOG_SOURCE, new Error('Failed to load DevExtreme CSS from CDN: ' + message));
-      console.error('Failed to load DevExtreme CSS from CDN:', message);
     }
   }
 

@@ -41,6 +41,14 @@
           "manifest": "./src/extensions/turnAroundDate/TurnAroundDateFieldCustomizer.manifest.json"
         }
       ]
+    },
+    "report-dashboard-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/reportDashboard/ReportDashboardWebPart.js",
+          "manifest": "./src/webparts/reportDashboard/ReportDashboardWebPart.manifest.json"
+        }
+      ]
     }
   },
   "externals": {},
@@ -50,6 +58,7 @@
     "RequestTitleFieldCustomizerStrings": "lib/extensions/requestTitle/loc/{locale}.js",
     "RequestIdFieldCustomizerStrings": "lib/extensions/requestId/loc/{locale}.js",
     "RequestStatusFieldCustomizerStrings": "lib/extensions/requestStatus/loc/{locale}.js",
-    "TurnAroundDateFieldCustomizerStrings": "lib/extensions/turnAroundDate/loc/{locale}.js"
+    "TurnAroundDateFieldCustomizerStrings": "lib/extensions/turnAroundDate/loc/{locale}.js",
+    "ReportDashboardWebPartStrings": "lib/webparts/reportDashboard/loc/{locale}.js"
   }
 }

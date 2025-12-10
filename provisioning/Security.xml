@@ -1,0 +1,151 @@
+<!-- ===============================================================================
+     Security Configuration for Legal Workflow System
+     - Custom Permission Level: Contributor Without Delete
+     - SharePoint Groups: 6 role-based groups
+     =============================================================================== -->
+
+<pnp:Security xmlns:pnp="http://schemas.dev.office.com/PnP/2024/03/ProvisioningSchema">
+π
+  <!-- Custom Permission Levels -->
+  <pnp:SiteSecurityPermissions>
+
+    <!-- Contributor Without Delete: All Contribute permissions except delete -->
+    <pnp:RoleDefinition Name="Contributor Without Delete"
+                        Description="Can view, add, and edit list items and documents. Cannot delete items or versions.">
+      <pnp:Permissions>
+        <!-- List Permissions -->
+        ViewListItems,
+        AddListItems,
+        EditListItems,
+        <!-- DeleteListItems removed -->
+        OpenItems,
+        ViewVersions,
+        <!-- DeleteVersions removed -->
+
+        <!-- Site Permissions -->
+        ViewFormPages,
+        Open,
+        ViewPages,
+        BrowseDirectories,
+        BrowseUserInfo,
+        UseClientIntegration,
+        UseRemoteAPIs,
+        CreateAlerts,
+        EditMyUserInfo,
+
+        <!-- Personal View Permissions -->
+        ManagePersonalViews,
+        AddDelPrivateWebParts,
+        UpdatePersonalWebParts
+      </pnp:Permissions>
+    </pnp:RoleDefinition>
+
+    <!-- Admin Without Delete: Full list management except delete items/versions -->
+    <pnp:RoleDefinition Name="Admin Without Delete"
+                        Description="Can manage lists, views, and all items. Cannot delete items or versions. For audit compliance on Requests list.">
+      <pnp:Permissions>
+        <!-- List Permissions -->
+        ViewListItems,
+        AddListItems,
+        EditListItems,
+        <!-- DeleteListItems removed for audit compliance -->
+        OpenItems,
+        ViewVersions,
+        <!-- DeleteVersions removed for audit compliance -->
+        ApproveItems,
+
+        <!-- List Management -->
+        ManageLists,
+        CancelCheckout,
+
+        <!-- Site Permissions -->
+        ViewFormPages,
+        Open,
+        ViewPages,
+        BrowseDirectories,
+        BrowseUserInfo,
+        UseClientIntegration,
+        UseRemoteAPIs,
+        CreateAlerts,
+        EditMyUserInfo,
+
+        <!-- Personal View Permissions -->
+        ManagePersonalViews,
+        AddDelPrivateWebParts,
+        UpdatePersonalWebParts
+      </pnp:Permissions>
+    </pnp:RoleDefinition>
+
+  </pnp:SiteSecurityPermissions>
+
+  <!-- SharePoint Groups -->
+  <pnp:SiteGroups>
+
+    <!-- LW - Submitters: Users who can submit legal review requests -->
+    <pnp:SiteGroup Title="LW - Submitters"
+                   Description="Users who can submit legal review requests"
+                   Owner="LW - Admin"
+                   AllowMembersEditMembership="false"
+                   AllowRequestToJoinLeave="false"
+                   AutoAcceptRequestToJoinLeave="false"
+                   OnlyAllowMembersViewMembership="true">
+      <!-- Members added manually or via AD sync -->
+    </pnp:SiteGroup>
+
+    <!-- LW - Legal Admin: Legal administrators who can manage all requests -->
+    <pnp:SiteGroup Title="LW - Legal Admin"
+                   Description="Legal administrators who can triage and manage all requests"
+                   Owner="LW - Admin"
+                   AllowMembersEditMembership="false"
+                   AllowRequestToJoinLeave="false"
+                   AutoAcceptRequestToJoinLeave="false"
+                   OnlyAllowMembersViewMembership="true">
+      <!-- Members added manually -->
+    </pnp:SiteGroup>
+
+    <!-- LW - Attorney Assigner: Committee members who can assign attorneys -->
+    <pnp:SiteGroup Title="LW - Attorney Assigner"
+                   Description="Committee members who can assign attorneys to requests"
+                   Owner="LW - Admin"
+                   AllowMembersEditMembership="false"
+                   AllowRequestToJoinLeave="false"
+                   AutoAcceptRequestToJoinLeave="false"
+                   OnlyAllowMembersViewMembership="true">
+      <!-- Members added manually -->
+    </pnp:SiteGroup>
+
+    <!-- LW - Attorneys: Attorneys who can review and approve legal requests -->
+    <pnp:SiteGroup Title="LW - Attorneys"
+                   Description="Attorneys who can review and approve assigned legal requests"
+                   Owner="LW - Admin"
+                   AllowMembersEditMembership="false"
+                   AllowRequestToJoinLeave="false"
+                   AutoAcceptRequestToJoinLeave="false"
+                   OnlyAllowMembersViewMembership="true">
+      <!-- Members added manually -->
+    </pnp:SiteGroup>
+
+    <!-- LW - Compliance Users: Compliance reviewers -->
+    <pnp:SiteGroup Title="LW - Compliance Users"
+                   Description="Compliance users who can review compliance aspects of requests"
+                   Owner="LW - Admin"
+                   AllowMembersEditMembership="false"
+                   AllowRequestToJoinLeave="false"
+                   AutoAcceptRequestToJoinLeave="false"
+                   OnlyAllowMembersViewMembership="true">
+      <!-- Members added manually -->
+    </pnp:SiteGroup>
+
+    <!-- LW - Admin: System administrators with full access -->
+    <pnp:SiteGroup Title="LW - Admin"
+                   Description="System administrators with full access to Legal Workflow"
+                   AllowMembersEditMembership="true"
+                   AllowRequestToJoinLeave="false"
+                   AutoAcceptRequestToJoinLeave="false"
+                   OnlyAllowMembersViewMembership="true">
+      <!-- Members added manually -->
+    </pnp:SiteGroup>
+
+  </pnp:SiteGroups>
+
+</pnp:Security>

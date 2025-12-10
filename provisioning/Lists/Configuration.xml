@@ -1,0 +1,196 @@
+<!-- ===============================================================================
+     Configuration List
+     Application configuration key-value store
+
+     Fields:
+     - Title (auto-created): Configuration key name
+     - ConfigValue: Configuration value (string)
+     - Description: Description of the configuration
+     - IsActive: Whether configuration is active
+     - Category: Configuration category grouping
+     =============================================================================== -->
+
+<pnp:Lists xmlns:pnp="http://schemas.dev.office.com/PnP/2024/03/ProvisioningSchema">
+
+  <pnp:ListInstance Title="Configuration"
+                    Description="Application configuration settings"
+                    TemplateType="100"
+                    Url="Lists/Configuration"
+                    OnQuickLaunch="true"
+                    EnableVersioning="true"
+                    EnableMinorVersions="false"
+                    EnableAttachments="false">
+
+    <!-- List Fields -->
+    <pnp:Fields>
+
+      <!-- Config Value (Text) -->
+      <Field Type="Text"
+             DisplayName="Config Value"
+             Name="ConfigValue"
+             ID="{B1234567-0001-0001-0001-000000000001}"
+             Required="FALSE"
+             MaxLength="255"
+             Group="Configuration" />
+
+      <!-- Description (Multi-line text) -->
+      <Field Type="Note"
+             DisplayName="Description"
+             Name="Description"
+             ID="{B1234567-0001-0001-0001-000000000002}"
+             Required="FALSE"
+             RichText="FALSE"
+             NumLines="6"
+             Group="Configuration" />
+
+      <!-- Is Active (Boolean) -->
+      <Field Type="Boolean"
+             DisplayName="Is Active"
+             Name="IsActive"
+             ID="{B1234567-0001-0001-0001-000000000003}"
+             Required="FALSE"
+             Group="Configuration">
+        <Default>1</Default>
+      </Field>
+
+      <!-- Category (Text for grouping) -->
+      <Field Type="Text"
+             DisplayName="Category"
+             Name="Category"
+             ID="{B1234567-0001-0001-0001-000000000004}"
+             Required="FALSE"
+             MaxLength="100"
+             Group="Configuration" />
+
+    </pnp:Fields>
+
+    <!-- Views -->
+    <pnp:Views>
+
+      <!-- All Items View -->
+      <View Name="All Items"
+            DefaultView="TRUE"
+            MobileView="TRUE"
+            MobileDefaultView="TRUE"
+            Type="HTML"
+            DisplayName="All Items"
+            Url="{site}/Lists/Configuration/AllItems.aspx"
+            Level="1"
+            BaseViewID="1"
+            ContentTypeID="0x">
+        <Query>
+          <OrderBy>
+            <FieldRef Name="Category" Ascending="TRUE" />
+            <FieldRef Name="Title" Ascending="TRUE" />
+          </OrderBy>
+        </Query>
+        <ViewFields>
+          <FieldRef Name="LinkTitle" />
+          <FieldRef Name="ConfigValue" />
+          <FieldRef Name="Category" />
+          <FieldRef Name="IsActive" />
+          <FieldRef Name="Description" />
+          <FieldRef Name="Modified" />
+        </ViewFields>
+        <RowLimit Paged="TRUE">30</RowLimit>
+        <JSLink>clienttemplates.js</JSLink>
+      </View>
+
+      <!-- Active Configs Only -->
+      <View Name="Active Configurations"
+            MobileView="FALSE"
+            Type="HTML"
+            DisplayName="Active Configurations"
+            Url="{site}/Lists/Configuration/Active.aspx"
+            Level="1"
+            BaseViewID="2"
+            ContentTypeID="0x">
+        <Query>
+          <Where>
+            <Eq>
+              <FieldRef Name="IsActive" />
+              <Value Type="Boolean">1</Value>
+            </Eq>
+          </Where>
+          <OrderBy>
+            <FieldRef Name="Category" Ascending="TRUE" />
+            <FieldRef Name="Title" Ascending="TRUE" />
+          </OrderBy>
+        </Query>
+        <ViewFields>
+          <FieldRef Name="LinkTitle" />
+          <FieldRef Name="ConfigValue" />
+          <FieldRef Name="Category" />
+          <FieldRef Name="Description" />
+          <FieldRef Name="Modified" />
+        </ViewFields>
+        <RowLimit Paged="TRUE">30</RowLimit>
+        <JSLink>clienttemplates.js</JSLink>
+      </View>
+
+    </pnp:Views>
+
+    <!-- Default Configuration Items -->
+    <pnp:DataRows>
+      <pnp:DataRow>
+        <pnp:DataValue FieldName="Title">azureFunctionUrl</pnp:DataValue>
+        <pnp:DataValue FieldName="ConfigValue">https://your-function.azurewebsites.net/api</pnp:DataValue>
+        <pnp:DataValue FieldName="Description">Azure Function endpoint for permission management</pnp:DataValue>
+        <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+        <pnp:DataValue FieldName="Category">Integration</pnp:DataValue>
+      </pnp:DataRow>
+      <pnp:DataRow>
+        <pnp:DataValue FieldName="Title">maxFileSizeMB</pnp:DataValue>
+        <pnp:DataValue FieldName="ConfigValue">250</pnp:DataValue>
+        <pnp:DataValue FieldName="Description">Maximum file upload size in megabytes</pnp:DataValue>
+        <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+        <pnp:DataValue FieldName="Category">Limits</pnp:DataValue>
+      </pnp:DataRow>
+      <pnp:DataRow>
+        <pnp:DataValue FieldName="Title">enablePhase2RequestTypes</pnp:DataValue>
+        <pnp:DataValue FieldName="ConfigValue">false</pnp:DataValue>
+        <pnp:DataValue FieldName="Description">Enable Phase 2 request types (General Review, IMA Review)</pnp:DataValue>
+        <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+        <pnp:DataValue FieldName="Category">Features</pnp:DataValue>
+      </pnp:DataRow>
+      <pnp:DataRow>
+        <pnp:DataValue FieldName="Title">WorkingHoursStart</pnp:DataValue>
+        <pnp:DataValue FieldName="ConfigValue">8</pnp:DataValue>
+        <pnp:DataValue FieldName="Description">Business day start hour (0-23, PST/PDT timezone). Default: 8 AM</pnp:DataValue>
+        <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+        <pnp:DataValue FieldName="Category">TimeTracking</pnp:DataValue>
+      </pnp:DataRow>
+      <pnp:DataRow>
+        <pnp:DataValue FieldName="Title">WorkingHoursEnd</pnp:DataValue>
+        <pnp:DataValue FieldName="ConfigValue">17</pnp:DataValue>
+        <pnp:DataValue FieldName="Description">Business day end hour (0-23, PST/PDT timezone). Default: 5 PM</pnp:DataValue>
+        <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+        <pnp:DataValue FieldName="Category">TimeTracking</pnp:DataValue>
+      </pnp:DataRow>
+      <pnp:DataRow>
+        <pnp:DataValue FieldName="Title">WorkingDays</pnp:DataValue>
+        <pnp:DataValue FieldName="ConfigValue">1,2,3,4,5</pnp:DataValue>
+        <pnp:DataValue FieldName="Description">Working days of week (1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday). Weekends excluded.</pnp:DataValue>
+        <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+        <pnp:DataValue FieldName="Category">TimeTracking</pnp:DataValue>
+      </pnp:DataRow>
+    </pnp:DataRows>
+
+    <!-- Security: Break Inheritance - Admin Full Control, Others Read -->
+    <pnp:Security BreakRoleInheritance="true" CopyRoleAssignments="false" ClearSubscopes="true">
+      <pnp:RoleAssignments>
+        <!-- LW - Admin: Full Control for configuration management -->
+        <pnp:RoleAssignment Principal="LW - Admin" RoleDefinition="Full Control" />
+
+        <!-- All other groups: Read only -->
+        <pnp:RoleAssignment Principal="LW - Legal Admin" RoleDefinition="Read" />
+        <pnp:RoleAssignment Principal="LW - Attorney Assigner" RoleDefinition="Read" />
+        <pnp:RoleAssignment Principal="LW - Attorneys" RoleDefinition="Read" />
+        <pnp:RoleAssignment Principal="LW - Compliance Users" RoleDefinition="Read" />
+        <pnp:RoleAssignment Principal="LW - Submitters" RoleDefinition="Read" />
+      </pnp:RoleAssignments>
+    </pnp:Security>
+
+  </pnp:ListInstance>
+
+</pnp:Lists>

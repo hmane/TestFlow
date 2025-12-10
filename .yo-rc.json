@@ -13,7 +13,6 @@
     "solutionShortDescription": "legal-workflow description",
     "skipFeatureDeployment": true,
     "isDomainIsolated": false,
-    "componentType": "extension",
-    "extensionType": "FieldCustomizer"
+    "componentType": "webpart"
   }
 }

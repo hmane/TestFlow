@@ -32,6 +32,62 @@ import type {
 import { ApprovalType } from '../types/approvalTypes';
 
 /**
+ * Process pending document operations after a successful save
+ * Handles uploads, deletes, and renames, then reloads documents
+ * @param itemId - The request item ID
+ */
+async function processDocumentOperationsAfterSave(itemId: number): Promise<void> {
+  const documentsStore = useDocumentsStore.getState();
+
+  if (!documentsStore.hasPendingOperations()) {
+    return;
+  }
+
+  SPContext.logger.info('Processing pending document operations', { itemId });
+
+  try {
+    // 1. Upload staged files using documentsStore (with progress tracking)
+    if (documentsStore.stagedFiles.length > 0) {
+      await documentsStore.uploadPendingFiles(
+        itemId,
+        (fileId, progress, status) => {
+          SPContext.logger.info('Upload progress', { fileId, progress, status });
+        }
+      );
+    }
+
+    // 2. Process deletes and renames
+    const filesToDelete = documentsStore.filesToDelete;
+    const filesToRename = documentsStore.filesToRename.map(rename => ({
+      file: rename.file,
+      newName: rename.newName,
+    }));
+
+    if (filesToDelete.length > 0 || filesToRename.length > 0) {
+      const docResults = await processPendingDocuments(
+        itemId,
+        [], // Empty array - uploads already handled
+        filesToDelete,
+        filesToRename
+      );
+
+      SPContext.logger.success('Document operations completed', docResults);
+    }
+
+    // Clear pending operations after successful processing
+    documentsStore.clearPendingOperations();
+
+    // Reload documents from SharePoint to display uploaded files
+    await documentsStore.loadAllDocuments(itemId);
+    SPContext.logger.info('Documents reloaded after upload', { itemId });
+  } catch (docError) {
+    // Log error but don't fail the entire save
+    SPContext.logger.error('Document processing failed (request was saved)', docError, { itemId });
+    // Note: We don't throw here because the request was successfully saved
+  }
+}
+
+/**
  * Request store state interface
  */
 interface IRequestState {
@@ -363,55 +419,7 @@ export const useRequestStore = create<IRequestState>()(
           }
 
           // Process pending document operations after successful save
-          const documentsStore = useDocumentsStore.getState();
-          if (documentsStore.hasPendingOperations()) {
-            SPContext.logger.info('Processing pending document operations', {
-              itemId: result.itemId,
-            });
-
-            try {
-              // 1. Upload staged files using documentsStore (with progress tracking)
-              if (documentsStore.stagedFiles.length > 0) {
-                await documentsStore.uploadPendingFiles(
-                  result.itemId,
-                  (fileId, progress, status) => {
-                    SPContext.logger.info('Upload progress', { fileId, progress, status });
-                  }
-                );
-              }
-
-              // 2. Process deletes and renames
-              const filesToDelete = documentsStore.filesToDelete;
-              const filesToRename = documentsStore.filesToRename.map(rename => ({
-                file: rename.file,
-                newName: rename.newName,
-              }));
-
-              if (filesToDelete.length > 0 || filesToRename.length > 0) {
-                const docResults = await processPendingDocuments(
-                  result.itemId,
-                  [], // Empty array - uploads already handled
-                  filesToDelete,
-                  filesToRename
-                );
-
-                SPContext.logger.success('Document operations completed', docResults);
-              }
-
-              // Clear pending operations after successful processing
-              documentsStore.clearPendingOperations();
-
-              // Reload documents from SharePoint to display uploaded files
-              await documentsStore.loadAllDocuments(result.itemId);
-              SPContext.logger.info('Documents reloaded after upload', { itemId: result.itemId });
-            } catch (docError) {
-              // Log error but don't fail the entire save
-              SPContext.logger.error('Document processing failed (request was saved)', docError, {
-                itemId: result.itemId,
-              });
-              // Note: We don't throw here because the request was successfully saved
-            }
-          }
+          await processDocumentOperationsAfterSave(result.itemId);
 
           return result.itemId;
 
@@ -517,55 +525,7 @@ export const useRequestStore = create<IRequestState>()(
           }
 
           // Process pending document operations after successful save
-          const documentsStore = useDocumentsStore.getState();
-          if (documentsStore.hasPendingOperations()) {
-            SPContext.logger.info('Processing pending document operations', {
-              itemId: state.itemId,
-            });
-
-            try {
-              // 1. Upload staged files using documentsStore (with progress tracking)
-              if (documentsStore.stagedFiles.length > 0) {
-                await documentsStore.uploadPendingFiles(
-                  state.itemId,
-                  (fileId, progress, status) => {
-                    SPContext.logger.info('Upload progress', { fileId, progress, status });
-                  }
-                );
-              }
-
-              // 2. Process deletes and renames
-              const filesToDelete = documentsStore.filesToDelete;
-              const filesToRename = documentsStore.filesToRename.map(rename => ({
-                file: rename.file,
-                newName: rename.newName,
-              }));
-
-              if (filesToDelete.length > 0 || filesToRename.length > 0) {
-                const docResults = await processPendingDocuments(
-                  state.itemId,
-                  [], // Empty array - uploads already handled
-                  filesToDelete,
-                  filesToRename
-                );
-
-                SPContext.logger.success('Document operations completed', docResults);
-              }
-
-              // Clear pending operations after successful processing
-              documentsStore.clearPendingOperations();
-
-              // Reload documents from SharePoint to display uploaded files
-              await documentsStore.loadAllDocuments(state.itemId);
-              SPContext.logger.info('Documents reloaded after upload', { itemId: state.itemId });
-            } catch (docError) {
-              // Log error but don't fail the entire save
-              SPContext.logger.error('Document processing failed (request was saved)', docError, {
-                itemId: state.itemId,
-              });
-              // Note: We don't throw here because the request was successfully saved
-            }
-          }
+          await processDocumentOperationsAfterSave(state.itemId);
 
         } catch (error: unknown) {
           const message = error instanceof Error ? error.message : String(error);

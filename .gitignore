@@ -18,8 +18,10 @@ temp
 # Coverage directory used by tools like istanbul
 coverage
 
-# OSX
+# macOS
 .DS_Store
+*.DS_Store
+**/.DS_Store
 
 # Visual Studio files
 .ntvs_analysis.dat
@@ -27,8 +29,25 @@ coverage
 bin
 obj
 
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+.vscode/settings.json
+.vscode/launch.json
+
 # Resx Generated Code
 *.resx.ts
 
 # Styles Generated Code
 *.scss.ts
+
+# Backup and temporary files
+*-BACKUP.*
+*-backup.*
+*-Full.*
+*.bak
+*.tmp
+*.old
+*~

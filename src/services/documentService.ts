@@ -36,31 +36,18 @@ const DEFAULT_LIBRARY_TITLE = Lists.RequestDocuments.Title;
 export function getDocumentFolderPath(itemId: number, documentType: DocumentType | string): string {
   const normalizedType = String(documentType);
 
-  SPContext.logger.info('getDocumentFolderPath called', {
-    itemId,
-    documentType,
-    normalizedType,
-    documentTypeOf: typeof documentType,
-  });
-
   // Attachments go to root level
   if (normalizedType === DocumentType.Review || normalizedType === 'Review') {
-    const path = `${itemId}`;
-    SPContext.logger.info('Review folder path (root level)', { path, documentType });
-    return path;
+    return `${itemId}`;
   }
 
   if (normalizedType === DocumentType.Supplemental || normalizedType === 'Supplemental') {
-    const path = `${itemId}`;
-    SPContext.logger.info('Supplemental folder path (root level)', { path, documentType });
-    return path;
+    return `${itemId}`;
   }
 
   // Approvals go to subfolders
   const approvalFolder = getApprovalFolderName(normalizedType);
-  const path = `${itemId}/${approvalFolder}`;
-  SPContext.logger.info('Approval folder path (subfolder)', { path, documentType, approvalFolder });
-  return path;
+  return `${itemId}/${approvalFolder}`;
 }
 
 /**
@@ -70,14 +57,6 @@ export function getDocumentFolderPath(itemId: number, documentType: DocumentType
 function getApprovalFolderName(documentType: DocumentType | string): string {
   // Normalize string to DocumentType enum value
   const normalizedType = String(documentType);
-
-  SPContext.logger.info('getApprovalFolderName called', {
-    documentType,
-    normalizedType,
-    documentTypeOf: typeof documentType,
-    expectedCommunicationApproval: DocumentType.CommunicationApproval,
-    matches: normalizedType === DocumentType.CommunicationApproval,
-  });
 
   // Use string comparison for more robust matching
   if (normalizedType === DocumentType.CommunicationApproval || normalizedType === 'Communication Approval') {

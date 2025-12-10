@@ -1,0 +1,152 @@
+<!-- Complete Requests List Schema - All 88 Fields -->
+<pnp:Lists xmlns:pnp="http://schemas.dev.office.com/PnP/2024/03/ProvisioningSchema">
+  <pnp:ListInstance Title="Requests"
+                    Description="Legal review requests with workflow tracking"
+                    TemplateType="100"
+                    Url="Lists/Requests"
+                    OnQuickLaunch="true"
+                    EnableVersioning="true"
+                    EnableMinorVersions="false"
+                    EnableAttachments="false"
+                    EnableFolderCreation="false"
+                    DisableGridEditing="true">
+    <pnp:Fields>
+      <!-- System -->
+      <Field Type="Text" Name="Title" DisplayName="Request ID" Required="TRUE" MaxLength="255" Group="System" ID="{fa564e0f-0c70-4ab9-b863-0177e6ddd247}" ClientSideComponentId="9e11eae7-2de7-45de-b558-0976203f13aa" />
+
+      <!-- Request Information (17) -->
+      <Field Type="Text" Name="Department" DisplayName="Department" MaxLength="100" Group="Request Information" ID="{A1234567-0001-0001-0001-000000000001}" />
+      <Field Type="Choice" Name="RequestType" DisplayName="Request Type" Required="TRUE" Group="Request Information" ID="{A1234567-0001-0001-0001-000000000002}">
+        <CHOICES><CHOICE>Communication</CHOICE><CHOICE>General Review</CHOICE><CHOICE>IMA Review</CHOICE></CHOICES>
+        <Default>Communication</Default>
+      </Field>
+      <Field Type="Text" Name="RequestTitle" DisplayName="Request Title" Required="TRUE" MaxLength="255" Group="Request Information" ID="{A1234567-0001-0001-0001-000000000003}" />
+      <Field Type="Note" Name="Purpose" DisplayName="Purpose" Required="TRUE" RichText="FALSE" NumLines="6" Group="Request Information" ID="{A1234567-0001-0001-0001-000000000004}" />
+      <Field Type="Choice" Name="SubmissionType" DisplayName="Submission Type" Required="TRUE" Group="Request Information" ID="{A1234567-0001-0001-0001-000000000005}">
+        <CHOICES><CHOICE>New</CHOICE><CHOICE>Material Updates</CHOICE></CHOICES>
+      </Field>
+      <Field Type="Text" Name="SubmissionItem" DisplayName="Submission Item" Required="TRUE" MaxLength="255" Group="Request Information" ID="{A1234567-0001-0001-0001-000000000006}" />
+      <Field Type="MultiChoice" Name="DistributionMethod" DisplayName="Distribution Method" Group="Request Information" ID="{A1234567-0001-0001-0001-000000000007}">
+        <CHOICES>
+          <CHOICE>Dodge &amp; Cox Website - U.S.</CHOICE>
+          <CHOICE>Dodge &amp; Cox Website - Non-U.S.</CHOICE>
+          <CHOICE>Third Party Website</CHOICE>
+          <CHOICE>Email / Mail</CHOICE>
+          <CHOICE>Mobile App</CHOICE>
+          <CHOICE>Display Card / Signage</CHOICE>
+          <CHOICE>Hangout</CHOICE>
+          <CHOICE>Live - Talking Points</CHOICE>
+          <CHOICE>Social Media</CHOICE>
+        </CHOICES>
+      </Field>
+      <Field Type="DateTime" Name="TargetReturnDate" DisplayName="Target Return Date" Required="TRUE" Format="DateTime" Group="Request Information" ID="{A1234567-0001-0001-0001-000000000008}" ClientSideComponentId="2836aed3-5ad3-4495-a1b0-ff3924feec4e" />
+      <Field Type="Boolean" Name="IsRushRequest" DisplayName="Is Rush Request" Group="Request Information" ID="{A1234567-0001-0001-0001-000000000009}"><Default>0</Default></Field>
+      <Field Type="Note" Name="RushRationale" DisplayName="Rush Rationale" RichText="FALSE" NumLines="6" Group="Request Information" ID="{A1234567-0001-0001-0001-00000000000A}" />
+      <Field Type="Choice" Name="ReviewAudience" DisplayName="Review Audience" Required="TRUE" Group="Request Information" ID="{A1234567-0001-0001-0001-00000000000B}">
+        <CHOICES><CHOICE>Legal</CHOICE><CHOICE>Compliance</CHOICE><CHOICE>Both</CHOICE></CHOICES>
+      </Field>
+      <Field Type="LookupMulti" Name="PriorSubmissions" DisplayName="Prior Submissions" List="Lists/Requests" ShowField="Title" Mult="TRUE" Group="Request Information" ID="{A1234567-0001-0001-0001-00000000000C}" />
+      <Field Type="Note" Name="PriorSubmissionNotes" DisplayName="Prior Submission Notes" RichText="FALSE" NumLines="6" Group="Request Information" ID="{A1234567-0001-0001-0001-00000000000D}" />
+      <Field Type="DateTime" Name="DateOfFirstUse" DisplayName="Date Of First Use" Format="DateTime" Group="Request Information" ID="{A1234567-0001-0001-0001-00000000000E}" />
+      <Field Type="UserMulti" Name="AdditionalParty" DisplayName="Additional Party" UserSelectionMode="PeopleOnly" Mult="TRUE" Group="Request Information" ID="{A1234567-0001-0001-0001-00000000000F}" />
+
+      <!-- Approvals (18) -->
+      <Field Type="Boolean" Name="RequiresCommunicationsApproval" DisplayName="Requires Communications Approval" Group="Approvals" ID="{A1234567-0002-0001-0001-000000000010}"><Default>0</Default></Field>
+      <Field Type="DateTime" Name="CommunicationsApprovalDate" DisplayName="Communications Approval Date" Format="DateOnly" Group="Approvals" ID="{A1234567-0002-0001-0001-000000000011}" />
+      <Field Type="User" Name="CommunicationsApprover" DisplayName="Communications Approver" UserSelectionMode="PeopleOnly" Group="Approvals" ID="{A1234567-0002-0001-0001-000000000012}" />
+      <Field Type="Boolean" Name="HasPortfolioManagerApproval" DisplayName="Has Portfolio Manager Approval" Group="Approvals" ID="{A1234567-0002-0001-0001-000000000013}"><Default>0</Default></Field>
+      <Field Type="DateTime" Name="PortfolioManagerApprovalDate" DisplayName="Portfolio Manager Approval Date" Format="DateOnly" Group="Approvals" ID="{A1234567-0002-0001-0001-000000000014}" />
+      <Field Type="User" Name="PortfolioManager" DisplayName="Portfolio Manager" UserSelectionMode="PeopleOnly" Group="Approvals" ID="{A1234567-0002-0001-0001-000000000015}" />
+      <Field Type="Boolean" Name="HasResearchAnalystApproval" DisplayName="Has Research Analyst Approval" Group="Approvals" ID="{A1234567-0002-0001-0001-000000000016}"><Default>0</Default></Field>
+      <Field Type="DateTime" Name="ResearchAnalystApprovalDate" DisplayName="Research Analyst Approval Date" Format="DateOnly" Group="Approvals" ID="{A1234567-0002-0001-0001-000000000017}" />
+      <Field Type="User" Name="ResearchAnalyst" DisplayName="Research Analyst" UserSelectionMode="PeopleOnly" Group="Approvals" ID="{A1234567-0002-0001-0001-000000000018}" />
+      <Field Type="Boolean" Name="HasSMEApproval" DisplayName="Has SME Approval" Group="Approvals" ID="{A1234567-0002-0001-0001-000000000019}"><Default>0</Default></Field>
+      <Field Type="DateTime" Name="SMEApprovalDate" DisplayName="SME Approval Date" Format="DateOnly" Group="Approvals" ID="{A1234567-0002-0001-0001-00000000001A}" />
+      <Field Type="User" Name="SubjectMatterExpert" DisplayName="Subject Matter Expert" UserSelectionMode="PeopleOnly" Group="Approvals" ID="{A1234567-0002-0001-0001-00000000001B}" />
+      <Field Type="Boolean" Name="HasPerformanceApproval" DisplayName="Has Performance Approval" Group="Approvals" ID="{A1234567-0002-0001-0001-00000000001C}"><Default>0</Default></Field>
+      <Field Type="DateTime" Name="PerformanceApprovalDate" DisplayName="Performance Approval Date" Format="DateOnly" Group="Approvals" ID="{A1234567-0002-0001-0001-00000000001D}" />
+      <Field Type="User" Name="PerformanceApprover" DisplayName="Performance Approver" UserSelectionMode="PeopleOnly" Group="Approvals" ID="{A1234567-0002-0001-0001-00000000001E}" />
+      <Field Type="Boolean" Name="HasOtherApproval" DisplayName="Has Other Approval" Group="Approvals" ID="{A1234567-0002-0001-0001-00000000001F}"><Default>0</Default></Field>
+      <Field Type="Text" Name="OtherApprovalTitle" DisplayName="Other Approval Title" MaxLength="100" Group="Approvals" ID="{A1234567-0002-0001-0001-000000000020}" />
+      <Field Type="DateTime" Name="OtherApprovalDate" DisplayName="Other Approval Date" Format="DateOnly" Group="Approvals" ID="{A1234567-0002-0001-0001-000000000021}" />
+      <Field Type="User" Name="OtherApproval" DisplayName="Other Approval" UserSelectionMode="PeopleOnly" Group="Approvals" ID="{A1234567-0002-0001-0001-000000000022}" />
+
+      <!-- Legal Intake (2) -->
+      <Field Type="User" Name="Attorney" DisplayName="Attorney" UserSelectionMode="PeopleOnly" Group="Legal Intake" ID="{A1234567-0003-0001-0001-000000000030}" />
+      <Field Type="Note" Name="AttorneyAssignNotes" DisplayName="Attorney Assign Notes" RichText="FALSE" AppendOnly="TRUE" NumLines="6" Group="Legal Intake" ID="{A1234567-0003-0001-0001-000000000031}" />
+
+      <!-- Legal Review (7 including 2 NEW) -->
+      <Field Type="Choice" Name="LegalReviewStatus" DisplayName="Legal Review Status" Group="Legal Review" ID="{A1234567-0004-0001-0001-000000000040}">
+        <CHOICES><CHOICE>Not Required</CHOICE><CHOICE>Not Started</CHOICE><CHOICE>In Progress</CHOICE><CHOICE>Waiting On Submitter</CHOICE><CHOICE>Waiting On Attorney</CHOICE><CHOICE>Completed</CHOICE></CHOICES>
+        <Default>Not Started</Default>
+      </Field>
+      <Field Type="DateTime" Name="LegalStatusUpdatedOn" DisplayName="Legal Status Updated On" Format="DateTime" Group="Legal Review" ID="{A1234567-0004-0001-0001-000000000041}" />
+      <Field Type="User" Name="LegalStatusUpdatedBy" DisplayName="Legal Status Updated By" UserSelectionMode="PeopleOnly" Group="Legal Review" ID="{A1234567-0004-0001-0001-000000000042}" />
+      <Field Type="Choice" Name="LegalReviewOutcome" DisplayName="Legal Review Outcome" Group="Legal Review" ID="{A1234567-0004-0001-0001-000000000043}">
+        <CHOICES><CHOICE>Approved</CHOICE><CHOICE>Approved With Comments</CHOICE><CHOICE>Respond To Comments And Resubmit</CHOICE><CHOICE>Not Approved</CHOICE></CHOICES>
+      </Field>
+      <Field Type="Note" Name="LegalReviewNotes" DisplayName="Legal Review Notes" RichText="FALSE" AppendOnly="TRUE" NumLines="6" Group="Legal Review" ID="{A1234567-0004-0001-0001-000000000044}" />
+      <Field Type="DateTime" Name="LegalReviewCompletedOn" DisplayName="Legal Review Completed On" Format="DateTime" Group="Legal Review" ID="{A1234567-0004-0001-0001-000000000045}" />
+      <Field Type="User" Name="LegalReviewCompletedBy" DisplayName="Legal Review Completed By" UserSelectionMode="PeopleOnly" Group="Legal Review" ID="{A1234567-0004-0001-0001-000000000046}" />
+
+      <!-- Compliance Review (9 including 2 NEW) -->
+      <Field Type="Choice" Name="ComplianceReviewStatus" DisplayName="Compliance Review Status" Group="Compliance Review" ID="{A1234567-0005-0001-0001-000000000050}">
+        <CHOICES><CHOICE>Not Required</CHOICE><CHOICE>Not Started</CHOICE><CHOICE>In Progress</CHOICE><CHOICE>Waiting On Submitter</CHOICE><CHOICE>Waiting On Compliance</CHOICE><CHOICE>Completed</CHOICE></CHOICES>
+        <Default>Not Started</Default>
+      </Field>
+      <Field Type="DateTime" Name="ComplianceStatusUpdatedOn" DisplayName="Compliance Status Updated On" Format="DateTime" Group="Compliance Review" ID="{A1234567-0005-0001-0001-000000000051}" />
+      <Field Type="User" Name="ComplianceStatusUpdatedBy" DisplayName="Compliance Status Updated By" UserSelectionMode="PeopleOnly" Group="Compliance Review" ID="{A1234567-0005-0001-0001-000000000052}" />
+      <Field Type="Choice" Name="ComplianceReviewOutcome" DisplayName="Compliance Review Outcome" Group="Compliance Review" ID="{A1234567-0005-0001-0001-000000000053}">
+        <CHOICES><CHOICE>Approved</CHOICE><CHOICE>Approved With Comments</CHOICE><CHOICE>Respond To Comments And Resubmit</CHOICE><CHOICE>Not Approved</CHOICE></CHOICES>
+      </Field>
+      <Field Type="Note" Name="ComplianceReviewNotes" DisplayName="Compliance Review Notes" RichText="FALSE" AppendOnly="TRUE" NumLines="6" Group="Compliance Review" ID="{A1234567-0005-0001-0001-000000000054}" />
+      <Field Type="Boolean" Name="IsForesideReviewRequired" DisplayName="Is Foreside Review Required" Group="Compliance Review" ID="{A1234567-0005-0001-0001-000000000055}"><Default>0</Default></Field>
+      <Field Type="Boolean" Name="IsRetailUse" DisplayName="Is Retail Use" Group="Compliance Review" ID="{A1234567-0005-0001-0001-000000000056}"><Default>0</Default></Field>
+      <Field Type="DateTime" Name="ComplianceReviewCompletedOn" DisplayName="Compliance Review Completed On" Format="DateTime" Group="Compliance Review" ID="{A1234567-0005-0001-0001-000000000057}" />
+      <Field Type="User" Name="ComplianceReviewCompletedBy" DisplayName="Compliance Review Completed By" UserSelectionMode="PeopleOnly" Group="Compliance Review" ID="{A1234567-0005-0001-0001-000000000058}" />
+
+      <!-- Closeout (1) -->
+      <Field Type="Text" Name="TrackingId" DisplayName="Tracking Id" MaxLength="50" Group="Closeout" ID="{A1234567-0006-0001-0001-000000000060}" />
+
+      <!-- System Tracking (18) -->
+      <Field Type="Choice" Name="Status" DisplayName="Status" Required="TRUE" Group="System Tracking" ID="{A1234567-0007-0001-0001-000000000070}" ClientSideComponentId="e55dcdea-8fa3-4708-9fbe-35c866026289">
+        <CHOICES><CHOICE>Draft</CHOICE><CHOICE>Legal Intake</CHOICE><CHOICE>Assign Attorney</CHOICE><CHOICE>In Review</CHOICE><CHOICE>Closeout</CHOICE><CHOICE>Completed</CHOICE><CHOICE>Cancelled</CHOICE><CHOICE>On Hold</CHOICE></CHOICES>
+        <Default>Draft</Default>
+      </Field>
+      <Field Type="User" Name="SubmittedBy" DisplayName="Submitted By" UserSelectionMode="PeopleOnly" Group="System Tracking" ID="{A1234567-0007-0001-0001-000000000071}" />
+      <Field Type="DateTime" Name="SubmittedOn" DisplayName="Submitted On" Format="DateTime" Group="System Tracking" ID="{A1234567-0007-0001-0001-000000000072}" />
+      <Field Type="User" Name="SubmittedToAssignAttorneyBy" DisplayName="Submitted To Assign Attorney By" UserSelectionMode="PeopleOnly" Group="System Tracking" ID="{A1234567-0007-0001-0001-000000000073}" />
+      <Field Type="DateTime" Name="SubmittedToAssignAttorneyOn" DisplayName="Submitted To Assign Attorney On" Format="DateTime" Group="System Tracking" ID="{A1234567-0007-0001-0001-000000000074}" />
+      <Field Type="User" Name="SubmittedForReviewBy" DisplayName="Submitted For Review By" UserSelectionMode="PeopleOnly" Group="System Tracking" ID="{A1234567-0007-0001-0001-000000000075}" />
+      <Field Type="DateTime" Name="SubmittedForReviewOn" DisplayName="Submitted For Review On" Format="DateTime" Group="System Tracking" ID="{A1234567-0007-0001-0001-000000000076}" />
+      <Field Type="User" Name="CloseoutBy" DisplayName="Closeout By" UserSelectionMode="PeopleOnly" Group="System Tracking" ID="{A1234567-0007-0001-0001-000000000077}" />
+      <Field Type="DateTime" Name="CloseoutOn" DisplayName="Closeout On" Format="DateTime" Group="System Tracking" ID="{A1234567-0007-0001-0001-000000000078}" />
+      <Field Type="User" Name="CancelledBy" DisplayName="Cancelled By" UserSelectionMode="PeopleOnly" Group="System Tracking" ID="{A1234567-0007-0001-0001-000000000079}" />
+      <Field Type="DateTime" Name="CancelledOn" DisplayName="Cancelled On" Format="DateTime" Group="System Tracking" ID="{A1234567-0007-0001-0001-00000000007A}" />
+      <Field Type="Note" Name="CancelReason" DisplayName="Cancel Reason" RichText="FALSE" NumLines="6" Group="System Tracking" ID="{A1234567-0007-0001-0001-00000000007B}" />
+      <Field Type="User" Name="OnHoldBy" DisplayName="On Hold By" UserSelectionMode="PeopleOnly" Group="System Tracking" ID="{A1234567-0007-0001-0001-00000000007C}" />
+      <Field Type="DateTime" Name="OnHoldSince" DisplayName="On Hold Since" Format="DateTime" Group="System Tracking" ID="{A1234567-0007-0001-0001-00000000007D}" />
+      <Field Type="Note" Name="OnHoldReason" DisplayName="On Hold Reason" RichText="FALSE" NumLines="6" Group="System Tracking" ID="{A1234567-0007-0001-0001-00000000007E}" />
+      <Field Type="Text" Name="PreviousStatus" DisplayName="Previous Status" MaxLength="50" Group="System Tracking" ID="{A1234567-0007-0001-0001-00000000007F}" />
+      <Field Type="Number" Name="TotalTurnaroundDays" DisplayName="Total Turnaround Days" Min="0" Max="365" Decimals="0" Group="System Tracking" ID="{A1234567-0007-0001-0001-000000000080}" />
+      <Field Type="DateTime" Name="ExpectedTurnaroundDate" DisplayName="Expected Turnaround Date" Format="DateOnly" Group="System Tracking" ID="{A1234567-0007-0001-0001-000000000081}" />
+
+      <!-- Time Tracking (10) -->
+      <Field Type="Number" Name="LegalIntakeLegalAdminHours" DisplayName="Legal Intake Legal Admin Hours" Min="0" Max="10000" Decimals="2" Group="Time Tracking" ID="{A1234567-0008-0001-0001-000000000001}" />
+      <Field Type="Number" Name="LegalIntakeSubmitterHours" DisplayName="Legal Intake Submitter Hours" Min="0" Max="10000" Decimals="2" Group="Time Tracking" ID="{A1234567-0008-0001-0001-000000000002}" />
+      <Field Type="Number" Name="LegalReviewAttorneyHours" DisplayName="Legal Review Attorney Hours" Min="0" Max="10000" Decimals="2" Group="Time Tracking" ID="{A1234567-0008-0001-0001-000000000003}" />
+      <Field Type="Number" Name="LegalReviewSubmitterHours" DisplayName="Legal Review Submitter Hours" Min="0" Max="10000" Decimals="2" Group="Time Tracking" ID="{A1234567-0008-0001-0001-000000000004}" />
+      <Field Type="Number" Name="ComplianceReviewReviewerHours" DisplayName="Compliance Review Reviewer Hours" Min="0" Max="10000" Decimals="2" Group="Time Tracking" ID="{A1234567-0008-0001-0001-000000000007}" />
+      <Field Type="Number" Name="ComplianceReviewSubmitterHours" DisplayName="Compliance Review Submitter Hours" Min="0" Max="10000" Decimals="2" Group="Time Tracking" ID="{A1234567-0008-0001-0001-000000000008}" />
+      <Field Type="Number" Name="CloseoutReviewerHours" DisplayName="Closeout Reviewer Hours" Min="0" Max="10000" Decimals="2" Group="Time Tracking" ID="{A1234567-0008-0001-0001-00000000000B}" />
+      <Field Type="Number" Name="CloseoutSubmitterHours" DisplayName="Closeout Submitter Hours" Min="0" Max="10000" Decimals="2" Group="Time Tracking" ID="{A1234567-0008-0001-0001-00000000000C}" />
+      <Field Type="Number" Name="TotalReviewerHours" DisplayName="Total Reviewer Hours" Min="0" Max="10000" Decimals="2" Group="Time Tracking" ID="{A1234567-0008-0001-0001-00000000000F}" />
+      <Field Type="Number" Name="TotalSubmitterHours" DisplayName="Total Submitter Hours" Min="0" Max="10000" Decimals="2" Group="Time Tracking" ID="{A1234567-0008-0001-0001-000000000010}" />
+
+    </pnp:Fields>
+
+    <!-- NOTE: Views to be added next - file getting too large for single operation -->
+
+  </pnp:ListInstance>
+
+</pnp:Lists>

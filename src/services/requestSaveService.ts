@@ -298,6 +298,38 @@ export function buildRequestUpdatePayload(
     updater.set('PriorSubmissionsId', request.priorSubmissions, originalRequest.priorSubmissions);
     updater.set('AdditionalParty', request.additionalParty, originalRequest.additionalParty);
 
+    // Legal Review fields
+    updater.set('LegalReviewStatus', request.legalReviewStatus, originalRequest.legalReviewStatus);
+    updater.set('LegalReviewOutcome', request.legalReviewOutcome, originalRequest.legalReviewOutcome);
+    updater.set('LegalReviewNotes', request.legalReviewNotes, originalRequest.legalReviewNotes);
+    updater.set('LegalStatusUpdatedOn', request.legalStatusUpdatedOn, originalRequest.legalStatusUpdatedOn);
+    updater.set('LegalStatusUpdatedBy', request.legalStatusUpdatedBy, originalRequest.legalStatusUpdatedBy);
+    updater.set('LegalReviewCompletedOn', request.legalReviewCompletedOn, originalRequest.legalReviewCompletedOn);
+    updater.set('LegalReviewCompletedBy', request.legalReviewCompletedBy, originalRequest.legalReviewCompletedBy);
+
+    // Compliance Review fields
+    updater.set('ComplianceReviewStatus', request.complianceReviewStatus, originalRequest.complianceReviewStatus);
+    updater.set('ComplianceReviewOutcome', request.complianceReviewOutcome, originalRequest.complianceReviewOutcome);
+    updater.set('ComplianceReviewNotes', request.complianceReviewNotes, originalRequest.complianceReviewNotes);
+    updater.set('IsForesideReviewRequired', request.isForesideReviewRequired, originalRequest.isForesideReviewRequired);
+    updater.set('IsRetailUse', request.isRetailUse, originalRequest.isRetailUse);
+    updater.set('ComplianceStatusUpdatedOn', request.complianceStatusUpdatedOn, originalRequest.complianceStatusUpdatedOn);
+    updater.set('ComplianceStatusUpdatedBy', request.complianceStatusUpdatedBy, originalRequest.complianceStatusUpdatedBy);
+    updater.set('ComplianceReviewCompletedOn', request.complianceReviewCompletedOn, originalRequest.complianceReviewCompletedOn);
+    updater.set('ComplianceReviewCompletedBy', request.complianceReviewCompletedBy, originalRequest.complianceReviewCompletedBy);
+
+    // Time Tracking fields
+    updater.set('LegalIntakeLegalAdminHours', request.legalIntakeLegalAdminHours, originalRequest.legalIntakeLegalAdminHours);
+    updater.set('LegalIntakeSubmitterHours', request.legalIntakeSubmitterHours, originalRequest.legalIntakeSubmitterHours);
+    updater.set('LegalReviewAttorneyHours', request.legalReviewAttorneyHours, originalRequest.legalReviewAttorneyHours);
+    updater.set('LegalReviewSubmitterHours', request.legalReviewSubmitterHours, originalRequest.legalReviewSubmitterHours);
+    updater.set('ComplianceReviewReviewerHours', request.complianceReviewReviewerHours, originalRequest.complianceReviewReviewerHours);
+    updater.set('ComplianceReviewSubmitterHours', request.complianceReviewSubmitterHours, originalRequest.complianceReviewSubmitterHours);
+    updater.set('CloseoutReviewerHours', request.closeoutReviewerHours, originalRequest.closeoutReviewerHours);
+    updater.set('CloseoutSubmitterHours', request.closeoutSubmitterHours, originalRequest.closeoutSubmitterHours);
+    updater.set('TotalReviewerHours', request.totalReviewerHours, originalRequest.totalReviewerHours);
+    updater.set('TotalSubmitterHours', request.totalSubmitterHours, originalRequest.totalSubmitterHours);
+
     // Map approvals array to individual SharePoint fields
     // This handles RequiresCommunicationsApproval and all approval-specific fields
     mapApprovalsToSharePointFields(updater, request.approvals, originalRequest.approvals);
@@ -844,6 +876,12 @@ export async function submitLegalReview(
         email: SPContext.currentUser.email,
         title: SPContext.currentUser.title,
       },
+      legalReviewCompletedOn: new Date(),
+      legalReviewCompletedBy: {
+        id: SPContext.currentUser.id.toString(),
+        email: SPContext.currentUser.email,
+        title: SPContext.currentUser.title,
+      },
     });
 
     SPContext.logger.success('RequestSaveService: Legal review submitted', { itemId });
@@ -880,6 +918,12 @@ export async function submitComplianceReview(
       isRetailUse: flags?.isRetailUse,
       complianceStatusUpdatedOn: new Date(),
       complianceStatusUpdatedBy: {
+        id: SPContext.currentUser.id.toString(),
+        email: SPContext.currentUser.email,
+        title: SPContext.currentUser.title,
+      },
+      complianceReviewCompletedOn: new Date(),
+      complianceReviewCompletedBy: {
         id: SPContext.currentUser.id.toString(),
         email: SPContext.currentUser.email,
         title: SPContext.currentUser.title,

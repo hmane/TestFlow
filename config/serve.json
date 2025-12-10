@@ -93,5 +93,6 @@
         }
       }
     }
-  }
+  },
+  "initialPage": "https://{tenantDomain}/_layouts/workbench.aspx"
 }

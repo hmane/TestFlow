@@ -124,18 +124,9 @@ async function ensureFolderExists(libraryTitle: string, folderPath: string): Pro
   const sp = SPContext.sp;
 
   try {
-    SPContext.logger.info('Starting folder structure creation', {
-      libraryTitle,
-      folderPath,
-    });
-
     // Get the server-relative URL of the library's root folder
     const listRootFolder = await sp.web.lists.getByTitle(libraryTitle).rootFolder();
     const libraryServerRelativeUrl = listRootFolder.ServerRelativeUrl;
-
-    SPContext.logger.info('Library root folder retrieved', {
-      libraryServerRelativeUrl,
-    });
 
     // Clean up the input path and split it into parts
     // This handles forward slashes, backslashes, and removes any empty parts
@@ -144,34 +135,16 @@ async function ensureFolderExists(libraryTitle: string, folderPath: string): Pro
       .split('/')
       .filter(p => p.length > 0);
 
-    SPContext.logger.info('Folder path parsed into segments', {
-      segments: pathParts,
-      count: pathParts.length,
-    });
-
     // Iterate over each part of the folder path and create it
     let currentFolderUrl = libraryServerRelativeUrl;
     for (let i = 0; i < pathParts.length; i++) {
       const part = pathParts[i];
-      const previousUrl = currentFolderUrl;
       currentFolderUrl = `${currentFolderUrl}/${part}`;
-
-      SPContext.logger.info('Creating folder segment', {
-        index: i,
-        segment: part,
-        parentUrl: previousUrl,
-        fullUrl: currentFolderUrl,
-      });
 
       try {
         // Use addUsingPath to create the folder with full server-relative URL
         // This method does not throw an error if the folder already exists
         await sp.web.folders.addUsingPath(currentFolderUrl);
-
-        SPContext.logger.success('Folder segment created/verified', {
-          segment: part,
-          url: currentFolderUrl,
-        });
       } catch (folderError) {
         const errorMessage = folderError instanceof Error ? folderError.message : String(folderError);
 

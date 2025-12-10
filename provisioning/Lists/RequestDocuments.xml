@@ -1,0 +1,159 @@
+<!-- ===============================================================================
+     RequestDocuments Library
+     Document library for storing request attachments and approval files
+
+     Fields:
+     - Name (auto-created): Document file name
+     - DocumentType (Choice, Required): Type of document
+     - Request (Lookup, Required): Lookup to Requests list
+     - Description (Multi-line): Document description
+     =============================================================================== -->
+
+<pnp:Lists xmlns:pnp="http://schemas.dev.office.com/PnP/2024/03/ProvisioningSchema">
+
+  <pnp:ListInstance Title="RequestDocuments"
+                    Description="Document library for request attachments and approval files"
+                    TemplateType="101"
+                    Url="RequestDocuments"
+                    OnQuickLaunch="true"
+                    EnableVersioning="true"
+                    EnableMinorVersions="false"
+                    EnableFolderCreation="true"
+                    EnableAttachments="false">
+
+    <!-- List Fields -->
+    <pnp:Fields>
+
+      <!-- Document Type (Choice, Required) -->
+      <Field Type="Choice"
+             DisplayName="Document Type"
+             Name="DocumentType"
+             ID="{D1234567-0001-0001-0001-000000000001}"
+             Required="TRUE"
+             Group="Document Metadata">
+        <CHOICES>
+          <CHOICE>Review</CHOICE>
+          <CHOICE>Supplemental</CHOICE>
+          <CHOICE>Communication Approval</CHOICE>
+          <CHOICE>Portfolio Manager Approval</CHOICE>
+          <CHOICE>Research Analyst Approval</CHOICE>
+          <CHOICE>Subject Matter Expert Approval</CHOICE>
+          <CHOICE>Performance Approval</CHOICE>
+          <CHOICE>Other Approval</CHOICE>
+        </CHOICES>
+      </Field>
+
+      <!-- Request (Lookup to Requests, Required) -->
+      <Field Type="Lookup"
+             DisplayName="Request"
+             Name="Request"
+             ID="{D1234567-0001-0001-0001-000000000002}"
+             Required="TRUE"
+             List="Lists/Requests"
+             ShowField="Title"
+             Group="Document Metadata" />
+
+      <!-- Description (Multi-line text) -->
+      <Field Type="Note"
+             DisplayName="Description"
+             Name="Description"
+             ID="{D1234567-0001-0001-0001-000000000003}"
+             Required="FALSE"
+             RichText="FALSE"
+             NumLines="6"
+             Group="Document Metadata" />
+
+    </pnp:Fields>
+
+    <!-- Views -->
+    <pnp:Views>
+
+      <!-- All Documents View -->
+      <View Name="All Documents"
+            DefaultView="TRUE"
+            MobileView="TRUE"
+            MobileDefaultView="TRUE"
+            Type="HTML"
+            DisplayName="All Documents"
+            Url="{site}/RequestDocuments/Forms/AllItems.aspx"
+            Level="1"
+            BaseViewID="1"
+            ContentTypeID="0x0101">
+        <Query>
+          <OrderBy>
+            <FieldRef Name="FileLeafRef" Ascending="TRUE" />
+          </OrderBy>
+        </Query>
+        <ViewFields>
+          <FieldRef Name="DocIcon" />
+          <FieldRef Name="LinkFilename" />
+          <FieldRef Name="Request" />
+          <FieldRef Name="DocumentType" />
+          <FieldRef Name="Modified" />
+          <FieldRef Name="Editor" />
+        </ViewFields>
+        <RowLimit Paged="TRUE">30</RowLimit>
+        <JSLink>clienttemplates.js</JSLink>
+      </View>
+
+      <!-- By Document Type View -->
+      <View Name="By Document Type"
+            MobileView="FALSE"
+            Type="HTML"
+            DisplayName="By Document Type"
+            Url="{site}/RequestDocuments/Forms/ByType.aspx"
+            Level="1"
+            BaseViewID="2"
+            ContentTypeID="0x0101">
+        <Query>
+          <GroupBy Collapse="TRUE" GroupLimit="30">
+            <FieldRef Name="DocumentType" Ascending="TRUE" />
+          </GroupBy>
+          <OrderBy>
+            <FieldRef Name="FileLeafRef" Ascending="TRUE" />
+          </OrderBy>
+        </Query>
+        <ViewFields>
+          <FieldRef Name="DocIcon" />
+          <FieldRef Name="LinkFilename" />
+          <FieldRef Name="Request" />
+          <FieldRef Name="DocumentType" />
+          <FieldRef Name="Modified" />
+        </ViewFields>
+        <RowLimit Paged="TRUE">30</RowLimit>
+        <JSLink>clienttemplates.js</JSLink>
+      </View>
+
+      <!-- By Request View -->
+      <View Name="By Request"
+            MobileView="FALSE"
+            Type="HTML"
+            DisplayName="By Request"
+            Url="{site}/RequestDocuments/Forms/ByRequest.aspx"
+            Level="1"
+            BaseViewID="3"
+            ContentTypeID="0x0101">
+        <Query>
+          <GroupBy Collapse="TRUE" GroupLimit="30">
+            <FieldRef Name="Request" Ascending="TRUE" />
+          </GroupBy>
+          <OrderBy>
+            <FieldRef Name="FileLeafRef" Ascending="TRUE" />
+          </OrderBy>
+        </Query>
+        <ViewFields>
+          <FieldRef Name="DocIcon" />
+          <FieldRef Name="LinkFilename" />
+          <FieldRef Name="DocumentType" />
+          <FieldRef Name="Request" />
+          <FieldRef Name="Modified" />
+        </ViewFields>
+        <RowLimit Paged="TRUE">30</RowLimit>
+        <JSLink>clienttemplates.js</JSLink>
+      </View>
+
+    </pnp:Views>
+
+  </pnp:ListInstance>
+
+</pnp:Lists>

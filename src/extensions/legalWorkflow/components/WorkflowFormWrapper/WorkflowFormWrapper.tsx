@@ -11,6 +11,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
+import { SPContext } from 'spfx-toolkit';
 import { RequestFormProvider, type IValidationError } from '../../../../contexts/RequestFormContext';
 import { fullRequestSchema } from '../../../../schemas/requestSchema';
 import { useRequestStore } from '../../../../stores/requestStore';
@@ -83,7 +84,7 @@ export const WorkflowFormWrapper: React.FC<IWorkflowFormWrapperProps> = ({
       if (customOnSubmit) {
         await customOnSubmit(data);
       } else {
-        console.warn('WorkflowFormWrapper: No submit handler provided');
+        SPContext.logger.warn('WorkflowFormWrapper: No submit handler provided');
       }
     },
     [customOnSubmit]
@@ -93,7 +94,7 @@ export const WorkflowFormWrapper: React.FC<IWorkflowFormWrapperProps> = ({
     if (customOnSaveDraft) {
       await customOnSaveDraft();
     } else {
-      console.warn('WorkflowFormWrapper: No save draft handler provided');
+      SPContext.logger.warn('WorkflowFormWrapper: No save draft handler provided');
     }
   }, [customOnSaveDraft]);
 
@@ -101,7 +102,7 @@ export const WorkflowFormWrapper: React.FC<IWorkflowFormWrapperProps> = ({
     if (customOnPutOnHold) {
       await customOnPutOnHold();
     } else {
-      console.warn('WorkflowFormWrapper: No put on hold handler provided');
+      SPContext.logger.warn('WorkflowFormWrapper: No put on hold handler provided');
     }
   }, [customOnPutOnHold]);
 
@@ -109,7 +110,7 @@ export const WorkflowFormWrapper: React.FC<IWorkflowFormWrapperProps> = ({
     if (customOnCancelRequest) {
       await customOnCancelRequest();
     } else {
-      console.warn('WorkflowFormWrapper: No cancel request handler provided');
+      SPContext.logger.warn('WorkflowFormWrapper: No cancel request handler provided');
     }
   }, [customOnCancelRequest]);
 

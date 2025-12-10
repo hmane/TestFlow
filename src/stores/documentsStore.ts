@@ -238,16 +238,6 @@ export const useDocumentsStore = create<IDocumentsState>()(
        * Stage files for upload
        */
       stageFiles: (files: File[], documentType: DocumentType, itemId?: number): void => {
-        // CRITICAL: Log the documentType being received
-        SPContext.logger.info('🔵 stageFiles called', {
-          count: files.length,
-          documentType,
-          documentTypeValue: String(documentType),
-          documentTypeOf: typeof documentType,
-          itemId: itemId || 'new draft',
-          fileNames: files.map(f => f.name),
-        });
-
         const newStaged: IStagedDocument[] = files.map((file, index) => ({
           id: `staged-${Date.now()}-${index}`,
           file,
@@ -261,10 +251,10 @@ export const useDocumentsStore = create<IDocumentsState>()(
           stagedFiles: [...state.stagedFiles, ...newStaged],
         }));
 
-        SPContext.logger.info('✅ Files staged successfully', {
+        SPContext.logger.info('Files staged for upload', {
           count: files.length,
           documentType,
-          stagedFileDocTypes: newStaged.map(s => ({ id: s.id, type: s.documentType })),
+          itemId: itemId || 'new draft',
         });
       },
 

@@ -39,6 +39,8 @@ export const RequestsFields = {
   SMEApprovalDate: 'SMEApprovalDate',
   HasOtherApproval: 'HasOtherApproval',
   LegalReviewNotes: 'LegalReviewNotes',
+  LegalReviewCompletedOn: 'LegalReviewCompletedOn',
+  LegalReviewCompletedBy: 'LegalReviewCompletedBy',
   TargetReturnDate: 'TargetReturnDate',
   DistributionMethod: 'DistributionMethod',
   LegalReviewStatus: 'LegalReviewStatus',
@@ -52,6 +54,8 @@ export const RequestsFields = {
   PriorSubmissionNotes: 'PriorSubmissionNotes',
   CommunicationsApprover: 'CommunicationsApprover',
   ComplianceReviewNotes: 'ComplianceReviewNotes',
+  ComplianceReviewCompletedOn: 'ComplianceReviewCompletedOn',
+  ComplianceReviewCompletedBy: 'ComplianceReviewCompletedBy',
   LegalStatusUpdatedBy: 'LegalStatusUpdatedBy',
   LegalStatusUpdatedOn: 'LegalStatusUpdatedOn',
   SubmittedForReviewBy: 'SubmittedForReviewBy',
@@ -75,6 +79,21 @@ export const RequestsFields = {
   Created: 'Created',
   Author: 'Author',
   Modified: 'Modified',
-  Editor: 'Editor'
+  Editor: 'Editor',
+  // Time Tracking - Legal Intake
+  LegalIntakeLegalAdminHours: 'LegalIntakeLegalAdminHours',
+  LegalIntakeSubmitterHours: 'LegalIntakeSubmitterHours',
+  // Time Tracking - Legal Review
+  LegalReviewAttorneyHours: 'LegalReviewAttorneyHours',
+  LegalReviewSubmitterHours: 'LegalReviewSubmitterHours',
+  // Time Tracking - Compliance Review
+  ComplianceReviewReviewerHours: 'ComplianceReviewReviewerHours',
+  ComplianceReviewSubmitterHours: 'ComplianceReviewSubmitterHours',
+  // Time Tracking - Closeout
+  CloseoutReviewerHours: 'CloseoutReviewerHours',
+  CloseoutSubmitterHours: 'CloseoutSubmitterHours',
+  // Time Tracking - Totals
+  TotalReviewerHours: 'TotalReviewerHours',
+  TotalSubmitterHours: 'TotalSubmitterHours'
 } as const;
 

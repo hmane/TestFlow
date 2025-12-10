@@ -2,10 +2,10 @@
  * Request Load Service
  *
  * Handles loading legal request data using CAML queries with renderListDataAsStream.
- * Uses 2 parallel queries to load all 74 fields efficiently.
+ * Uses 2 parallel queries to load all 82 fields efficiently.
  *
  * Query 1: Request Info + Approvals (~37 fields, 11 user/lookup fields)
- * Query 2: Reviews + System Tracking (~37 fields, 8 user/lookup fields)
+ * Query 2: Reviews + System Tracking + Time Tracking (~45 fields, 10 user/lookup fields)
  *
  * renderListDataAsStream automatically expands all user and lookup fields without
  * the 12-field expansion limit of standard REST queries.
@@ -104,9 +104,9 @@ const QUERY1_FIELDS = [
 ];
 
 /**
- * Fields for Query 2: Reviews + System Tracking
- * Includes 8 user/lookup fields (within 12 limit):
- * - Attorney, LegalStatusUpdatedBy, ComplianceStatusUpdatedBy
+ * Fields for Query 2: Reviews + System Tracking + Time Tracking
+ * Includes 10 user/lookup fields (within 12 limit):
+ * - Attorney, LegalStatusUpdatedBy, LegalReviewCompletedBy, ComplianceStatusUpdatedBy, ComplianceReviewCompletedBy
  * - SubmittedForReviewBy, SubmittedToAssignAttorneyBy, CloseoutBy, CancelledBy, OnHoldBy
  */
 const QUERY2_FIELDS = [
@@ -121,6 +121,8 @@ const QUERY2_FIELDS = [
   RequestsFields.LegalReviewNotes,
   RequestsFields.LegalStatusUpdatedBy,
   RequestsFields.LegalStatusUpdatedOn,
+  RequestsFields.LegalReviewCompletedOn,
+  RequestsFields.LegalReviewCompletedBy,
 
   // Compliance Review
   RequestsFields.ComplianceReviewStatus,
@@ -130,6 +132,8 @@ const QUERY2_FIELDS = [
   RequestsFields.IsRetailUse,
   RequestsFields.ComplianceStatusUpdatedBy,
   RequestsFields.ComplianceStatusUpdatedOn,
+  RequestsFields.ComplianceReviewCompletedOn,
+  RequestsFields.ComplianceReviewCompletedBy,
 
   // Closeout
   RequestsFields.TrackingId,
@@ -152,12 +156,32 @@ const QUERY2_FIELDS = [
   RequestsFields.SubmittedForReviewOn,
   RequestsFields.SubmittedToAssignAttorneyBy,
   RequestsFields.SubmittedToAssignAttorneyOn,
+
+  // Time Tracking - Legal Intake (2 fields)
+  RequestsFields.LegalIntakeLegalAdminHours,
+  RequestsFields.LegalIntakeSubmitterHours,
+
+  // Time Tracking - Legal Review (2 fields)
+  RequestsFields.LegalReviewAttorneyHours,
+  RequestsFields.LegalReviewSubmitterHours,
+
+  // Time Tracking - Compliance Review (2 fields)
+  RequestsFields.ComplianceReviewReviewerHours,
+  RequestsFields.ComplianceReviewSubmitterHours,
+
+  // Time Tracking - Closeout (2 fields)
+  RequestsFields.CloseoutReviewerHours,
+  RequestsFields.CloseoutSubmitterHours,
+
+  // Time Tracking - Totals (2 fields)
+  RequestsFields.TotalReviewerHours,
+  RequestsFields.TotalSubmitterHours,
 ];
 
 /**
  * Load a request by ID using 2 parallel CAML queries
  *
- * Executes 2 renderListDataAsStream queries in parallel to load all 74 fields.
+ * Executes 2 renderListDataAsStream queries in parallel to load all 82 fields.
  * renderListDataAsStream automatically expands ALL user and lookup fields without
  * the 12-field expansion limit of standard REST queries.
  *
@@ -410,6 +434,8 @@ export function mapRequestListItemToRequest(item: any): ILegalRequest {
     legalReviewNotes: extractor.string(RequestsFields.LegalReviewNotes),
     legalStatusUpdatedBy: extractor.user(RequestsFields.LegalStatusUpdatedBy),
     legalStatusUpdatedOn: extractor.date(RequestsFields.LegalStatusUpdatedOn),
+    legalReviewCompletedOn: extractor.date(RequestsFields.LegalReviewCompletedOn),
+    legalReviewCompletedBy: extractor.user(RequestsFields.LegalReviewCompletedBy),
 
     // Compliance Review
     complianceReviewStatus: extractor.string(RequestsFields.ComplianceReviewStatus) as ComplianceReviewStatus,
@@ -419,6 +445,8 @@ export function mapRequestListItemToRequest(item: any): ILegalRequest {
     isRetailUse: extractor.boolean(RequestsFields.IsRetailUse, false),
     complianceStatusUpdatedBy: extractor.user(RequestsFields.ComplianceStatusUpdatedBy),
     complianceStatusUpdatedOn: extractor.date(RequestsFields.ComplianceStatusUpdatedOn),
+    complianceReviewCompletedOn: extractor.date(RequestsFields.ComplianceReviewCompletedOn),
+    complianceReviewCompletedBy: extractor.user(RequestsFields.ComplianceReviewCompletedBy),
 
     // Closeout
     trackingId: extractor.string(RequestsFields.TrackingId),
@@ -441,6 +469,26 @@ export function mapRequestListItemToRequest(item: any): ILegalRequest {
     submittedForReviewOn: extractor.date(RequestsFields.SubmittedForReviewOn),
     submittedToAssignAttorneyBy: extractor.user(RequestsFields.SubmittedToAssignAttorneyBy),
     submittedToAssignAttorneyOn: extractor.date(RequestsFields.SubmittedToAssignAttorneyOn),
+
+    // Time Tracking - Legal Intake
+    legalIntakeLegalAdminHours: extractor.number(RequestsFields.LegalIntakeLegalAdminHours),
+    legalIntakeSubmitterHours: extractor.number(RequestsFields.LegalIntakeSubmitterHours),
+
+    // Time Tracking - Legal Review
+    legalReviewAttorneyHours: extractor.number(RequestsFields.LegalReviewAttorneyHours),
+    legalReviewSubmitterHours: extractor.number(RequestsFields.LegalReviewSubmitterHours),
+
+    // Time Tracking - Compliance Review
+    complianceReviewReviewerHours: extractor.number(RequestsFields.ComplianceReviewReviewerHours),
+    complianceReviewSubmitterHours: extractor.number(RequestsFields.ComplianceReviewSubmitterHours),
+
+    // Time Tracking - Closeout
+    closeoutReviewerHours: extractor.number(RequestsFields.CloseoutReviewerHours),
+    closeoutSubmitterHours: extractor.number(RequestsFields.CloseoutSubmitterHours),
+
+    // Time Tracking - Totals
+    totalReviewerHours: extractor.number(RequestsFields.TotalReviewerHours),
+    totalSubmitterHours: extractor.number(RequestsFields.TotalSubmitterHours),
 
     // Approvals array - build from individual SharePoint fields
     approvals: buildApprovalsArrayFromFields(extractor),

@@ -8,6 +8,7 @@
 import * as React from 'react';
 import { LazyWorkflowStepper } from 'spfx-toolkit/lib/components/lazy';
 import type { StepData } from 'spfx-toolkit/lib/components/WorkflowStepper/types';
+import { SPContext } from 'spfx-toolkit';
 import { RequestType } from '../../types';
 import { getStepsForStepper } from './workflowStepConfig';
 import type { IWorkflowStepperProps } from './WorkflowStepperTypes';
@@ -123,7 +124,7 @@ export const WorkflowStepperExample: React.FC<{
     requestType,
     currentStatus,
     onStepClick: (step) => {
-      console.log('Step clicked:', step.id);
+      SPContext.logger.info('Step clicked', { stepId: step.id });
     },
   });
 
