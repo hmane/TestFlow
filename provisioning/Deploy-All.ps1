@@ -14,11 +14,14 @@
     Optional. Path to the provisioning template file.
     Default: ./SiteTemplate.xml
 
+.PARAMETER SkipValidation
+    Optional. Skip template validation before applying.
+
 .EXAMPLE
     .\Deploy-All.ps1 -SiteUrl "https://contoso.sharepoint.com/sites/LegalWorkflow"
 
 .EXAMPLE
-    .\Deploy-All.ps1 -SiteUrl "https://contoso.sharepoint.com/sites/LegalWorkflow" -TemplatePath "./Custom Template.xml"
+    .\Deploy-All.ps1 -SiteUrl "https://contoso.sharepoint.com/sites/LegalWorkflow" -TemplatePath "./CustomTemplate.xml"
 
 .NOTES
     Requires PnP.PowerShell module
@@ -32,7 +35,10 @@ param(
     [string]$SiteUrl,
 
     [Parameter(Mandatory = $false)]
-    [string]$TemplatePath = "./SiteTemplate.xml"
+    [string]$TemplatePath = "./SiteTemplate.xml",
+
+    [Parameter(Mandatory = $false)]
+    [switch]$SkipValidation
 )
 
 # Client ID for PnP authentication
@@ -52,6 +58,9 @@ try {
         throw "Template file not found: $TemplatePath"
     }
 
+    # Get absolute path for template
+    $TemplatePath = Resolve-Path $TemplatePath
+
     Write-Host "Site URL: $SiteUrl" -ForegroundColor White
     Write-Host "Template: $TemplatePath" -ForegroundColor White
     Write-Host ""
@@ -59,33 +68,80 @@ try {
     # Connect to SharePoint
     Write-Host "[1/3] Connecting to SharePoint..." -ForegroundColor Cyan
     Connect-PnPOnline -Url $SiteUrl -ClientId $clientId -Interactive
-    Write-Host "✓ Connected successfully" -ForegroundColor Green
+    Write-Host "Connected successfully" -ForegroundColor Green
     Write-Host ""
 
-    # Apply provisioning template
-    Write-Host "[2/3] Applying provisioning template..." -ForegroundColor Cyan
+    # Validate template before applying
+    if (-not $SkipValidation) {
+        Write-Host "[2/3] Validating provisioning template..." -ForegroundColor Cyan
+        try {
+            $validationResult = Test-PnPProvisioningTemplate -Path $TemplatePath
+            if ($validationResult -eq $false) {
+                throw "Template validation failed. Use -SkipValidation to bypass."
+            }
+            Write-Host "Template validation passed" -ForegroundColor Green
+        } catch {
+            Write-Warning "Template validation error: $($_.Exception.Message)"
+            Write-Warning "Attempting to apply template anyway..."
+        }
+        Write-Host ""
+    }
+
+    # Apply provisioning template (includes lists, security, pages, navigation)
+    Write-Host "[3/3] Applying provisioning template..." -ForegroundColor Cyan
     Write-Host "This may take several minutes..." -ForegroundColor Yellow
     Invoke-PnPSiteTemplate -Path $TemplatePath
-    Write-Host "✓ Template applied successfully" -ForegroundColor Green
+    Write-Host "Template applied successfully" -ForegroundColor Green
     Write-Host ""
 
     # Verify deployment
-    Write-Host "[3/3] Verifying deployment..." -ForegroundColor Cyan
+    Write-Host "Verifying deployment..." -ForegroundColor Cyan
 
     # Check if Requests list exists
     $requestsList = Get-PnPList -Identity "Lists/Requests" -ErrorAction SilentlyContinue
     if ($requestsList) {
-        Write-Host "✓ Requests list provisioned" -ForegroundColor Green
+        Write-Host "  Requests list provisioned" -ForegroundColor Green
     } else {
-        Write-Warning "Requests list not found"
+        Write-Warning "  Requests list not found"
+    }
+
+    # Check if SubmissionItems list exists
+    $submissionItemsList = Get-PnPList -Identity "Lists/SubmissionItems" -ErrorAction SilentlyContinue
+    if ($submissionItemsList) {
+        Write-Host "  SubmissionItems list provisioned" -ForegroundColor Green
+    } else {
+        Write-Warning "  SubmissionItems list not found"
+    }
+
+    # Check if Configuration list exists
+    $configList = Get-PnPList -Identity "Lists/Configuration" -ErrorAction SilentlyContinue
+    if ($configList) {
+        Write-Host "  Configuration list provisioned" -ForegroundColor Green
+    } else {
+        Write-Warning "  Configuration list not found"
+    }
+
+    # Check if RequestDocuments library exists
+    $docLib = Get-PnPList -Identity "RequestDocuments" -ErrorAction SilentlyContinue
+    if ($docLib) {
+        Write-Host "  RequestDocuments library provisioned" -ForegroundColor Green
+    } else {
+        Write-Warning "  RequestDocuments library not found"
     }
 
     # Check if dashboard pages exist
+    $homePage = Get-PnPPage -Identity "Home.aspx" -ErrorAction SilentlyContinue
+    if ($homePage) {
+        Write-Host "  Home page provisioned" -ForegroundColor Green
+    } else {
+        Write-Warning "  Home page not found"
+    }
+
     $myRequestsPage = Get-PnPPage -Identity "MyRequestsDashboard.aspx" -ErrorAction SilentlyContinue
     if ($myRequestsPage) {
-        Write-Host "✓ Dashboard pages provisioned" -ForegroundColor Green
+        Write-Host "  Dashboard pages provisioned" -ForegroundColor Green
     } else {
-        Write-Warning "Dashboard pages not found"
+        Write-Warning "  Dashboard pages not found"
     }
 
     Write-Host ""
@@ -108,8 +164,21 @@ try {
     Write-Host ""
     Write-Host "Error: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host ""
+
+    # Provide more detailed error info
+    if ($_.Exception.InnerException) {
+        Write-Host "Inner Exception: $($_.Exception.InnerException.Message)" -ForegroundColor Red
+    }
+
+    Write-Host ""
     Write-Host "Stack Trace:" -ForegroundColor Yellow
     Write-Host $_.ScriptStackTrace -ForegroundColor Yellow
+    Write-Host ""
+
+    Write-Host "Troubleshooting tips:" -ForegroundColor Yellow
+    Write-Host "1. Run: Test-PnPProvisioningTemplate -Path '$TemplatePath'" -ForegroundColor White
+    Write-Host "2. Check PnP.PowerShell version: Get-Module PnP.PowerShell -ListAvailable" -ForegroundColor White
+    Write-Host "3. Verify XML schema version matches your PnP.PowerShell version" -ForegroundColor White
     Write-Host ""
     exit 1
 } finally {

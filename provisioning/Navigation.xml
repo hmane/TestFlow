@@ -1,54 +1,44 @@
-<!-- ===============================================================================
-     Navigation - Quick Launch Menu
+<pnp:Navigation xmlns:pnp="http://schemas.dev.office.com/PnP/2022/09/ProvisioningSchema">
 
-     Adds a "Dashboards" section to the Quick Launch with links to all role-based
-     dashboard pages. Users will see links based on their permissions.
-     =============================================================================== -->
-
-<pnp:Navigation xmlns:pnp="http://schemas.dev.office.com/PnP/2024/03/ProvisioningSchema">
-
-  <!-- Quick Launch Navigation -->
   <pnp:CurrentNavigation>
-
-    <!-- Dashboards Node (Parent) -->
     <pnp:StructuralNavigation RemoveExistingNodes="false">
 
+      <!-- Home Page -->
+      <pnp:NavigationNode Title="Home"
+                          Url="/SitePages/Home.aspx"
+                          IsExternal="false" />
+
+      <!-- Dashboards Node -->
       <pnp:NavigationNode Title="Dashboards" Url="" IsExternal="false">
 
-        <!-- My Requests Dashboard (For Submitters) -->
         <pnp:NavigationNode Title="My Requests"
-                             Url="/SitePages/MyRequestsDashboard.aspx"
-                             IsExternal="false" />
+                            Url="/SitePages/MyRequestsDashboard.aspx"
+                            IsExternal="false" />
 
-        <!-- Legal Admin Dashboard -->
         <pnp:NavigationNode Title="Legal Admin"
-                             Url="/SitePages/LegalAdminDashboard.aspx"
-                             IsExternal="false" />
+                            Url="/SitePages/LegalAdminDashboard.aspx"
+                            IsExternal="false" />
 
-        <!-- Attorney Assignment Dashboard -->
         <pnp:NavigationNode Title="Attorney Assignment"
-                             Url="/SitePages/AttorneyAssignmentDashboard.aspx"
-                             IsExternal="false" />
+                            Url="/SitePages/AttorneyAssignmentDashboard.aspx"
+                            IsExternal="false" />
 
-        <!-- Attorney Dashboard -->
         <pnp:NavigationNode Title="Attorney Reviews"
-                             Url="/SitePages/AttorneyDashboard.aspx"
-                             IsExternal="false" />
+                            Url="/SitePages/AttorneyDashboard.aspx"
+                            IsExternal="false" />
 
-        <!-- Compliance Dashboard -->
         <pnp:NavigationNode Title="Compliance Reviews"
-                             Url="/SitePages/ComplianceDashboard.aspx"
-                             IsExternal="false" />
+                            Url="/SitePages/ComplianceDashboard.aspx"
+                            IsExternal="false" />
 
       </pnp:NavigationNode>
 
-      <!-- Requests List (Direct Link) -->
+      <!-- Requests List -->
       <pnp:NavigationNode Title="All Requests"
-                           Url="/Lists/Requests/AllItems.aspx"
-                           IsExternal="false" />
+                          Url="/Lists/Requests/AllItems.aspx"
+                          IsExternal="false" />
 
     </pnp:StructuralNavigation>
-
   </pnp:CurrentNavigation>
 
 </pnp:Navigation>

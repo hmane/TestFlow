@@ -1,17 +1,32 @@
-<!-- ===============================================================================
-     Client Side Pages - Dashboard Pages
+<pnp:ClientSidePages xmlns:pnp="http://schemas.dev.office.com/PnP/2022/09/ProvisioningSchema">
 
-     Creates 5 role-based dashboard pages in /SitePages/ root:
-     1. MyRequestsDashboard.aspx - For submitters
-     2. LegalAdminDashboard.aspx - For legal admins
-     3. AttorneyAssignmentDashboard.aspx - For attorney assigners
-     4. AttorneyDashboard.aspx - For attorneys
-     5. ComplianceDashboard.aspx - For compliance users
+  <!-- ========================================================================
+       0. Home Page (Main Landing Page)
+       ======================================================================== -->
+  <pnp:ClientSidePage PromoteAsNewsArticle="false"
+                       PromoteAsTemplate="false"
+                       Overwrite="true"
+                       Layout="Home"
+                       EnableComments="false"
+                       Title="Legal Review System"
+                       PageName="Home.aspx"
+                       Publish="true">
 
-     Each page displays relevant list views using List web parts.
-     =============================================================================== -->
+    <pnp:Header Type="Default" LayoutType="FullWidthImage" ShowTopicHeader="false" ShowPublishDate="false" />
 
-<pnp:ClientSidePages xmlns:pnp="http://schemas.dev.office.com/PnP/2024/03/ProvisioningSchema">
+    <pnp:Sections>
+      <pnp:Section Order="1" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="Text" ControlId="00000000-0000-0000-0000-000000000001" Order="1" Column="1">
+            <pnp:CanvasControlProperties>
+              <pnp:CanvasControlProperty Key="Text" Value="&lt;h2&gt;Welcome to the Legal Review System&lt;/h2&gt;&lt;p&gt;Use the navigation menu on the left to access your dashboard based on your role.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;strong&gt;Submitters:&lt;/strong&gt; My Requests Dashboard&lt;/li&gt;&lt;li&gt;&lt;strong&gt;Legal Admin:&lt;/strong&gt; Legal Admin Dashboard&lt;/li&gt;&lt;li&gt;&lt;strong&gt;Attorneys:&lt;/strong&gt; Attorney Dashboard&lt;/li&gt;&lt;li&gt;&lt;strong&gt;Compliance:&lt;/strong&gt; Compliance Dashboard&lt;/li&gt;&lt;/ul&gt;" />
+            </pnp:CanvasControlProperties>
+          </pnp:CanvasControl>
+        </pnp:Controls>
+      </pnp:Section>
+    </pnp:Sections>
+
+  </pnp:ClientSidePage>
 
   <!-- ========================================================================
        1. My Requests Dashboard (For Submitters)
@@ -22,66 +37,27 @@
                        Layout="Article"
                        EnableComments="false"
                        Title="My Requests Dashboard"
-                       PageName="MyRequestsDashboard.aspx">
+                       PageName="MyRequestsDashboard.aspx"
+                       Publish="true">
 
-    <pnp:Header Type="Default" LayoutType="FullWidthImage" ShowPublishDate="false" ShowTopicHeader="false" />
+    <pnp:Header Type="Default" LayoutType="NoImage" ShowTopicHeader="false" ShowPublishDate="false" />
 
     <pnp:Sections>
-
-      <!-- Section: Active Requests -->
       <pnp:Section Order="1" Type="OneColumn">
         <pnp:Controls>
-          <pnp:CanvasControl WebPartType="List"
-                              JsonControlData='{
-                                "id": "f92bf067-bc19-489e-a556-7fe95f508720",
-                                "instanceId": "00000000-0000-0000-0000-000000000001",
-                                "title": "My Active Requests",
-                                "description": "",
-                                "serverProcessedContent": {
-                                  "htmlStrings": {},
-                                  "searchablePlainTexts": {},
-                                  "imageSources": {},
-                                  "links": {}
-                                },
-                                "dataVersion": "1.0",
-                                "properties": {
-                                  "isDocumentLibrary": false,
-                                  "selectedListId": "{{listid:Requests}}",
-                                  "selectedListUrl": "/Lists/Requests",
-                                  "selectedViewId": "{{viewid:Requests:My Requests}}",
-                                  "listTitle": "Requests",
-                                  "viewTitle": "My Requests"
-                                }
-                              }'
-                              Order="1"
-                              Column="1" />
+          <pnp:CanvasControl WebPartType="Text" ControlId="00000000-0000-0000-0000-000000000011" Order="1" Column="1">
+            <pnp:CanvasControlProperties>
+              <pnp:CanvasControlProperty Key="Text" Value="&lt;h2&gt;My Requests&lt;/h2&gt;&lt;p&gt;View and manage your legal review requests.&lt;/p&gt;" />
+            </pnp:CanvasControlProperties>
+          </pnp:CanvasControl>
         </pnp:Controls>
       </pnp:Section>
-
-      <!-- Section: Completed Requests -->
       <pnp:Section Order="2" Type="OneColumn">
         <pnp:Controls>
-          <pnp:CanvasControl WebPartType="List"
-                              JsonControlData='{
-                                "id": "f92bf067-bc19-489e-a556-7fe95f508720",
-                                "instanceId": "00000000-0000-0000-0000-000000000002",
-                                "title": "My Completed Requests",
-                                "description": "",
-                                "dataVersion": "1.0",
-                                "properties": {
-                                  "isDocumentLibrary": false,
-                                  "selectedListId": "{{listid:Requests}}",
-                                  "selectedListUrl": "/Lists/Requests",
-                                  "selectedViewId": "{{viewid:Requests:My Completed Requests}}",
-                                  "listTitle": "Requests",
-                                  "viewTitle": "My Completed Requests"
-                                }
-                              }'
-                              Order="1"
-                              Column="1" />
+          <pnp:CanvasControl WebPartType="List" ControlId="00000000-0000-0000-0000-000000000012" Order="1" Column="1"
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000012&quot;,&quot;title&quot;:&quot;My Open Requests&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
         </pnp:Controls>
       </pnp:Section>
-
     </pnp:Sections>
 
   </pnp:ClientSidePage>
@@ -95,60 +71,27 @@
                        Layout="Article"
                        EnableComments="false"
                        Title="Legal Admin Dashboard"
-                       PageName="LegalAdminDashboard.aspx">
+                       PageName="LegalAdminDashboard.aspx"
+                       Publish="true">
 
-    <pnp:Header Type="Default" LayoutType="FullWidthImage" ShowPublishDate="false" ShowTopicHeader="false" />
+    <pnp:Header Type="Default" LayoutType="NoImage" ShowTopicHeader="false" ShowPublishDate="false" />
 
     <pnp:Sections>
-
-      <!-- Section: Pending Legal Intake -->
       <pnp:Section Order="1" Type="OneColumn">
         <pnp:Controls>
-          <pnp:CanvasControl WebPartType="List"
-                              JsonControlData='{
-                                "id": "f92bf067-bc19-489e-a556-7fe95f508720",
-                                "instanceId": "00000000-0000-0000-0000-000000000003",
-                                "title": "Pending Legal Intake",
-                                "description": "",
-                                "dataVersion": "1.0",
-                                "properties": {
-                                  "isDocumentLibrary": false,
-                                  "selectedListId": "{{listid:Requests}}",
-                                  "selectedListUrl": "/Lists/Requests",
-                                  "selectedViewId": "{{viewid:Requests:Pending Legal Intake}}",
-                                  "listTitle": "Requests",
-                                  "viewTitle": "Pending Legal Intake"
-                                }
-                              }'
-                              Order="1"
-                              Column="1" />
+          <pnp:CanvasControl WebPartType="Text" ControlId="00000000-0000-0000-0000-000000000021" Order="1" Column="1">
+            <pnp:CanvasControlProperties>
+              <pnp:CanvasControlProperty Key="Text" Value="&lt;h2&gt;Legal Admin Dashboard&lt;/h2&gt;&lt;p&gt;Manage legal intake, attorney assignments, and review progress.&lt;/p&gt;" />
+            </pnp:CanvasControlProperties>
+          </pnp:CanvasControl>
         </pnp:Controls>
       </pnp:Section>
-
-      <!-- Section: All Active Requests -->
       <pnp:Section Order="2" Type="OneColumn">
         <pnp:Controls>
-          <pnp:CanvasControl WebPartType="List"
-                              JsonControlData='{
-                                "id": "f92bf067-bc19-489e-a556-7fe95f508720",
-                                "instanceId": "00000000-0000-0000-0000-000000000004",
-                                "title": "All Active Requests",
-                                "description": "",
-                                "dataVersion": "1.0",
-                                "properties": {
-                                  "isDocumentLibrary": false,
-                                  "selectedListId": "{{listid:Requests}}",
-                                  "selectedListUrl": "/Lists/Requests",
-                                  "selectedViewId": "{{viewid:Requests:Active Requests}}",
-                                  "listTitle": "Requests",
-                                  "viewTitle": "Active Requests"
-                                }
-                              }'
-                              Order="1"
-                              Column="1" />
+          <pnp:CanvasControl WebPartType="List" ControlId="00000000-0000-0000-0000-000000000022" Order="1" Column="1"
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000022&quot;,&quot;title&quot;:&quot;All Requests&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
         </pnp:Controls>
       </pnp:Section>
-
     </pnp:Sections>
 
   </pnp:ClientSidePage>
@@ -162,60 +105,27 @@
                        Layout="Article"
                        EnableComments="false"
                        Title="Attorney Assignment Dashboard"
-                       PageName="AttorneyAssignmentDashboard.aspx">
+                       PageName="AttorneyAssignmentDashboard.aspx"
+                       Publish="true">
 
-    <pnp:Header Type="Default" LayoutType="FullWidthImage" ShowPublishDate="false" ShowTopicHeader="false" />
+    <pnp:Header Type="Default" LayoutType="NoImage" ShowTopicHeader="false" ShowPublishDate="false" />
 
     <pnp:Sections>
-
-      <!-- Section: Pending Attorney Assignment -->
       <pnp:Section Order="1" Type="OneColumn">
         <pnp:Controls>
-          <pnp:CanvasControl WebPartType="List"
-                              JsonControlData='{
-                                "id": "f92bf067-bc19-489e-a556-7fe95f508720",
-                                "instanceId": "00000000-0000-0000-0000-000000000005",
-                                "title": "Pending Attorney Assignment",
-                                "description": "",
-                                "dataVersion": "1.0",
-                                "properties": {
-                                  "isDocumentLibrary": false,
-                                  "selectedListId": "{{listid:Requests}}",
-                                  "selectedListUrl": "/Lists/Requests",
-                                  "selectedViewId": "{{viewid:Requests:Pending Attorney Assignment}}",
-                                  "listTitle": "Requests",
-                                  "viewTitle": "Pending Attorney Assignment"
-                                }
-                              }'
-                              Order="1"
-                              Column="1" />
+          <pnp:CanvasControl WebPartType="Text" ControlId="00000000-0000-0000-0000-000000000031" Order="1" Column="1">
+            <pnp:CanvasControlProperties>
+              <pnp:CanvasControlProperty Key="Text" Value="&lt;h2&gt;Attorney Assignment Dashboard&lt;/h2&gt;&lt;p&gt;Assign attorneys to pending legal review requests.&lt;/p&gt;" />
+            </pnp:CanvasControlProperties>
+          </pnp:CanvasControl>
         </pnp:Controls>
       </pnp:Section>
-
-      <!-- Section: Attorney Assigned Requests -->
       <pnp:Section Order="2" Type="OneColumn">
         <pnp:Controls>
-          <pnp:CanvasControl WebPartType="List"
-                              JsonControlData='{
-                                "id": "f92bf067-bc19-489e-a556-7fe95f508720",
-                                "instanceId": "00000000-0000-0000-0000-000000000006",
-                                "title": "Attorney Assigned Requests",
-                                "description": "",
-                                "dataVersion": "1.0",
-                                "properties": {
-                                  "isDocumentLibrary": false,
-                                  "selectedListId": "{{listid:Requests}}",
-                                  "selectedListUrl": "/Lists/Requests",
-                                  "selectedViewId": "{{viewid:Requests:Attorney Assigned}}",
-                                  "listTitle": "Requests",
-                                  "viewTitle": "Attorney Assigned"
-                                }
-                              }'
-                              Order="1"
-                              Column="1" />
+          <pnp:CanvasControl WebPartType="List" ControlId="00000000-0000-0000-0000-000000000032" Order="1" Column="1"
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000032&quot;,&quot;title&quot;:&quot;Requests&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
         </pnp:Controls>
       </pnp:Section>
-
     </pnp:Sections>
 
   </pnp:ClientSidePage>
@@ -229,60 +139,27 @@
                        Layout="Article"
                        EnableComments="false"
                        Title="Attorney Dashboard"
-                       PageName="AttorneyDashboard.aspx">
+                       PageName="AttorneyDashboard.aspx"
+                       Publish="true">
 
-    <pnp:Header Type="Default" LayoutType="FullWidthImage" ShowPublishDate="false" ShowTopicHeader="false" />
+    <pnp:Header Type="Default" LayoutType="NoImage" ShowTopicHeader="false" ShowPublishDate="false" />
 
     <pnp:Sections>
-
-      <!-- Section: My Legal Review Requests (Active) -->
       <pnp:Section Order="1" Type="OneColumn">
         <pnp:Controls>
-          <pnp:CanvasControl WebPartType="List"
-                              JsonControlData='{
-                                "id": "f92bf067-bc19-489e-a556-7fe95f508720",
-                                "instanceId": "00000000-0000-0000-0000-000000000007",
-                                "title": "My Legal Review Requests",
-                                "description": "",
-                                "dataVersion": "1.0",
-                                "properties": {
-                                  "isDocumentLibrary": false,
-                                  "selectedListId": "{{listid:Requests}}",
-                                  "selectedListUrl": "/Lists/Requests",
-                                  "selectedViewId": "{{viewid:Requests:My Legal Review Requests}}",
-                                  "listTitle": "Requests",
-                                  "viewTitle": "My Legal Review Requests"
-                                }
-                              }'
-                              Order="1"
-                              Column="1" />
+          <pnp:CanvasControl WebPartType="Text" ControlId="00000000-0000-0000-0000-000000000041" Order="1" Column="1">
+            <pnp:CanvasControlProperties>
+              <pnp:CanvasControlProperty Key="Text" Value="&lt;h2&gt;Attorney Dashboard&lt;/h2&gt;&lt;p&gt;View and manage your assigned legal review requests.&lt;/p&gt;" />
+            </pnp:CanvasControlProperties>
+          </pnp:CanvasControl>
         </pnp:Controls>
       </pnp:Section>
-
-      <!-- Section: My Completed Legal Reviews -->
       <pnp:Section Order="2" Type="OneColumn">
         <pnp:Controls>
-          <pnp:CanvasControl WebPartType="List"
-                              JsonControlData='{
-                                "id": "f92bf067-bc19-489e-a556-7fe95f508720",
-                                "instanceId": "00000000-0000-0000-0000-000000000008",
-                                "title": "My Completed Legal Reviews",
-                                "description": "",
-                                "dataVersion": "1.0",
-                                "properties": {
-                                  "isDocumentLibrary": false,
-                                  "selectedListId": "{{listid:Requests}}",
-                                  "selectedListUrl": "/Lists/Requests",
-                                  "selectedViewId": "{{viewid:Requests:My Completed Legal Reviews}}",
-                                  "listTitle": "Requests",
-                                  "viewTitle": "My Completed Legal Reviews"
-                                }
-                              }'
-                              Order="1"
-                              Column="1" />
+          <pnp:CanvasControl WebPartType="List" ControlId="00000000-0000-0000-0000-000000000042" Order="1" Column="1"
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000042&quot;,&quot;title&quot;:&quot;Requests&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
         </pnp:Controls>
       </pnp:Section>
-
     </pnp:Sections>
 
   </pnp:ClientSidePage>
@@ -296,60 +173,27 @@
                        Layout="Article"
                        EnableComments="false"
                        Title="Compliance Dashboard"
-                       PageName="ComplianceDashboard.aspx">
+                       PageName="ComplianceDashboard.aspx"
+                       Publish="true">
 
-    <pnp:Header Type="Default" LayoutType="FullWidthImage" ShowPublishDate="false" ShowTopicHeader="false" />
+    <pnp:Header Type="Default" LayoutType="NoImage" ShowTopicHeader="false" ShowPublishDate="false" />
 
     <pnp:Sections>
-
-      <!-- Section: Pending Compliance Review -->
       <pnp:Section Order="1" Type="OneColumn">
         <pnp:Controls>
-          <pnp:CanvasControl WebPartType="List"
-                              JsonControlData='{
-                                "id": "f92bf067-bc19-489e-a556-7fe95f508720",
-                                "instanceId": "00000000-0000-0000-0000-000000000009",
-                                "title": "Pending Compliance Review",
-                                "description": "",
-                                "dataVersion": "1.0",
-                                "properties": {
-                                  "isDocumentLibrary": false,
-                                  "selectedListId": "{{listid:Requests}}",
-                                  "selectedListUrl": "/Lists/Requests",
-                                  "selectedViewId": "{{viewid:Requests:Pending Compliance Review}}",
-                                  "listTitle": "Requests",
-                                  "viewTitle": "Pending Compliance Review"
-                                }
-                              }'
-                              Order="1"
-                              Column="1" />
+          <pnp:CanvasControl WebPartType="Text" ControlId="00000000-0000-0000-0000-000000000051" Order="1" Column="1">
+            <pnp:CanvasControlProperties>
+              <pnp:CanvasControlProperty Key="Text" Value="&lt;h2&gt;Compliance Dashboard&lt;/h2&gt;&lt;p&gt;Review and manage compliance review requests.&lt;/p&gt;" />
+            </pnp:CanvasControlProperties>
+          </pnp:CanvasControl>
         </pnp:Controls>
       </pnp:Section>
-
-      <!-- Section: My Completed Compliance Reviews -->
       <pnp:Section Order="2" Type="OneColumn">
         <pnp:Controls>
-          <pnp:CanvasControl WebPartType="List"
-                              JsonControlData='{
-                                "id": "f92bf067-bc19-489e-a556-7fe95f508720",
-                                "instanceId": "00000000-0000-0000-0000-00000000000A",
-                                "title": "My Completed Compliance Reviews",
-                                "description": "",
-                                "dataVersion": "1.0",
-                                "properties": {
-                                  "isDocumentLibrary": false,
-                                  "selectedListId": "{{listid:Requests}}",
-                                  "selectedListUrl": "/Lists/Requests",
-                                  "selectedViewId": "{{viewid:Requests:My Completed Compliance Reviews}}",
-                                  "listTitle": "Requests",
-                                  "viewTitle": "My Completed Compliance Reviews"
-                                }
-                              }'
-                              Order="1"
-                              Column="1" />
+          <pnp:CanvasControl WebPartType="List" ControlId="00000000-0000-0000-0000-000000000052" Order="1" Column="1"
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000052&quot;,&quot;title&quot;:&quot;Requests&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
         </pnp:Controls>
       </pnp:Section>
-
     </pnp:Sections>
 
   </pnp:ClientSidePage>

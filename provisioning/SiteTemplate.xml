@@ -1,132 +1,42 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- ===============================================================================
-     Legal Workflow System - PnP Provisioning Template
-
-     This template provisions the complete Legal Workflow SharePoint site including:
-     - Security groups and custom permission levels
-     - Lists: Requests, SubmissionItems, Configuration
-     - Document library: RequestDocuments
-
-     Deployment:
-     Apply-PnPProvisioningTemplate -Path SiteTemplate.xml -Handlers All
-
-     Version: 1.0
-     Date: February 2025
-     =============================================================================== -->
-
-<pnp:Provisioning xmlns:pnp="http://schemas.dev.office.com/PnP/2024/03/ProvisioningSchema"
-                  xmlns:xi="http://www.w3.org/2001/XInclude">
-
-  <pnp:Preferences Generator="Legal Workflow Team">
-    <pnp:Parameters>
-      <!-- Site URL parameter -->
-      <pnp:Parameter Key="SiteUrl">{sitecollection}</pnp:Parameter>
-    </pnp:Parameters>
-  </pnp:Preferences>
-
+<?xml version="1.0" ?>
+<pnp:Provisioning xmlns:pnp="http://schemas.dev.office.com/PnP/2022/09/ProvisioningSchema">
+  <pnp:Preferences Generator="PnP-ProvisioningEngine" />
   <pnp:Templates ID="CONTAINER-LEGAL-WORKFLOW">
-
     <pnp:ProvisioningTemplate ID="LegalWorkflowTemplate"
-                              Version="1.0.0"
-                              BaseSiteTemplate="STS#3"
-                              ImagePreviewUrl=""
-                              DisplayName="Legal Workflow System"
-                              Description="Complete provisioning template for Legal Review System with requests, documents, and security">
+                              Version="1"
+                              DisplayName="Legal Workflow System">
+
+      <xi:include href="Security.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+      <pnp:Lists>
+        <!-- 1. SubmissionItems List -->
+        <xi:include href="Lists/SubmissionItems.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+        <!-- 2. Configuration List -->
+        <xi:include href="Lists/Configuration.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+        <!-- 3. Requests List (73+ fields) -->
+        <xi:include href="Lists/Requests.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+        <!-- 4. RequestDocuments Library -->
+        <xi:include href="Lists/RequestDocuments.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+        <!-- 5. SitePages Library (Permissions) - Commented out: System library, permissions should be set separately -->
+        <!-- <xi:include href="Lists/SitePages.xml" xmlns:xi="http://www.w3.org/2001/XInclude" /> -->
+      </pnp:Lists>
 
       <!-- ========================================================================
-           SITE SETTINGS
+           CLIENT SIDE PAGES
            ======================================================================== -->
 
-      <pnp:SiteSettings>
-        <!-- Regional Settings -->
-        <pnp:Regional LocaleId="1033"
-                     TimeZone="13"
-                     Collation="25"
-                     Time24="false"
-                     CalendarType="1"
-                     AlternateCalendarType="0"
-                     FirstDayOfWeek="0"
-                     FirstWeekOfYear="0"
-                     WorkDayStartHour="480"
-                     WorkDayEndHour="1020"
-                     WorkDays="62"
-                     ShowWeeks="false"
-                     AdjustHijriDays="0" />
-      </pnp:SiteSettings>
-
-      <!-- ========================================================================
-           FEATURES (Optional - Uncomment if needed)
-           ======================================================================== -->
-      <!--
-      <pnp:Features>
-        <pnp:SiteFeatures>
-          Enable site collection features here if needed
-        </pnp:SiteFeatures>
-        <pnp:WebFeatures>
-          Enable web features here if needed
-        </pnp:WebFeatures>
-      </pnp:Features>
-      -->
-
-      <!-- ========================================================================
-           SECURITY
-           Include Security.xml with groups and custom permission level
-           ======================================================================== -->
-
-      <xi:include href="Security.xml" xpointer="xmlns(pnp=http://schemas.dev.office.com/PnP/2024/03/ProvisioningSchema)xpointer(/pnp:Security/pnp:SiteSecurityPermissions)" />
-      <xi:include href="Security.xml" xpointer="xmlns(pnp=http://schemas.dev.office.com/PnP/2024/03/ProvisioningSchema)xpointer(/pnp:Security/pnp:SiteGroups)" />
-
-      <!-- ========================================================================
-           LISTS AND LIBRARIES
-           Include list definitions in dependency order:
-           1. SubmissionItems (referenced by Requests)
-           2. Configuration (standalone)
-           3. Requests (main list, references SubmissionItems)
-           4. RequestDocuments (references Requests)
-           ======================================================================== -->
-
-      <!-- 1. SubmissionItems List -->
-      <xi:include href="Lists/SubmissionItems.xml" xpointer="xmlns(pnp=http://schemas.dev.office.com/PnP/2024/03/ProvisioningSchema)xpointer(/pnp:Lists/*)" />
-
-      <!-- 2. Configuration List -->
-      <xi:include href="Lists/Configuration.xml" xpointer="xmlns(pnp=http://schemas.dev.office.com/PnP/2024/03/ProvisioningSchema)xpointer(/pnp:Lists/*)" />
-
-      <!-- 3. Requests List (73+ fields) -->
-      <xi:include href="Lists/Requests.xml" xpointer="xmlns(pnp=http://schemas.dev.office.com/PnP/2024/03/ProvisioningSchema)xpointer(/pnp:Lists/*)" />
-
-      <!-- 4. RequestDocuments Library -->
-      <xi:include href="Lists/RequestDocuments.xml" xpointer="xmlns(pnp=http://schemas.dev.office.com/PnP/2024/03/ProvisioningSchema)xpointer(/pnp:Lists/*)" />
-
-      <!-- 5. SitePages Library (Permissions) -->
-      <xi:include href="Lists/SitePages.xml" xpointer="xmlns(pnp=http://schemas.dev.office.com/PnP/2024/03/ProvisioningSchema)xpointer(/pnp:Lists/*)" />
-
-      <!-- ========================================================================
-           CLIENT SIDE PAGES (Dashboard Pages)
-           ======================================================================== -->
-
-      <xi:include href="ClientSidePages.xml" xpointer="xmlns(pnp=http://schemas.dev.office.com/PnP/2024/03/ProvisioningSchema)xpointer(/pnp:ClientSidePages/*)" />
+      <xi:include href="ClientSidePages.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
 
       <!-- ========================================================================
            NAVIGATION (Quick Launch with Dashboards)
            ======================================================================== -->
 
-      <xi:include href="Navigation.xml" xpointer="xmlns(pnp=http://schemas.dev.office.com/PnP/2024/03/ProvisioningSchema)xpointer(/pnp:Navigation/*)" />
-
-      <!-- ========================================================================
-           SITE FOOTER (Optional - Informational)
-           ======================================================================== -->
-
-      <pnp:Footer Enabled="true"
-                 Layout="Simple"
-                 BackgroundEmphasis="Strong">
-        <pnp:FooterLinks>
-          <pnp:FooterLink DisplayName="Legal Workflow Documentation" Url="/sites/LegalWorkflow/Shared%20Documents/README.md" />
-          <pnp:FooterLink DisplayName="Support" Url="mailto:support@company.com" />
-        </pnp:FooterLinks>
-      </pnp:Footer>
+      <xi:include href="Navigation.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
 
     </pnp:ProvisioningTemplate>
-
   </pnp:Templates>
-
 </pnp:Provisioning>

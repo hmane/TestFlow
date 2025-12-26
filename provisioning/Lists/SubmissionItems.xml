@@ -1,146 +1,98 @@
-<!-- ===============================================================================
-     SubmissionItems List
-     Configuration list for submission types and turnaround times
+<pnp:ListInstance xmlns:pnp="http://schemas.dev.office.com/PnP/2022/09/ProvisioningSchema"
+                  Title="SubmissionItems"
+                  Description="Configuration list for submission types and their turnaround times"
+                  TemplateType="100"
+                  Url="Lists/SubmissionItems"
+                  OnQuickLaunch="true"
+                  EnableVersioning="true"
+                  EnableMinorVersions="false"
+                  EnableAttachments="false">
 
-     Fields:
-     - Title (auto-created): Submission type name
-     - TurnAroundTimeInDays: Expected days for completion
-     - Description: Detailed description
-     - DisplayOrder: Sort order for display
-     =============================================================================== -->
+  <pnp:Fields>
+    <Field Type="Number"
+           DisplayName="Turn Around Time In Days"
+           Name="TurnAroundTimeInDays"
+           ID="{C1234567-0001-0001-0001-000000000001}"
+           Required="TRUE"
+           Min="1"
+           Max="30"
+           Decimals="0"
+           Group="Submission Items">
+      <Default>5</Default>
+    </Field>
 
-<pnp:Lists xmlns:pnp="http://schemas.dev.office.com/PnP/2024/03/ProvisioningSchema">
+    <Field Type="Note"
+           DisplayName="Description"
+           Name="Description"
+           ID="{C1234567-0001-0001-0001-000000000002}"
+           Required="FALSE"
+           RichText="FALSE"
+           NumLines="6"
+           Group="Submission Items" />
 
-  <pnp:ListInstance Title="SubmissionItems"
-                    Description="Configuration list for submission types and their turnaround times"
-                    TemplateType="100"
-                    Url="Lists/SubmissionItems"
-                    OnQuickLaunch="true"
-                    EnableVersioning="true"
-                    EnableMinorVersions="false"
-                    EnableAttachments="false">
+    <Field Type="Number"
+           DisplayName="Display Order"
+           Name="DisplayOrder"
+           ID="{C1234567-0001-0001-0001-000000000003}"
+           Required="FALSE"
+           Min="0"
+           Max="999"
+           Decimals="0"
+           Group="Submission Items">
+      <Default>0</Default>
+    </Field>
+  </pnp:Fields>
 
-    <!-- List Fields -->
-    <pnp:Fields>
+  <pnp:Views>
+    <pnp:View Name="AllItems" DisplayName="All Items" DefaultView="true" RowLimit="30" Paged="true">
+      <pnp:Query>
+        <OrderBy>
+          <FieldRef Name="DisplayOrder" Ascending="TRUE" />
+          <FieldRef Name="Title" Ascending="TRUE" />
+        </OrderBy>
+      </pnp:Query>
+      <pnp:ViewFields>
+        <FieldRef Name="LinkTitle" />
+        <FieldRef Name="TurnAroundTimeInDays" />
+        <FieldRef Name="Description" />
+        <FieldRef Name="DisplayOrder" />
+        <FieldRef Name="Modified" />
+        <FieldRef Name="Editor" />
+      </pnp:ViewFields>
+    </pnp:View>
+  </pnp:Views>
 
-      <!-- Turn Around Time In Days (Number, Required, 1-30) -->
-      <Field Type="Number"
-             DisplayName="Turn Around Time In Days"
-             Name="TurnAroundTimeInDays"
-             ID="{C1234567-0001-0001-0001-000000000001}"
-             Required="TRUE"
-             Min="1"
-             Max="30"
-             Decimals="0"
-             Group="Submission Items">
-        <Default>5</Default>
-      </Field>
+  <pnp:DataRows>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">New Exhibit</pnp:DataValue>
+      <pnp:DataValue FieldName="TurnAroundTimeInDays">3</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">New exhibit submission</pnp:DataValue>
+      <pnp:DataValue FieldName="DisplayOrder">10</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">Updated Exhibit</pnp:DataValue>
+      <pnp:DataValue FieldName="TurnAroundTimeInDays">2</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Updates to existing exhibit</pnp:DataValue>
+      <pnp:DataValue FieldName="DisplayOrder">20</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">White Paper</pnp:DataValue>
+      <pnp:DataValue FieldName="TurnAroundTimeInDays">5</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">White paper review</pnp:DataValue>
+      <pnp:DataValue FieldName="DisplayOrder">30</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">Website Update - Substantial (4 pages or more)</pnp:DataValue>
+      <pnp:DataValue FieldName="TurnAroundTimeInDays">5</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Major website updates</pnp:DataValue>
+      <pnp:DataValue FieldName="DisplayOrder">40</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">Marketing Communication</pnp:DataValue>
+      <pnp:DataValue FieldName="TurnAroundTimeInDays">3</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Marketing communication materials</pnp:DataValue>
+      <pnp:DataValue FieldName="DisplayOrder">50</pnp:DataValue>
+    </pnp:DataRow>
+  </pnp:DataRows>
 
-      <!-- Description (Multi-line text) -->
-      <Field Type="Note"
-             DisplayName="Description"
-             Name="Description"
-             ID="{C1234567-0001-0001-0001-000000000002}"
-             Required="FALSE"
-             RichText="FALSE"
-             NumLines="6"
-             Group="Submission Items" />
-
-      <!-- Display Order (Number for sorting) -->
-      <Field Type="Number"
-             DisplayName="Display Order"
-             Name="DisplayOrder"
-             ID="{C1234567-0001-0001-0001-000000000003}"
-             Required="FALSE"
-             Min="0"
-             Max="999"
-             Decimals="0"
-             Group="Submission Items">
-        <Default>0</Default>
-      </Field>
-
-    </pnp:Fields>
-
-    <!-- Default View -->
-    <pnp:Views>
-      <View Name="All Items"
-            DefaultView="TRUE"
-            MobileView="TRUE"
-            MobileDefaultView="TRUE"
-            Type="HTML"
-            DisplayName="All Items"
-            Url="{site}/Lists/SubmissionItems/AllItems.aspx"
-            Level="1"
-            BaseViewID="1"
-            ContentTypeID="0x">
-        <Query>
-          <OrderBy>
-            <FieldRef Name="DisplayOrder" Ascending="TRUE" />
-            <FieldRef Name="Title" Ascending="TRUE" />
-          </OrderBy>
-        </Query>
-        <ViewFields>
-          <FieldRef Name="LinkTitle" />
-          <FieldRef Name="TurnAroundTimeInDays" />
-          <FieldRef Name="Description" />
-          <FieldRef Name="DisplayOrder" />
-          <FieldRef Name="Modified" />
-          <FieldRef Name="Editor" />
-        </ViewFields>
-        <RowLimit Paged="TRUE">30</RowLimit>
-        <JSLink>clienttemplates.js</JSLink>
-      </View>
-    </pnp:Views>
-
-    <!-- Default Data Items -->
-    <pnp:DataRows>
-      <pnp:DataRow>
-        <pnp:DataValue FieldName="Title">New Exhibit</pnp:DataValue>
-        <pnp:DataValue FieldName="TurnAroundTimeInDays">3</pnp:DataValue>
-        <pnp:DataValue FieldName="Description">New exhibit submission</pnp:DataValue>
-        <pnp:DataValue FieldName="DisplayOrder">10</pnp:DataValue>
-      </pnp:DataRow>
-      <pnp:DataRow>
-        <pnp:DataValue FieldName="Title">Updated Exhibit</pnp:DataValue>
-        <pnp:DataValue FieldName="TurnAroundTimeInDays">2</pnp:DataValue>
-        <pnp:DataValue FieldName="Description">Updates to existing exhibit</pnp:DataValue>
-        <pnp:DataValue FieldName="DisplayOrder">20</pnp:DataValue>
-      </pnp:DataRow>
-      <pnp:DataRow>
-        <pnp:DataValue FieldName="Title">White Paper</pnp:DataValue>
-        <pnp:DataValue FieldName="TurnAroundTimeInDays">5</pnp:DataValue>
-        <pnp:DataValue FieldName="Description">White paper review</pnp:DataValue>
-        <pnp:DataValue FieldName="DisplayOrder">30</pnp:DataValue>
-      </pnp:DataRow>
-      <pnp:DataRow>
-        <pnp:DataValue FieldName="Title">Website Update - Substantial (4 pages or more)</pnp:DataValue>
-        <pnp:DataValue FieldName="TurnAroundTimeInDays">5</pnp:DataValue>
-        <pnp:DataValue FieldName="Description">Major website updates</pnp:DataValue>
-        <pnp:DataValue FieldName="DisplayOrder">40</pnp:DataValue>
-      </pnp:DataRow>
-      <pnp:DataRow>
-        <pnp:DataValue FieldName="Title">Marketing Communication</pnp:DataValue>
-        <pnp:DataValue FieldName="TurnAroundTimeInDays">3</pnp:DataValue>
-        <pnp:DataValue FieldName="Description">Marketing communication materials</pnp:DataValue>
-        <pnp:DataValue FieldName="DisplayOrder">50</pnp:DataValue>
-      </pnp:DataRow>
-    </pnp:DataRows>
-
-    <!-- Security: Break Inheritance - Admin Full Control, Others Read -->
-    <pnp:Security BreakRoleInheritance="true" CopyRoleAssignments="false" ClearSubscopes="true">
-      <pnp:RoleAssignments>
-        <!-- LW - Admin: Full Control for configuration management -->
-        <pnp:RoleAssignment Principal="LW - Admin" RoleDefinition="Full Control" />
-
-        <!-- All other groups: Read only -->
-        <pnp:RoleAssignment Principal="LW - Legal Admin" RoleDefinition="Read" />
-        <pnp:RoleAssignment Principal="LW - Attorney Assigner" RoleDefinition="Read" />
-        <pnp:RoleAssignment Principal="LW - Attorneys" RoleDefinition="Read" />
-        <pnp:RoleAssignment Principal="LW - Compliance Users" RoleDefinition="Read" />
-        <pnp:RoleAssignment Principal="LW - Submitters" RoleDefinition="Read" />
-      </pnp:RoleAssignments>
-    </pnp:Security>
-
-  </pnp:ListInstance>
-
-</pnp:Lists>
+</pnp:ListInstance>

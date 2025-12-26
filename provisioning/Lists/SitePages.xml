@@ -1,47 +1,19 @@
-<!-- ===============================================================================
-     Site Pages Library Permissions
+<pnp:ListInstance xmlns:pnp="http://schemas.dev.office.com/PnP/2022/09/ProvisioningSchema"
+                  Title="Site Pages"
+                  TemplateType="119"
+                  Url="SitePages">
 
-     Breaks inheritance and grants read-only access to all users except admins.
-     This ensures dashboard pages can be viewed but not edited by regular users.
-     =============================================================================== -->
+  <pnp:Security>
+    <pnp:BreakRoleInheritance CopyRoleAssignments="false" ClearSubscopes="true">
+      <pnp:RoleAssignment Principal="Site Collection Administrators" RoleDefinition="Full Control" />
+      <pnp:RoleAssignment Principal="Site Owners" RoleDefinition="Full Control" />
+      <pnp:RoleAssignment Principal="LW - Admin" RoleDefinition="Edit" />
+      <pnp:RoleAssignment Principal="LW - Legal Admin" RoleDefinition="Read" />
+      <pnp:RoleAssignment Principal="LW - Attorney Assigner" RoleDefinition="Read" />
+      <pnp:RoleAssignment Principal="LW - Attorneys" RoleDefinition="Read" />
+      <pnp:RoleAssignment Principal="LW - Compliance Users" RoleDefinition="Read" />
+      <pnp:RoleAssignment Principal="LW - Submitters" RoleDefinition="Read" />
+    </pnp:BreakRoleInheritance>
+  </pnp:Security>
 
-<pnp:Lists xmlns:pnp="http://schemas.dev.office.com/PnP/2024/03/ProvisioningSchema">
-
-  <pnp:ListInstance Title="Site Pages"
-                    TemplateType="119"
-                    Url="SitePages">
-
-    <!-- Security: Break Inheritance and Apply Read-Only for Non-Admins -->
-    <pnp:Security BreakRoleInheritance="true" CopyRoleAssignments="false" ClearSubscopes="true">
-      <pnp:RoleAssignments>
-
-        <!-- Site Collection Admins: Full Control -->
-        <pnp:RoleAssignment Principal="Site Collection Administrators" RoleDefinition="Full Control" />
-
-        <!-- Site Owners: Full Control -->
-        <pnp:RoleAssignment Principal="Site Owners" RoleDefinition="Full Control" />
-
-        <!-- LW - Admin: Edit (can modify pages but not delete) -->
-        <pnp:RoleAssignment Principal="LW - Admin" RoleDefinition="Edit" />
-
-        <!-- LW - Legal Admin: Read -->
-        <pnp:RoleAssignment Principal="LW - Legal Admin" RoleDefinition="Read" />
-
-        <!-- LW - Attorney Assigner: Read -->
-        <pnp:RoleAssignment Principal="LW - Attorney Assigner" RoleDefinition="Read" />
-
-        <!-- LW - Attorneys: Read -->
-        <pnp:RoleAssignment Principal="LW - Attorneys" RoleDefinition="Read" />
-
-        <!-- LW - Compliance Users: Read -->
-        <pnp:RoleAssignment Principal="LW - Compliance Users" RoleDefinition="Read" />
-
-        <!-- LW - Submitters: Read -->
-        <pnp:RoleAssignment Principal="LW - Submitters" RoleDefinition="Read" />
-
-      </pnp:RoleAssignments>
-    </pnp:Security>
-
-  </pnp:ListInstance>
-
-</pnp:Lists>
+</pnp:ListInstance>
