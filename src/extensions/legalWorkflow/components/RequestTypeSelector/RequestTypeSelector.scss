@@ -1,69 +1,458 @@
 /**
- * RequestTypeSelector styles
+ * RequestTypeSelector Styles
+ *
+ * SharePoint/Fluent UI aligned styling for request type selection.
+ * Uses BEM naming convention with 'rts' prefix.
  */
 
-.request-type-selector {
-  background-color: #faf9f8;
-  min-height: 100vh;
+// ============================================================================
+// Fluent UI / SharePoint Theme Colors
+// ============================================================================
 
-  &__workflow-preview {
-    margin-top: 32px;
-    padding: 24px;
-    background-color: #ffffff;
-    border: 1px solid #edebe9;
-    border-radius: 4px;
+// Primary colors (SharePoint theme)
+$themePrimary: #0078d4;
+$themeDark: #005a9e;
+$themeDarker: #004578;
+$themeLight: #c7e0f4;
+$themeLighter: #deecf9;
+$themeLighterAlt: #eff6fc;
+
+// Neutral colors
+$neutralPrimary: #323130;
+$neutralSecondary: #605e5c;
+$neutralTertiary: #a19f9d;
+$neutralQuaternary: #d2d0ce;
+$neutralLight: #edebe9;
+$neutralLighter: #f3f2f1;
+$neutralLighterAlt: #faf9f8;
+$white: #ffffff;
+
+// Semantic colors
+$successColor: #107c10;
+$errorColor: #a4262c;
+$warningColor: #797673;
+
+// Typography
+$fontFamily: 'Segoe UI', 'Segoe UI Web (West European)', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+
+// Spacing
+$space-xs: 4px;
+$space-sm: 8px;
+$space-md: 16px;
+$space-lg: 24px;
+$space-xl: 32px;
+
+// Shadows (Fluent UI depth)
+$depth4: 0 1.6px 3.6px 0 rgba(0, 0, 0, 0.132), 0 0.3px 0.9px 0 rgba(0, 0, 0, 0.108);
+$depth8: 0 3.2px 7.2px 0 rgba(0, 0, 0, 0.132), 0 0.6px 1.8px 0 rgba(0, 0, 0, 0.108);
+$depth16: 0 6.4px 14.4px 0 rgba(0, 0, 0, 0.132), 0 1.2px 3.6px 0 rgba(0, 0, 0, 0.108);
+
+// Border radius
+$borderRadius: 2px;
+$borderRadiusMedium: 4px;
+
+// Transitions
+$transitionFast: 100ms ease-out;
+$transitionNormal: 200ms ease-out;
+
+// ============================================================================
+// Animations
+// ============================================================================
+
+@keyframes rts-fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 
-.request-type-card {
-  &:hover:not(&--selected) {
-    border-color: #a19f9d !important;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  }
-
-  &--selected {
-    box-shadow: 0 4px 12px rgba(0, 120, 212, 0.15);
-  }
-
-  ul {
-    list-style-type: disc;
-
-    li {
-      margin-bottom: 4px;
-    }
-  }
-}
-
-.workflow-stepper-preview {
-  // Workflow stepper inherits styles from WorkflowStepper component
-}
-
-// Animation for card selection
-@keyframes selectCard {
+@keyframes rts-checkPop {
   0% {
-    transform: scale(1);
+    transform: scale(0);
   }
-  50% {
-    transform: scale(1.02);
+  70% {
+    transform: scale(1.1);
   }
   100% {
     transform: scale(1);
   }
 }
 
-.request-type-card--selected {
-  animation: selectCard 0.3s ease;
+// ============================================================================
+// Main Container
+// ============================================================================
+
+.rts {
+  font-family: $fontFamily;
+  background-color: $neutralLighterAlt;
+  min-height: 100%;
+  animation: rts-fadeIn 0.3s ease-out;
 }
 
-// Responsive design
-@media (max-width: 768px) {
-  .request-type-selector {
-    min-height: auto;
+// ============================================================================
+// Content Wrapper - Full Width
+// ============================================================================
 
-    .request-type-card {
-      ul {
-        font-size: 12px;
-      }
+.rts__content-wrapper {
+  padding: $space-lg;
+
+  @media (max-width: 640px) {
+    padding: $space-md;
+  }
+}
+
+// ============================================================================
+// Header
+// ============================================================================
+
+.rts__header {
+  margin-bottom: $space-lg;
+}
+
+.rts__title {
+  font-size: 20px;
+  font-weight: 600;
+  color: $neutralPrimary;
+  margin: 0 0 $space-xs 0;
+  line-height: 1.4;
+}
+
+.rts__subtitle {
+  font-size: 14px;
+  font-weight: 400;
+  color: $neutralSecondary;
+  margin: 0;
+}
+
+// ============================================================================
+// Error Container
+// ============================================================================
+
+.rts__error-container {
+  margin-bottom: $space-md;
+}
+
+// ============================================================================
+// Cards Grid
+// ============================================================================
+
+.rts__cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: $space-md;
+  margin-bottom: $space-lg;
+}
+
+// ============================================================================
+// Request Type Card
+// ============================================================================
+
+.rts__card {
+  background: $white;
+  border: 1px solid $neutralLight;
+  border-radius: $borderRadiusMedium;
+  cursor: pointer;
+  transition:
+    border-color $transitionFast,
+    box-shadow $transitionFast,
+    background-color $transitionFast;
+
+  &:hover:not(.rts__card--disabled):not(.rts__card--selected) {
+    border-color: $neutralQuaternary;
+    box-shadow: $depth4;
+  }
+
+  &:focus:not(.rts__card--disabled) {
+    outline: none;
+    border-color: $themePrimary;
+    box-shadow: 0 0 0 1px $themePrimary;
+  }
+
+  &:focus.rts__card--disabled {
+    outline: none;
+  }
+
+  &:active:not(.rts__card--disabled) {
+    background-color: $neutralLighter;
+  }
+}
+
+.rts__card--selected {
+  border-color: $themePrimary;
+  border-width: 2px;
+  box-shadow: $depth4;
+  background-color: $themeLighterAlt;
+
+  &:hover {
+    border-color: $themeDark;
+    box-shadow: $depth8;
+  }
+}
+
+.rts__card--disabled {
+  cursor: not-allowed;
+  background-color: $neutralLighter;
+  border-color: $neutralLight;
+  pointer-events: none;
+
+  .rts__card-title {
+    color: $neutralTertiary;
+  }
+
+  .rts__card-description {
+    color: $neutralTertiary;
+  }
+}
+
+// Card Content
+.rts__card-content {
+  padding: $space-md;
+}
+
+// Card Header
+.rts__card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $space-sm;
+  margin-bottom: $space-sm;
+}
+
+.rts__title-section {
+  display: flex;
+  align-items: center;
+  gap: $space-sm;
+  flex: 1;
+  min-width: 0;
+}
+
+.rts__card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: $neutralPrimary;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.rts__coming-soon-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: $neutralSecondary;
+  background-color: $neutralLighter;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+
+.rts__selected-indicator {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background-color: $themePrimary;
+  border-radius: 50%;
+  animation: rts-checkPop 0.25s ease-out;
+
+  i,
+  [data-icon-name] {
+    font-size: 10px;
+    font-weight: bold;
+    color: $white;
+    line-height: 1;
+  }
+}
+
+// Card Description
+.rts__card-description {
+  font-size: 12px;
+  font-weight: 400;
+  color: $neutralSecondary;
+  line-height: 1.5;
+  margin: 0;
+}
+
+// ============================================================================
+// Workflow Preview
+// ============================================================================
+
+.rts__workflow-preview {
+  background: $white;
+  border: 1px solid $neutralLight;
+  border-radius: $borderRadiusMedium;
+  margin-bottom: $space-lg;
+}
+
+.rts__preview-header {
+  padding: $space-md;
+  border-bottom: 1px solid $neutralLight;
+  background-color: $neutralLighterAlt;
+}
+
+.rts__preview-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: $neutralPrimary;
+  margin: 0 0 $space-xs 0;
+}
+
+.rts__preview-subtitle {
+  font-size: 12px;
+  font-weight: 400;
+  color: $neutralSecondary;
+  margin: 0;
+}
+
+.rts__preview-content {
+  padding: $space-md;
+  min-height: 120px;
+}
+
+.rts__workflow-stepper-content {
+  animation: rts-fadeIn 0.2s ease-out;
+}
+
+// Empty Preview State
+.rts__empty-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+  text-align: center;
+}
+
+.rts__empty-preview-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: $space-sm;
+  background-color: $neutralLighter;
+  border-radius: 50%;
+
+  i {
+    font-size: 20px;
+    color: $neutralTertiary;
+  }
+}
+
+.rts__empty-preview-text {
+  font-size: 12px;
+  font-weight: 400;
+  color: $neutralTertiary;
+  margin: 0;
+}
+
+// ============================================================================
+// Footer
+// ============================================================================
+
+.rts__footer {
+  padding-top: $space-md;
+  border-top: 1px solid $neutralLight;
+}
+
+.rts__footer-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: $space-md;
+
+  @media (max-width: 480px) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.rts__button-group {
+  display: flex;
+  gap: $space-sm;
+
+  @media (max-width: 480px) {
+    flex-direction: column-reverse;
+  }
+}
+
+.rts__cancel-button,
+.rts__continue-button {
+  min-width: 100px;
+}
+
+.rts__selection-hint {
+  display: flex;
+  align-items: center;
+  gap: $space-xs;
+  font-size: 12px;
+  color: $neutralSecondary;
+  margin: 0;
+
+  i {
+    font-size: 12px;
+    color: $themePrimary;
+  }
+
+  strong {
+    color: $neutralPrimary;
+    font-weight: 600;
+  }
+
+  @media (max-width: 480px) {
+    justify-content: center;
+  }
+}
+
+// ============================================================================
+// Background Decoration (hidden for SharePoint theme)
+// ============================================================================
+
+.rts__bg-decoration,
+.rts__gradient-orb-1,
+.rts__gradient-orb-2,
+.rts__grid-pattern {
+  display: none;
+}
+
+// ============================================================================
+// High Contrast Mode Support
+// ============================================================================
+
+@media (prefers-contrast: high) {
+  .rts__card {
+    border-width: 2px;
+
+    &:focus {
+      outline: 2px solid currentColor;
+      outline-offset: 2px;
     }
+  }
+
+  .rts__card--selected {
+    border-width: 3px;
+  }
+
+  .rts__selected-indicator {
+    border: 2px solid $white;
+  }
+}
+
+// ============================================================================
+// Reduced Motion Support
+// ============================================================================
+
+@media (prefers-reduced-motion: reduce) {
+  .rts,
+  .rts__workflow-stepper-content,
+  .rts__selected-indicator {
+    animation: none;
   }
 }

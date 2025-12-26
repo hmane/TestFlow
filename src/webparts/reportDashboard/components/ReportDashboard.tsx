@@ -1,43 +1,629 @@
 import * as React from 'react';
 import styles from './ReportDashboard.module.scss';
-import type { IReportDashboardProps } from './IReportDashboardProps';
-import { escape } from '@microsoft/sp-lodash-subset';
+import type { IReportDashboardProps, IUserGroups, ISearchConfig, ISearchResult, ProgressBarColor } from './IReportDashboardProps';
+import { SPContext } from 'spfx-toolkit';
+import {
+  CommandBarButton,
+  Icon,
+  Spinner,
+  SpinnerSize,
+} from '@fluentui/react';
 
-export default class ReportDashboard extends React.Component<IReportDashboardProps> {
-  public render(): React.ReactElement<IReportDashboardProps> {
-    const {
-      description,
-      isDarkTheme,
-      environmentMessage,
-      hasTeamsContext,
-      userDisplayName
-    } = this.props;
+// Constants
+const RECENT_SEARCHES_KEY = 'lrs_recent_searches';
+const DEFAULT_SEARCH_LIMIT = 10;
+const DEFAULT_RECENT_LIMIT = 5;
+const DEBOUNCE_DELAY = 300;
 
+// SharePoint group names
+const SP_GROUPS = {
+  SUBMITTERS: 'LW - Submitters',
+  LEGAL_ADMIN: 'LW - Legal Admin',
+  ATTORNEY_ASSIGNER: 'LW - Attorney Assigner',
+  ATTORNEYS: 'LW - Attorneys',
+  COMPLIANCE: 'LW - Compliance Users',
+  ADMIN: 'LW - Admin',
+};
+
+// Dashboard page URLs
+const DASHBOARD_URLS = {
+  HOME: '/SitePages/Home.aspx',
+  MY_REQUESTS: '/SitePages/MyRequestsDashboard.aspx',
+  LEGAL_ADMIN: '/SitePages/LegalAdminDashboard.aspx',
+  ATTORNEY_ASSIGNMENT: '/SitePages/AttorneyAssignmentDashboard.aspx',
+  ATTORNEY: '/SitePages/AttorneyDashboard.aspx',
+  COMPLIANCE: '/SitePages/ComplianceDashboard.aspx',
+  NEW_REQUEST: '/Lists/Requests/NewForm.aspx',
+};
+
+// Status order for progress calculation
+const STATUS_ORDER: Record<string, number> = {
+  'Draft': 1,
+  'Legal Intake': 2,
+  'Assign Attorney': 3,
+  'In Review': 4,
+  'Closeout': 5,
+  'Completed': 6,
+  'Cancelled': 0,
+  'On Hold': 0,
+};
+
+/**
+ * Calculate progress percentage and color
+ */
+const calculateProgress = (
+  status: string,
+  targetReturnDate: Date | null,
+  submittedToAssignAttorneyOn: Date | null,
+  previousStatus: string | null
+): { progress: number; color: ProgressBarColor; currentStep: number; totalSteps: number } => {
+  const usedAssignAttorneyStep = !!submittedToAssignAttorneyOn;
+
+  // For special statuses, use previous status
+  let effectiveStatus = status;
+  if (status === 'Cancelled' || status === 'On Hold') {
+    effectiveStatus = previousStatus || 'Draft';
+  }
+
+  let progress: number;
+  let currentStep: number;
+  let totalSteps: number;
+
+  if (usedAssignAttorneyStep) {
+    totalSteps = 6;
+    currentStep = STATUS_ORDER[effectiveStatus] || 1;
+    progress = ((currentStep - 1) / (totalSteps - 1)) * 100;
+  } else {
+    totalSteps = 5;
+    const stepMapping: Record<string, number> = {
+      'Draft': 1,
+      'Legal Intake': 2,
+      'Assign Attorney': 3,
+      'In Review': 3,
+      'Closeout': 4,
+      'Completed': 5,
+      'Cancelled': 1,
+      'On Hold': 1,
+    };
+    currentStep = stepMapping[effectiveStatus] || 1;
+    progress = ((currentStep - 1) / (totalSteps - 1)) * 100;
+  }
+
+  progress = Math.max(0, Math.min(100, progress));
+
+  // Determine color
+  let color: ProgressBarColor = 'gray';
+
+  if (status === 'Cancelled') {
+    color = 'gray';
+  } else if (status === 'On Hold') {
+    color = 'blue';
+  } else if (status === 'Completed') {
+    color = 'green';
+  } else if (targetReturnDate) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(targetReturnDate.getTime());
+    target.setHours(0, 0, 0, 0);
+    const diffTime = target.getTime() - today.getTime();
+    const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (daysRemaining < 0) {
+      color = 'red';
+    } else if (daysRemaining <= 1) {
+      color = 'yellow';
+    } else {
+      color = 'green';
+    }
+  }
+
+  return { progress, color, currentStep, totalSteps };
+};
+
+/**
+ * Get status badge class name
+ */
+const getStatusClass = (status: string): string => {
+  const statusMap: Record<string, string> = {
+    'Draft': styles.draft,
+    'Legal Intake': styles.legalIntake,
+    'Assign Attorney': styles.assignAttorney,
+    'In Review': styles.inReview,
+    'Closeout': styles.closeout,
+    'Completed': styles.completed,
+    'Cancelled': styles.cancelled,
+    'On Hold': styles.onHold,
+  };
+  return statusMap[status] || '';
+};
+
+/**
+ * Get progress bar color class
+ */
+const getProgressColorClass = (color: ProgressBarColor): string => {
+  const colorMap: Record<ProgressBarColor, string> = {
+    'green': styles.progressGreen,
+    'yellow': styles.progressYellow,
+    'red': styles.progressRed,
+    'blue': styles.progressBlue,
+    'gray': styles.progressGray,
+  };
+  return colorMap[color] || styles.progressGray;
+};
+
+/**
+ * RequestDashboard Toolbar Component
+ * Provides command bar navigation and spotlight search functionality
+ */
+const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
+  const { hasTeamsContext } = props;
+
+  // State
+  const [userGroups, setUserGroups] = React.useState<IUserGroups>({
+    isSubmitter: true,
+    isLegalAdmin: false,
+    isAttorneyAssigner: false,
+    isAttorney: false,
+    isComplianceUser: false,
+    isAdmin: false,
+  });
+  const [searchConfig, setSearchConfig] = React.useState<ISearchConfig>({
+    searchResultLimit: DEFAULT_SEARCH_LIMIT,
+    recentSearchesLimit: DEFAULT_RECENT_LIMIT,
+  });
+  const [searchQuery, setSearchQuery] = React.useState('');
+  const [searchResults, setSearchResults] = React.useState<ISearchResult[]>([]);
+  const [isSearching, setIsSearching] = React.useState(false);
+  const [showResults, setShowResults] = React.useState(false);
+  const [recentSearches, setRecentSearches] = React.useState<string[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const searchContainerRef = React.useRef<HTMLDivElement>(null);
+  const searchTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * Load user groups on mount
+   */
+  React.useEffect(() => {
+    const loadUserGroups = async (): Promise<void> => {
+      try {
+        const groups = await SPContext.sp.web.currentUser.groups();
+        const groupTitles = groups.map((g: { Title: string }) => g.Title);
+
+        setUserGroups({
+          isSubmitter: groupTitles.includes(SP_GROUPS.SUBMITTERS) || groupTitles.includes(SP_GROUPS.ADMIN),
+          isLegalAdmin: groupTitles.includes(SP_GROUPS.LEGAL_ADMIN) || groupTitles.includes(SP_GROUPS.ADMIN),
+          isAttorneyAssigner: groupTitles.includes(SP_GROUPS.ATTORNEY_ASSIGNER) || groupTitles.includes(SP_GROUPS.ADMIN),
+          isAttorney: groupTitles.includes(SP_GROUPS.ATTORNEYS) || groupTitles.includes(SP_GROUPS.ADMIN),
+          isComplianceUser: groupTitles.includes(SP_GROUPS.COMPLIANCE) || groupTitles.includes(SP_GROUPS.ADMIN),
+          isAdmin: groupTitles.includes(SP_GROUPS.ADMIN),
+        });
+      } catch (error: unknown) {
+        SPContext.logger.error('Failed to load user groups', error);
+      }
+    };
+
+    const loadSearchConfig = async (): Promise<void> => {
+      try {
+        const configItems = await SPContext.sp.web.lists
+          .getByTitle('Configuration')
+          .items
+          .filter("Category eq 'Search' and IsActive eq 1")
+          .select('Title', 'ConfigValue')();
+
+        const config: ISearchConfig = {
+          searchResultLimit: DEFAULT_SEARCH_LIMIT,
+          recentSearchesLimit: DEFAULT_RECENT_LIMIT,
+        };
+
+        for (const item of configItems) {
+          if (item.Title === 'SearchResultLimit') {
+            config.searchResultLimit = parseInt(item.ConfigValue, 10) || DEFAULT_SEARCH_LIMIT;
+          } else if (item.Title === 'RecentSearchesLimit') {
+            config.recentSearchesLimit = parseInt(item.ConfigValue, 10) || DEFAULT_RECENT_LIMIT;
+          }
+        }
+
+        setSearchConfig(config);
+      } catch (error: unknown) {
+        SPContext.logger.error('Failed to load search config', error);
+      }
+    };
+
+    const loadRecentSearches = (): void => {
+      try {
+        const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
+        if (stored) {
+          setRecentSearches(JSON.parse(stored));
+        }
+      } catch (error: unknown) {
+        SPContext.logger.warn('Failed to load recent searches from localStorage', error);
+      }
+    };
+
+    const initialize = async (): Promise<void> => {
+      setIsLoading(true);
+      await Promise.all([loadUserGroups(), loadSearchConfig()]);
+      loadRecentSearches();
+      setIsLoading(false);
+    };
+
+    initialize().catch((error: unknown) => {
+      SPContext.logger.error('Initialization failed', error);
+      setIsLoading(false);
+    });
+  }, []);
+
+  /**
+   * Click outside to close dropdown
+   */
+  React.useEffect(() => {
+    const handleClickOutside = (e: MouseEvent): void => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setShowResults(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  /**
+   * Keyboard shortcut: Cmd/Ctrl + K to focus search
+   */
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent): void => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+      if (e.key === 'Escape' && showResults) {
+        setShowResults(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showResults]);
+
+  /**
+   * Perform search with debounce
+   */
+  const performSearch = React.useCallback(async (query: string): Promise<void> => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      setShowResults(false);
+      return;
+    }
+
+    setIsSearching(true);
+    setShowResults(true);
+
+    try {
+      const filter = `substringof('${query}', Title) or substringof('${query}', RequestTitle)`;
+
+      const items = await SPContext.sp.web.lists
+        .getByTitle('Requests')
+        .items
+        .select(
+          'Id',
+          'Title',
+          'RequestTitle',
+          'Status',
+          'TargetReturnDate',
+          'Created',
+          'Author/Title',
+          'Attorney/Title',
+          'SubmittedToAssignAttorneyOn',
+          'PreviousStatus',
+          'IsRushRequest'
+        )
+        .expand('Author', 'Attorney')
+        .filter(filter)
+        .orderBy('Created', false)
+        .top(searchConfig.searchResultLimit)();
+
+      const results: ISearchResult[] = items.map((item: {
+        Id: number;
+        Title: string;
+        RequestTitle: string;
+        Status: string;
+        TargetReturnDate: string | null;
+        Created: string;
+        Author?: { Title: string };
+        Attorney?: { Title: string };
+        SubmittedToAssignAttorneyOn?: string | null;
+        PreviousStatus?: string | null;
+        IsRushRequest?: boolean;
+      }) => {
+        const targetDate = item.TargetReturnDate ? new Date(item.TargetReturnDate) : null;
+        const assignAttorneyDate = item.SubmittedToAssignAttorneyOn
+          ? new Date(item.SubmittedToAssignAttorneyOn)
+          : null;
+
+        const { progress, color, currentStep, totalSteps } = calculateProgress(
+          item.Status,
+          targetDate,
+          assignAttorneyDate,
+          item.PreviousStatus || null
+        );
+
+        return {
+          id: item.Id,
+          requestId: item.Title,
+          requestTitle: item.RequestTitle,
+          status: item.Status,
+          submittedBy: item.Author?.Title || '',
+          attorney: item.Attorney?.Title || '',
+          targetReturnDate: targetDate,
+          created: new Date(item.Created),
+          submittedToAssignAttorneyOn: assignAttorneyDate,
+          previousStatus: item.PreviousStatus || null,
+          isRushRequest: item.IsRushRequest || false,
+          progress,
+          progressColor: color,
+          currentStep,
+          totalSteps,
+        };
+      });
+
+      setSearchResults(results);
+    } catch (error: unknown) {
+      SPContext.logger.error('Search failed', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  }, [searchConfig.searchResultLimit]);
+
+  /**
+   * Handle search input change with debounce
+   */
+  const handleSearchChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>): void => {
+    const query = e.target.value;
+    setSearchQuery(query);
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      performSearch(query).catch((error: unknown) => {
+        SPContext.logger.error('Search error', error);
+      });
+    }, DEBOUNCE_DELAY);
+  }, [performSearch]);
+
+  /**
+   * Handle search result click
+   */
+  const handleResultClick = React.useCallback((result: ISearchResult): void => {
+    const newRecent = [result.requestId, ...recentSearches.filter(s => s !== result.requestId)]
+      .slice(0, searchConfig.recentSearchesLimit);
+    setRecentSearches(newRecent);
+    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(newRecent));
+
+    const url = `${SPContext.webAbsoluteUrl}/Lists/Requests/DispForm.aspx?ID=${result.id}`;
+    window.location.href = url;
+  }, [recentSearches, searchConfig.recentSearchesLimit]);
+
+  /**
+   * Handle recent search click
+   */
+  const handleRecentClick = React.useCallback((query: string): void => {
+    setSearchQuery(query);
+    performSearch(query).catch((error: unknown) => {
+      SPContext.logger.error('Recent search error', error);
+    });
+  }, [performSearch]);
+
+  /**
+   * Clear recent searches
+   */
+  const clearRecentSearches = React.useCallback((): void => {
+    setRecentSearches([]);
+    localStorage.removeItem(RECENT_SEARCHES_KEY);
+  }, []);
+
+  /**
+   * Clear search
+   */
+  const clearSearch = React.useCallback((): void => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setShowResults(false);
+    searchInputRef.current?.focus();
+  }, []);
+
+  /**
+   * Navigate to URL
+   */
+  const navigateTo = (url: string): void => {
+    window.location.href = `${SPContext.webAbsoluteUrl}${url}`;
+  };
+
+  if (isLoading) {
     return (
-      <section className={`${styles.reportDashboard} ${hasTeamsContext ? styles.teams : ''}`}>
-        <div className={styles.welcome}>
-          <img alt="" src={isDarkTheme ? require('../assets/welcome-dark.png') : require('../assets/welcome-light.png')} className={styles.welcomeImage} />
-          <h2>Well done, {escape(userDisplayName)}!</h2>
-          <div>{environmentMessage}</div>
-          <div>Web part property value: <strong>{escape(description)}</strong></div>
-        </div>
-        <div>
-          <h3>Welcome to SharePoint Framework!</h3>
-          <p>
-            The SharePoint Framework (SPFx) is a extensibility model for Microsoft Viva, Microsoft Teams and SharePoint. It&#39;s the easiest way to extend Microsoft 365 with automatic Single Sign On, automatic hosting and industry standard tooling.
-          </p>
-          <h4>Learn more about SPFx development:</h4>
-          <ul className={styles.links}>
-            <li><a href="https://aka.ms/spfx" target="_blank" rel="noreferrer">SharePoint Framework Overview</a></li>
-            <li><a href="https://aka.ms/spfx-yeoman-graph" target="_blank" rel="noreferrer">Use Microsoft Graph in your solution</a></li>
-            <li><a href="https://aka.ms/spfx-yeoman-teams" target="_blank" rel="noreferrer">Build for Microsoft Teams using SharePoint Framework</a></li>
-            <li><a href="https://aka.ms/spfx-yeoman-viva" target="_blank" rel="noreferrer">Build for Microsoft Viva Connections using SharePoint Framework</a></li>
-            <li><a href="https://aka.ms/spfx-yeoman-store" target="_blank" rel="noreferrer">Publish SharePoint Framework applications to the marketplace</a></li>
-            <li><a href="https://aka.ms/spfx-yeoman-api" target="_blank" rel="noreferrer">SharePoint Framework API reference</a></li>
-            <li><a href="https://aka.ms/m365pnp" target="_blank" rel="noreferrer">Microsoft 365 Developer Community</a></li>
-          </ul>
-        </div>
-      </section>
+      <div className={`${styles.requestToolbar} ${hasTeamsContext ? styles.teams : ''}`}>
+        <Spinner size={SpinnerSize.small} />
+      </div>
     );
   }
-}
+
+  return (
+    <div className={`${styles.requestToolbar} ${hasTeamsContext ? styles.teams : ''}`}>
+      {/* Left: Navigation Buttons */}
+      <div className={styles.toolbarLeft}>
+        <CommandBarButton
+          iconProps={{ iconName: 'Add' }}
+          text="New Request"
+          className={styles.primaryButton}
+          onClick={() => navigateTo(DASHBOARD_URLS.NEW_REQUEST)}
+        />
+
+        <CommandBarButton
+          iconProps={{ iconName: 'ContactCard' }}
+          text="My Requests"
+          onClick={() => navigateTo(DASHBOARD_URLS.MY_REQUESTS)}
+        />
+
+        {userGroups.isLegalAdmin && (
+          <CommandBarButton
+            iconProps={{ iconName: 'Shield' }}
+            text="Legal Admin"
+            onClick={() => navigateTo(DASHBOARD_URLS.LEGAL_ADMIN)}
+          />
+        )}
+
+        {userGroups.isAttorneyAssigner && (
+          <CommandBarButton
+            iconProps={{ iconName: 'People' }}
+            text="Attorney Assignment"
+            onClick={() => navigateTo(DASHBOARD_URLS.ATTORNEY_ASSIGNMENT)}
+          />
+        )}
+
+        {userGroups.isAttorney && (
+          <CommandBarButton
+            iconProps={{ iconName: 'AccountManagement' }}
+            text="Attorney"
+            onClick={() => navigateTo(DASHBOARD_URLS.ATTORNEY)}
+          />
+        )}
+
+        {userGroups.isComplianceUser && (
+          <CommandBarButton
+            iconProps={{ iconName: 'ComplianceAudit' }}
+            text="Compliance"
+            onClick={() => navigateTo(DASHBOARD_URLS.COMPLIANCE)}
+          />
+        )}
+      </div>
+
+      {/* Right: Search Box */}
+      <div className={styles.toolbarRight} ref={searchContainerRef}>
+        <div className={styles.searchWrapper}>
+          <Icon iconName="Search" className={styles.searchIcon} />
+          <input
+            ref={searchInputRef}
+            type="text"
+            className={styles.searchInput}
+            placeholder="Search requests... (Ctrl+K)"
+            value={searchQuery}
+            onChange={handleSearchChange}
+            onFocus={() => {
+              if (searchQuery) {
+                setShowResults(true);
+              } else if (recentSearches.length > 0) {
+                setShowResults(true);
+              }
+            }}
+            aria-label="Search requests"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              className={styles.clearButton}
+              onClick={clearSearch}
+              aria-label="Clear search"
+            >
+              <Icon iconName="Cancel" />
+            </button>
+          )}
+
+          {/* Search Dropdown */}
+          {showResults && (
+            <div className={styles.searchDropdown}>
+              {isSearching ? (
+                <div className={styles.dropdownLoading}>
+                  <Spinner size={SpinnerSize.small} />
+                  <span>Searching...</span>
+                </div>
+              ) : searchQuery && searchResults.length > 0 ? (
+                <div className={styles.searchResultsList}>
+                  <div className={styles.dropdownHeader}>
+                    {searchResults.length} Result{searchResults.length !== 1 ? 's' : ''}
+                  </div>
+                  {searchResults.map((result) => (
+                    <div
+                      key={result.id}
+                      className={styles.resultItem}
+                      onClick={() => handleResultClick(result)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === 'Enter' && handleResultClick(result)}
+                    >
+                      <div className={styles.resultHeader}>
+                        <div className={styles.resultMain}>
+                          <span className={styles.resultId}>{result.requestId}</span>
+                          <span className={styles.resultTitle}>{result.requestTitle}</span>
+                        </div>
+                        {result.isRushRequest && (
+                          <span className={styles.rushBadge}>
+                            <Icon iconName="ReminderTime" className={styles.rushIcon} />
+                            Rush
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div className={styles.progressContainer}>
+                        <div className={styles.progressTrack}>
+                          <div
+                            className={`${styles.progressFill} ${getProgressColorClass(result.progressColor)}`}
+                            style={{ width: `${result.progress}%` }}
+                          />
+                        </div>
+                        <span className={styles.progressLabel}>
+                          Step {result.currentStep}/{result.totalSteps}
+                        </span>
+                      </div>
+
+                      <div className={styles.resultMeta}>
+                        <span className={`${styles.statusBadge} ${getStatusClass(result.status)}`}>
+                          {result.status}
+                        </span>
+                        {result.submittedBy && <span className={styles.metaItem}>By: {result.submittedBy}</span>}
+                        {result.attorney && <span className={styles.metaItem}>Attorney: {result.attorney}</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : searchQuery ? (
+                <div className={styles.noResults}>
+                  <Icon iconName="SearchIssue" className={styles.noResultsIcon} />
+                  <span>No results for &quot;{searchQuery}&quot;</span>
+                </div>
+              ) : recentSearches.length > 0 ? (
+                <div className={styles.recentSearches}>
+                  <div className={styles.dropdownHeader}>
+                    <span>Recent Searches</span>
+                    <button type="button" className={styles.clearRecent} onClick={clearRecentSearches}>
+                      Clear
+                    </button>
+                  </div>
+                  {recentSearches.map((query) => (
+                    <div
+                      key={query}
+                      className={styles.recentItem}
+                      onClick={() => handleRecentClick(query)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => e.key === 'Enter' && handleRecentClick(query)}
+                    >
+                      <Icon iconName="History" className={styles.recentIcon} />
+                      <span>{query}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ReportDashboard;

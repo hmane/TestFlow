@@ -86,9 +86,10 @@ config/
 
 ### Main Lists
 
-1. **Requests** (73 fields total):
+1. **Requests** (79 fields total):
 
    - Request Information (17 fields): Title (RequestID), RequestType, Purpose, TargetReturnDate, etc.
+   - FINRA Audience & Product Fields (6 fields): FINRAAudienceCategory, Audience, USFunds, UCITS, SeparateAccountStrategies, SeparateAccountStrategiesIncludes
    - Approval Fields (18 fields): CommunicationsApproval, PortfolioManagerApproval, etc.
    - Legal Intake (2 fields): Attorney, AttorneyAssignNotes
    - Legal Review (5 fields): LegalReviewStatus, LegalReviewOutcome, legalReviewNotes

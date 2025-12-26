@@ -690,18 +690,18 @@ $neutral-lighter: #faf9f8;
     }
   }
 
-  // Drop Hint Overlay
+  // Drop Hint Overlay - subtle border highlight only
   .drop-hint-overlay {
     display: none;
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba($primary-color, 0.15); // Light transparent overlay
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    background: transparent;
     border: 3px dashed $primary-color;
-    border-radius: 8px;
-    z-index: 10; // Lower z-index, just above content
+    border-radius: 12px;
+    z-index: 10;
     pointer-events: none;
     animation: fadeIn 0.2s ease;
   }

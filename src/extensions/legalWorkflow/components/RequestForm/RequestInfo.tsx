@@ -41,6 +41,7 @@ import {
   BasicInfoSection,
   DistributionAudienceSection,
   PriorSubmissionsSection,
+  ProductAudienceSection,
 } from './RequestInfoSections';
 import { useRequestInfoActions } from './useRequestInfoActions';
 
@@ -479,6 +480,10 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
                   errors={errors}
                   hasSubmissionItemSelection={hasSubmissionItemSelection}
                   calculatedIsRush={calculatedIsRush}
+                />
+                <ProductAudienceSection
+                  errors={errors}
+                  requestType={requestType}
                 />
                 <DistributionAudienceSection
                   errors={errors}

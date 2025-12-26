@@ -53,6 +53,71 @@ export enum DistributionMethod {
 }
 
 /**
+ * FINRA Audience Category options
+ */
+export enum FINRAAudienceCategory {
+  Institutional = 'Institutional',
+  RetailPublic = 'Retail / Public',
+}
+
+/**
+ * Audience options
+ */
+export enum Audience {
+  ProspectiveSeparateAcctClient = 'Prospective Separate Acct Client',
+  ExistingSeparateAcctClient = 'Existing Separate Acct Client',
+  ProspectiveFundShareholder = 'Prospective Fund Shareholder',
+  ExistingFundShareholder = 'Existing Fund Shareholder',
+  Consultant = 'Consultant',
+  Other = 'Other',
+}
+
+/**
+ * U.S. Funds options
+ */
+export enum USFunds {
+  AllFunds = 'All Funds',
+  BalancedFund = 'Balanced Fund',
+  EMStockFund = 'EM Stock Fund',
+  GlobalStockFund = 'Global Stock Fund',
+  IncomeFund = 'Income Fund',
+  InternationalStockFund = 'International Stock Fund',
+  StockFund = 'Stock Fund',
+  GlobalBondFundIShares = 'Global Bond Fund (I Shares)',
+  GlobalBondFundXShares = 'Global Bond Fund (X Shares)',
+}
+
+/**
+ * UCITS options
+ */
+export enum UCITS {
+  AllUCITSFunds = 'All UCITS Funds',
+  EMStockFund = 'EM Stock Fund',
+  GlobalBondFund = 'Global Bond Fund',
+  GlobalStockFund = 'Global Stock Fund',
+  USStockFund = 'U.S. Stock Fund',
+}
+
+/**
+ * Separate Account Strategies options
+ */
+export enum SeparateAccountStrategies {
+  AllSeparateAccountStrategies = 'All Separate Account Strategies',
+  Equity = 'Equity',
+  FixedIncome = 'Fixed Income',
+  Balanced = 'Balanced',
+}
+
+/**
+ * Separate Account Strategies Includes options
+ */
+export enum SeparateAccountStrategiesIncludes {
+  ClientRelatedDataOnly = 'Client-related data only',
+  RepresentativeAccount = 'Representative account',
+  CompositeData = 'Composite data',
+}
+
+/**
  * Main request interface - represents a legal review request
  */
 export interface ILegalRequest {
@@ -84,6 +149,14 @@ export interface ILegalRequest {
 additionalParty?: IPrincipal[];
   totalTurnaroundDays?: number;
   expectedTurnaroundDate?: Date;
+
+  // FINRA Audience & Product Fields
+  finraAudienceCategory?: FINRAAudienceCategory[];
+  audience?: Audience[];
+  usFunds?: USFunds[];
+  ucits?: UCITS[];
+  separateAccountStrategies?: SeparateAccountStrategies[];
+  separateAccountStrategiesIncludes?: SeparateAccountStrategiesIncludes[];
 
   // Approvals - Communications
   requiresCommunicationsApproval: boolean;
@@ -265,6 +338,14 @@ export interface IRequestListItem {
     Department?: string;
     JobTitle?: string;
   }>;
+
+  // FINRA Audience & Product Fields
+  FINRAAudienceCategory?: string[];
+  Audience?: string[];
+  USFunds?: string[];
+  UCITS?: string[];
+  SeparateAccountStrategies?: string[];
+  SeparateAccountStrategiesIncludes?: string[];
 
   // Approvals (flattened)
   RequiresCommunicationsApproval: boolean;

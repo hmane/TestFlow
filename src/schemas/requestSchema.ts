@@ -4,7 +4,17 @@
 
 import { z } from 'zod';
 import { ApprovalType } from '../types/approvalTypes';
-import { DistributionMethod, RequestType, SubmissionType } from '../types/requestTypes';
+import {
+  Audience,
+  DistributionMethod,
+  FINRAAudienceCategory,
+  RequestType,
+  SeparateAccountStrategies,
+  SeparateAccountStrategiesIncludes,
+  SubmissionType,
+  UCITS,
+  USFunds,
+} from '../types/requestTypes';
 import { RequestStatus, ReviewAudience } from '../types/workflowTypes';
 import { approvalsArraySchema } from './approvalSchema';
 import { complianceReviewSchema, legalReviewSchema } from './reviewSchema';
@@ -83,6 +93,67 @@ export const requestInformationSchema = z.object({
   dateOfFirstUse: z.date().optional(),
   additionalParty: z.array(principalSchema).optional(),
   rushRationale: z.string().max(500).optional(),
+  // FINRA Audience & Product Fields
+  finraAudienceCategory: z
+    .array(z.enum([FINRAAudienceCategory.Institutional, FINRAAudienceCategory.RetailPublic]))
+    .optional(),
+  audience: z
+    .array(
+      z.enum([
+        Audience.ProspectiveSeparateAcctClient,
+        Audience.ExistingSeparateAcctClient,
+        Audience.ProspectiveFundShareholder,
+        Audience.ExistingFundShareholder,
+        Audience.Consultant,
+        Audience.Other,
+      ])
+    )
+    .optional(),
+  usFunds: z
+    .array(
+      z.enum([
+        USFunds.AllFunds,
+        USFunds.BalancedFund,
+        USFunds.EMStockFund,
+        USFunds.GlobalStockFund,
+        USFunds.IncomeFund,
+        USFunds.InternationalStockFund,
+        USFunds.StockFund,
+        USFunds.GlobalBondFundIShares,
+        USFunds.GlobalBondFundXShares,
+      ])
+    )
+    .optional(),
+  ucits: z
+    .array(
+      z.enum([
+        UCITS.AllUCITSFunds,
+        UCITS.EMStockFund,
+        UCITS.GlobalBondFund,
+        UCITS.GlobalStockFund,
+        UCITS.USStockFund,
+      ])
+    )
+    .optional(),
+  separateAccountStrategies: z
+    .array(
+      z.enum([
+        SeparateAccountStrategies.AllSeparateAccountStrategies,
+        SeparateAccountStrategies.Equity,
+        SeparateAccountStrategies.FixedIncome,
+        SeparateAccountStrategies.Balanced,
+      ])
+    )
+    .optional(),
+  separateAccountStrategiesIncludes: z
+    .array(
+      z.enum([
+        SeparateAccountStrategiesIncludes.ClientRelatedDataOnly,
+        SeparateAccountStrategiesIncludes.RepresentativeAccount,
+        SeparateAccountStrategiesIncludes.CompositeData,
+      ])
+    )
+    .optional(),
 });
 
 /**
@@ -145,6 +216,13 @@ export const saveRequestSchema = z.object({
   additionalParty: z.array(principalSchema).optional(),
   rushRationale: z.string().max(500).optional(),
   isRushRequest: z.boolean().optional(),
+  // FINRA Audience & Product Fields
+  finraAudienceCategory: z.array(z.any()).optional(),
+  audience: z.array(z.any()).optional(),
+  usFunds: z.array(z.any()).optional(),
+  ucits: z.array(z.any()).optional(),
+  separateAccountStrategies: z.array(z.any()).optional(),
+  separateAccountStrategiesIncludes: z.array(z.any()).optional(),
 });
 
 /**
@@ -219,6 +297,13 @@ export const submitRequestSchema = z
     additionalParty: z.array(principalSchema).optional(),
     rushRationale: z.string().max(500).optional(),
     isRushRequest: z.boolean().optional(),
+    // FINRA Audience & Product Fields
+    finraAudienceCategory: z.array(z.any()).optional(),
+    audience: z.array(z.any()).optional(),
+    usFunds: z.array(z.any()).optional(),
+    ucits: z.array(z.any()).optional(),
+    separateAccountStrategies: z.array(z.any()).optional(),
+    separateAccountStrategiesIncludes: z.array(z.any()).optional(),
   })
   .refine(
     data => {
@@ -472,6 +557,67 @@ export const fullRequestSchema = z.object({
   priorSubmissionNotes: z.string().optional(),
   dateOfFirstUse: z.date().optional(),
   additionalParty: z.array(principalSchema).optional(),
+  // FINRA Audience & Product Fields
+  finraAudienceCategory: z
+    .array(z.enum([FINRAAudienceCategory.Institutional, FINRAAudienceCategory.RetailPublic]))
+    .optional(),
+  audience: z
+    .array(
+      z.enum([
+        Audience.ProspectiveSeparateAcctClient,
+        Audience.ExistingSeparateAcctClient,
+        Audience.ProspectiveFundShareholder,
+        Audience.ExistingFundShareholder,
+        Audience.Consultant,
+        Audience.Other,
+      ])
+    )
+    .optional(),
+  usFunds: z
+    .array(
+      z.enum([
+        USFunds.AllFunds,
+        USFunds.BalancedFund,
+        USFunds.EMStockFund,
+        USFunds.GlobalStockFund,
+        USFunds.IncomeFund,
+        USFunds.InternationalStockFund,
+        USFunds.StockFund,
+        USFunds.GlobalBondFundIShares,
+        USFunds.GlobalBondFundXShares,
+      ])
+    )
+    .optional(),
+  ucits: z
+    .array(
+      z.enum([
+        UCITS.AllUCITSFunds,
+        UCITS.EMStockFund,
+        UCITS.GlobalBondFund,
+        UCITS.GlobalStockFund,
+        UCITS.USStockFund,
+      ])
+    )
+    .optional(),
+  separateAccountStrategies: z
+    .array(
+      z.enum([
+        SeparateAccountStrategies.AllSeparateAccountStrategies,
+        SeparateAccountStrategies.Equity,
+        SeparateAccountStrategies.FixedIncome,
+        SeparateAccountStrategies.Balanced,
+      ])
+    )
+    .optional(),
+  separateAccountStrategiesIncludes: z
+    .array(
+      z.enum([
+        SeparateAccountStrategiesIncludes.ClientRelatedDataOnly,
+        SeparateAccountStrategiesIncludes.RepresentativeAccount,
+        SeparateAccountStrategiesIncludes.CompositeData,
+      ])
+    )
+    .optional(),
 });
 
 /**

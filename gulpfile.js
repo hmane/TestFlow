@@ -6,7 +6,6 @@ const bundleAnalyzer = require('webpack-bundle-analyzer');
 const path = require('path');
 const fs = require('fs');
 const { task } = require('gulp');
-const del = require('del');
 
 // Fast serve configuration - let it handle HMR automatically
 const { addFastServe } = require('spfx-fast-serve-helpers');
@@ -132,7 +131,7 @@ task('clean-cache', done => {
   const cacheDir = path.join(__dirname, 'node_modules/.cache');
 
   if (fs.existsSync(cacheDir)) {
-    del.sync([cacheDir]);
+    fs.rmSync(cacheDir, { recursive: true, force: true });
     console.log('✅ Cache cleared successfully');
   } else {
     console.log('ℹ️  No cache found');

@@ -22,7 +22,18 @@ import { SPContext } from 'spfx-toolkit';
 import { Lists } from '@sp/Lists';
 
 import type { ILegalRequest } from '@appTypes/index';
-import { DistributionMethod, RequestType, ReviewAudience, SubmissionType } from '@appTypes/index';
+import {
+  Audience,
+  DistributionMethod,
+  FINRAAudienceCategory,
+  RequestType,
+  ReviewAudience,
+  SeparateAccountStrategies,
+  SeparateAccountStrategiesIncludes,
+  SubmissionType,
+  UCITS,
+  USFunds,
+} from '@appTypes/index';
 import { PriorSubmissionPicker } from '@components/PriorSubmissionPicker/PriorSubmissionPicker';
 import { useSubmissionItems } from '@stores/submissionItemsStore';
 
@@ -53,6 +64,53 @@ const DISTRIBUTION_METHOD_CHOICES: DistributionMethod[] = [
   DistributionMethod.Hangout,
   DistributionMethod.LiveTalkingPoints,
   DistributionMethod.SocialMedia,
+];
+
+const FINRA_AUDIENCE_CATEGORY_CHOICES: FINRAAudienceCategory[] = [
+  FINRAAudienceCategory.Institutional,
+  FINRAAudienceCategory.RetailPublic,
+];
+
+const AUDIENCE_CHOICES: Audience[] = [
+  Audience.ProspectiveSeparateAcctClient,
+  Audience.ExistingSeparateAcctClient,
+  Audience.ProspectiveFundShareholder,
+  Audience.ExistingFundShareholder,
+  Audience.Consultant,
+  Audience.Other,
+];
+
+const US_FUNDS_CHOICES: USFunds[] = [
+  USFunds.AllFunds,
+  USFunds.BalancedFund,
+  USFunds.EMStockFund,
+  USFunds.GlobalStockFund,
+  USFunds.IncomeFund,
+  USFunds.InternationalStockFund,
+  USFunds.StockFund,
+  USFunds.GlobalBondFundIShares,
+  USFunds.GlobalBondFundXShares,
+];
+
+const UCITS_CHOICES: UCITS[] = [
+  UCITS.AllUCITSFunds,
+  UCITS.EMStockFund,
+  UCITS.GlobalBondFund,
+  UCITS.GlobalStockFund,
+  UCITS.USStockFund,
+];
+
+const SEPARATE_ACCOUNT_STRATEGIES_CHOICES: SeparateAccountStrategies[] = [
+  SeparateAccountStrategies.AllSeparateAccountStrategies,
+  SeparateAccountStrategies.Equity,
+  SeparateAccountStrategies.FixedIncome,
+  SeparateAccountStrategies.Balanced,
+];
+
+const SEPARATE_ACCOUNT_STRATEGIES_INCLUDES_CHOICES: SeparateAccountStrategiesIncludes[] = [
+  SeparateAccountStrategiesIncludes.ClientRelatedDataOnly,
+  SeparateAccountStrategiesIncludes.RepresentativeAccount,
+  SeparateAccountStrategiesIncludes.CompositeData,
 ];
 
 
@@ -328,6 +386,131 @@ export const DistributionAudienceSection: React.FC<DistributionAudienceSectionPr
             dateTimeFormat={SPDateTimeFormat.DateOnly}
             displayFormat='MM/dd/yyyy'
             showClearButton
+          />
+        </FormItem>
+      </FormContainer>
+    </>
+  );
+};
+
+interface ProductAudienceSectionProps {
+  errors: FieldErrors<ILegalRequest>;
+  requestType?: RequestType;
+}
+
+export const ProductAudienceSection: React.FC<ProductAudienceSectionProps> = ({
+  errors,
+  requestType,
+}) => {
+  const requestListIdentifier = Lists.Requests.Title;
+
+  // Only show for Communication requests
+  const isVisible = requestType === RequestType.Communication;
+
+  return (
+    <>
+      <div style={{ display: isVisible ? 'block' : 'none' }}>
+        <Separator />
+        <SectionHeader
+          icon='ProductCatalog'
+          title='Product & Audience Details'
+          description='Specify the target audience and products for this communication'
+        />
+      </div>
+      <FormContainer labelWidth='200px' style={{ display: isVisible ? 'block' : 'none' }}>
+        <FormItem fieldName='finraAudienceCategory'>
+          <FormLabel>FINRA Audience Category</FormLabel>
+          <SPChoiceField
+            name='finraAudienceCategory'
+            placeholder='Select FINRA audience categories'
+            allowMultiple
+            displayType={SPChoiceDisplayType.Checkboxes}
+            choices={FINRA_AUDIENCE_CATEGORY_CHOICES}
+            dataSource={{
+              type: 'list',
+              listNameOrId: requestListIdentifier,
+              fieldInternalName: 'FINRAAudienceCategory',
+            }}
+          />
+        </FormItem>
+
+        <FormItem fieldName='audience'>
+          <FormLabel>Audience</FormLabel>
+          <SPChoiceField
+            name='audience'
+            placeholder='Select target audiences'
+            allowMultiple
+            displayType={SPChoiceDisplayType.Checkboxes}
+            choices={AUDIENCE_CHOICES}
+            dataSource={{
+              type: 'list',
+              listNameOrId: requestListIdentifier,
+              fieldInternalName: 'Audience',
+            }}
+          />
+        </FormItem>
+
+        <FormItem fieldName='usFunds'>
+          <FormLabel>U.S. Funds</FormLabel>
+          <SPChoiceField
+            name='usFunds'
+            placeholder='Select U.S. funds'
+            allowMultiple
+            displayType={SPChoiceDisplayType.Checkboxes}
+            choices={US_FUNDS_CHOICES}
+            dataSource={{
+              type: 'list',
+              listNameOrId: requestListIdentifier,
+              fieldInternalName: 'USFunds',
+            }}
+          />
+        </FormItem>
+
+        <FormItem fieldName='ucits'>
+          <FormLabel>UCITS</FormLabel>
+          <SPChoiceField
+            name='ucits'
+            placeholder='Select UCITS funds'
+            allowMultiple
+            displayType={SPChoiceDisplayType.Checkboxes}
+            choices={UCITS_CHOICES}
+            dataSource={{
+              type: 'list',
+              listNameOrId: requestListIdentifier,
+              fieldInternalName: 'UCITS',
+            }}
+          />
+        </FormItem>
+
+        <FormItem fieldName='separateAccountStrategies'>
+          <FormLabel>Separate Account Strategies</FormLabel>
+          <SPChoiceField
+            name='separateAccountStrategies'
+            placeholder='Select separate account strategies'
+            allowMultiple
+            displayType={SPChoiceDisplayType.Checkboxes}
+            choices={SEPARATE_ACCOUNT_STRATEGIES_CHOICES}
+            dataSource={{
+              type: 'list',
+              listNameOrId: requestListIdentifier,
+              fieldInternalName: 'SeparateAccountStrategies',
+            }}
+          />
+        </FormItem>
+
+        <FormItem fieldName='separateAccountStrategiesIncludes'>
+          <FormLabel>Separate Account Strategies Includes</FormLabel>
+          <SPChoiceField
+            name='separateAccountStrategiesIncludes'
+            placeholder='Select what separate account strategies include'
+            allowMultiple
+            displayType={SPChoiceDisplayType.Checkboxes}
+            choices={SEPARATE_ACCOUNT_STRATEGIES_INCLUDES_CHOICES}
+            dataSource={{
+              type: 'list',
+              listNameOrId: requestListIdentifier,
+              fieldInternalName: 'SeparateAccountStrategiesIncludes',
+            }}
           />
         </FormItem>
       </FormContainer>

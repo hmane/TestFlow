@@ -1299,19 +1299,9 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
               reviewStaged.concat(suppStaged)
             )}
 
-            {/* Drop hint overlay */}
+            {/* Drop hint overlay - subtle border highlight only */}
             {isDragging && (
-              <div className="drop-hint-overlay">
-                <Stack horizontalAlign="center" verticalAlign="center" styles={{ root: { height: '100%' } }}>
-                  <IconButton
-                    iconProps={{ iconName: 'CloudUpload' }}
-                    styles={{ root: { fontSize: '64px', color: '#0078d4', pointerEvents: 'none' } }}
-                  />
-                  <Text variant="xxLarge" styles={{ root: { color: '#0078d4', fontWeight: 600 } }}>
-                    Drop files to upload
-                  </Text>
-                </Stack>
-              </div>
+              <div className="drop-hint-overlay" />
             )}
           </div>
         )}

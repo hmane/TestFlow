@@ -1,34 +1,428 @@
 @import '~@fluentui/react/dist/sass/References.scss';
 
-.reportDashboard {
-  overflow: hidden;
-  padding: 1em;
-  color: "[theme:bodyText, default: #323130]";
-  color: var(--bodyText);
+// Main Toolbar Container
+.requestToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: "[theme:white, default: #ffffff]";
+  background: var(--white);
+  border-bottom: 1px solid "[theme:neutralLight, default: #edebe9]";
+  border-bottom-color: var(--neutralLight);
+  min-height: 48px;
+  gap: 16px;
+
   &.teams {
     font-family: $ms-font-family-fallbacks;
   }
 }
 
-.welcome {
+// Left side: Navigation buttons
+.toolbarLeft {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+// Primary button styling (New Request)
+.primaryButton {
+  background: "[theme:themePrimary, default: #0078d4]" !important;
+  background: var(--themePrimary) !important;
+  color: "[theme:white, default: #ffffff]" !important;
+  color: var(--white) !important;
+  border-radius: 4px;
+
+  &:hover {
+    background: "[theme:themeDarkAlt, default: #106ebe]" !important;
+    background: var(--themeDarkAlt) !important;
+  }
+
+  i {
+    color: "[theme:white, default: #ffffff]" !important;
+    color: var(--white) !important;
+  }
+}
+
+// Right side: Search
+.toolbarRight {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  position: relative;
+}
+
+// Search wrapper - contains input and dropdown
+.searchWrapper {
+  position: relative;
+  width: 280px;
+}
+
+.searchInput {
+  width: 100%;
+  height: 32px;
+  padding: 0 32px 0 36px;
+  font-size: 14px;
+  border: 1px solid "[theme:neutralQuaternary, default: #d2d0ce]";
+  border-color: var(--neutralQuaternary);
+  border-radius: 4px;
+  background: "[theme:neutralLighter, default: #f3f2f1]";
+  background: var(--neutralLighter);
+  color: "[theme:neutralPrimary, default: #323130]";
+  color: var(--neutralPrimary);
+  outline: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+  box-sizing: border-box;
+
+  &:focus {
+    border-color: "[theme:themePrimary, default: #0078d4]";
+    border-color: var(--themePrimary);
+    background: "[theme:white, default: #ffffff]";
+    background: var(--white);
+  }
+
+  &::placeholder {
+    color: "[theme:neutralSecondary, default: #605e5c]";
+    color: var(--neutralSecondary);
+    font-size: 13px;
+  }
+}
+
+.searchIcon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: "[theme:neutralSecondary, default: #605e5c]";
+  color: var(--neutralSecondary);
+  font-size: 14px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.clearButton {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: "[theme:neutralSecondary, default: #605e5c]";
+  color: var(--neutralSecondary);
+  border-radius: 2px;
+  padding: 0;
+
+  &:hover {
+    background: "[theme:neutralLight, default: #edebe9]";
+    background: var(--neutralLight);
+    color: "[theme:neutralPrimary, default: #323130]";
+    color: var(--neutralPrimary);
+  }
+
+  i {
+    font-size: 12px;
+  }
+}
+
+// Search Dropdown - Fixed positioning to avoid overflow issues
+.searchDropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background-color: #ffffff;
+  border: 1px solid #edebe9;
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  max-height: 360px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 1000000; // High z-index to ensure it's above SharePoint chrome
+}
+
+.dropdownHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #605e5c;
+  background-color: #faf9f8;
+  border-bottom: 1px solid #edebe9;
+}
+
+.dropdownLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  color: #605e5c;
+  background-color: #ffffff;
+  font-size: 13px;
+}
+
+// Search Results
+.searchResultsList {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.resultItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  cursor: pointer;
+  background-color: #ffffff;
+  border-bottom: 1px solid #f3f2f1;
+  transition: background-color 0.1s ease;
+
+  &:hover {
+    background-color: #f3f2f1;
+  }
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+// Result Header (title + rush badge)
+.resultHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.resultMain {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+// Rush Badge
+.rushBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background-color: #fde7e9;
+  color: #a4262c;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.rushIcon {
+  font-size: 10px;
+}
+
+// Progress Bar
+.progressContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+}
+
+.progressTrack {
+  flex: 1;
+  height: 6px;
+  background-color: #edebe9;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  min-width: 2%;
+}
+
+.progressLabel {
+  font-size: 10px;
+  color: #605e5c;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+// Progress Colors
+.progressGreen {
+  background: linear-gradient(135deg, #107c10 0%, #13a10e 100%);
+}
+
+.progressYellow {
+  background: linear-gradient(135deg, #ffaa44 0%, #ffc83d 100%);
+}
+
+.progressRed {
+  background: linear-gradient(135deg, #d13438 0%, #a4262c 100%);
+}
+
+.progressBlue {
+  background: linear-gradient(135deg, #0078d4 0%, #106ebe 100%);
+}
+
+.progressGray {
+  background: linear-gradient(135deg, #8a8886 0%, #605e5c 100%);
+}
+
+.resultId {
+  font-weight: 600;
+  color: "[theme:themePrimary, default: #0078d4]";
+  color: var(--themePrimary);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.resultTitle {
+  color: "[theme:neutralPrimary, default: #323130]";
+  color: var(--neutralPrimary);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.resultMeta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  color: "[theme:neutralSecondary, default: #605e5c]";
+  color: var(--neutralSecondary);
+}
+
+.metaItem {
+  color: "[theme:neutralTertiary, default: #a19f9d]";
+  color: var(--neutralTertiary);
+}
+
+// Status badges
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+
+  &.draft {
+    background: #f3f2f1;
+    color: #605e5c;
+  }
+
+  &.legalIntake {
+    background: #fff4ce;
+    color: #8a6914;
+  }
+
+  &.assignAttorney {
+    background: #e8f4ff;
+    color: #0078d4;
+  }
+
+  &.inReview {
+    background: #d2f1d1;
+    color: #107c10;
+  }
+
+  &.closeout {
+    background: #f0e6ff;
+    color: #7c3aed;
+  }
+
+  &.completed {
+    background: #dff6dd;
+    color: #107c10;
+  }
+
+  &.cancelled {
+    background: #fde7e9;
+    color: #c50f1f;
+  }
+
+  &.onHold {
+    background: #fff1eb;
+    color: #d83b01;
+  }
+}
+
+// No Results
+.noResults {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 16px;
+  color: #605e5c;
+  background-color: #ffffff;
+  font-size: 13px;
   text-align: center;
 }
 
-.welcomeImage {
-  width: 100%;
-  max-width: 420px;
+.noResultsIcon {
+  font-size: 24px;
+  color: "[theme:neutralTertiary, default: #a19f9d]";
+  color: var(--neutralTertiary);
 }
 
-.links {
-  a {
-    text-decoration: none;
-    color: "[theme:link, default:#03787c]";
-    color: var(--link); // note: CSS Custom Properties support is limited to modern browsers only
+// Recent Searches
+.recentSearches {
+  display: block;
+}
 
-    &:hover {
-      text-decoration: underline;
-      color: "[theme:linkHovered, default: #014446]";
-      color: var(--linkHovered); // note: CSS Custom Properties support is limited to modern browsers only
-    }
+.recentItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  color: #323130;
+  background-color: #ffffff;
+  font-size: 13px;
+  transition: background-color 0.1s ease;
+
+  &:hover {
+    background-color: #f3f2f1;
+  }
+}
+
+.recentIcon {
+  color: "[theme:neutralTertiary, default: #a19f9d]";
+  color: var(--neutralTertiary);
+  font-size: 14px;
+}
+
+.clearRecent {
+  font-size: 11px;
+  color: "[theme:themePrimary, default: #0078d4]";
+  color: var(--themePrimary);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+
+  &:hover {
+    text-decoration: underline;
   }
 }

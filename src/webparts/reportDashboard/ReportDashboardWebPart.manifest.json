@@ -17,12 +17,12 @@
 
   "preconfiguredEntries": [{
     "groupId": "5c03119e-3074-46fd-976b-c60198311f70", // Advanced
-    "group": { "default": "Advanced" },
-    "title": { "default": "ReportDashboard" },
-    "description": { "default": "ReportDashboard description" },
-    "officeFabricIconFontName": "Page",
+    "group": { "default": "Legal Workflow" },
+    "title": { "default": "Request Dashboard" },
+    "description": { "default": "Navigation toolbar with quick links to dashboards and request search" },
+    "officeFabricIconFontName": "ViewList",
     "properties": {
-      "description": "ReportDashboard"
+      "description": "Request Dashboard Toolbar"
     }
   }]
 }

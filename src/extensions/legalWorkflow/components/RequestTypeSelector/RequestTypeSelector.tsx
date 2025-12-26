@@ -1,88 +1,98 @@
 /**
  * RequestTypeSelector Component
  *
- * First-time selection screen for new requests. Users select the request type
- * before proceeding to the full request form.
+ * Enhanced first-time selection screen for new requests with a refined,
+ * professional aesthetic. Users select the request type before proceeding
+ * to the full request form.
  *
  * Features:
- * - Displays available request types with descriptions
- * - Shows workflow stepper in informational mode (after type selected)
- * - Workflow steps are clickable to view details
- * - Continue button locks the request type selection
- * - Validates selection before continuing
- * - Integration with request store
- * - Dynamically loads DevExtreme CSS from CDN
+ * - Elegant card-based selection with sophisticated hover states
+ * - Smooth animations and micro-interactions
+ * - Premium visual design with depth and layering
+ * - Workflow preview with refined styling
+ * - Accessibility-compliant interactive elements
  */
 
 import {
   DefaultButton,
+  Icon,
   MessageBar,
   MessageBarType,
   PrimaryButton,
-  Stack,
-  Text,
 } from '@fluentui/react';
 import * as React from 'react';
-import { Card } from 'spfx-toolkit/lib/components/Card';
 import { useWorkflowStepper } from '../../../../components/WorkflowStepper/useWorkflowStepper';
 import { useRequestStore } from '../../../../stores/requestStore';
 import { RequestType } from '../../../../types/requestTypes';
 import './RequestTypeSelector.scss';
 
+// CSS class prefix for BEM naming
+const CSS_PREFIX = 'rts';
+
 /**
- * Shared styles to prevent re-creation on every render
+ * Request type option configuration
  */
-const WORKFLOW_PREVIEW_CONTAINER_STYLE: React.CSSProperties = {
-  backgroundColor: '#f3f2f1',
-  borderRadius: '4px',
-  padding: '20px',
-  border: '1px solid #edebe9',
-};
-
-const EMPTY_STATE_CONTAINER_STYLE: React.CSSProperties = {
-  backgroundColor: '#f3f2f1',
-  borderRadius: '4px',
-  padding: '40px 20px',
-  border: '1px solid #edebe9',
-  textAlign: 'center',
-};
-
-const EMPTY_STATE_ICON_STYLE: React.CSSProperties = {
-  fontSize: '48px',
-  color: '#d2d0ce',
-  marginBottom: '16px',
-};
-
-const CARDS_CONTAINER_STYLE: React.CSSProperties = {
-  display: 'flex',
-  gap: '12px',
-  flexWrap: 'wrap',
-};
+interface IRequestTypeOption {
+  type: RequestType;
+  title: string;
+  shortTitle: string;
+  description: string;
+  icon: string;
+  accentColor: string;
+  features: string[];
+  isDisabled?: boolean;
+}
 
 /**
- * Fluent UI tokens and styles to prevent re-creation
+ * Request type options with rich metadata
  */
-const CARD_STACK_TOKENS = { childrenGap: 8 };
-const CARD_STACK_STYLES = { root: { padding: '16px', height: '100%' } };
-const CARD_HEADER_TOKENS = { childrenGap: 10 };
-const CARD_TITLE_STYLES = { root: { fontWeight: 600 as const, flex: 1, minWidth: 0 } };
-const CARD_DESC_STYLES = { root: { color: '#605e5c', lineHeight: '1.4' } };
-const MAIN_STACK_TOKENS = { childrenGap: 20 };
-const MAIN_STACK_STYLES = { root: { padding: '20px', maxWidth: '1400px', margin: '0 auto' } };
-const HEADER_STACK_TOKENS = { childrenGap: 4 };
-const HEADER_TITLE_STYLES = { root: { fontWeight: 600 as const } };
-const HEADER_DESC_STYLES = { root: { color: '#605e5c' } };
-const PREVIEW_SECTION_TOKENS = { childrenGap: 8 };
-const PREVIEW_SECTION_STYLES = { root: { marginBottom: '20px' } };
-const PREVIEW_HEADER_TOKENS = { childrenGap: 8 };
-const PREVIEW_TITLE_STYLES = { root: { fontWeight: 600 as const, color: '#323130' } };
-const PREVIEW_DESC_STYLES = { root: { color: '#605e5c' } };
-const EMPTY_TEXT_STYLES = { root: { color: '#a19f9d', display: 'block' } };
-const BUTTON_STACK_TOKENS = { childrenGap: 12 };
-const BUTTON_STYLES = { root: { minWidth: '120px' } };
+const REQUEST_TYPE_OPTIONS: IRequestTypeOption[] = [
+  {
+    type: RequestType.Communication,
+    title: 'Communication Review',
+    shortTitle: 'Communication',
+    description: 'External communications, marketing materials, presentations, and public-facing content requiring legal and compliance review.',
+    icon: 'Chat',
+    accentColor: '#2563eb',
+    features: [
+      'Marketing materials',
+      'Client presentations',
+      'Website & social content',
+      'Email campaigns',
+    ],
+    isDisabled: false,
+  },
+  {
+    type: RequestType.GeneralReview,
+    title: 'General Review',
+    shortTitle: 'General',
+    description: 'General legal review of documents, contracts, agreements, and other legal matters requiring attorney oversight.',
+    icon: 'DocumentApproval',
+    accentColor: '#7c3aed',
+    features: [
+      'Contracts & agreements',
+      'Legal documents',
+      'Policy reviews',
+    ],
+    isDisabled: true,
+  },
+  {
+    type: RequestType.IMAReview,
+    title: 'IMA Review',
+    shortTitle: 'IMA',
+    description: 'Investment Management Agreement review for institutional clients requiring specialized compliance review.',
+    icon: 'FileCode',
+    accentColor: '#059669',
+    features: [
+      'Investment agreements',
+      'Institutional contracts',
+    ],
+    isDisabled: true,
+  },
+];
 
 /**
- * WorkflowStepperPreview Component - Shows the workflow stepper with built-in step details
+ * WorkflowStepperPreview - Shows workflow with elegant styling
  */
 interface IWorkflowStepperPreviewProps {
   requestType: RequestType;
@@ -93,86 +103,33 @@ const WorkflowStepperPreview: React.FC<IWorkflowStepperPreviewProps> = ({ reques
     requestType,
     currentStatus: undefined,
     mode: 'informational',
-    onStepClick: () => {}, // Hook manages selection internally
+    onStepClick: () => {},
   });
 
-  /**
-   * Reset to first step when request type changes
-   * Only depend on requestType, not on steps array
-   */
   React.useEffect(() => {
     if (steps && steps.length > 0) {
       setSelectedStep(steps[0].id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestType]); // Only when requestType changes
+  }, [requestType]);
 
-  return <div>{renderStepper()}</div>;
+  return <div className={`${CSS_PREFIX}__workflow-stepper-content`}>{renderStepper()}</div>;
 };
 
 /**
- * Request type option with description
- */
-interface IRequestTypeOption {
-  type: RequestType;
-  title: string;
-  description: string;
-  icon: string;
-  examples: string[];
-  isDisabled?: boolean; // For Phase 2 features
-}
-
-/**
- * Request type options configuration
- */
-const REQUEST_TYPE_OPTIONS: IRequestTypeOption[] = [
-  {
-    type: RequestType.Communication,
-    title: 'Communication',
-    description:
-      'Review of external communications, marketing materials, presentations, and public-facing content.',
-    icon: 'Chat',
-    examples: [
-      'Marketing materials',
-      'Client presentations',
-      'Website content',
-      'Social media posts',
-      'Email campaigns',
-    ],
-    isDisabled: false,
-  },
-  {
-    type: RequestType.GeneralReview,
-    title: 'General Review (Coming Soon)',
-    description:
-      'General legal review of documents, contracts, agreements, and other legal matters. Available in Phase 2.',
-    icon: 'DocumentApproval',
-    examples: ['Contracts and agreements', 'Legal documents', 'Policy reviews'],
-    isDisabled: true,
-  },
-  {
-    type: RequestType.IMAReview,
-    title: 'IMA Review (Coming Soon)',
-    description:
-      'Investment Management Agreement (IMA) review for institutional clients. Available in Phase 2.',
-    icon: 'FileCode',
-    examples: ['Investment Management Agreements', 'Institutional client agreements'],
-    isDisabled: true,
-  },
-];
-
-/**
- * RequestTypeCard Component - Individual request type option card
+ * RequestTypeCard - Elegant selectable card with animations
  */
 interface IRequestTypeCardProps {
   option: IRequestTypeOption;
   isSelected: boolean;
   onSelect: (type: RequestType) => void;
+  index: number;
 }
 
 const RequestTypeCard: React.FC<IRequestTypeCardProps> = React.memo(
-  ({ option, isSelected, onSelect }) => {
+  ({ option, isSelected, onSelect, index }) => {
     const isDisabled = option.isDisabled || false;
+    const cardRef = React.useRef<HTMLDivElement>(null);
 
     const handleClick = React.useCallback((): void => {
       if (!isDisabled) {
@@ -180,79 +137,60 @@ const RequestTypeCard: React.FC<IRequestTypeCardProps> = React.memo(
       }
     }, [option.type, onSelect, isDisabled]);
 
-    const cardWrapperStyle = React.useMemo(
-      (): React.CSSProperties => ({
-        cursor: isDisabled ? 'not-allowed' : 'pointer',
-        border: isSelected ? '2px solid #0078d4' : '1px solid #d2d0ce',
-        backgroundColor: isDisabled ? '#faf9f8' : isSelected ? '#f3f9fd' : '#ffffff',
-        transition: 'all 0.2s ease',
-        borderRadius: '4px',
-        opacity: isDisabled ? 0.6 : 1,
-        flex: 1,
-        minWidth: 0,
-      }),
-      [isDisabled, isSelected]
+    const handleKeyDown = React.useCallback(
+      (e: React.KeyboardEvent): void => {
+        if ((e.key === 'Enter' || e.key === ' ') && !isDisabled) {
+          e.preventDefault();
+          onSelect(option.type);
+        }
+      },
+      [option.type, onSelect, isDisabled]
     );
 
-    const iconContainerStyle = React.useMemo(
-      (): React.CSSProperties => ({
-        width: '32px',
-        height: '32px',
-        borderRadius: '50%',
-        backgroundColor: isDisabled ? '#e1dfdd' : isSelected ? '#0078d4' : '#f3f2f1',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-      }),
-      [isDisabled, isSelected]
-    );
-
-    const iconStyle = React.useMemo(
-      (): React.CSSProperties => ({
-        fontSize: '16px',
-        color: isDisabled ? '#a19f9d' : isSelected ? '#ffffff' : '#605e5c',
-      }),
-      [isDisabled, isSelected]
-    );
+    const cardClasses = [
+      `${CSS_PREFIX}__card`,
+      isSelected ? `${CSS_PREFIX}__card--selected` : '',
+      isDisabled ? `${CSS_PREFIX}__card--disabled` : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
 
     return (
-      <div onClick={handleClick} style={cardWrapperStyle}>
-        <Card
-          id={`request-type-${option.type}`}
-          className={`request-type-card ${isSelected ? 'request-type-card--selected' : ''} ${
-            isDisabled ? 'request-type-card--disabled' : ''
-          }`}
-        >
-          <Stack tokens={CARD_STACK_TOKENS} styles={CARD_STACK_STYLES}>
-            {/* Icon and title */}
-            <Stack horizontal verticalAlign='center' tokens={CARD_HEADER_TOKENS}>
-              <div style={iconContainerStyle}>
-                <i className={`ms-Icon ms-Icon--${option.icon}`} style={iconStyle} />
-              </div>
-              <Text variant='medium' styles={CARD_TITLE_STYLES}>
-                {option.title}
-              </Text>
-              {isSelected && !isDisabled && (
-                <i
-                  className='ms-Icon ms-Icon--CheckMark'
-                  style={{ fontSize: '14px', color: '#107c10', flexShrink: 0 }}
-                />
-              )}
+      <div
+        ref={cardRef}
+        className={cardClasses}
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        role="button"
+        tabIndex={isDisabled ? -1 : 0}
+        aria-pressed={isSelected}
+        aria-disabled={isDisabled}
+        aria-label={`Select ${option.title}${isDisabled ? ' (Coming Soon)' : ''}`}
+        style={{
+          '--accent-color': option.accentColor,
+          '--animation-delay': `${index * 100}ms`,
+        } as React.CSSProperties}
+      >
+        {/* Card content */}
+        <div className={`${CSS_PREFIX}__card-content`}>
+          {/* Header with title and selection indicator */}
+          <div className={`${CSS_PREFIX}__card-header`}>
+            <div className={`${CSS_PREFIX}__title-section`}>
+              <h3 className={`${CSS_PREFIX}__card-title`}>{option.shortTitle}</h3>
               {isDisabled && (
-                <i
-                  className='ms-Icon ms-Icon--Lock'
-                  style={{ fontSize: '12px', color: '#a19f9d', flexShrink: 0 }}
-                />
+                <span className={`${CSS_PREFIX}__coming-soon-badge`}>Coming Soon</span>
               )}
-            </Stack>
+            </div>
+            {isSelected && !isDisabled && (
+              <div className={`${CSS_PREFIX}__selected-indicator`}>
+                <Icon iconName="CheckMark" />
+              </div>
+            )}
+          </div>
 
-            {/* Description - compact */}
-            <Text variant='small' styles={CARD_DESC_STYLES}>
-              {option.description}
-            </Text>
-          </Stack>
-        </Card>
+          {/* Description */}
+          <p className={`${CSS_PREFIX}__card-description`}>{option.description}</p>
+        </div>
       </div>
     );
   }
@@ -262,16 +200,9 @@ const RequestTypeCard: React.FC<IRequestTypeCardProps> = React.memo(
  * RequestTypeSelector props
  */
 export interface IRequestTypeSelectorProps {
-  /** Callback when user clicks Continue */
   onContinue: (requestType: RequestType) => void;
-
-  /** Callback when user clicks Cancel */
   onCancel?: () => void;
-
-  /** Custom CSS class */
   className?: string;
-
-  /** Show cancel button */
   showCancel?: boolean;
 }
 
@@ -286,124 +217,152 @@ export const RequestTypeSelector: React.FC<IRequestTypeSelectorProps> = ({
 }) => {
   const [selectedType, setSelectedType] = React.useState<RequestType | undefined>(undefined);
   const [showError, setShowError] = React.useState<boolean>(false);
+  const [isAnimatingOut, setIsAnimatingOut] = React.useState<boolean>(false);
   const { updateField } = useRequestStore();
 
-  /**
-   * Handle request type selection
-   */
   const handleSelectType = React.useCallback((type: RequestType): void => {
     setSelectedType(type);
     setShowError(false);
   }, []);
 
-  /**
-   * Handle continue button click - locks the request type
-   */
   const handleContinue = React.useCallback((): void => {
     if (!selectedType) {
       setShowError(true);
       return;
     }
 
-    // Update request store
+    setIsAnimatingOut(true);
     updateField('requestType', selectedType);
 
-    // Call parent callback (this will lock the selection and show the form)
-    onContinue(selectedType);
+    // Small delay for exit animation
+    setTimeout(() => {
+      onContinue(selectedType);
+    }, 300);
   }, [selectedType, updateField, onContinue]);
 
-  /**
-   * Handle cancel button click
-   */
   const handleCancel = React.useCallback((): void => {
     if (onCancel) {
-      onCancel();
+      setIsAnimatingOut(true);
+      setTimeout(() => {
+        onCancel();
+      }, 200);
     }
   }, [onCancel]);
 
+  const containerClasses = [
+    CSS_PREFIX,
+    isAnimatingOut ? `${CSS_PREFIX}--animating-out` : '',
+    className || '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  // Find selected option for hint text
+  const selectedOption = selectedType
+    ? REQUEST_TYPE_OPTIONS.filter((o: IRequestTypeOption) => o.type === selectedType)[0]
+    : undefined;
+
   return (
-    <div className={`request-type-selector ${className || ''}`}>
-      <Stack tokens={MAIN_STACK_TOKENS} styles={MAIN_STACK_STYLES}>
-        {/* Header */}
-        <Stack tokens={HEADER_STACK_TOKENS}>
-          <Text variant='xxLarge' styles={HEADER_TITLE_STYLES}>
-            Select Request Type
-          </Text>
-          <Text variant='medium' styles={HEADER_DESC_STYLES}>
-            Choose a request type, review the workflow, then click Continue.
-          </Text>
-        </Stack>
+    <div className={containerClasses}>
+      {/* Decorative background elements */}
+      <div className={`${CSS_PREFIX}__bg-decoration`}>
+        <div className={`${CSS_PREFIX}__gradient-orb-1`} />
+        <div className={`${CSS_PREFIX}__gradient-orb-2`} />
+        <div className={`${CSS_PREFIX}__grid-pattern`} />
+      </div>
+
+      <div className={`${CSS_PREFIX}__content-wrapper`}>
+        {/* Header section */}
+        <header className={`${CSS_PREFIX}__header`}>
+          <h1 className={`${CSS_PREFIX}__title`}>New Request</h1>
+          <p className={`${CSS_PREFIX}__subtitle`}>
+            Select a request type to begin.
+          </p>
+        </header>
 
         {/* Error message */}
         {showError && (
-          <MessageBar
-            messageBarType={MessageBarType.error}
-            isMultiline={false}
-            onDismiss={() => setShowError(false)}
-          >
-            Please select a request type to continue.
-          </MessageBar>
+          <div className={`${CSS_PREFIX}__error-container`}>
+            <MessageBar
+              messageBarType={MessageBarType.error}
+              isMultiline={false}
+              onDismiss={() => setShowError(false)}
+              dismissButtonAriaLabel="Close"
+            >
+              Please select a request type to continue.
+            </MessageBar>
+          </div>
         )}
 
-        {/* Request Type Cards - Horizontal */}
-        <div style={CARDS_CONTAINER_STYLE}>
-          {REQUEST_TYPE_OPTIONS.map(option => (
+        {/* Request type cards grid */}
+        <div className={`${CSS_PREFIX}__cards-grid`}>
+          {REQUEST_TYPE_OPTIONS.map((option: IRequestTypeOption, index: number) => (
             <RequestTypeCard
               key={option.type}
               option={option}
               isSelected={selectedType === option.type}
               onSelect={handleSelectType}
+              index={index}
             />
           ))}
         </div>
 
-        {/* Workflow Preview */}
-        {selectedType ? (
-          <div style={WORKFLOW_PREVIEW_CONTAINER_STYLE}>
-            <Stack tokens={PREVIEW_SECTION_TOKENS} styles={PREVIEW_SECTION_STYLES}>
-              <Stack horizontal verticalAlign='center' tokens={PREVIEW_HEADER_TOKENS}>
-                <i
-                  className='ms-Icon ms-Icon--Flow'
-                  style={{ fontSize: '20px', color: '#0078d4' }}
-                />
-                <Text variant='xLarge' styles={PREVIEW_TITLE_STYLES}>
-                  Workflow Preview
-                </Text>
-              </Stack>
-              <Text variant='small' styles={PREVIEW_DESC_STYLES}>
-                Click on each step to view details about what happens at that stage
-              </Text>
-            </Stack>
-            <WorkflowStepperPreview requestType={selectedType} />
+        {/* Workflow preview section */}
+        <section className={`${CSS_PREFIX}__workflow-preview`}>
+          <div className={`${CSS_PREFIX}__preview-header`}>
+            <h2 className={`${CSS_PREFIX}__preview-title`}>Workflow Preview</h2>
+            <p className={`${CSS_PREFIX}__preview-subtitle`}>
+              {selectedType
+                ? 'Click on each step to view details about what happens at that stage.'
+                : 'Select a request type above to preview the review workflow.'}
+            </p>
           </div>
-        ) : (
-          <div style={EMPTY_STATE_CONTAINER_STYLE}>
-            <i className='ms-Icon ms-Icon--Flow' style={EMPTY_STATE_ICON_STYLE} />
-            <Text variant='large' styles={EMPTY_TEXT_STYLES}>
-              Select a request type above to preview the workflow
-            </Text>
-          </div>
-        )}
 
-        {/* Action Buttons */}
-        <Stack horizontal tokens={BUTTON_STACK_TOKENS} horizontalAlign='start'>
-          <PrimaryButton
-            text='Continue'
-            iconProps={{ iconName: 'Forward' }}
-            onClick={handleContinue}
-            disabled={!selectedType}
-            styles={BUTTON_STYLES}
-          />
-          {showCancel && (
-            <DefaultButton
-              text='Cancel'
-              iconProps={{ iconName: 'Cancel' }}
-              onClick={handleCancel}
-              styles={BUTTON_STYLES}
-            />
-          )}
-        </Stack>
-      </Stack>
+          <div className={`${CSS_PREFIX}__preview-content`}>
+            {selectedType ? (
+              <WorkflowStepperPreview requestType={selectedType} />
+            ) : (
+              <div className={`${CSS_PREFIX}__empty-preview`}>
+                <div className={`${CSS_PREFIX}__empty-preview-icon`}>
+                  <Icon iconName="Processing" />
+                </div>
+                <p className={`${CSS_PREFIX}__empty-preview-text`}>
+                  Workflow steps will appear here
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Action buttons */}
+        <footer className={`${CSS_PREFIX}__footer`}>
+          <div className={`${CSS_PREFIX}__footer-content`}>
+            <div className={`${CSS_PREFIX}__button-group`}>
+              {showCancel && (
+                <DefaultButton
+                  text="Cancel"
+                  onClick={handleCancel}
+                  className={`${CSS_PREFIX}__cancel-button`}
+                  iconProps={{ iconName: 'Cancel' }}
+                />
+              )}
+              <PrimaryButton
+                text="Continue"
+                onClick={handleContinue}
+                disabled={!selectedType}
+                className={`${CSS_PREFIX}__continue-button`}
+                iconProps={{ iconName: 'Forward' }}
+              />
+            </div>
+            {selectedOption && (
+              <p className={`${CSS_PREFIX}__selection-hint`}>
+                <Icon iconName="Info" />
+                You selected <strong>{selectedOption.title}</strong>
+              </p>
+            )}
+          </div>
+        </footer>
+      </div>
     </div>
   );
 };

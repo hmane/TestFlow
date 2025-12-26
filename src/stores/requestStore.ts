@@ -280,6 +280,13 @@ export const useRequestStore = create<IRequestState>()(
           distributionMethod: [],
           priorSubmissions: [],
           additionalParty: [],
+          // FINRA Audience & Product Fields
+          finraAudienceCategory: [],
+          audience: [],
+          usFunds: [],
+          ucits: [],
+          separateAccountStrategies: [],
+          separateAccountStrategiesIncludes: [],
         };
 
         set({
