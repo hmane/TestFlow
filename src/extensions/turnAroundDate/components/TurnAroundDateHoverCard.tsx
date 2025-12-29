@@ -10,8 +10,14 @@
  */
 
 import * as React from 'react';
-import { Stack, Text, Icon, Separator } from '@fluentui/react';
-import { HoverCard, HoverCardType, type IPlainCardProps } from '@fluentui/react';
+
+// Fluent UI - tree-shaken imports
+import { Stack } from '@fluentui/react/lib/Stack';
+import { Text } from '@fluentui/react/lib/Text';
+import { Icon } from '@fluentui/react/lib/Icon';
+import { Separator } from '@fluentui/react/lib/Separator';
+import { HoverCard, HoverCardType, type IPlainCardProps } from '@fluentui/react/lib/HoverCard';
+
 import type { ITurnAroundDateHoverCardProps } from '../types';
 import {
   formatDate,

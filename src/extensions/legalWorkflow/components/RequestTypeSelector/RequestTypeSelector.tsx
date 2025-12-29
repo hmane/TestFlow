@@ -13,17 +13,18 @@
  * - Accessibility-compliant interactive elements
  */
 
-import {
-  DefaultButton,
-  Icon,
-  MessageBar,
-  MessageBarType,
-  PrimaryButton,
-} from '@fluentui/react';
 import * as React from 'react';
-import { useWorkflowStepper } from '../../../../components/WorkflowStepper/useWorkflowStepper';
-import { useRequestStore } from '../../../../stores/requestStore';
-import { RequestType } from '../../../../types/requestTypes';
+
+// Fluent UI - tree-shaken imports
+import { DefaultButton, PrimaryButton } from '@fluentui/react/lib/Button';
+import { Icon } from '@fluentui/react/lib/Icon';
+import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
+
+// App imports using path aliases
+import { useWorkflowStepper } from '@components/WorkflowStepper/useWorkflowStepper';
+import { useRequestStore } from '@stores/requestStore';
+import { RequestType } from '@appTypes/requestTypes';
+
 import './RequestTypeSelector.scss';
 
 // CSS class prefix for BEM naming

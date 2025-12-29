@@ -11,26 +11,31 @@
  * - Placed directly above action buttons in the layout
  */
 
+import * as React from 'react';
+
+// Fluent UI - tree-shaken imports
 import { Icon } from '@fluentui/react/lib/Icon';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
-import * as React from 'react';
+
+// spfx-toolkit - tree-shaken imports
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
 import { useFormContext } from 'spfx-toolkit/lib/components/spForm/context';
 
+// App imports using path aliases
 import { Lists } from '@sp/Lists';
-
-import { DocumentUpload } from '../../../../components/DocumentUpload';
-import { useRequestFormContext } from '../../../../contexts/RequestFormContext';
-import { usePermissions } from '../../../../hooks/usePermissions';
-import { useDocumentsStore } from '../../../../stores/documentsStore';
-import { useRequestStore } from '../../../../stores/requestStore';
+import { DocumentUpload } from '@components/DocumentUpload';
+import { useRequestFormContext } from '@contexts/RequestFormContext';
+import { usePermissions } from '@hooks/usePermissions';
+import { useDocumentsStore } from '@stores/documentsStore';
+import { useRequestStore } from '@stores/requestStore';
 import {
   ComplianceReviewStatus,
   LegalReviewStatus,
   RequestStatus,
-} from '../../../../types/workflowTypes';
+} from '@appTypes/workflowTypes';
+
 import './RequestDocuments.scss';
 
 /**

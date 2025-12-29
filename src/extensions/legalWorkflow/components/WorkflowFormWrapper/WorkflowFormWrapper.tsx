@@ -8,14 +8,18 @@
  * Used by workflow forms like LegalIntakeForm, LegalReviewForm, etc.
  */
 
-import { zodResolver } from '@hookform/resolvers/zod';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+
+// spfx-toolkit - tree-shaken imports
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
-import { RequestFormProvider, type IValidationError } from '../../../../contexts/RequestFormContext';
-import { fullRequestSchema } from '../../../../schemas/requestSchema';
-import { useRequestStore } from '../../../../stores/requestStore';
-import type { ILegalRequest } from '../../../../types';
+
+// App imports using path aliases
+import { RequestFormProvider, type IValidationError } from '@contexts/RequestFormContext';
+import { fullRequestSchema } from '@schemas/requestSchema';
+import { useRequestStore } from '@stores/requestStore';
+import type { ILegalRequest } from '@appTypes/index';
 
 /**
  * Props for WorkflowFormWrapper

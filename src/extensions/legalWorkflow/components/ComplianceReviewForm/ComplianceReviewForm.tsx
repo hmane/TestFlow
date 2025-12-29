@@ -9,6 +9,10 @@
  * - Single Submit button with outcome selected via radio buttons
  */
 
+import * as React from 'react';
+import { useForm } from 'react-hook-form';
+
+// Fluent UI - tree-shaken imports
 import { DefaultButton, PrimaryButton } from '@fluentui/react/lib/Button';
 import { Icon } from '@fluentui/react/lib/Icon';
 import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
@@ -16,8 +20,8 @@ import { Separator } from '@fluentui/react/lib/Separator';
 import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
-import * as React from 'react';
-import { useForm } from 'react-hook-form';
+
+// spfx-toolkit - tree-shaken imports
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
 import {
@@ -35,16 +39,14 @@ import {
   SPBooleanDisplayType,
   SPChoiceField,
 } from 'spfx-toolkit/lib/components/spFields';
-import { useRequestStore } from '../../../../stores/requestStore';
-import {
-  submitComplianceReview,
-  saveComplianceReviewProgress,
-} from '../../../../services/workflowActionService';
-import { ComplianceReviewStatus, ReviewOutcome } from '../../../../types';
-import {
-  WorkflowCardHeader,
-  type ReviewOutcome as HeaderReviewOutcome,
-} from '../../../../components/WorkflowCardHeader';
+
+// App imports using path aliases
+import { WorkflowCardHeader, type ReviewOutcome as HeaderReviewOutcome } from '@components/WorkflowCardHeader';
+import { useRequestStore } from '@stores/requestStore';
+import { submitComplianceReview, saveComplianceReviewProgress } from '@services/workflowActionService';
+import { ComplianceReviewStatus, ReviewOutcome } from '@appTypes/index';
+import { calculateBusinessHours } from '@utils/businessHoursCalculator';
+
 import './ComplianceReviewForm.scss';
 
 /**
@@ -77,15 +79,30 @@ function toHeaderOutcome(outcome: ReviewOutcome | undefined): HeaderReviewOutcom
 }
 
 /**
- * Calculate total duration in minutes from hours
+ * Calculate duration in business minutes from start and end dates
+ * Falls back to calendar time if business hours is 0 (e.g., completed on weekend)
  */
 function calculateDurationMinutes(
-  reviewerHours?: number,
-  submitterHours?: number
+  startDate?: Date,
+  endDate?: Date
 ): number | undefined {
-  const total = (reviewerHours || 0) + (submitterHours || 0);
-  if (total === 0) return undefined;
-  return Math.round(total * 60);
+  if (!startDate || !endDate) return undefined;
+
+  const start = startDate instanceof Date ? startDate : new Date(startDate);
+  const end = endDate instanceof Date ? endDate : new Date(endDate);
+
+  // Calculate business hours and convert to minutes
+  const businessHours = calculateBusinessHours(start, end);
+  const businessMinutes = Math.round(businessHours * 60);
+
+  // If business hours is 0 (e.g., completed entirely on weekend/after hours),
+  // fall back to actual elapsed time so user sees some duration
+  if (businessMinutes === 0) {
+    const elapsedMs = end.getTime() - start.getTime();
+    return Math.max(1, Math.round(elapsedMs / (1000 * 60))); // At least 1 minute
+  }
+
+  return businessMinutes;
 }
 
 /**
@@ -286,14 +303,14 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
   // When completed, collapse by default and show green header
   const shouldDefaultCollapse = isReviewCompleted || defaultCollapsed;
 
-  // Calculate duration for header
-  const durationMinutes = calculateDurationMinutes(
-    currentRequest.complianceReviewReviewerHours,
-    currentRequest.complianceReviewSubmitterHours
-  );
+  // Get start date (when compliance review started - use complianceStatusUpdatedOn or submittedForReviewOn)
+  const startedOn = currentRequest.complianceStatusUpdatedOn || currentRequest.submittedForReviewOn;
 
-  // Get start date (when compliance review started)
-  const startedOn = currentRequest.complianceStatusUpdatedOn || currentRequest.submittedOn;
+  // Calculate duration for header using business hours
+  const durationMinutes = calculateDurationMinutes(
+    startedOn,
+    currentRequest.complianceReviewCompletedOn
+  );
 
   // If completed, show read-only summary view
   if (isReviewCompleted) {

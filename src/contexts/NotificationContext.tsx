@@ -6,7 +6,10 @@
  */
 
 import * as React from 'react';
-import { MessageBar, MessageBarType, Stack } from '@fluentui/react';
+
+// Fluent UI - tree-shaken imports
+import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
+import { Stack } from '@fluentui/react/lib/Stack';
 
 /**
  * Individual notification interface

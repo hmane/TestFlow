@@ -39,8 +39,11 @@ export function calculateDateInfo(data: ITurnAroundDateData): ITurnAroundDateInf
   // Calculate days remaining
   const daysRemaining = calculateDaysUntil(data.targetReturnDate);
 
-  // Determine color based on urgency
-  const color = determineDateColor(daysRemaining);
+  // For completed/cancelled requests, always show gray (no urgency)
+  const isClosedRequest = data.status === 'Completed' || data.status === 'Cancelled';
+
+  // Determine color based on urgency (gray for closed requests)
+  const color = isClosedRequest ? 'gray' : determineDateColor(daysRemaining);
 
   // Check if overdue
   const isOverdue = daysRemaining < 0;

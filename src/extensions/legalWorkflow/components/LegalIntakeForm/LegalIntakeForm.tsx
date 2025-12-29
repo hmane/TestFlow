@@ -14,37 +14,42 @@
  * are now handled by the RequestActions component at the bottom of the form.
  */
 
-import { ChoiceGroup, IChoiceGroupOption } from '@fluentui/react/lib/ChoiceGroup';
+import * as React from 'react';
+import { Controller, useForm } from 'react-hook-form';
+
+// Fluent UI - tree-shaken imports
+import { DefaultButton, IconButton, PrimaryButton } from '@fluentui/react/lib/Button';
+import { ChoiceGroup, type IChoiceGroupOption } from '@fluentui/react/lib/ChoiceGroup';
 import { Icon } from '@fluentui/react/lib/Icon';
-import { IconButton, PrimaryButton, DefaultButton } from '@fluentui/react/lib/Button';
 import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
 import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
-import * as React from 'react';
-import { Controller, useForm } from 'react-hook-form';
-import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
-import { WorkflowCardHeader } from '../../../../components/WorkflowCardHeader';
+
+// spfx-toolkit - tree-shaken imports
+import { Card, Content, Header } from 'spfx-toolkit/lib/components/Card';
+import { SPTextField, SPTextFieldMode } from 'spfx-toolkit/lib/components/spFields';
 import {
   FormContainer,
   FormItem,
   FormLabel,
-  FormValue,
   FormProvider,
+  FormValue,
 } from 'spfx-toolkit/lib/components/spForm';
 import { GroupUsersPicker } from 'spfx-toolkit/lib/components/spForm/customComponents';
-import {
-  SPTextField,
-  SPTextFieldMode,
-} from 'spfx-toolkit/lib/components/spFields';
 import { UserPersona } from 'spfx-toolkit/lib/components/UserPersona';
-import { useRequestStore } from '../../../../stores/requestStore';
-import { useLegalIntakeStore } from '../../../../stores/legalIntakeStore';
-import { usePermissions } from '../../../../hooks/usePermissions';
-import { RequestFormContext, IValidationError } from '../../../../contexts/RequestFormContext';
-import { saveRequest } from '../../../../services/requestSaveService';
-import { ReviewAudience, RequestStatus } from '@appTypes/workflowTypes';
+
+// App imports using path aliases
+import { WorkflowCardHeader } from '@components/WorkflowCardHeader';
+import { IValidationError, RequestFormContext } from '@contexts/RequestFormContext';
+import { usePermissions } from '@hooks/usePermissions';
+import { saveRequest } from '@services/requestSaveService';
+import { useLegalIntakeStore } from '@stores/legalIntakeStore';
+import { useRequestStore } from '@stores/requestStore';
 import type { IPrincipal } from '@appTypes/index';
+import { RequestStatus, ReviewAudience } from '@appTypes/workflowTypes';
+import { calculateBusinessHours } from '@utils/businessHoursCalculator';
+
 import './LegalIntakeForm.scss';
 
 /**
@@ -85,7 +90,6 @@ export interface ILegalIntakeFormProps {
   readOnly?: boolean;
 }
 
-
 /**
  * LegalIntakeForm Component
  */
@@ -106,9 +110,11 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
 
   // Check if user can edit review audience (Legal Admin or Admin only)
   // Disable editing in Closeout or Completed status
-  const isCloseoutOrCompleted = currentRequest?.status === RequestStatus.Closeout ||
+  const isCloseoutOrCompleted =
+    currentRequest?.status === RequestStatus.Closeout ||
     currentRequest?.status === RequestStatus.Completed;
-  const canEditReviewAudience = (permissions.isLegalAdmin || permissions.isAdmin) && !isCloseoutOrCompleted;
+  const canEditReviewAudience =
+    (permissions.isLegalAdmin || permissions.isAdmin) && !isCloseoutOrCompleted;
 
   // Get validation errors from parent context (RequestFormContext)
   // These errors come from Zod validation in RequestActions
@@ -119,15 +125,20 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
    * The GroupUsersPicker component uses useGroupUsers which returns numeric IDs,
    * but SPExtractor returns string IDs. This helper ensures ID type consistency.
    */
-  const normalizeAttorneyForPicker = React.useCallback((attorney: IPrincipal | undefined): IPrincipal[] => {
-    if (!attorney) return [];
-    // Convert ID to number if it's a numeric string
-    const numericId = typeof attorney.id === 'string' ? parseInt(attorney.id, 10) : attorney.id;
-    return [{
-      ...attorney,
-      id: isNaN(numericId as number) ? attorney.id : String(numericId),
-    }];
-  }, []);
+  const normalizeAttorneyForPicker = React.useCallback(
+    (attorney: IPrincipal | undefined): IPrincipal[] => {
+      if (!attorney) return [];
+      // Convert ID to number if it's a numeric string
+      const numericId = typeof attorney.id === 'string' ? parseInt(attorney.id, 10) : attorney.id;
+      return [
+        {
+          ...attorney,
+          id: isNaN(numericId as number) ? attorney.id : String(numericId),
+        },
+      ];
+    },
+    []
+  );
 
   // React Hook Form setup
   // Note: GroupUsersPicker now works with IPrincipal[] directly
@@ -183,10 +194,14 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
     clearErrors(['attorney', 'attorneyAssignNotes', 'reviewAudience']);
 
     // Set errors from context
-    contextValidationErrors.forEach((validationError) => {
+    contextValidationErrors.forEach(validationError => {
       const fieldName = validationError.field as keyof ILegalIntakeFormData;
       // Only set errors for fields that belong to this form
-      if (fieldName === 'attorney' || fieldName === 'attorneyAssignNotes' || fieldName === 'reviewAudience') {
+      if (
+        fieldName === 'attorney' ||
+        fieldName === 'attorneyAssignNotes' ||
+        fieldName === 'reviewAudience'
+      ) {
         setFormError(fieldName, {
           type: 'manual',
           message: validationError.message,
@@ -325,18 +340,28 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
             defaultExpanded={true}
           >
             <Header size='regular'>
-              <Stack horizontal verticalAlign='center' horizontalAlign='space-between' styles={{ root: { width: '100%' } }}>
+              <Stack
+                horizontal
+                verticalAlign='center'
+                horizontalAlign='space-between'
+                styles={{ root: { width: '100%' } }}
+              >
                 <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
-                  <div style={{
-                    width: '36px',
-                    height: '36px',
-                    borderRadius: '8px',
-                    backgroundColor: '#fff4ce',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                    <Icon iconName='Edit' styles={{ root: { fontSize: '18px', color: '#797673' } }} />
+                  <div
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '8px',
+                      backgroundColor: '#fff4ce',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Icon
+                      iconName='Edit'
+                      styles={{ root: { fontSize: '18px', color: '#797673' } }}
+                    />
                   </div>
                   <Stack tokens={{ childrenGap: 2 }}>
                     <Text variant='large' styles={{ root: { fontWeight: 600, color: '#323130' } }}>
@@ -484,16 +509,29 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
     // Get the user who completed intake (submittedForReviewBy or attorney)
     const completedBy = currentRequest.submittedForReviewBy || assignedAttorney;
 
-    // Calculate duration in minutes (business hours)
+    // Calculate duration in business minutes (excludes weekends and non-working hours)
+    // Uses businessHoursCalculator to get accurate business hours (8 AM - 5 PM, Mon-Fri PST)
+    // Falls back to calendar time if business hours is 0 (e.g., completed on weekend)
     const durationMinutes = React.useMemo(() => {
       if (!currentRequest.submittedOn || !completedDate) return undefined;
-      const startDate = currentRequest.submittedOn instanceof Date
-        ? currentRequest.submittedOn
-        : new Date(currentRequest.submittedOn);
+      const startDate =
+        currentRequest.submittedOn instanceof Date
+          ? currentRequest.submittedOn
+          : new Date(currentRequest.submittedOn);
       const endDate = completedDate instanceof Date ? completedDate : new Date(completedDate);
-      // Simple calculation - can be enhanced with business hours service
-      const diffMs = endDate.getTime() - startDate.getTime();
-      return Math.floor(diffMs / (1000 * 60));
+
+      // Calculate business hours and convert to minutes for WorkflowCardHeader
+      const businessHours = calculateBusinessHours(startDate, endDate);
+      const businessMinutes = Math.round(businessHours * 60);
+
+      // If business hours is 0 (e.g., completed entirely on weekend/after hours),
+      // fall back to actual elapsed time so user sees some duration
+      if (businessMinutes === 0) {
+        const elapsedMs = endDate.getTime() - startDate.getTime();
+        return Math.max(1, Math.round(elapsedMs / (1000 * 60))); // At least 1 minute
+      }
+
+      return businessMinutes;
     }, [currentRequest.submittedOn, completedDate]);
 
     return (
@@ -504,36 +542,42 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
         defaultExpanded={defaultExpanded}
       >
         <Header size='regular'>
-          <Stack horizontal verticalAlign='center' horizontalAlign='space-between' styles={{ root: { width: '100%' } }}>
-            <WorkflowCardHeader
-              title='Legal Intake'
-              status='completed'
-              startedOn={currentRequest.submittedOn}
-              completedOn={completedDate}
-              completedBy={completedBy?.title ? { title: completedBy.title, email: completedBy.email } : undefined}
-              attorney={assignedAttorney?.title ? { title: assignedAttorney.title, email: assignedAttorney.email } : undefined}
-              durationMinutes={durationMinutes}
-            />
-            {/* Edit button - only visible to Admin/Legal Admin, not in Closeout/Completed */}
-            {canEditReviewAudience && (
-              <IconButton
-                iconProps={{ iconName: 'Edit' }}
-                title='Edit Legal Intake'
-                ariaLabel='Edit Legal Intake'
-                onClick={() => setIsEditMode(true)}
-                styles={{
-                  root: {
-                    color: '#0078d4',
-                    backgroundColor: 'transparent',
-                    marginLeft: '8px',
-                    ':hover': {
-                      backgroundColor: '#f3f2f1',
+          <WorkflowCardHeader
+            title='Legal Intake'
+            status='completed'
+            startedOn={currentRequest.submittedOn}
+            completedOn={completedDate}
+            completedBy={
+              completedBy?.title
+                ? { title: completedBy.title, email: completedBy.email }
+                : undefined
+            }
+            attorney={
+              assignedAttorney?.title
+                ? { title: assignedAttorney.title, email: assignedAttorney.email }
+                : undefined
+            }
+            durationMinutes={durationMinutes}
+            actions={
+              canEditReviewAudience ? (
+                <IconButton
+                  iconProps={{ iconName: 'Edit' }}
+                  title='Edit Legal Intake'
+                  ariaLabel='Edit Legal Intake'
+                  onClick={() => setIsEditMode(true)}
+                  styles={{
+                    root: {
+                      color: '#0078d4',
+                      backgroundColor: 'transparent',
+                      ':hover': {
+                        backgroundColor: '#f3f2f1',
+                      },
                     },
-                  },
-                }}
-              />
-            )}
-          </Stack>
+                  }}
+                />
+              ) : undefined
+            }
+          />
         </Header>
 
         <Content padding='comfortable'>
@@ -552,7 +596,9 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
                       showSecondaryText={false}
                     />
                   ) : (
-                    <Text styles={{ root: { color: '#605e5c', fontStyle: 'italic' } }}>Not assigned</Text>
+                    <Text styles={{ root: { color: '#605e5c', fontStyle: 'italic' } }}>
+                      Not assigned
+                    </Text>
                   )}
                 </FormValue>
               </FormItem>
@@ -600,7 +646,11 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
             title='Legal Intake'
             status='in-progress'
             startedOn={currentRequest.submittedOn}
-            attorney={selectedAttorney?.title ? { title: selectedAttorney.title, email: selectedAttorney.email } : undefined}
+            attorney={
+              selectedAttorney?.title
+                ? { title: selectedAttorney.title, email: selectedAttorney.email }
+                : undefined
+            }
           />
         </Header>
 

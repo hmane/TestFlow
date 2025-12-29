@@ -1,8 +1,9 @@
 /**
  * WorkflowCardHeader Styles
  *
- * Refined, professional styling for workflow stage headers.
- * Uses subtle gradients, smooth transitions, and purposeful micro-interactions.
+ * Clean, minimal styling for workflow stage headers.
+ * Seamless integration with parent Card - no visual separation.
+ * Uses inline elements with status colors for visual hierarchy.
  */
 
 // ============================================
@@ -12,15 +13,11 @@
 // In Progress theme (Blue)
 $color-progress-primary: #0078d4;
 $color-progress-secondary: #106ebe;
-$color-progress-bg: rgba(0, 120, 212, 0.06);
-$color-progress-bg-hover: rgba(0, 120, 212, 0.1);
 $color-progress-border: rgba(0, 120, 212, 0.15);
 
 // Completed theme (Green)
 $color-completed-primary: #107c10;
 $color-completed-secondary: #0e6b0e;
-$color-completed-bg: rgba(16, 124, 16, 0.06);
-$color-completed-bg-hover: rgba(16, 124, 16, 0.1);
 $color-completed-border: rgba(16, 124, 16, 0.15);
 
 // Neutral colors
@@ -39,23 +36,13 @@ $transition-medium: 250ms cubic-bezier(0.4, 0, 0.2, 1);
 .workflow-header {
   position: relative;
   padding: 0;
-  border-radius: 4px 4px 0 0;
-  transition: background-color $transition-fast;
+  // No background, no border - seamless with parent Card
+  // Status is indicated via icon and badge colors only
 
-  &--progress {
-    background: linear-gradient(135deg, $color-progress-bg 0%, transparent 100%);
-
-    &:hover {
-      background: linear-gradient(135deg, $color-progress-bg-hover 0%, transparent 100%);
-    }
-  }
-
+  &--progress,
   &--completed {
-    background: linear-gradient(135deg, $color-completed-bg 0%, transparent 100%);
-
-    &:hover {
-      background: linear-gradient(135deg, $color-completed-bg-hover 0%, transparent 100%);
-    }
+    // No visual container styling
+    // Let the Card handle all container appearance
   }
 }
 
@@ -65,31 +52,9 @@ $transition-medium: 250ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 // ============================================
-// ACCENT LINE
+// ACCENT LINE (REMOVED)
+// No longer using fading underline - clean flat design
 // ============================================
-
-.workflow-header__accent {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  opacity: 0.6;
-  transition: opacity $transition-fast, transform $transition-fast;
-
-  &.workflow-header--progress {
-    background: linear-gradient(90deg, $color-progress-primary 0%, $color-progress-secondary 50%, transparent 100%);
-  }
-
-  &.workflow-header--completed {
-    background: linear-gradient(90deg, $color-completed-primary 0%, $color-completed-secondary 50%, transparent 100%);
-  }
-
-  .workflow-header:hover & {
-    opacity: 1;
-    transform: scaleX(1.02);
-  }
-}
 
 // ============================================
 // STATUS ICON
@@ -99,15 +64,13 @@ $transition-medium: 250ms cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  transition: transform $transition-fast, box-shadow $transition-fast;
+  width: 24px;
+  height: 24px;
+  // No background or border - just the icon with color
+  transition: transform $transition-fast;
 
   &--progress {
-    background: linear-gradient(135deg, rgba($color-progress-primary, 0.12) 0%, rgba($color-progress-primary, 0.08) 100%);
     color: $color-progress-primary;
-    box-shadow: 0 1px 3px rgba($color-progress-primary, 0.1);
 
     .ms-Icon {
       font-size: 18px;
@@ -116,9 +79,7 @@ $transition-medium: 250ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   &--completed {
-    background: linear-gradient(135deg, rgba($color-completed-primary, 0.12) 0%, rgba($color-completed-primary, 0.08) 100%);
     color: $color-completed-primary;
-    box-shadow: 0 1px 3px rgba($color-completed-primary, 0.1);
 
     .ms-Icon {
       font-size: 18px;
@@ -126,15 +87,7 @@ $transition-medium: 250ms cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .workflow-header:hover & {
-    transform: scale(1.05);
-
-    &--progress {
-      box-shadow: 0 2px 6px rgba($color-progress-primary, 0.2);
-    }
-
-    &--completed {
-      box-shadow: 0 2px 6px rgba($color-completed-primary, 0.2);
-    }
+    transform: scale(1.1);
   }
 }
 
@@ -171,54 +124,34 @@ $transition-medium: 250ms cubic-bezier(0.4, 0, 0.2, 1);
 .workflow-header__badge {
   display: inline-flex;
   align-items: center;
-  padding: 3px 10px;
+  padding: 2px 8px;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  border-radius: 12px;
-  transition: transform $transition-fast, box-shadow $transition-fast;
+  border-radius: 4px;
+  // Subtle background, no border for cleaner look
 
   &--progress {
-    background: linear-gradient(135deg, rgba($color-progress-primary, 0.1) 0%, rgba($color-progress-primary, 0.15) 100%);
+    background: rgba($color-progress-primary, 0.1);
     color: $color-progress-primary;
-    border: 1px solid $color-progress-border;
   }
 
   &--completed {
-    background: linear-gradient(135deg, rgba($color-completed-primary, 0.1) 0%, rgba($color-completed-primary, 0.15) 100%);
+    background: rgba($color-completed-primary, 0.1);
     color: $color-completed-primary;
-    border: 1px solid $color-completed-border;
-  }
-
-  .workflow-header:hover & {
-    transform: translateY(-1px);
-
-    &--progress {
-      box-shadow: 0 2px 4px rgba($color-progress-primary, 0.15);
-    }
-
-    &--completed {
-      box-shadow: 0 2px 4px rgba($color-completed-primary, 0.15);
-    }
   }
 }
 
 .workflow-header__outcome {
   display: inline-flex;
   align-items: center;
-  padding: 3px 10px;
+  padding: 2px 8px;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.01em;
-  border-radius: 12px;
-  border: 1px solid;
-  transition: transform $transition-fast, box-shadow $transition-fast;
-
-  .workflow-header:hover & {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-  }
+  border-radius: 4px;
+  // Styled via inline styles based on outcome type
 }
 
 // ============================================
@@ -278,37 +211,21 @@ $transition-medium: 250ms cubic-bezier(0.4, 0, 0.2, 1);
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px;
+  padding: 2px 8px;
   font-size: 11px;
   font-weight: 500;
-  border-radius: 14px;
+  border-radius: 4px;
   cursor: default;
-  transition: transform $transition-fast, box-shadow $transition-fast, background-color $transition-fast;
+  // Simple subtle background, no border
 
   &--progress {
     background: rgba($color-progress-primary, 0.08);
     color: $color-progress-primary;
-    border: 1px solid rgba($color-progress-primary, 0.12);
   }
 
   &--completed {
     background: rgba($color-completed-primary, 0.08);
     color: $color-completed-primary;
-    border: 1px solid rgba($color-completed-primary, 0.12);
-  }
-
-  &:hover {
-    transform: translateY(-1px);
-
-    &.workflow-header__duration--progress {
-      background: rgba($color-progress-primary, 0.12);
-      box-shadow: 0 2px 6px rgba($color-progress-primary, 0.15);
-    }
-
-    &.workflow-header__duration--completed {
-      background: rgba($color-completed-primary, 0.12);
-      box-shadow: 0 2px 6px rgba($color-completed-primary, 0.15);
-    }
   }
 }
 
@@ -337,12 +254,23 @@ $transition-medium: 250ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 // ============================================
+// ACTION BUTTONS
+// ============================================
+
+.workflow-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+// ============================================
 // RESPONSIVE ADJUSTMENTS
 // ============================================
 
 @media (max-width: 768px) {
   .workflow-header__content {
-    padding: 10px 12px;
+    padding: 8px 12px;
     flex-wrap: wrap;
     gap: 8px;
   }
@@ -354,7 +282,7 @@ $transition-medium: 250ms cubic-bezier(0.4, 0, 0.2, 1);
   .workflow-header__context {
     width: 100%;
     margin-top: 4px;
-    padding-left: 44px; // Align with title (icon width + gap)
+    padding-left: 36px; // Align with title (icon width + gap)
   }
 
   .workflow-header__title {
@@ -364,6 +292,6 @@ $transition-medium: 250ms cubic-bezier(0.4, 0, 0.2, 1);
   .workflow-header__badge,
   .workflow-header__outcome {
     font-size: 10px;
-    padding: 2px 8px;
+    padding: 2px 6px;
   }
 }

@@ -13,30 +13,41 @@
  * - Permission-based button visibility (only shows actions user can perform)
  */
 
+import * as React from 'react';
+
+// Fluent UI - tree-shaken imports
 import { DefaultButton, IconButton, PrimaryButton } from '@fluentui/react/lib/Button';
 import { Dialog, DialogFooter, DialogType } from '@fluentui/react/lib/Dialog';
 import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { TooltipHost } from '@fluentui/react/lib/Tooltip';
-import * as React from 'react';
+
+// spfx-toolkit - tree-shaken imports
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { useFormContext } from 'spfx-toolkit/lib/components/spForm';
-import { LoadingOverlay } from '../../../../components/LoadingOverlay/LoadingOverlay';
-import {
-  ReasonDialog,
-  type ReasonDialogAction,
-} from '../../../../components/ReasonDialog/ReasonDialog';
-import { SuperAdminPanel } from '../../../../components/SuperAdminPanel';
-import { useRequestFormContext } from '../../../../contexts/RequestFormContext';
-import { usePermissions } from '../../../../hooks/usePermissions';
-import { useWorkflowPermissions } from '../../../../hooks/useWorkflowPermissions';
-import { useRequestStore, useLegalIntakeStore, useCloseoutStore } from '../../../../stores';
-import { RequestStatus } from '../../../../types/workflowTypes';
+
+// App imports using path aliases
+import { LoadingOverlay } from '@components/LoadingOverlay/LoadingOverlay';
+import { ReasonDialog, type ReasonDialogAction } from '@components/ReasonDialog/ReasonDialog';
+import { LoadingFallback } from '@components/LoadingFallback/LoadingFallback';
+import { useRequestFormContext } from '@contexts/RequestFormContext';
+import { usePermissions } from '@hooks/usePermissions';
+import { useWorkflowPermissions } from '@hooks/useWorkflowPermissions';
+import { useRequestStore } from '@stores/requestStore';
+import { useLegalIntakeStore } from '@stores/legalIntakeStore';
+import { useCloseoutStore } from '@stores/closeoutStore';
+import { RequestStatus } from '@appTypes/workflowTypes';
 import {
   assignAttorneySchema,
   committeeAssignAttorneySchema,
   sendToCommitteeSchema,
-} from '../../../../schemas/workflowSchema';
+} from '@schemas/workflowSchema';
+
+// Lazy load SuperAdminPanel - only used by admins and shown on button click
+const SuperAdminPanel = React.lazy(
+  () => import('@components/SuperAdminPanel').then(m => ({ default: m.SuperAdminPanel }))
+);
+
 import './RequestActions.scss';
 
 /**
@@ -1183,18 +1194,20 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
         </Dialog>
 
         {/* Super Admin Panel - Administrative Override Mode (not on new/draft requests) */}
-        {permissions.isAdmin && !isNewRequest && status !== RequestStatus.Draft && (
-          <SuperAdminPanel
-            isOpen={showSuperAdminPanel}
-            onDismiss={() => setShowSuperAdminPanel(false)}
-            onActionComplete={(action, success) => {
-              if (success) {
-                SPContext.logger.info('Super Admin action completed', { action });
-                // Optionally reload the request to reflect changes
-                // The store's updateRequest already handles this
-              }
-            }}
-          />
+        {permissions.isAdmin && !isNewRequest && status !== RequestStatus.Draft && showSuperAdminPanel && (
+          <React.Suspense fallback={<LoadingFallback />}>
+            <SuperAdminPanel
+              isOpen={showSuperAdminPanel}
+              onDismiss={() => setShowSuperAdminPanel(false)}
+              onActionComplete={(action, success) => {
+                if (success) {
+                  SPContext.logger.info('Super Admin action completed', { action });
+                  // Optionally reload the request to reflect changes
+                  // The store's updateRequest already handles this
+                }
+              }}
+            />
+          </React.Suspense>
         )}
 
       </div>

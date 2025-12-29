@@ -8,7 +8,8 @@
  * - Overdue status
  */
 
-import { RequestStatus } from '../../../types/workflowTypes';
+// App imports using path aliases
+import { RequestStatus } from '@appTypes/workflowTypes';
 import type { IStatusListItemData, IStageTimingInfo } from '../types';
 
 /**

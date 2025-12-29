@@ -14,19 +14,26 @@
  */
 
 import * as React from 'react';
-import { RequestType } from '@appTypes/requestTypes';
-import { RequestStatus } from '@appTypes/workflowTypes';
-import { LoadingFallback } from '@components/LoadingFallback';
+
+// Fluent UI - tree-shaken imports
 import { DefaultButton, IconButton, PrimaryButton } from '@fluentui/react/lib/Button';
 import { Icon } from '@fluentui/react/lib/Icon';
 import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
 import { TooltipHost } from '@fluentui/react/lib/Tooltip';
-import { useRequestStore } from '@stores/requestStore';
+
+// spfx-toolkit - tree-shaken imports
+import { ErrorBoundary } from 'spfx-toolkit/lib/components/ErrorBoundary';
 import { LazyManageAccessComponent } from 'spfx-toolkit/lib/components/lazy';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
-import { useWorkflowStepper } from '../../../../components/WorkflowStepper/useWorkflowStepper';
+
+// App imports using path aliases
+import { RequestType } from '@appTypes/requestTypes';
+import { RequestStatus } from '@appTypes/workflowTypes';
+import { LoadingFallback } from '@components/LoadingFallback';
+import { useWorkflowStepper } from '@components/WorkflowStepper/useWorkflowStepper';
+import { useRequestStore } from '@stores/requestStore';
 import { RequestActions } from '../RequestActions';
 import { RequestApprovals } from '../RequestApprovals';
 import { RequestDocuments } from '../RequestDocuments';
@@ -58,6 +65,56 @@ const ComplianceReviewForm = React.lazy(
 const CloseoutForm = React.lazy(
   () => import(/* webpackChunkName: "closeout-form" */ '../CloseoutForm/CloseoutForm')
 );
+
+/**
+ * Error handler for lazy loaded form errors
+ * Logs the error with context about which form failed
+ */
+const handleFormError = (formName: string) => (error: Error): void => {
+  SPContext.logger.error(`RequestContainer: ${formName} error`, error, {
+    formName,
+    context: 'LazyFormLoad',
+  });
+};
+
+/**
+ * Wrapper component for lazy-loaded forms with error boundary
+ * Provides consistent error handling and recovery for all stage forms
+ */
+interface ILazyFormWrapperProps {
+  children: React.ReactNode;
+  formName: string;
+  fallbackMessage?: string;
+}
+
+const LazyFormWrapper: React.FC<ILazyFormWrapperProps> = ({
+  children,
+  formName,
+  fallbackMessage = 'Loading form...',
+}) => {
+  return (
+    <ErrorBoundary
+      enableRetry={true}
+      maxRetries={2}
+      showDetailsButton={process.env.NODE_ENV === 'development'}
+      onError={handleFormError(formName)}
+      userFriendlyMessages={{
+        title: `Unable to load ${formName}`,
+        description: 'An error occurred while loading this section. Please try again.',
+        retryButtonText: 'Retry',
+        detailsButtonText: 'Show Details',
+        closeButtonText: 'Close',
+        recoveringText: 'Recovering...',
+        dismissButtonText: 'Dismiss',
+        maxRetriesReached: 'Maximum retry attempts reached. Please refresh the page.',
+      }}
+    >
+      <React.Suspense fallback={<LoadingFallback message={fallbackMessage} />}>
+        {children}
+      </React.Suspense>
+    </ErrorBoundary>
+  );
+};
 
 /**
  * RequestContainer props
@@ -121,20 +178,26 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
       legalIntakeCompletedByLogin: currentRequest?.submittedForReviewBy?.loginName,
       assignedAttorney: currentRequest?.attorney?.title,
       assignedAttorneyLogin: currentRequest?.attorney?.loginName,
-      // In Review step info
+      // Review step info
       reviewStartedOn: currentRequest?.submittedForReviewOn,
       reviewAudience: currentRequest?.reviewAudience,
       // Legal review completion info
       legalReviewCompleted: currentRequest?.legalReview?.status === 'Completed',
       legalReviewOutcome: currentRequest?.legalReview?.outcome,
       legalReviewCompletedOn: currentRequest?.legalReviewCompletedOn,
+      legalReviewCompletedBy: currentRequest?.legalReviewCompletedBy?.title,
+      legalReviewCompletedByLogin: currentRequest?.legalReviewCompletedBy?.loginName,
       // Compliance review completion info
       complianceReviewCompleted: currentRequest?.complianceReview?.status === 'Completed',
       complianceReviewOutcome: currentRequest?.complianceReview?.outcome,
       complianceReviewCompletedOn: currentRequest?.complianceReviewCompletedOn,
+      complianceReviewCompletedBy: currentRequest?.complianceReviewCompletedBy?.title,
+      complianceReviewCompletedByLogin: currentRequest?.complianceReviewCompletedBy?.loginName,
       // Closeout step info
       closeoutStartedOn: currentRequest?.closeoutOn ? undefined : currentRequest?.legalReviewCompletedOn || currentRequest?.complianceReviewCompletedOn,
       completedOn: currentRequest?.closeoutOn,
+      closeoutCompletedBy: currentRequest?.closeoutBy?.title,
+      closeoutCompletedByLogin: currentRequest?.closeoutBy?.loginName,
       trackingId: currentRequest?.trackingId,
     }),
     [
@@ -148,11 +211,14 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
       currentRequest?.reviewAudience,
       currentRequest?.legalReview?.status,
       currentRequest?.legalReview?.outcome,
+      currentRequest?.legalReviewCompletedBy,
       currentRequest?.legalReviewCompletedOn,
       currentRequest?.complianceReview?.status,
       currentRequest?.complianceReview?.outcome,
+      currentRequest?.complianceReviewCompletedBy,
       currentRequest?.complianceReviewCompletedOn,
       currentRequest?.closeoutOn,
+      currentRequest?.closeoutBy,
       currentRequest?.trackingId,
     ]
   );
@@ -321,7 +387,7 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
                   listId={listId}
                   permissionTypes='view'
                   maxAvatars={5}
-                  enabled={false}
+                  enabled={true}
                   onPermissionChanged={handlePermissionChanged}
                 />
               </div>
@@ -424,39 +490,86 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
 
           {/* Stage-specific forms */}
           {status === RequestStatus.LegalIntake && (
-            <React.Suspense fallback={<LoadingFallback message='Loading Legal Intake Form...' />}>
+            <LazyFormWrapper formName="Legal Intake Form" fallbackMessage="Loading Legal Intake Form...">
               <LegalIntakeForm />
-            </React.Suspense>
+            </LazyFormWrapper>
           )}
 
           {status === RequestStatus.InReview && (
-            <React.Suspense fallback={<LoadingFallback message='Loading Review Forms...' />}>
+            <>
               {/* Legal Intake summary - collapsed, shows attorney info */}
-              <LegalIntakeForm defaultExpanded={false} readOnly />
-              {/* Review forms */}
-              <LegalReviewForm collapsible defaultCollapsed={false} />
-              <ComplianceReviewForm collapsible defaultCollapsed={false} />
-            </React.Suspense>
+              <LazyFormWrapper formName="Legal Intake Summary" fallbackMessage="Loading intake summary...">
+                <LegalIntakeForm defaultExpanded={false} readOnly />
+              </LazyFormWrapper>
+              {/* Legal Review form with its own error boundary */}
+              <LazyFormWrapper formName="Legal Review Form" fallbackMessage="Loading Legal Review Form...">
+                <LegalReviewForm collapsible defaultCollapsed={false} />
+              </LazyFormWrapper>
+              {/* Compliance Review form with its own error boundary */}
+              <LazyFormWrapper formName="Compliance Review Form" fallbackMessage="Loading Compliance Review Form...">
+                <ComplianceReviewForm collapsible defaultCollapsed={false} />
+              </LazyFormWrapper>
+            </>
           )}
 
-          {status === RequestStatus.Closeout && (
-            <React.Suspense fallback={<LoadingFallback message='Loading Closeout Form...' />}>
+          {(status === RequestStatus.Closeout || status === RequestStatus.Completed) && (
+            <>
               {/* Legal Intake summary - collapsed, shows attorney info */}
-              <LegalIntakeForm defaultExpanded={false} readOnly />
+              <LazyFormWrapper formName="Legal Intake Summary" fallbackMessage="Loading intake summary...">
+                <LegalIntakeForm defaultExpanded={false} readOnly />
+              </LazyFormWrapper>
               {/* Completed review forms - will show in collapsed/completed state */}
-              <LegalReviewForm collapsible defaultCollapsed />
-              <ComplianceReviewForm collapsible defaultCollapsed />
-              {/* Closeout form */}
-              <CloseoutForm />
-            </React.Suspense>
+              <LazyFormWrapper formName="Legal Review Summary" fallbackMessage="Loading review summary...">
+                <LegalReviewForm collapsible defaultCollapsed />
+              </LazyFormWrapper>
+              <LazyFormWrapper formName="Compliance Review Summary" fallbackMessage="Loading review summary...">
+                <ComplianceReviewForm collapsible defaultCollapsed />
+              </LazyFormWrapper>
+              {/* Closeout form - show for both Closeout and Completed status */}
+              <LazyFormWrapper formName="Closeout Form" fallbackMessage="Loading Closeout Form...">
+                <CloseoutForm readOnly={status === RequestStatus.Completed} />
+              </LazyFormWrapper>
+            </>
           )}
 
           {/* Attachments - always above action buttons */}
-          <RequestDocuments itemId={itemId} />
+          <ErrorBoundary
+            enableRetry={true}
+            maxRetries={2}
+            onError={handleFormError('Request Documents')}
+            userFriendlyMessages={{
+              title: 'Unable to load Documents',
+              description: 'An error occurred while loading documents. Please try again.',
+              retryButtonText: 'Retry',
+              detailsButtonText: 'Show Details',
+              closeButtonText: 'Close',
+              recoveringText: 'Recovering...',
+              dismissButtonText: 'Dismiss',
+              maxRetriesReached: 'Maximum retry attempts reached. Please refresh the page.',
+            }}
+          >
+            <RequestDocuments itemId={itemId} />
+          </ErrorBoundary>
 
           {/* Action buttons at the bottom */}
           {status !== RequestStatus.Completed && status !== RequestStatus.Cancelled && (
-            <RequestActions />
+            <ErrorBoundary
+              enableRetry={true}
+              maxRetries={2}
+              onError={handleFormError('Request Actions')}
+              userFriendlyMessages={{
+                title: 'Unable to load Actions',
+                description: 'An error occurred while loading the action buttons. Please try again.',
+                retryButtonText: 'Retry',
+                detailsButtonText: 'Show Details',
+                closeButtonText: 'Close',
+                recoveringText: 'Recovering...',
+                dismissButtonText: 'Dismiss',
+                maxRetriesReached: 'Maximum retry attempts reached. Please refresh the page.',
+              }}
+            >
+              <RequestActions />
+            </ErrorBoundary>
           )}
         </Stack>
       </WorkflowFormWrapper>

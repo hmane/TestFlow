@@ -11,17 +11,23 @@
  */
 
 import * as React from 'react';
+
+// Fluent UI - tree-shaken imports
 import { PrimaryButton } from '@fluentui/react/lib/Button';
 import { Icon } from '@fluentui/react/lib/Icon';
 import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
 import { TextField } from '@fluentui/react/lib/TextField';
+
+// spfx-toolkit - tree-shaken imports
 import { Card } from 'spfx-toolkit/lib/components/Card';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
-import { useRequestFormContext } from '../../../../contexts/RequestFormContext';
-import { usePermissions } from '../../../../hooks/usePermissions';
-import { LegalReviewStatus, ComplianceReviewStatus } from '../../../../types/workflowTypes';
+
+// App imports using path aliases
+import { useRequestFormContext } from '@contexts/RequestFormContext';
+import { usePermissions } from '@hooks/usePermissions';
+import { LegalReviewStatus, ComplianceReviewStatus } from '@appTypes/workflowTypes';
 
 /**
  * SubmitterResponse Component Props

@@ -27,6 +27,7 @@ import { Lists } from '@sp/Lists';
 import { RequestsFields } from '@sp/listFields/RequestsFields';
 import { manageRequestPermissions } from './azureFunctionService';
 import { loadRequestById } from './requestLoadService';
+import { generateCorrelationId } from '../utils/correlationId';
 
 import type { ILegalRequest } from '@appTypes/requestTypes';
 import { RequestStatus, ReviewOutcome, LegalReviewStatus, ComplianceReviewStatus, ReviewAudience } from '@appTypes/workflowTypes';
@@ -44,6 +45,8 @@ export interface IWorkflowActionResult {
   newStatus: RequestStatus;
   updatedRequest: ILegalRequest;
   fieldsUpdated: string[];
+  /** Correlation ID for tracking this action across logs */
+  correlationId: string;
 }
 
 /**
@@ -188,10 +191,12 @@ function areAllReviewsComplete(
 async function updateItem(
   itemId: number,
   payload: Record<string, any>,
-  context: string
+  context: string,
+  correlationId: string
 ): Promise<void> {
   try {
     SPContext.logger.info(`WorkflowActionService: ${context} - Updating item`, {
+      correlationId,
       itemId,
       listTitle: Lists.Requests.Title,
       payload: JSON.stringify(payload),
@@ -204,12 +209,14 @@ async function updateItem(
       .update(payload);
 
     SPContext.logger.success(`WorkflowActionService: ${context} - Item updated successfully`, {
+      correlationId,
       itemId,
       fieldsUpdated: Object.keys(payload),
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     SPContext.logger.error(`WorkflowActionService: ${context} - Update FAILED`, error, {
+      correlationId,
       itemId,
       payload: JSON.stringify(payload),
     });
@@ -239,7 +246,10 @@ export async function submitRequest(
   itemId: number,
   _payload?: ISubmitRequestPayload
 ): Promise<IWorkflowActionResult> {
+  const correlationId = generateCorrelationId('submitRequest');
+
   SPContext.logger.info('WorkflowActionService: submitRequest STARTED', {
+    correlationId,
     itemId,
     timestamp: new Date().toISOString(),
   });
@@ -249,6 +259,7 @@ export async function submitRequest(
     const now = new Date();
 
     SPContext.logger.info('WorkflowActionService: Current user retrieved', {
+      correlationId,
       userId: currentUser.id,
       userEmail: currentUser.email,
     });
@@ -269,6 +280,7 @@ export async function submitRequest(
     const fieldsUpdated = Object.keys(payload);
 
     SPContext.logger.info('WorkflowActionService: submitRequest payload built', {
+      correlationId,
       itemId,
       payload: JSON.stringify(payload),
       fieldsUpdated,
@@ -278,23 +290,24 @@ export async function submitRequest(
     });
 
     // Update SharePoint - this is the critical call
-    SPContext.logger.info('WorkflowActionService: Calling updateItem...', { itemId });
-    await updateItem(itemId, payload, 'submitRequest');
-    SPContext.logger.info('WorkflowActionService: updateItem completed successfully', { itemId });
+    SPContext.logger.info('WorkflowActionService: Calling updateItem...', { correlationId, itemId });
+    await updateItem(itemId, payload, 'submitRequest', correlationId);
+    SPContext.logger.info('WorkflowActionService: updateItem completed successfully', { correlationId, itemId });
 
     // Manage permissions for Legal Intake status
     try {
       await manageRequestPermissions(itemId, RequestStatus.LegalIntake);
-      SPContext.logger.info('WorkflowActionService: Permission management completed', { itemId });
+      SPContext.logger.info('WorkflowActionService: Permission management completed', { correlationId, itemId });
     } catch (permError) {
       SPContext.logger.warn('WorkflowActionService: Permission management failed (request was submitted)', permError);
       // Don't fail the action - permissions will be retried by Flow
     }
 
     // Reload and return result
-    SPContext.logger.info('WorkflowActionService: Reloading request...', { itemId });
+    SPContext.logger.info('WorkflowActionService: Reloading request...', { correlationId, itemId });
     const updatedRequest = await loadRequestById(itemId);
     SPContext.logger.info('WorkflowActionService: Request reloaded', {
+      correlationId,
       itemId,
       loadedStatus: updatedRequest.status,
     });
@@ -302,6 +315,7 @@ export async function submitRequest(
     // Log the actual status returned to verify the update worked
     const statusMatches = updatedRequest.status === 'Legal Intake';
     SPContext.logger.success('WorkflowActionService: Request submitted successfully', {
+      correlationId,
       itemId,
       requestId: updatedRequest.requestId,
       expectedStatus: 'Legal Intake',
@@ -312,6 +326,7 @@ export async function submitRequest(
     // Warn if status doesn't match expected
     if (!statusMatches) {
       SPContext.logger.error('WorkflowActionService: STATUS MISMATCH after update!', {
+        correlationId,
         itemId,
         expected: 'Legal Intake',
         actual: updatedRequest.status,
@@ -325,10 +340,12 @@ export async function submitRequest(
       newStatus: RequestStatus.LegalIntake,
       updatedRequest,
       fieldsUpdated,
+      correlationId,
     };
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     SPContext.logger.error('WorkflowActionService: submitRequest FAILED', error, {
+      correlationId,
       itemId,
       errorMessage,
     });
@@ -357,7 +374,10 @@ export async function assignAttorney(
   itemId: number,
   payload: IAssignAttorneyPayload
 ): Promise<IWorkflowActionResult> {
+  const correlationId = generateCorrelationId('assignAttorney');
+
   SPContext.logger.info('WorkflowActionService: Assigning attorney', {
+    correlationId,
     itemId,
     attorneyId: payload.attorney.id,
     attorneyEmail: payload.attorney.email,
@@ -370,6 +390,7 @@ export async function assignAttorney(
   const now = new Date();
 
   SPContext.logger.info('WorkflowActionService: Current user for assignment', {
+    correlationId,
     userId: currentUser.id,
     userEmail: currentUser.email,
   });
@@ -392,13 +413,14 @@ export async function assignAttorney(
   const fieldsUpdated = Object.keys(updatePayload);
 
   SPContext.logger.info('WorkflowActionService: Update payload built', {
+    correlationId,
     itemId,
     payload: JSON.stringify(updatePayload),
     fieldsUpdated,
   });
 
   // Update SharePoint
-  await updateItem(itemId, updatePayload, 'assignAttorney');
+  await updateItem(itemId, updatePayload, 'assignAttorney', correlationId);
 
   // Manage permissions for In Review status (attorney gets access)
   try {
@@ -411,6 +433,7 @@ export async function assignAttorney(
   const updatedRequest = await loadRequestById(itemId);
 
   SPContext.logger.success('WorkflowActionService: Attorney assigned successfully', {
+    correlationId,
     itemId,
     requestId: updatedRequest.requestId,
     attorney: payload.attorney.title,
@@ -422,6 +445,7 @@ export async function assignAttorney(
     newStatus: RequestStatus.InReview,
     updatedRequest,
     fieldsUpdated,
+    correlationId,
   };
 }
 
@@ -444,7 +468,9 @@ export async function sendToCommittee(
   itemId: number,
   payload?: ISendToCommitteePayload
 ): Promise<IWorkflowActionResult> {
-  SPContext.logger.info('WorkflowActionService: Sending to committee', { itemId });
+  const correlationId = generateCorrelationId('sendToCommittee');
+
+  SPContext.logger.info('WorkflowActionService: Sending to committee', { correlationId, itemId });
 
   const currentUser = getCurrentUserPrincipal();
   const now = new Date();
@@ -464,7 +490,7 @@ export async function sendToCommittee(
   const fieldsUpdated = Object.keys(updatePayload);
 
   // Update SharePoint
-  await updateItem(itemId, updatePayload, 'sendToCommittee');
+  await updateItem(itemId, updatePayload, 'sendToCommittee', correlationId);
 
   // Manage permissions for Assign Attorney status (committee gets access)
   try {
@@ -477,6 +503,7 @@ export async function sendToCommittee(
   const updatedRequest = await loadRequestById(itemId);
 
   SPContext.logger.success('WorkflowActionService: Sent to committee successfully', {
+    correlationId,
     itemId,
     requestId: updatedRequest.requestId,
   });
@@ -487,6 +514,7 @@ export async function sendToCommittee(
     newStatus: RequestStatus.AssignAttorney,
     updatedRequest,
     fieldsUpdated,
+    correlationId,
   };
 }
 
@@ -539,7 +567,10 @@ export async function submitLegalReview(
   itemId: number,
   payload: ILegalReviewPayload
 ): Promise<IWorkflowActionResult> {
+  const correlationId = generateCorrelationId('submitLegalReview');
+
   SPContext.logger.info('WorkflowActionService: Submitting legal review', {
+    correlationId,
     itemId,
     outcome: payload.outcome,
   });
@@ -571,6 +602,7 @@ export async function submitLegalReview(
   if (shouldProgressToCloseout) {
     updater.set(RequestsFields.Status, RequestStatus.Closeout);
     SPContext.logger.info('WorkflowActionService: All reviews complete, progressing to Closeout', {
+      correlationId,
       itemId,
       reviewAudience: currentRequest.reviewAudience,
     });
@@ -580,7 +612,7 @@ export async function submitLegalReview(
   const fieldsUpdated = Object.keys(updatePayload);
 
   // Update SharePoint
-  await updateItem(itemId, updatePayload, 'submitLegalReview');
+  await updateItem(itemId, updatePayload, 'submitLegalReview', correlationId);
 
   // Manage permissions if status changed to Closeout
   if (shouldProgressToCloseout) {
@@ -595,6 +627,7 @@ export async function submitLegalReview(
   const updatedRequest = await loadRequestById(itemId);
 
   SPContext.logger.success('WorkflowActionService: Legal review submitted', {
+    correlationId,
     itemId,
     requestId: updatedRequest.requestId,
     outcome: payload.outcome,
@@ -607,6 +640,7 @@ export async function submitLegalReview(
     newStatus: updatedRequest.status,
     updatedRequest,
     fieldsUpdated,
+    correlationId,
   };
 }
 
@@ -637,7 +671,10 @@ export async function submitComplianceReview(
   itemId: number,
   payload: IComplianceReviewPayload
 ): Promise<IWorkflowActionResult> {
+  const correlationId = generateCorrelationId('submitComplianceReview');
+
   SPContext.logger.info('WorkflowActionService: Submitting compliance review', {
+    correlationId,
     itemId,
     outcome: payload.outcome,
   });
@@ -677,6 +714,7 @@ export async function submitComplianceReview(
   if (shouldProgressToCloseout) {
     updater.set(RequestsFields.Status, RequestStatus.Closeout);
     SPContext.logger.info('WorkflowActionService: All reviews complete, progressing to Closeout', {
+      correlationId,
       itemId,
       reviewAudience: currentRequest.reviewAudience,
     });
@@ -686,7 +724,7 @@ export async function submitComplianceReview(
   const fieldsUpdated = Object.keys(updatePayload);
 
   // Update SharePoint
-  await updateItem(itemId, updatePayload, 'submitComplianceReview');
+  await updateItem(itemId, updatePayload, 'submitComplianceReview', correlationId);
 
   // Manage permissions if status changed to Closeout
   if (shouldProgressToCloseout) {
@@ -701,6 +739,7 @@ export async function submitComplianceReview(
   const updatedRequest = await loadRequestById(itemId);
 
   SPContext.logger.success('WorkflowActionService: Compliance review submitted', {
+    correlationId,
     itemId,
     requestId: updatedRequest.requestId,
     outcome: payload.outcome,
@@ -713,6 +752,7 @@ export async function submitComplianceReview(
     newStatus: updatedRequest.status,
     updatedRequest,
     fieldsUpdated,
+    correlationId,
   };
 }
 
@@ -735,7 +775,10 @@ export async function closeoutRequest(
   itemId: number,
   payload?: ICloseoutPayload
 ): Promise<IWorkflowActionResult> {
+  const correlationId = generateCorrelationId('closeoutRequest');
+
   SPContext.logger.info('WorkflowActionService: Closing out request', {
+    correlationId,
     itemId,
     trackingId: payload?.trackingId,
   });
@@ -757,7 +800,7 @@ export async function closeoutRequest(
   const fieldsUpdated = Object.keys(updatePayload);
 
   // Update SharePoint
-  await updateItem(itemId, updatePayload, 'closeoutRequest');
+  await updateItem(itemId, updatePayload, 'closeoutRequest', correlationId);
 
   // Manage permissions for Completed status
   try {
@@ -770,6 +813,7 @@ export async function closeoutRequest(
   const updatedRequest = await loadRequestById(itemId);
 
   SPContext.logger.success('WorkflowActionService: Request closed out successfully', {
+    correlationId,
     itemId,
     requestId: updatedRequest.requestId,
   });
@@ -780,6 +824,7 @@ export async function closeoutRequest(
     newStatus: RequestStatus.Completed,
     updatedRequest,
     fieldsUpdated,
+    correlationId,
   };
 }
 
@@ -805,7 +850,10 @@ export async function cancelRequest(
   payload: ICancelPayload,
   currentStatus: RequestStatus
 ): Promise<IWorkflowActionResult> {
+  const correlationId = generateCorrelationId('cancelRequest');
+
   SPContext.logger.info('WorkflowActionService: Cancelling request', {
+    correlationId,
     itemId,
     currentStatus,
     reason: payload.reason,
@@ -826,7 +874,7 @@ export async function cancelRequest(
   const fieldsUpdated = Object.keys(updatePayload);
 
   // Update SharePoint
-  await updateItem(itemId, updatePayload, 'cancelRequest');
+  await updateItem(itemId, updatePayload, 'cancelRequest', correlationId);
 
   // Manage permissions for Cancelled status
   try {
@@ -839,6 +887,7 @@ export async function cancelRequest(
   const updatedRequest = await loadRequestById(itemId);
 
   SPContext.logger.success('WorkflowActionService: Request cancelled', {
+    correlationId,
     itemId,
     requestId: updatedRequest.requestId,
   });
@@ -849,6 +898,7 @@ export async function cancelRequest(
     newStatus: RequestStatus.Cancelled,
     updatedRequest,
     fieldsUpdated,
+    correlationId,
   };
 }
 
@@ -874,7 +924,10 @@ export async function holdRequest(
   payload: IHoldPayload,
   currentStatus: RequestStatus
 ): Promise<IWorkflowActionResult> {
+  const correlationId = generateCorrelationId('holdRequest');
+
   SPContext.logger.info('WorkflowActionService: Putting request on hold', {
+    correlationId,
     itemId,
     currentStatus,
     reason: payload.reason,
@@ -895,12 +948,13 @@ export async function holdRequest(
   const fieldsUpdated = Object.keys(updatePayload);
 
   // Update SharePoint
-  await updateItem(itemId, updatePayload, 'holdRequest');
+  await updateItem(itemId, updatePayload, 'holdRequest', correlationId);
 
   // Reload and return result
   const updatedRequest = await loadRequestById(itemId);
 
   SPContext.logger.success('WorkflowActionService: Request put on hold', {
+    correlationId,
     itemId,
     requestId: updatedRequest.requestId,
   });
@@ -911,6 +965,7 @@ export async function holdRequest(
     newStatus: RequestStatus.OnHold,
     updatedRequest,
     fieldsUpdated,
+    correlationId,
   };
 }
 
@@ -934,7 +989,10 @@ export async function resumeRequest(
   itemId: number,
   previousStatus: RequestStatus
 ): Promise<IWorkflowActionResult> {
+  const correlationId = generateCorrelationId('resumeRequest');
+
   SPContext.logger.info('WorkflowActionService: Resuming request', {
+    correlationId,
     itemId,
     previousStatus,
   });
@@ -952,12 +1010,13 @@ export async function resumeRequest(
   const fieldsUpdated = Object.keys(updatePayload);
 
   // Update SharePoint
-  await updateItem(itemId, updatePayload, 'resumeRequest');
+  await updateItem(itemId, updatePayload, 'resumeRequest', correlationId);
 
   // Reload and return result
   const updatedRequest = await loadRequestById(itemId);
 
   SPContext.logger.success('WorkflowActionService: Request resumed', {
+    correlationId,
     itemId,
     requestId: updatedRequest.requestId,
     newStatus: previousStatus,
@@ -969,6 +1028,7 @@ export async function resumeRequest(
     newStatus: previousStatus,
     updatedRequest,
     fieldsUpdated,
+    correlationId,
   };
 }
 
@@ -989,7 +1049,9 @@ export async function resumeRequest(
 export async function moveToCloseout(
   itemId: number
 ): Promise<IWorkflowActionResult> {
-  SPContext.logger.info('WorkflowActionService: Moving to closeout', { itemId });
+  const correlationId = generateCorrelationId('moveToCloseout');
+
+  SPContext.logger.info('WorkflowActionService: Moving to closeout', { correlationId, itemId });
 
   // Build update payload - ONLY status
   const updater = createSPUpdater();
@@ -999,12 +1061,13 @@ export async function moveToCloseout(
   const fieldsUpdated = Object.keys(updatePayload);
 
   // Update SharePoint
-  await updateItem(itemId, updatePayload, 'moveToCloseout');
+  await updateItem(itemId, updatePayload, 'moveToCloseout', correlationId);
 
   // Reload and return result
   const updatedRequest = await loadRequestById(itemId);
 
   SPContext.logger.success('WorkflowActionService: Moved to closeout', {
+    correlationId,
     itemId,
     requestId: updatedRequest.requestId,
   });
@@ -1015,6 +1078,7 @@ export async function moveToCloseout(
     newStatus: RequestStatus.Closeout,
     updatedRequest,
     fieldsUpdated,
+    correlationId,
   };
 }
 
@@ -1037,7 +1101,10 @@ export async function updateLegalReviewStatus(
   itemId: number,
   status: LegalReviewStatus
 ): Promise<IWorkflowActionResult> {
+  const correlationId = generateCorrelationId('updateLegalReviewStatus');
+
   SPContext.logger.info('WorkflowActionService: Updating legal review status', {
+    correlationId,
     itemId,
     newStatus: status,
   });
@@ -1053,7 +1120,7 @@ export async function updateLegalReviewStatus(
   const updatePayload = updater.getUpdates();
   const fieldsUpdated = Object.keys(updatePayload);
 
-  await updateItem(itemId, updatePayload, 'updateLegalReviewStatus');
+  await updateItem(itemId, updatePayload, 'updateLegalReviewStatus', correlationId);
 
   const updatedRequest = await loadRequestById(itemId);
 
@@ -1063,6 +1130,7 @@ export async function updateLegalReviewStatus(
     newStatus: updatedRequest.status,
     updatedRequest,
     fieldsUpdated,
+    correlationId,
   };
 }
 
@@ -1082,7 +1150,10 @@ export async function updateComplianceReviewStatus(
   itemId: number,
   status: ComplianceReviewStatus
 ): Promise<IWorkflowActionResult> {
+  const correlationId = generateCorrelationId('updateComplianceReviewStatus');
+
   SPContext.logger.info('WorkflowActionService: Updating compliance review status', {
+    correlationId,
     itemId,
     newStatus: status,
   });
@@ -1098,7 +1169,7 @@ export async function updateComplianceReviewStatus(
   const updatePayload = updater.getUpdates();
   const fieldsUpdated = Object.keys(updatePayload);
 
-  await updateItem(itemId, updatePayload, 'updateComplianceReviewStatus');
+  await updateItem(itemId, updatePayload, 'updateComplianceReviewStatus', correlationId);
 
   const updatedRequest = await loadRequestById(itemId);
 
@@ -1108,6 +1179,7 @@ export async function updateComplianceReviewStatus(
     newStatus: updatedRequest.status,
     updatedRequest,
     fieldsUpdated,
+    correlationId,
   };
 }
 
@@ -1160,7 +1232,10 @@ export async function saveLegalReviewProgress(
   itemId: number,
   payload: ILegalReviewSavePayload
 ): Promise<IWorkflowActionResult> {
+  const correlationId = generateCorrelationId('saveLegalReviewProgress');
+
   SPContext.logger.info('WorkflowActionService: Saving legal review progress', {
+    correlationId,
     itemId,
     hasOutcome: !!payload.outcome,
     hasNotes: !!payload.notes,
@@ -1191,12 +1266,13 @@ export async function saveLegalReviewProgress(
   const fieldsUpdated = Object.keys(updatePayload);
 
   // Update SharePoint
-  await updateItem(itemId, updatePayload, 'saveLegalReviewProgress');
+  await updateItem(itemId, updatePayload, 'saveLegalReviewProgress', correlationId);
 
   // Reload to get current state
   const updatedRequest = await loadRequestById(itemId);
 
   SPContext.logger.success('WorkflowActionService: Legal review progress saved', {
+    correlationId,
     itemId,
     requestId: updatedRequest.requestId,
   });
@@ -1207,6 +1283,7 @@ export async function saveLegalReviewProgress(
     newStatus: updatedRequest.status,
     updatedRequest,
     fieldsUpdated,
+    correlationId,
   };
 }
 
@@ -1233,7 +1310,10 @@ export async function saveComplianceReviewProgress(
   itemId: number,
   payload: IComplianceReviewSavePayload
 ): Promise<IWorkflowActionResult> {
+  const correlationId = generateCorrelationId('saveComplianceReviewProgress');
+
   SPContext.logger.info('WorkflowActionService: Saving compliance review progress', {
+    correlationId,
     itemId,
     hasOutcome: !!payload.outcome,
     hasNotes: !!payload.notes,
@@ -1272,12 +1352,13 @@ export async function saveComplianceReviewProgress(
   const fieldsUpdated = Object.keys(updatePayload);
 
   // Update SharePoint
-  await updateItem(itemId, updatePayload, 'saveComplianceReviewProgress');
+  await updateItem(itemId, updatePayload, 'saveComplianceReviewProgress', correlationId);
 
   // Reload to get current state
   const updatedRequest = await loadRequestById(itemId);
 
   SPContext.logger.success('WorkflowActionService: Compliance review progress saved', {
+    correlationId,
     itemId,
     requestId: updatedRequest.requestId,
   });
@@ -1288,5 +1369,6 @@ export async function saveComplianceReviewProgress(
     newStatus: updatedRequest.status,
     updatedRequest,
     fieldsUpdated,
+    correlationId,
   };
 }

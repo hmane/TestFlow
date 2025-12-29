@@ -4,20 +4,17 @@
  */
 
 import * as React from 'react';
-import {
-  Dialog,
-  DialogType,
-  DialogFooter,
-  PrimaryButton,
-  DefaultButton,
-  TextField,
-  Stack,
-  Text,
-  Spinner,
-  SpinnerSize,
-  MessageBar,
-  MessageBarType,
-} from '@fluentui/react';
+
+// Fluent UI - tree-shaken imports
+import { DefaultButton, PrimaryButton } from '@fluentui/react/lib/Button';
+import { Dialog, DialogType, DialogFooter } from '@fluentui/react/lib/Dialog';
+import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
+import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
+import { Stack } from '@fluentui/react/lib/Stack';
+import { Text } from '@fluentui/react/lib/Text';
+import { TextField } from '@fluentui/react/lib/TextField';
+
+// App imports using path aliases
 import type { IDocument, IStagedDocument } from '@stores/documentsStore';
 import type { DocumentType } from '@appTypes/documentTypes';
 import {

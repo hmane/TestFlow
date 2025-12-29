@@ -1,9 +1,14 @@
 /**
  * WorkflowCardHeader Component
  *
- * A refined, consistent header component for workflow stage cards.
- * Displays status, timing, and contextual information with subtle
- * micro-interactions and professional polish.
+ * A clean, consistent header component for workflow stage cards.
+ * Displays status, timing, and contextual information efficiently.
+ *
+ * Design principles:
+ * - Clean flat design without fading underlines or nested card appearance
+ * - Consolidate redundant info (e.g., attorney = completedBy shows once)
+ * - Show duration prominently for completed reviews
+ * - Consistent structure across all review cards
  */
 
 import { Icon } from '@fluentui/react/lib/Icon';
@@ -53,6 +58,8 @@ export interface IWorkflowCardHeaderProps {
   durationMinutes?: number;
   /** Tracking ID (for closeout) */
   trackingId?: string;
+  /** Optional action buttons to render at the end of the header */
+  actions?: React.ReactNode;
   /** Custom class name */
   className?: string;
 }
@@ -90,7 +97,10 @@ function formatDateTime(date: Date | undefined): string {
  * Format duration in minutes to human readable string
  */
 function formatDuration(minutes: number | undefined): string {
-  if (!minutes || minutes <= 0) return '';
+  if (minutes === undefined || minutes === null) return '';
+
+  // Show "< 1m" for very short durations (0 or negative after rounding)
+  if (minutes <= 0) return '< 1m';
 
   const days = Math.floor(minutes / (8 * 60)); // 8-hour business day
   const hours = Math.floor((minutes % (8 * 60)) / 60);
@@ -106,42 +116,37 @@ function formatDuration(minutes: number | undefined): string {
 
 /**
  * Get outcome badge styling
+ * Returns simple background and color - no border for cleaner look
  */
 function getOutcomeStyle(outcome: ReviewOutcome): {
   backgroundColor: string;
   color: string;
-  borderColor: string;
 } {
   switch (outcome) {
     case 'Approved':
       return {
-        backgroundColor: 'rgba(16, 124, 16, 0.08)',
+        backgroundColor: 'rgba(16, 124, 16, 0.1)',
         color: '#107c10',
-        borderColor: 'rgba(16, 124, 16, 0.2)',
       };
     case 'Approved With Comments':
       return {
-        backgroundColor: 'rgba(255, 140, 0, 0.08)',
+        backgroundColor: 'rgba(255, 140, 0, 0.1)',
         color: '#d83b01',
-        borderColor: 'rgba(255, 140, 0, 0.2)',
       };
     case 'Respond To Comments And Resubmit':
       return {
-        backgroundColor: 'rgba(255, 140, 0, 0.08)',
+        backgroundColor: 'rgba(255, 140, 0, 0.1)',
         color: '#d83b01',
-        borderColor: 'rgba(255, 140, 0, 0.2)',
       };
     case 'Not Approved':
       return {
-        backgroundColor: 'rgba(164, 38, 44, 0.08)',
+        backgroundColor: 'rgba(164, 38, 44, 0.1)',
         color: '#a4262c',
-        borderColor: 'rgba(164, 38, 44, 0.2)',
       };
     default:
       return {
-        backgroundColor: 'rgba(96, 94, 92, 0.08)',
+        backgroundColor: 'rgba(96, 94, 92, 0.1)',
         color: '#605e5c',
-        borderColor: 'rgba(96, 94, 92, 0.2)',
       };
   }
 }
@@ -159,6 +164,7 @@ export const WorkflowCardHeader: React.FC<IWorkflowCardHeaderProps> = ({
   attorney,
   durationMinutes,
   trackingId,
+  actions,
   className,
 }) => {
   const isCompleted = status === 'completed';
@@ -213,7 +219,6 @@ export const WorkflowCardHeader: React.FC<IWorkflowCardHeaderProps> = ({
         style={{
           backgroundColor: style.backgroundColor,
           color: style.color,
-          borderColor: style.borderColor,
         }}
       >
         {displayText}
@@ -221,46 +226,86 @@ export const WorkflowCardHeader: React.FC<IWorkflowCardHeaderProps> = ({
     );
   };
 
-  // Render contextual info (attorney, completed by, etc.)
+  // Render contextual info (attorney, completed by, date, etc.)
+  // Consolidates attorney and completedBy when they are the same person
   const renderContextInfo = (): React.ReactElement | null => {
     const parts: React.ReactNode[] = [];
 
-    // Attorney info
-    if (attorney?.title) {
-      parts.push(
-        <span key="attorney" className='workflow-header__context-item'>
-          <Icon iconName="Contact" className='workflow-header__context-icon' />
-          <span className='workflow-header__context-label'>Attorney:</span>
-          <span className='workflow-header__context-value'>{attorney.title}</span>
-        </span>
-      );
-    }
+    // Determine if attorney and completedBy are the same person
+    const isSamePerson =
+      attorney?.title &&
+      completedBy?.title &&
+      (attorney.title === completedBy.title ||
+        (attorney.email && completedBy.email && attorney.email.toLowerCase() === completedBy.email.toLowerCase()));
 
-    // Completed by info
-    if (isCompleted && completedBy?.title) {
-      parts.push(
-        <span key="completedBy" className='workflow-header__context-item'>
-          <span className='workflow-header__context-label'>by</span>
-          <span className='workflow-header__context-value'>{completedBy.title}</span>
-        </span>
-      );
-    }
+    // For completed reviews: show consolidated reviewer info
+    if (isCompleted) {
+      if (isSamePerson) {
+        // Attorney completed the review - show single entry with completion context
+        parts.push(
+          <span key="reviewer" className='workflow-header__context-item'>
+            <Icon iconName="Contact" className='workflow-header__context-icon' />
+            <span className='workflow-header__context-value'>{attorney!.title}</span>
+          </span>
+        );
+      } else if (attorney?.title) {
+        // Different people - show attorney
+        parts.push(
+          <span key="attorney" className='workflow-header__context-item'>
+            <Icon iconName="Contact" className='workflow-header__context-icon' />
+            <span className='workflow-header__context-value'>{attorney.title}</span>
+          </span>
+        );
+        // And show who completed if different
+        if (completedBy?.title) {
+          parts.push(
+            <span key="completedBy" className='workflow-header__context-item'>
+              <span className='workflow-header__context-sep'>·</span>
+              <span className='workflow-header__context-label'>Reviewed by</span>
+              <span className='workflow-header__context-value'>{completedBy.title}</span>
+            </span>
+          );
+        }
+      } else if (completedBy?.title) {
+        // No attorney, just show who completed
+        parts.push(
+          <span key="completedBy" className='workflow-header__context-item'>
+            <Icon iconName="Contact" className='workflow-header__context-icon' />
+            <span className='workflow-header__context-value'>{completedBy.title}</span>
+          </span>
+        );
+      }
 
-    // Date info
-    if (isCompleted && completedOn) {
-      parts.push(
-        <span key="completedOn" className='workflow-header__context-item'>
-          <span className='workflow-header__context-sep'>·</span>
-          <span className='workflow-header__context-date'>{formatDate(completedOn)}</span>
-        </span>
-      );
-    } else if (!isCompleted && startedOn) {
-      parts.push(
-        <span key="startedOn" className='workflow-header__context-item'>
-          <span className='workflow-header__context-label'>since</span>
-          <span className='workflow-header__context-date'>{formatDate(startedOn)}</span>
-        </span>
-      );
+      // Completed date
+      if (completedOn) {
+        parts.push(
+          <span key="completedOn" className='workflow-header__context-item'>
+            <span className='workflow-header__context-sep'>·</span>
+            <span className='workflow-header__context-date'>{formatDate(completedOn)}</span>
+          </span>
+        );
+      }
+    } else {
+      // In progress: show attorney and start date
+      if (attorney?.title) {
+        parts.push(
+          <span key="attorney" className='workflow-header__context-item'>
+            <Icon iconName="Contact" className='workflow-header__context-icon' />
+            <span className='workflow-header__context-value'>{attorney.title}</span>
+          </span>
+        );
+      }
+
+      // Started date for in-progress
+      if (startedOn) {
+        parts.push(
+          <span key="startedOn" className='workflow-header__context-item'>
+            {attorney?.title && <span className='workflow-header__context-sep'>·</span>}
+            <span className='workflow-header__context-label'>since</span>
+            <span className='workflow-header__context-date'>{formatDate(startedOn)}</span>
+          </span>
+        );
+      }
     }
 
     // Tracking ID (for closeout)
@@ -343,15 +388,16 @@ export const WorkflowCardHeader: React.FC<IWorkflowCardHeaderProps> = ({
         {/* Flexible spacer */}
         <div className='workflow-header__spacer' />
 
-        {/* Context Info */}
+        {/* Duration Badge - shown prominently for timing visibility */}
+        {renderDurationBadge()}
+
+        {/* Context Info (reviewer, date) */}
         {renderContextInfo()}
 
-        {/* Duration Badge */}
-        {renderDurationBadge()}
+        {/* Optional action buttons */}
+        {actions && <div className='workflow-header__actions'>{actions}</div>}
       </Stack>
-
-      {/* Subtle bottom accent line */}
-      <div className={`workflow-header__accent ${containerClass}`} />
+      {/* Removed: accent line (fading underline) for cleaner flat design */}
     </div>
   );
 };

@@ -13,12 +13,16 @@
  */
 
 import * as React from 'react';
+
+// Fluent UI - tree-shaken imports
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
 import { Icon } from '@fluentui/react/lib/Icon';
 import { Separator } from '@fluentui/react/lib/Separator';
 import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
 import { HoverCard, HoverCardType, type IPlainCardProps } from '@fluentui/react/lib/HoverCard';
+
+// App imports using path aliases
 import { WaitingOnDisplay } from './WaitingOnDisplay';
 import type { IStatusHoverCardProps, IStatusListItemData } from '../types';
 import {
@@ -26,7 +30,7 @@ import {
   ReviewAudience,
   LegalReviewStatus,
   ComplianceReviewStatus,
-} from '../../../types/workflowTypes';
+} from '@appTypes/workflowTypes';
 import {
   formatStageDurationText,
   formatDaysRemainingText,

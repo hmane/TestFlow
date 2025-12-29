@@ -152,46 +152,30 @@ const stepContents: Record<string, IStepContent> = {
   },
   closeout: {
     title: 'Closeout',
-    description: 'Final review and tracking ID assignment',
+    description: 'Final steps and request completion',
     details: [
       'All required reviews have been completed',
       'Tracking ID is assigned if required (Compliance + Foreside/Retail)',
       'Final documentation is prepared',
-      'Request is prepared for completion',
+      'Request is marked as complete',
     ],
     tips: [
       'Review the final outcomes from all reviewers',
       'Tracking ID is only required for specific compliance scenarios',
       'Save all final documentation for your records',
+      'Materials can now be used per review outcomes',
     ],
     estimatedDuration: '1 business day',
     whoIsInvolved: ['Submitter', 'Legal Admin'],
-  },
-  completed: {
-    title: 'Completed',
-    description: 'Request has been fully processed',
-    details: [
-      'All reviews are complete and documented',
-      'Final outcome has been communicated',
-      'Tracking ID has been assigned (if applicable)',
-      'All documentation is archived',
-      'Request is closed',
-    ],
-    tips: [
-      'Download and save all final documentation',
-      'Note the tracking ID for future reference',
-      'Materials can now be used per review outcomes',
-    ],
-    estimatedDuration: 'N/A',
-    whoIsInvolved: ['All parties'],
   },
 };
 
 /**
  * Get step configuration for Communication request type
  *
- * Note: Assign Attorney is merged into Legal Intake for a cleaner 5-step workflow:
- * Draft → Legal Intake (includes attorney assignment) → In Review → Closeout → Completed
+ * Note: Assign Attorney is merged into Legal Intake for a cleaner 4-step workflow:
+ * Draft → Legal Intake (includes attorney assignment) → Review → Closeout
+ * Closeout and Completed are merged - Closeout shows as completed when request is done.
  */
 function getCommunicationSteps(): IWorkflowStep[] {
   return [
@@ -215,7 +199,7 @@ function getCommunicationSteps(): IWorkflowStep[] {
     },
     {
       key: 'inReview',
-      label: 'In Review',
+      label: 'Review',
       description: 'Legal/Compliance review',
       requestStatus: RequestStatus.InReview,
       isOptional: false,
@@ -230,15 +214,6 @@ function getCommunicationSteps(): IWorkflowStep[] {
       isOptional: false,
       content: stepContents.closeout,
       order: 4,
-    },
-    {
-      key: 'completed',
-      label: 'Completed',
-      description: 'Request closed',
-      requestStatus: RequestStatus.Completed,
-      isOptional: false,
-      content: stepContents.completed,
-      order: 5,
     },
   ];
 }
@@ -279,7 +254,8 @@ export function getWorkflowSteps(requestType: RequestType): IWorkflowStep[] {
  * Determine toolkit step status based on current request status
  *
  * Note: Since Assign Attorney is now merged into Legal Intake visually,
- * we treat AssignAttorney status as part of Legal Intake step (still current)
+ * we treat AssignAttorney status as part of Legal Intake step (still current).
+ * Completed status is now merged with Closeout - shows Closeout as completed.
  */
 function determineStepStatus(
   step: IWorkflowStep,
@@ -294,8 +270,8 @@ function determineStepStatus(
     return 'warning';
   }
 
-  // Map statuses to visual step order (5 visual steps)
-  // Draft=1, LegalIntake/AssignAttorney=2, InReview=3, Closeout=4, Completed=5
+  // Map statuses to visual step order (4 visual steps)
+  // Draft=1, LegalIntake/AssignAttorney=2, InReview=3, Closeout/Completed=4
   const getVisualOrder = (status: RequestStatus): number => {
     switch (status) {
       case RequestStatus.Draft:
@@ -306,9 +282,8 @@ function determineStepStatus(
       case RequestStatus.InReview:
         return 3;
       case RequestStatus.Closeout:
-        return 4;
       case RequestStatus.Completed:
-        return 5;
+        return 4; // Merged - Completed shows Closeout as completed
       default:
         return 0;
     }
@@ -316,6 +291,11 @@ function determineStepStatus(
 
   const currentOrder = getVisualOrder(currentStatus);
   const stepOrder = getVisualOrder(step.requestStatus);
+
+  // Special handling: When status is Completed, the Closeout step should show as completed
+  if (currentStatus === RequestStatus.Completed && step.key === 'closeout') {
+    return 'completed';
+  }
 
   // Completed steps
   if (stepOrder < currentOrder) {
@@ -481,13 +461,61 @@ function getStepDescriptions(
     }
   }
 
-  // In Review step
+  // Review step (formerly In Review)
   if (step.key === 'inReview' && requestMetadata) {
-    // If completed - show when review was completed
-    if (status === 'completed' && requestMetadata.closeoutStartedOn) {
+    // If completed - show when review was completed and by whom
+    if (status === 'completed') {
+      // Determine the last reviewer based on review audience and completion dates
+      let lastReviewDate: Date | undefined;
+      let lastReviewerLogin: string | undefined;
+      let lastReviewerName: string | undefined;
+
+      if (requestMetadata.reviewAudience === 'Both') {
+        // Both reviews - find the later completion date
+        const legalDate = requestMetadata.legalReviewCompletedOn;
+        const complianceDate = requestMetadata.complianceReviewCompletedOn;
+
+        if (legalDate && complianceDate) {
+          const legalTime = legalDate instanceof Date ? legalDate.getTime() : new Date(legalDate).getTime();
+          const complianceTime = complianceDate instanceof Date ? complianceDate.getTime() : new Date(complianceDate).getTime();
+
+          if (legalTime > complianceTime) {
+            lastReviewDate = legalDate;
+            lastReviewerLogin = requestMetadata.legalReviewCompletedByLogin;
+            lastReviewerName = requestMetadata.legalReviewCompletedBy;
+          } else {
+            lastReviewDate = complianceDate;
+            lastReviewerLogin = requestMetadata.complianceReviewCompletedByLogin;
+            lastReviewerName = requestMetadata.complianceReviewCompletedBy;
+          }
+        } else {
+          lastReviewDate = legalDate || complianceDate;
+          if (legalDate) {
+            lastReviewerLogin = requestMetadata.legalReviewCompletedByLogin;
+            lastReviewerName = requestMetadata.legalReviewCompletedBy;
+          } else {
+            lastReviewerLogin = requestMetadata.complianceReviewCompletedByLogin;
+            lastReviewerName = requestMetadata.complianceReviewCompletedBy;
+          }
+        }
+      } else if (requestMetadata.reviewAudience === 'Legal') {
+        lastReviewDate = requestMetadata.legalReviewCompletedOn;
+        lastReviewerLogin = requestMetadata.legalReviewCompletedByLogin;
+        lastReviewerName = requestMetadata.legalReviewCompletedBy;
+      } else if (requestMetadata.reviewAudience === 'Compliance') {
+        lastReviewDate = requestMetadata.complianceReviewCompletedOn;
+        lastReviewerLogin = requestMetadata.complianceReviewCompletedByLogin;
+        lastReviewerName = requestMetadata.complianceReviewCompletedBy;
+      }
+
+      // Fall back to closeoutStartedOn if no specific review date
+      const completedDate = lastReviewDate || requestMetadata.closeoutStartedOn;
+
       return {
-        description1: createDateElement('Completed', requestMetadata.closeoutStartedOn),
-        description2: requestMetadata.reviewAudience ? `${requestMetadata.reviewAudience} review` : undefined,
+        description1: createDateElement('Completed', completedDate),
+        description2: lastReviewerLogin
+          ? createUserElement(lastReviewerLogin, lastReviewerName)
+          : (requestMetadata.reviewAudience ? `${requestMetadata.reviewAudience} review` : undefined),
       };
     }
     // If current - show review completion status
@@ -529,30 +557,22 @@ function getStepDescriptions(
     }
   }
 
-  // Closeout step
+  // Closeout step (merged with Completed status)
   if (step.key === 'closeout' && requestMetadata) {
-    // If completed - show when completed
+    // If completed - show when completed and by whom
     if (status === 'completed' && requestMetadata.completedOn) {
       return {
         description1: createDateElement('Completed', requestMetadata.completedOn),
-        description2: requestMetadata.trackingId ? `ID: ${requestMetadata.trackingId}` : undefined,
+        description2: requestMetadata.closeoutCompletedByLogin
+          ? createUserElement(requestMetadata.closeoutCompletedByLogin, requestMetadata.closeoutCompletedBy)
+          : (requestMetadata.trackingId ? `ID: ${requestMetadata.trackingId}` : undefined),
       };
     }
     // If current - show closeout started
     if (status === 'current' && requestMetadata.closeoutStartedOn) {
       return {
         description1: createDateElement('Started', requestMetadata.closeoutStartedOn),
-        description2: requestMetadata.trackingId ? `ID: ${requestMetadata.trackingId}` : 'Pending tracking ID',
-      };
-    }
-  }
-
-  // Completed step
-  if (step.key === 'completed' && requestMetadata) {
-    if (status === 'current' && requestMetadata.completedOn) {
-      return {
-        description1: createDateElement('Completed', requestMetadata.completedOn),
-        description2: requestMetadata.trackingId ? `Tracking: ${requestMetadata.trackingId}` : undefined,
+        description2: requestMetadata.trackingId ? `ID: ${requestMetadata.trackingId}` : 'Pending completion',
       };
     }
   }

@@ -10,6 +10,10 @@
  * - No duplicate documents section (shown in RequestDocuments)
  */
 
+import * as React from 'react';
+import { useForm } from 'react-hook-form';
+
+// Fluent UI - tree-shaken imports
 import { DefaultButton, PrimaryButton } from '@fluentui/react/lib/Button';
 import { Icon } from '@fluentui/react/lib/Icon';
 import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
@@ -17,8 +21,8 @@ import { Separator } from '@fluentui/react/lib/Separator';
 import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
-import * as React from 'react';
-import { useForm } from 'react-hook-form';
+
+// spfx-toolkit - tree-shaken imports
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
 import {
@@ -30,16 +34,14 @@ import {
   useScrollToError,
 } from 'spfx-toolkit/lib/components/spForm';
 import { SPTextField, SPTextFieldMode, SPChoiceField } from 'spfx-toolkit/lib/components/spFields';
-import { useRequestStore } from '../../../../stores/requestStore';
-import {
-  submitLegalReview,
-  saveLegalReviewProgress,
-} from '../../../../services/workflowActionService';
-import { LegalReviewStatus, ReviewOutcome } from '../../../../types';
-import {
-  WorkflowCardHeader,
-  type ReviewOutcome as HeaderReviewOutcome,
-} from '../../../../components/WorkflowCardHeader';
+
+// App imports using path aliases
+import { WorkflowCardHeader, type ReviewOutcome as HeaderReviewOutcome } from '@components/WorkflowCardHeader';
+import { useRequestStore } from '@stores/requestStore';
+import { submitLegalReview, saveLegalReviewProgress } from '@services/workflowActionService';
+import { LegalReviewStatus, ReviewOutcome } from '@appTypes/index';
+import { calculateBusinessHours } from '@utils/businessHoursCalculator';
+
 import './LegalReviewForm.scss';
 
 /**
@@ -72,15 +74,30 @@ function toHeaderOutcome(outcome: ReviewOutcome | undefined): HeaderReviewOutcom
 }
 
 /**
- * Calculate total duration in minutes from hours
+ * Calculate duration in business minutes from start and end dates
+ * Falls back to calendar time if business hours is 0 (e.g., completed on weekend)
  */
 function calculateDurationMinutes(
-  attorneyHours?: number,
-  submitterHours?: number
+  startDate?: Date,
+  endDate?: Date
 ): number | undefined {
-  const total = (attorneyHours || 0) + (submitterHours || 0);
-  if (total === 0) return undefined;
-  return Math.round(total * 60);
+  if (!startDate || !endDate) return undefined;
+
+  const start = startDate instanceof Date ? startDate : new Date(startDate);
+  const end = endDate instanceof Date ? endDate : new Date(endDate);
+
+  // Calculate business hours and convert to minutes
+  const businessHours = calculateBusinessHours(start, end);
+  const businessMinutes = Math.round(businessHours * 60);
+
+  // If business hours is 0 (e.g., completed entirely on weekend/after hours),
+  // fall back to actual elapsed time so user sees some duration
+  if (businessMinutes === 0) {
+    const elapsedMs = end.getTime() - start.getTime();
+    return Math.max(1, Math.round(elapsedMs / (1000 * 60))); // At least 1 minute
+  }
+
+  return businessMinutes;
 }
 
 /**
@@ -264,14 +281,14 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
   // When completed, collapse by default and show green header
   const shouldDefaultCollapse = isReviewCompleted || defaultCollapsed;
 
-  // Calculate duration for header
-  const durationMinutes = calculateDurationMinutes(
-    currentRequest.legalReviewAttorneyHours,
-    currentRequest.legalReviewSubmitterHours
-  );
+  // Get start date (when legal review started - use legalStatusUpdatedOn or submittedForReviewOn)
+  const startedOn = currentRequest.legalStatusUpdatedOn || currentRequest.submittedForReviewOn;
 
-  // Get start date (when legal review started - use legalStatusUpdatedOn or submittedOn)
-  const startedOn = currentRequest.legalStatusUpdatedOn || currentRequest.submittedOn;
+  // Calculate duration for header using business hours
+  const durationMinutes = calculateDurationMinutes(
+    startedOn,
+    currentRequest.legalReviewCompletedOn
+  );
 
   // If completed, show read-only summary view
   if (isReviewCompleted) {

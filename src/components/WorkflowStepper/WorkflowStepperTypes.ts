@@ -76,12 +76,24 @@ export interface IRequestMetadata {
   legalReviewOutcome?: string;
   /** Date legal review was completed */
   legalReviewCompletedOn?: Date;
+  /** User who completed legal review (display name) */
+  legalReviewCompletedBy?: string;
+  /** User identifier (email/login) for legal review completed by */
+  legalReviewCompletedByLogin?: string;
   /** Compliance review completed */
   complianceReviewCompleted?: boolean;
   /** Compliance review outcome */
   complianceReviewOutcome?: string;
   /** Date compliance review was completed */
   complianceReviewCompletedOn?: Date;
+  /** User who completed compliance review (display name) */
+  complianceReviewCompletedBy?: string;
+  /** User identifier (email/login) for compliance review completed by */
+  complianceReviewCompletedByLogin?: string;
+  /** User who completed closeout (display name) */
+  closeoutCompletedBy?: string;
+  /** User identifier (email/login) for closeout completed by */
+  closeoutCompletedByLogin?: string;
   /** Date closeout started */
   closeoutStartedOn?: Date;
   /** Date request was completed */

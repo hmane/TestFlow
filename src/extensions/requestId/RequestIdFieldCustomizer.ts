@@ -51,9 +51,9 @@ export default class RequestIdFieldCustomizer
       const listItem = event.listItem;
       const fieldValue = event.fieldValue;
 
-      // Get list ID from context
+      // Get list ID from context (without curly braces to match form customizer format)
       const listGuid = this.context.pageContext.list?.id;
-      const listId = listGuid ? `{${listGuid.toString()}}` : '';
+      const listId = listGuid ? listGuid.toString() : '';
 
       // Extract list item data
       const itemData: IRequestListItemData = {

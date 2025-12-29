@@ -224,6 +224,7 @@ communicationsApprover?: IPrincipal;
 
   // Closeout
   trackingId?: string;
+  closeoutNotes?: string;
   closeoutBy?: IPrincipal;
   closeoutOn?: Date;
 
@@ -400,6 +401,7 @@ export interface IRequestListItem {
 
   // Closeout
   TrackingId?: string;
+  CloseoutNotes?: string;
 
   // System tracking
   SubmittedById?: number;

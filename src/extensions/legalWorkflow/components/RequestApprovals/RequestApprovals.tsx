@@ -13,15 +13,22 @@
  */
 
 import * as React from 'react';
+
+// Fluent UI - tree-shaken imports
 import { Icon } from '@fluentui/react/lib/Icon';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
+
+// spfx-toolkit - tree-shaken imports
 import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
+
+// App imports using path aliases
 import { ApprovalSection } from '../ApprovalSection';
-import { useRequestFormContext } from '../../../../contexts/RequestFormContext';
-import { useRequestStore } from '../../../../stores/requestStore';
-import { RequestStatus } from '../../../../types/workflowTypes';
-import { ApprovalType } from '../../../../types/approvalTypes';
+import { useRequestFormContext } from '@contexts/RequestFormContext';
+import { useRequestStore } from '@stores/requestStore';
+import { RequestStatus } from '@appTypes/workflowTypes';
+import { ApprovalType } from '@appTypes/approvalTypes';
+
 import './RequestApprovals.scss';
 
 /**

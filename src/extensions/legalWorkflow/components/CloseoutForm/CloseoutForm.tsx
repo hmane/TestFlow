@@ -8,9 +8,13 @@
  * The Complete Closeout action is handled by RequestActions component.
  */
 
-import { Stack } from '@fluentui/react/lib/Stack';
 import * as React from 'react';
 import { useForm, Controller } from 'react-hook-form';
+
+// Fluent UI - tree-shaken imports
+import { Stack } from '@fluentui/react/lib/Stack';
+
+// spfx-toolkit - tree-shaken imports
 import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
 import {
   FormContainer,
@@ -23,10 +27,12 @@ import {
   SPTextField,
   SPTextFieldMode,
 } from 'spfx-toolkit/lib/components/spFields';
-import { useRequestStore } from '../../../../stores/requestStore';
-import { useCloseoutStore } from '../../../../stores/closeoutStore';
-import { ReviewAudience } from '../../../../types';
-import { WorkflowCardHeader } from '../../../../components/WorkflowCardHeader';
+
+// App imports using path aliases
+import { WorkflowCardHeader } from '@components/WorkflowCardHeader';
+import { useRequestStore } from '@stores/requestStore';
+import { useCloseoutStore } from '@stores/closeoutStore';
+import { ReviewAudience } from '@appTypes/index';
 
 /**
  * CloseoutForm props
@@ -36,6 +42,8 @@ interface ICloseoutFormProps {
   collapsible?: boolean;
   /** Start collapsed (only applies if collapsible is true) */
   defaultCollapsed?: boolean;
+  /** Read-only mode (for Completed status) */
+  readOnly?: boolean;
 }
 
 /**
@@ -51,6 +59,7 @@ interface ICloseoutFormData {
  */
 export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
   defaultCollapsed = false,
+  readOnly = false,
 }) => {
   const { currentRequest, itemId } = useRequestStore();
   const { setCloseoutValues } = useCloseoutStore();
@@ -124,19 +133,31 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
 
   const durationMinutes = calculateCloseoutDuration();
 
+  // Get completed by info for header
+  const completedBy = currentRequest.closeoutBy ? {
+    title: currentRequest.closeoutBy.title || '',
+    email: currentRequest.closeoutBy.email,
+  } : undefined;
+
+  // Determine header status
+  const headerStatus = readOnly ? 'completed' : 'in-progress';
+
   return (
     <Card
       id='closeout-card'
-      className='closeout-form'
+      className={`closeout-form ${readOnly ? 'closeout-form--completed' : ''}`}
       allowExpand={true}
-      defaultExpanded={!defaultCollapsed}
+      defaultExpanded={!defaultCollapsed && !readOnly}
     >
       <Header size='regular'>
         <WorkflowCardHeader
           title='Closeout'
-          status='in-progress'
+          status={headerStatus}
           startedOn={startedOn}
+          completedOn={readOnly ? currentRequest.closeoutOn : undefined}
+          completedBy={readOnly ? completedBy : undefined}
           durationMinutes={durationMinutes}
+          trackingId={readOnly ? currentRequest.trackingId : undefined}
         />
       </Header>
 
@@ -147,59 +168,67 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
             <FormContainer labelWidth='150px'>
               <FormItem fieldName='trackingId'>
                 <FormLabel
-                  isRequired={isTrackingIdRequired}
+                  isRequired={!readOnly && isTrackingIdRequired}
                   infoText={
-                    isTrackingIdRequired
-                      ? 'Tracking ID is required because Foreside Review or Retail Use was indicated during compliance review'
-                      : 'Enter the tracking ID assigned to this request (optional)'
+                    readOnly
+                      ? undefined
+                      : isTrackingIdRequired
+                        ? 'Tracking ID is required because Foreside Review or Retail Use was indicated during compliance review'
+                        : 'Enter the tracking ID assigned to this request (optional)'
                   }
                 >
                   Tracking ID
                 </FormLabel>
                 <FormValue>
-                  <Controller
-                    name='trackingId'
-                    control={control}
-                    render={({ field }) => (
-                      <SPTextField
-                        {...field}
-                        name='trackingId'
-                        placeholder='Enter tracking ID'
-                        mode={SPTextFieldMode.SingleLine}
-                        maxLength={50}
-                        showCharacterCount
-                        stylingMode='outlined'
-                      />
-                    )}
-                  />
+                  {readOnly ? (
+                    <span>{currentRequest.trackingId || '—'}</span>
+                  ) : (
+                    <Controller
+                      name='trackingId'
+                      control={control}
+                      render={({ field }) => (
+                        <SPTextField
+                          {...field}
+                          name='trackingId'
+                          placeholder='Enter tracking ID'
+                          mode={SPTextFieldMode.SingleLine}
+                          maxLength={50}
+                          showCharacterCount
+                          stylingMode='outlined'
+                        />
+                      )}
+                    />
+                  )}
                 </FormValue>
               </FormItem>
             </FormContainer>
 
-            {/* Final Notes */}
-            <FormContainer labelWidth='150px'>
-              <FormItem fieldName='closeoutNotes'>
-                <FormLabel infoText='Add any final notes or comments about this request'>
-                  Closeout Notes
-                </FormLabel>
-                <FormValue>
-                  <SPTextField
-                    name='closeoutNotes'
-                    placeholder='Add any final notes or comments'
-                    mode={SPTextFieldMode.MultiLine}
-                    rows={3}
-                    maxLength={2000}
-                    showCharacterCount
-                    stylingMode='outlined'
-                    spellCheck
-                    appendOnly
-                    itemId={itemId}
-                    listNameOrId='Requests'
-                    fieldInternalName='CloseoutNotes'
-                  />
-                </FormValue>
-              </FormItem>
-            </FormContainer>
+            {/* Final Notes - only show in edit mode (field may be added later) */}
+            {!readOnly && (
+              <FormContainer labelWidth='150px'>
+                <FormItem fieldName='closeoutNotes'>
+                  <FormLabel infoText='Add any final notes or comments about this request'>
+                    Closeout Notes
+                  </FormLabel>
+                  <FormValue>
+                    <SPTextField
+                      name='closeoutNotes'
+                      placeholder='Add any final notes or comments'
+                      mode={SPTextFieldMode.MultiLine}
+                      rows={3}
+                      maxLength={2000}
+                      showCharacterCount
+                      stylingMode='outlined'
+                      spellCheck
+                      appendOnly
+                      itemId={itemId}
+                      listNameOrId='Requests'
+                      fieldInternalName='CloseoutNotes'
+                    />
+                  </FormValue>
+                </FormItem>
+              </FormContainer>
+            )}
           </Stack>
         </FormProvider>
       </Content>

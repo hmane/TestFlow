@@ -5,9 +5,12 @@
  * Provides metrics for volume, time tracking, SLA performance, and status analytics.
  */
 
+// spfx-toolkit - tree-shaken imports
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
-import { ILegalRequest } from '../../../types/requestTypes';
-import { RequestsFields } from '../../../sp/listFields/RequestsFields';
+
+// App imports using path aliases
+import { ILegalRequest } from '@appTypes/requestTypes';
+import { RequestsFields } from '@sp/listFields/RequestsFields';
 
 /**
  * Date range for filtering requests

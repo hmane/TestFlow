@@ -82,12 +82,30 @@ export function useRequestForm(options: IUseRequestFormOptions = {}): IUseReques
 
   const { form } = formValidation;
 
-  // Sync form values with store
+  // Track if we've synced with the current request to prevent infinite loops
+  // Uses a string comparison of key fields to detect actual data changes
+  const lastSyncedRequestIdRef = React.useRef<string | undefined>(undefined);
+
+  // Sync form values with store when request data actually changes
+  // Uses a ref to track the last synced request ID and prevent unnecessary resets
   React.useEffect(() => {
-    if (currentRequest) {
+    if (!currentRequest) {
+      return;
+    }
+
+    // Create a unique identifier for the current request state
+    // Using requestId and modified timestamp to detect actual changes
+    const requestIdentifier = `${currentRequest.requestId || 'new'}-${currentRequest.modified || ''}`;
+
+    // Only reset form if the request data has actually changed
+    if (lastSyncedRequestIdRef.current !== requestIdentifier) {
+      lastSyncedRequestIdRef.current = requestIdentifier;
+      SPContext.logger.info('useRequestForm: Syncing form with store data', {
+        requestId: currentRequest.requestId,
+      });
       form.reset(currentRequest);
     }
-  }, [currentRequest, form]);
+  }, [currentRequest, form.reset]); // Only depend on reset function which should be stable
 
   /**
    * Update single field with validation

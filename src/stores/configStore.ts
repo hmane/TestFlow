@@ -228,6 +228,9 @@ export const useConfigStore = create<IConfigState>()(
 /**
  * Custom hook to use configuration
  * Automatically loads configs on first use
+ *
+ * NOTE: This hook uses a ref to track initialization state to prevent
+ * duplicate loads when the component remounts or state changes.
  */
 export function useConfig(): {
   configs: IAppConfiguration[];
@@ -244,21 +247,30 @@ export function useConfig(): {
     isLoading,
     isLoaded,
     error,
-    loadConfigs,
     getConfig,
     getConfigBoolean,
     getConfigNumber,
     refresh,
   } = useConfigStore();
 
-  // Auto-load on first mount
+  // Track if we've already triggered a load to prevent duplicate calls
+  const hasTriggeredLoadRef = React.useRef<boolean>(false);
+
+  // Auto-load on first mount only
+  // Uses ref to ensure load is only triggered once per component lifecycle
   React.useEffect(() => {
-    if (!isLoaded && !isLoading && !error) {
-      loadConfigs().catch(err => {
-        SPContext.logger.error('Auto-load configuration failed', err);
+    // Get current store state directly to avoid stale closure issues
+    const store = useConfigStore.getState();
+
+    // Only load if not already loaded/loading and we haven't triggered a load
+    if (!store.isLoaded && !store.isLoading && !hasTriggeredLoadRef.current) {
+      hasTriggeredLoadRef.current = true;
+      SPContext.logger.info('useConfig: Auto-loading configuration');
+      store.loadConfigs().catch((err: unknown) => {
+        SPContext.logger.error('useConfig: Auto-load configuration failed', err);
       });
     }
-  }, [isLoaded, isLoading, error, loadConfigs]);
+  }, []); // Empty deps - only run on mount
 
   return {
     configs,

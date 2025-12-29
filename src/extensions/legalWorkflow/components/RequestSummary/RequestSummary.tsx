@@ -12,23 +12,32 @@
  * - Badge indicators for status and flags
  */
 
+import * as React from 'react';
+
+// Fluent UI - tree-shaken imports
 import { Icon } from '@fluentui/react/lib/Icon';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
-import * as React from 'react';
-import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
+
+// spfx-toolkit - tree-shaken imports
+import { Card, Content, Header } from 'spfx-toolkit/lib/components/Card';
 import type { CardAction } from 'spfx-toolkit/lib/components/Card/Card.types';
 import { DocumentLink } from 'spfx-toolkit/lib/components/DocumentLink';
-import { usePermissions } from '../../../../hooks/usePermissions';
-import { useRequestStore } from '../../../../stores/requestStore';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
+
+// App imports using path aliases
 import {
   ApprovalType,
   DistributionMethod,
+  RequestStatus,
   RequestType,
   ReviewAudience,
   SubmissionType,
-} from '../../../../types';
+} from '@appTypes/index';
+import { usePermissions } from '@hooks/usePermissions';
+import { useRequestStore } from '@stores/requestStore';
+
+import { UserPersona } from 'spfx-toolkit';
 import './RequestSummary.scss';
 
 /**
@@ -83,10 +92,7 @@ const Badge: React.FC<IBadgeProps> = ({ text, variant = 'default' }) => {
   const colors = colorMap[variant];
 
   return (
-    <span
-      className='summary-badge'
-      style={{ backgroundColor: colors.bg, color: colors.color }}
-    >
+    <span className='summary-badge' style={{ backgroundColor: colors.bg, color: colors.color }}>
       {text}
     </span>
   );
@@ -120,11 +126,20 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
   /**
    * Check if user can edit request information
    * Only submitter (author) or admin can edit request info
+   * Editing is disabled after Closeout or Completed status
    */
   const canEditRequestInfo = React.useMemo((): boolean => {
     if (!currentRequest) return false;
 
-    // Admin can always edit
+    // No editing allowed after Closeout or Completed
+    if (
+      currentRequest.status === RequestStatus.Closeout ||
+      currentRequest.status === RequestStatus.Completed
+    ) {
+      return false;
+    }
+
+    // Admin can edit (if not closed out)
     if (permissions.isAdmin) return true;
 
     // Check if current user is the submitter/author
@@ -259,7 +274,10 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
     >
       <Header actions={headerActions} size='regular'>
         <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
-          <Icon iconName='ClipboardList' styles={{ root: { fontSize: '20px', color: '#0078d4' } }} />
+          <Icon
+            iconName='ClipboardList'
+            styles={{ root: { fontSize: '20px', color: '#0078d4' } }}
+          />
           <Text variant='large' styles={{ root: { fontWeight: 600 } }}>
             Request Summary
           </Text>
@@ -311,11 +329,7 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
             </div>
             {currentRequest.purpose && (
               <div className='summary-full-width'>
-                <CompactField
-                  label='Purpose'
-                  value={currentRequest.purpose}
-                  icon='TextDocument'
-                />
+                <CompactField label='Purpose' value={currentRequest.purpose} icon='TextDocument' />
               </div>
             )}
             {currentRequest.isRushRequest && currentRequest.rushRationale && (
@@ -343,11 +357,7 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
                   value={currentRequest.finraAudienceCategory}
                   icon='Group'
                 />
-                <CompactField
-                  label='Audience'
-                  value={currentRequest.audience}
-                  icon='People'
-                />
+                <CompactField label='Audience' value={currentRequest.audience} icon='People' />
                 {currentRequest.usFunds && currentRequest.usFunds.length > 0 && (
                   <CompactField
                     label='US Funds'
@@ -362,13 +372,14 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
                     icon='Globe'
                   />
                 )}
-                {currentRequest.separateAcctStrategies && currentRequest.separateAcctStrategies.length > 0 && (
-                  <CompactField
-                    label='Separate Account Strategies'
-                    value={currentRequest.separateAcctStrategies.join(', ')}
-                    icon='AccountManagement'
-                  />
-                )}
+                {currentRequest.separateAcctStrategies &&
+                  currentRequest.separateAcctStrategies.length > 0 && (
+                    <CompactField
+                      label='Separate Account Strategies'
+                      value={currentRequest.separateAcctStrategies.join(', ')}
+                      icon='AccountManagement'
+                    />
+                  )}
               </div>
             </div>
           )}
@@ -379,19 +390,24 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
               <div className='summary-section'>
                 <SectionHeader title='Distribution' icon='Megaphone' />
                 <div className='summary-grid summary-grid--2col'>
-                  {currentRequest.distributionMethod && currentRequest.distributionMethod.length > 0 && (
-                    <div className='summary-field summary-field--badges'>
-                      <div className='summary-field__label'>
-                        <Icon iconName='Send' className='summary-field__icon' />
-                        <span>Distribution Methods</span>
+                  {currentRequest.distributionMethod &&
+                    currentRequest.distributionMethod.length > 0 && (
+                      <div className='summary-field summary-field--badges'>
+                        <div className='summary-field__label'>
+                          <Icon iconName='Send' className='summary-field__icon' />
+                          <span>Distribution Methods</span>
+                        </div>
+                        <div className='summary-field__value summary-badges'>
+                          {currentRequest.distributionMethod.map(method => (
+                            <Badge
+                              key={method}
+                              text={getDistributionMethodLabel(method)}
+                              variant='info'
+                            />
+                          ))}
+                        </div>
                       </div>
-                      <div className='summary-field__value summary-badges'>
-                        {currentRequest.distributionMethod.map(method => (
-                          <Badge key={method} text={getDistributionMethodLabel(method)} variant='info' />
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                    )}
                   <CompactField
                     label='Date of First Use'
                     value={formatDate(currentRequest.dateOfFirstUse)}
@@ -439,7 +455,11 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
               <SectionHeader title='Additional Parties' icon='People' />
               <div className='summary-badges'>
                 {currentRequest.additionalParty.map((person, idx) => (
-                  <Badge key={idx} text={person.title || person.email || 'Unknown'} variant='default' />
+                  <Badge
+                    key={idx}
+                    text={person.title || person.email || 'Unknown'}
+                    variant='default'
+                  />
                 ))}
               </div>
             </div>
@@ -464,8 +484,14 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
                       </span>
                     </div>
                     <div className='summary-approval-card__approver'>
-                      <Icon iconName='Contact' className='summary-approval-card__approver-icon' />
-                      <span>{approval.approver?.title || 'Unknown'}</span>
+                      <UserPersona
+                        userIdentifier={approval.approver.id || approval.approver?.email || ''}
+                        displayName={approval.approver?.title || 'Unknown'}
+                        email={approval.approver?.email || ''}
+                        size={24}
+                        displayMode='avatarAndName'
+                        showLivePersona
+                      />
                     </div>
                     {/* Approval Attachments with DocumentLink */}
                     {approval.existingFiles && approval.existingFiles.length > 0 ? (

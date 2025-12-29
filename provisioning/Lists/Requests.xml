@@ -158,8 +158,9 @@
       <Field Type="DateTime" Name="ComplianceReviewCompletedOn" DisplayName="Compliance Review Completed On" Format="DateTime" Group="Compliance Review" ID="{E4E44AF9-7D3F-4CF9-A143-493B24F6111C}" />
       <Field Type="User" Name="ComplianceReviewCompletedBy" DisplayName="Compliance Review Completed By" UserSelectionMode="PeopleOnly" Group="Compliance Review" ID="{3664A608-D0F2-40DC-8502-76401D30DB82}" />
 
-      <!-- Closeout (1) -->
+      <!-- Closeout (2) -->
       <Field Type="Text" Name="TrackingId" DisplayName="Tracking Id" MaxLength="50" Group="Closeout" ID="{E4FD4892-C8BA-4B97-98AA-4EA4833C359C}" />
+      <Field Type="Note" Name="CloseoutNotes" DisplayName="Closeout Notes" RichText="FALSE" AppendOnly="TRUE" NumLines="6" Group="Closeout" ID="{7B8C3D4E-5F6A-4B9C-8D1E-2F3A4B5C6D7E}" />
 
       <!-- System Tracking (18) -->
       <Field Type="Choice" Name="Status" DisplayName="Status" Required="TRUE" Group="System Tracking" ID="{9E390E5D-9D57-472F-B470-EDE7F1D5EB89}" ClientSideComponentId="e55dcdea-8fa3-4708-9fbe-35c866026289">
@@ -244,6 +245,7 @@
           <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Status" />
+          <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="CloseoutOn" />
           <FieldRef Name="TrackingId" />
         </pnp:ViewFields>

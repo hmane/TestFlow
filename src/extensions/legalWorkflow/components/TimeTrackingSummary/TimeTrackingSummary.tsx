@@ -11,12 +11,17 @@
  * - Color-coded stages for easy identification
  */
 
+import * as React from 'react';
+
+// Fluent UI - tree-shaken imports
 import { Icon } from '@fluentui/react/lib/Icon';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
 import { TooltipHost } from '@fluentui/react/lib/Tooltip';
-import * as React from 'react';
-import type { ILegalRequest } from '../../../../types/requestTypes';
+
+// App imports using path aliases
+import type { ILegalRequest } from '@appTypes/requestTypes';
+
 import styles from './TimeTrackingSummary.module.scss';
 
 /**

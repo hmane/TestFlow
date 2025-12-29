@@ -9,18 +9,16 @@
  */
 
 import * as React from 'react';
-import {
-  Dialog,
-  DialogType,
-  DialogFooter,
-  PrimaryButton,
-  DefaultButton,
-  Dropdown,
-  IDropdownOption,
-  Stack,
-  Text,
-  Icon,
-} from '@fluentui/react';
+
+// Fluent UI - tree-shaken imports
+import { DefaultButton, PrimaryButton } from '@fluentui/react/lib/Button';
+import { Dialog, DialogType, DialogFooter } from '@fluentui/react/lib/Dialog';
+import { Dropdown, type IDropdownOption } from '@fluentui/react/lib/Dropdown';
+import { Icon } from '@fluentui/react/lib/Icon';
+import { Stack } from '@fluentui/react/lib/Stack';
+import { Text } from '@fluentui/react/lib/Text';
+
+// App imports using path aliases
 import { DocumentType } from '@appTypes/documentTypes';
 import type { IDocumentTypeDialogProps } from './DocumentUploadTypes';
 

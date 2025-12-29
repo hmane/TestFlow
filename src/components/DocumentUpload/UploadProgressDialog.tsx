@@ -9,19 +9,16 @@
  */
 
 import * as React from 'react';
-import {
-  Dialog,
-  DialogType,
-  DialogFooter,
-  DefaultButton,
-  PrimaryButton,
-  Stack,
-  Text,
-  ProgressIndicator,
-  Icon,
-  MessageBar,
-  MessageBarType,
-} from '@fluentui/react';
+
+// Fluent UI - tree-shaken imports
+import { DefaultButton, PrimaryButton } from '@fluentui/react/lib/Button';
+import { Dialog, DialogType, DialogFooter } from '@fluentui/react/lib/Dialog';
+import { Icon } from '@fluentui/react/lib/Icon';
+import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
+import { ProgressIndicator } from '@fluentui/react/lib/ProgressIndicator';
+import { Stack } from '@fluentui/react/lib/Stack';
+import { Text } from '@fluentui/react/lib/Text';
+
 import type { IUploadProgressDialogProps, IFileUploadProgress } from './DocumentUploadTypes';
 import { FileOperationStatus } from '@services/approvalFileService';
 

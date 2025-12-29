@@ -8,7 +8,10 @@
  */
 
 import * as React from 'react';
-import { Text } from '@fluentui/react';
+
+// Fluent UI - tree-shaken imports
+import { Text } from '@fluentui/react/lib/Text';
+
 import type { ITurnAroundDateDisplayProps } from '../types';
 import { getColorClassName } from '../utils/dateCalculator';
 import styles from './TurnAroundDate.module.scss';

@@ -1,17 +1,18 @@
 import * as React from 'react';
 import type { UseFormSetError } from 'react-hook-form';
 
-import { Lists } from '@sp/Lists';
+// spfx-toolkit - tree-shaken imports
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 
+// App imports using path aliases
+import { Lists } from '@sp/Lists';
 import type { ILegalRequest, IPrincipal, SPLookup } from '@appTypes/index';
 import { ApprovalType } from '@appTypes/approvalTypes';
 import { DocumentType } from '@appTypes/documentTypes';
 import { saveRequestSchema, submitRequestSchema } from '@schemas/requestSchema';
-import { SPContext } from 'spfx-toolkit/lib/utilities/context';
-
 import type { IValidationError } from '@contexts/RequestFormContext';
-import { useDocumentsStore } from '../../../../stores/documentsStore';
-import { useRequestStore } from '../../../../stores/requestStore';
+import { useDocumentsStore } from '@stores/documentsStore';
+import { useRequestStore } from '@stores/requestStore';
 
 /**
  * Map ApprovalType to DocumentType for validation

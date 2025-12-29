@@ -9,6 +9,7 @@ import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import { useShallow } from 'zustand/react/shallow';
 
 import type { IExistingFile } from '@stores/documentsStore';
 import { useDocumentsStore } from '@stores/documentsStore';
@@ -18,6 +19,7 @@ import type {
 } from '@services/approvalFileService';
 import { loadRequestById } from '@services/requestLoadService';
 import { saveDraft, saveRequest, processPendingDocuments } from '@services/requestSaveService';
+import { requestCache, createRequestKey } from '../utils/requestCache';
 import {
   submitRequest as submitRequestAction,
   assignAttorney as assignAttorneyAction,
@@ -224,16 +226,39 @@ export const useRequestStore = create<IRequestState>()(
 
       /**
        * Load existing request from SharePoint
+       *
+       * Uses request cache for deduplication - if multiple components request the same
+       * data simultaneously, only one API call is made.
+       *
+       * @param itemId - SharePoint item ID of the request to load
        */
       loadRequest: async (itemId: number): Promise<void> => {
+        const cacheKey = createRequestKey('loadRequest', itemId);
+
+        // Check if request is already being loaded (deduplication)
+        if (requestCache.isCancelled(cacheKey)) {
+          SPContext.logger.info('Request load was cancelled, skipping', { itemId });
+          return;
+        }
+
         set({ isLoading: true, error: undefined, itemId });
 
         try {
-          SPContext.logger.info('Loading request', { itemId });
+          SPContext.logger.info('Loading request', { itemId, cacheKey });
 
-          // Load request data using service layer
-          // Service handles CAML queries, field expansion, and data mapping
-          const request = await loadRequestById(itemId);
+          // Use request cache for deduplication
+          // If this request is already in-flight, we'll get the same promise back
+          const request = await requestCache.execute(
+            cacheKey,
+            () => loadRequestById(itemId),
+            'requestStore.loadRequest'
+          );
+
+          // Check if request was cancelled while loading
+          if (requestCache.isCancelled(cacheKey)) {
+            SPContext.logger.info('Request load cancelled after fetch, discarding result', { itemId });
+            return;
+          }
 
           // Load existing approval files for each approval
           if (request.approvals && request.approvals.length > 0) {
@@ -286,6 +311,12 @@ export const useRequestStore = create<IRequestState>()(
             approvalsLoaded: request.approvals?.length || 0,
           });
         } catch (error: unknown) {
+          // Don't update state if request was cancelled
+          if (requestCache.isCancelled(cacheKey)) {
+            SPContext.logger.info('Request load error ignored (cancelled)', { itemId });
+            return;
+          }
+
           const message = error instanceof Error ? error.message : String(error);
 
           SPContext.logger.error('Failed to load request', error, {
@@ -1438,21 +1469,25 @@ export const useAttorneyData = (): IPrincipal | undefined =>
 
 /**
  * Selector for file operations state
+ * Uses shallow comparison to prevent re-renders when values haven't changed
  */
 export const useFileOperationsState = (): {
   stagedFiles: IStagedFile[];
   filesToDelete: IFileToDelete[];
   hasPending: boolean;
 } =>
-  useRequestStore(state => ({
-    stagedFiles: state.stagedFiles,
-    filesToDelete: state.filesToDelete,
-    hasPending: state.stagedFiles.length > 0 || state.filesToDelete.length > 0,
-  }));
+  useRequestStore(
+    useShallow((state) => ({
+      stagedFiles: state.stagedFiles,
+      filesToDelete: state.filesToDelete,
+      hasPending: state.stagedFiles.length > 0 || state.filesToDelete.length > 0,
+    }))
+  );
 
 /**
  * Selector for store actions only (stable reference)
  * Use this when you only need actions without subscribing to state changes
+ * Uses shallow comparison to prevent re-renders - action functions should be stable
  */
 export const useRequestActions = (): {
   loadRequest: (itemId: number) => Promise<void>;
@@ -1473,25 +1508,27 @@ export const useRequestActions = (): {
   reset: () => void;
   revertChanges: () => void;
 } =>
-  useRequestStore(state => ({
-    loadRequest: state.loadRequest,
-    initializeNewRequest: state.initializeNewRequest,
-    updateField: state.updateField,
-    updateMultipleFields: state.updateMultipleFields,
-    saveAsDraft: state.saveAsDraft,
-    submitRequest: state.submitRequest,
-    updateRequest: state.updateRequest,
-    assignAttorney: state.assignAttorney,
-    sendToCommittee: state.sendToCommittee,
-    submitLegalReview: state.submitLegalReview,
-    submitComplianceReview: state.submitComplianceReview,
-    closeoutRequest: state.closeoutRequest,
-    cancelRequest: state.cancelRequest,
-    holdRequest: state.holdRequest,
-    resumeRequest: state.resumeRequest,
-    reset: state.reset,
-    revertChanges: state.revertChanges,
-  }));
+  useRequestStore(
+    useShallow((state) => ({
+      loadRequest: state.loadRequest,
+      initializeNewRequest: state.initializeNewRequest,
+      updateField: state.updateField,
+      updateMultipleFields: state.updateMultipleFields,
+      saveAsDraft: state.saveAsDraft,
+      submitRequest: state.submitRequest,
+      updateRequest: state.updateRequest,
+      assignAttorney: state.assignAttorney,
+      sendToCommittee: state.sendToCommittee,
+      submitLegalReview: state.submitLegalReview,
+      submitComplianceReview: state.submitComplianceReview,
+      closeoutRequest: state.closeoutRequest,
+      cancelRequest: state.cancelRequest,
+      holdRequest: state.holdRequest,
+      resumeRequest: state.resumeRequest,
+      reset: state.reset,
+      revertChanges: state.revertChanges,
+    }))
+  );
 
 /**
  * Custom hook to use request store
@@ -1499,6 +1536,10 @@ export const useRequestActions = (): {
  *
  * NOTE: This hook subscribes to the entire store state.
  * For optimized re-renders, use the individual selector hooks above.
+ *
+ * IMPORTANT: This hook does NOT reset the store on unmount to prevent data loss
+ * when components remount. The store should be explicitly reset when navigating
+ * away from the form (e.g., via onClose handler).
  */
 export function useRequest(itemId?: number): {
   currentRequest?: ILegalRequest;
@@ -1519,8 +1560,6 @@ export function useRequest(itemId?: number): {
     isSaving,
     isDirty,
     error,
-    loadRequest,
-    initializeNewRequest,
     updateField,
     updateMultipleFields,
     saveAsDraft,
@@ -1529,21 +1568,36 @@ export function useRequest(itemId?: number): {
     hasUnsavedChanges,
   } = useRequestStore();
 
-  // Auto-initialize on mount
+  // Track if this effect has already run for this itemId to prevent duplicate loads
+  const hasInitializedRef = React.useRef<number | undefined>(undefined);
+
+  // Auto-initialize on mount or when itemId changes
+  // Uses a ref to track initialization state and prevent duplicate API calls
   React.useEffect(() => {
-    if (itemId) {
-      loadRequest(itemId).catch(err => {
-        SPContext.logger.error('Auto-load request failed', err);
-      });
-    } else {
-      initializeNewRequest();
+    // Skip if already initialized for this itemId
+    if (hasInitializedRef.current === itemId) {
+      return;
     }
 
-    // Cleanup on unmount
-    return () => {
-      useRequestStore.getState().reset();
-    };
-  }, [itemId, loadRequest, initializeNewRequest]);
+    // Mark as initialized for this itemId
+    hasInitializedRef.current = itemId;
+
+    // Access store methods directly to avoid dependency issues
+    const store = useRequestStore.getState();
+
+    if (itemId) {
+      SPContext.logger.info('useRequest: Loading request', { itemId });
+      store.loadRequest(itemId).catch((err: unknown) => {
+        SPContext.logger.error('useRequest: Auto-load request failed', err, { itemId });
+      });
+    } else {
+      SPContext.logger.info('useRequest: Initializing new request');
+      store.initializeNewRequest();
+    }
+
+    // No cleanup - store reset should be handled explicitly by the form's onClose handler
+    // This prevents data loss when components temporarily unmount during React reconciliation
+  }, [itemId]);
 
   return {
     currentRequest,

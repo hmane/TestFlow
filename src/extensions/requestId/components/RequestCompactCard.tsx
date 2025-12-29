@@ -8,14 +8,20 @@
  */
 
 import * as React from 'react';
+
+// Fluent UI - tree-shaken imports
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
 import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
 import { Icon } from '@fluentui/react/lib/Icon';
 import { TooltipHost } from '@fluentui/react/lib/Tooltip';
 import { DirectionalHint } from '@fluentui/react/lib/Callout';
+
+// spfx-toolkit - tree-shaken imports
 import { UserPersona } from 'spfx-toolkit/lib/components/UserPersona';
 import { LazyManageAccessComponent } from 'spfx-toolkit/lib/components/lazy';
+
+// App imports using path aliases
 import type { IRequestCompactCardProps, IRequestFullData } from '../types';
 import {
   RequestStatus,
@@ -23,10 +29,11 @@ import {
   LegalReviewStatus,
   ComplianceReviewStatus,
   ReviewOutcome,
-} from '../../../types/workflowTypes';
-import { RequestType } from '../../../types/requestTypes';
-import type { IPrincipal } from '../../../types';
+} from '@appTypes/workflowTypes';
+import { RequestType } from '@appTypes/requestTypes';
+import type { IPrincipal } from '@appTypes/index';
 import { loadRequestFullData } from '../services/requestDataService';
+
 import styles from './RequestIdHoverCard.module.scss';
 
 /**

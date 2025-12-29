@@ -50,8 +50,11 @@ function formatFileSize(bytes: number): string {
 
 /**
  * DocumentCard Component
+ *
+ * Wrapped with React.memo for performance optimization when rendering in lists.
+ * Prevents unnecessary re-renders when other documents in the list change.
  */
-export const DocumentCard: React.FC<IDocumentCardProps> = ({
+export const DocumentCard: React.FC<IDocumentCardProps> = React.memo(({
   document,
   isNew = false,
   isUpdating = false,
@@ -605,4 +608,7 @@ export const DocumentCard: React.FC<IDocumentCardProps> = ({
       )}
     </div>
   );
-};
+});
+
+// Set display name for React DevTools
+DocumentCard.displayName = 'DocumentCard';

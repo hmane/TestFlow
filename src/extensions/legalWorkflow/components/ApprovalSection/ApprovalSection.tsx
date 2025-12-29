@@ -38,6 +38,10 @@
  * 3. Update requestStore to handle file operations during save
  */
 
+import * as React from 'react';
+import { Control, useFieldArray, useWatch, useController, useFormState } from 'react-hook-form';
+
+// Fluent UI - tree-shaken imports
 import { IconButton } from '@fluentui/react/lib/Button';
 import { Icon } from '@fluentui/react/lib/Icon';
 import { Label } from '@fluentui/react/lib/Label';
@@ -45,13 +49,12 @@ import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
 import { Toggle } from '@fluentui/react/lib/Toggle';
+
+// DevExtreme - tree-shaken imports
 import { SelectBox } from 'devextreme-react/select-box';
-import * as React from 'react';
-import { Control, useFieldArray, useWatch, useController, useFormState } from 'react-hook-form';
+
+// spfx-toolkit - tree-shaken imports
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
-
-import { Lists } from '@sp/Lists';
-
 import {
   FormContainer,
   FormItem,
@@ -64,10 +67,14 @@ import {
   SPDateTimeFormat,
   SPUserField,
 } from 'spfx-toolkit/lib/components/spFields';
-import { DocumentUpload } from '../../../../components/DocumentUpload';
-import type { ILegalRequest } from '../../../../types';
-import { ApprovalType } from '../../../../types/approvalTypes';
-import { DocumentType } from '../../../../types/documentTypes';
+
+// App imports using path aliases
+import { Lists } from '@sp/Lists';
+import { DocumentUpload } from '@components/DocumentUpload';
+import type { ILegalRequest } from '@appTypes/index';
+import { ApprovalType } from '@appTypes/approvalTypes';
+import { DocumentType } from '@appTypes/documentTypes';
+
 import './ApprovalSection.scss';
 
 /**

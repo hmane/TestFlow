@@ -6,7 +6,8 @@
  * - Determines color based on target return date
  */
 
-import { RequestStatus } from '../../../types/workflowTypes';
+// App imports using path aliases
+import { RequestStatus } from '@appTypes/workflowTypes';
 import type { IStatusListItemData, IStatusProgressData, ProgressBarColor } from '../types';
 
 /**

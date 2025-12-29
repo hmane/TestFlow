@@ -8,13 +8,14 @@
  * - Assigned attorney
  */
 
+// App imports using path aliases
 import {
   RequestStatus,
   ReviewAudience,
   LegalReviewStatus,
   ComplianceReviewStatus,
-} from '../../../types/workflowTypes';
-import { AppRole } from '../../../types/configTypes';
+} from '@appTypes/workflowTypes';
+import { AppRole } from '@appTypes/configTypes';
 import type { IStatusListItemData, IWaitingOnInfo } from '../types';
 
 /**

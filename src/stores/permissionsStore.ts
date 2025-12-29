@@ -13,6 +13,7 @@
 
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import { useShallow } from 'zustand/react/shallow';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import 'spfx-toolkit/lib/utilities/context/pnpImports/security';
 import { createPermissionHelper, PermissionHelper } from 'spfx-toolkit/lib/utilities/permissionHelper';
@@ -334,6 +335,7 @@ export const usePermissionsError = (): string | undefined =>
 
 /**
  * Selector for role flags only
+ * Uses shallow comparison to prevent re-renders when values haven't changed
  */
 export const useUserRoles = (): {
   isSubmitter: boolean;
@@ -344,18 +346,21 @@ export const useUserRoles = (): {
   isAdmin: boolean;
   roles: AppRole[];
 } =>
-  usePermissionsStore((state) => ({
-    isSubmitter: state.isSubmitter,
-    isLegalAdmin: state.isLegalAdmin,
-    isAttorneyAssigner: state.isAttorneyAssigner,
-    isAttorney: state.isAttorney,
-    isComplianceUser: state.isComplianceUser,
-    isAdmin: state.isAdmin,
-    roles: state.roles,
-  }));
+  usePermissionsStore(
+    useShallow((state) => ({
+      isSubmitter: state.isSubmitter,
+      isLegalAdmin: state.isLegalAdmin,
+      isAttorneyAssigner: state.isAttorneyAssigner,
+      isAttorney: state.isAttorney,
+      isComplianceUser: state.isComplianceUser,
+      isAdmin: state.isAdmin,
+      roles: state.roles,
+    }))
+  );
 
 /**
  * Selector for derived permissions only
+ * Uses shallow comparison to prevent re-renders when values haven't changed
  */
 export const useUserCapabilities = (): {
   canCreateRequest: boolean;
@@ -364,16 +369,19 @@ export const useUserCapabilities = (): {
   canReviewLegal: boolean;
   canReviewCompliance: boolean;
 } =>
-  usePermissionsStore((state) => ({
-    canCreateRequest: state.canCreateRequest,
-    canViewAllRequests: state.canViewAllRequests,
-    canAssignAttorney: state.canAssignAttorney,
-    canReviewLegal: state.canReviewLegal,
-    canReviewCompliance: state.canReviewCompliance,
-  }));
+  usePermissionsStore(
+    useShallow((state) => ({
+      canCreateRequest: state.canCreateRequest,
+      canViewAllRequests: state.canViewAllRequests,
+      canAssignAttorney: state.canAssignAttorney,
+      canReviewLegal: state.canReviewLegal,
+      canReviewCompliance: state.canReviewCompliance,
+    }))
+  );
 
 /**
  * Selector for actions only (stable reference)
+ * Uses shallow comparison - action functions should be stable
  */
 export const usePermissionsActions = (): {
   loadPermissions: () => Promise<void>;
@@ -381,12 +389,14 @@ export const usePermissionsActions = (): {
   refreshPermissions: () => Promise<void>;
   reset: () => void;
 } =>
-  usePermissionsStore((state) => ({
-    loadPermissions: state.loadPermissions,
-    checkItemPermissions: state.checkItemPermissions,
-    refreshPermissions: state.refreshPermissions,
-    reset: state.reset,
-  }));
+  usePermissionsStore(
+    useShallow((state) => ({
+      loadPermissions: state.loadPermissions,
+      checkItemPermissions: state.checkItemPermissions,
+      refreshPermissions: state.refreshPermissions,
+      reset: state.reset,
+    }))
+  );
 
 /**
  * Hook to check if user has a specific role

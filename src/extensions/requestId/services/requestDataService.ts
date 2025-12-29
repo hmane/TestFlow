@@ -5,9 +5,12 @@
  * Uses renderListDataAsStream which automatically expands user/lookup fields.
  */
 
+// spfx-toolkit - tree-shaken imports
 import { createSPExtractor } from 'spfx-toolkit/lib/utilities/listItemHelper';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
-import { renderListData } from '../../../services/camlQueryService';
+
+// App imports using path aliases
+import { renderListData } from '@services/camlQueryService';
 import { Lists } from '@sp/Lists';
 import { RequestsFields } from '@sp/listFields/RequestsFields';
 import type { IRequestFullData } from '../types';
@@ -17,8 +20,8 @@ import {
   LegalReviewStatus,
   ComplianceReviewStatus,
   ReviewOutcome,
-} from '../../../types/workflowTypes';
-import { RequestType } from '../../../types/requestTypes';
+} from '@appTypes/workflowTypes';
+import { RequestType } from '@appTypes/requestTypes';
 
 /**
  * Fields to load for hover card display
