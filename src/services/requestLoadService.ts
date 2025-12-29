@@ -12,13 +12,21 @@
  */
 
 import { createSPExtractor } from 'spfx-toolkit/lib/utilities/listItemHelper';
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 
 import { Lists } from '@sp/Lists';
 import { RequestsFields } from '@sp/listFields/RequestsFields';
 import { renderListData } from './camlQueryService';
 
 import type { ILegalRequest, RequestType, SubmissionType, DistributionMethod } from '@appTypes/requestTypes';
+import {
+  FINRAAudienceCategory,
+  Audience,
+  USFunds,
+  UCITS,
+  SeparateAcctStrategies,
+  SeparateAcctStrategiesIncl,
+} from '@appTypes/requestTypes';
 import {
   RequestStatus,
   ReviewAudience,
@@ -64,6 +72,14 @@ const QUERY1_FIELDS = [
   RequestsFields.PriorSubmissionNotes,
   RequestsFields.TotalTurnaroundDays,
   RequestsFields.ExpectedTurnaroundDate,
+
+  // FINRA Audience & Product Fields
+  RequestsFields.FINRAAudienceCategory,
+  RequestsFields.Audience,
+  RequestsFields.USFunds,
+  RequestsFields.UCITS,
+  RequestsFields.SeparateAcctStrategies,
+  RequestsFields.SeparateAcctStrategiesIncl,
 
   // Submission tracking
   RequestsFields.SubmittedBy,
@@ -387,6 +403,14 @@ export function mapRequestListItemToRequest(item: any): ILegalRequest {
     // Additional parties
     additionalParty: extractor.userMulti(RequestsFields.AdditionalParty) || [],
 
+    // FINRA Audience & Product Fields
+    finraAudienceCategory: (extractor.multiChoice(RequestsFields.FINRAAudienceCategory) || []) as FINRAAudienceCategory[],
+    audience: (extractor.multiChoice(RequestsFields.Audience) || []) as Audience[],
+    usFunds: (extractor.multiChoice(RequestsFields.USFunds) || []) as USFunds[],
+    ucits: (extractor.multiChoice(RequestsFields.UCITS) || []) as UCITS[],
+    separateAcctStrategies: (extractor.multiChoice(RequestsFields.SeparateAcctStrategies) || []) as SeparateAcctStrategies[],
+    separateAcctStrategiesIncl: (extractor.multiChoice(RequestsFields.SeparateAcctStrategiesIncl) || []) as SeparateAcctStrategiesIncl[],
+
     // Submission tracking
     submittedBy: extractor.user(RequestsFields.SubmittedBy),
     submittedOn: extractor.date(RequestsFields.SubmittedOn),
@@ -492,5 +516,27 @@ export function mapRequestListItemToRequest(item: any): ILegalRequest {
 
     // Approvals array - build from individual SharePoint fields
     approvals: buildApprovalsArrayFromFields(extractor),
+
+    // Nested review objects (for component compatibility)
+    legalReview: {
+      status: extractor.string(RequestsFields.LegalReviewStatus) as LegalReviewStatus || LegalReviewStatus.NotStarted,
+      outcome: extractor.string(RequestsFields.LegalReviewOutcome) as ReviewOutcome,
+      reviewNotes: extractor.string(RequestsFields.LegalReviewNotes),
+      statusUpdatedBy: extractor.user(RequestsFields.LegalStatusUpdatedBy),
+      statusUpdatedOn: extractor.date(RequestsFields.LegalStatusUpdatedOn),
+      assignedAttorney: extractor.user(RequestsFields.Attorney),
+      assignedOn: extractor.date(RequestsFields.SubmittedForReviewOn),
+      completedOn: extractor.date(RequestsFields.LegalReviewCompletedOn),
+    },
+    complianceReview: {
+      status: extractor.string(RequestsFields.ComplianceReviewStatus) as ComplianceReviewStatus || ComplianceReviewStatus.NotStarted,
+      outcome: extractor.string(RequestsFields.ComplianceReviewOutcome) as ReviewOutcome,
+      reviewNotes: extractor.string(RequestsFields.ComplianceReviewNotes),
+      statusUpdatedBy: extractor.user(RequestsFields.ComplianceStatusUpdatedBy),
+      statusUpdatedOn: extractor.date(RequestsFields.ComplianceStatusUpdatedOn),
+      isForesideReviewRequired: extractor.boolean(RequestsFields.IsForesideReviewRequired, false),
+      isRetailUse: extractor.boolean(RequestsFields.IsRetailUse, false),
+      completedOn: extractor.date(RequestsFields.ComplianceReviewCompletedOn),
+    },
   };
 }

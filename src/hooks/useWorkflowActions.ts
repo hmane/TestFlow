@@ -4,9 +4,9 @@
  */
 
 import * as React from 'react';
-import { SPContext } from 'spfx-toolkit';
-import { useRequestStore } from '../stores';
-import type { IPrincipal } from '../types';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
+import { useRequestStore } from '@stores/index';
+import type { IPrincipal } from '@appTypes/index';
 
 /**
  * Workflow actions result

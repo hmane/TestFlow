@@ -3,21 +3,21 @@
  */
 
 import { z } from 'zod';
-import { ApprovalType } from '../types/approvalTypes';
+import { ApprovalType } from '@appTypes/approvalTypes';
 import {
   Audience,
   DistributionMethod,
   FINRAAudienceCategory,
   RequestType,
-  SeparateAccountStrategies,
-  SeparateAccountStrategiesIncludes,
+  SeparateAcctStrategies,
+  SeparateAcctStrategiesIncl,
   SubmissionType,
   UCITS,
   USFunds,
-} from '../types/requestTypes';
-import { RequestStatus, ReviewAudience } from '../types/workflowTypes';
-import { approvalsArraySchema } from './approvalSchema';
-import { complianceReviewSchema, legalReviewSchema } from './reviewSchema';
+} from '@appTypes/requestTypes';
+import { RequestStatus, ReviewAudience } from '@appTypes/workflowTypes';
+import { approvalsArraySchema } from '@schemas/approvalSchema';
+import { complianceReviewSchema, legalReviewSchema } from '@schemas/reviewSchema';
 
 /**
  * SPLookup schema
@@ -28,15 +28,29 @@ const lookupSchema = z.object({
 });
 
 /**
- * IPrincipal schema
+ * IPrincipal schema (strict - for required user fields)
+ * Accepts id as string or number (coerced to string) since PeoplePicker may return either
  */
 const principalSchema = z.object({
-  id: z.string().min(1),
+  id: z.union([z.string(), z.number()]).transform(val => String(val)).pipe(z.string().min(1, 'User is required')),
   email: z.string().email().optional(),
   title: z.string().optional(),
   value: z.string().optional(),
   loginName: z.string().optional(),
 });
+
+/**
+ * IPrincipal schema (lenient - for validation in superRefine)
+ * Allows empty id so we can provide custom error messages
+ * Accepts id as string or number since PeoplePicker may return either
+ */
+const lenientPrincipalSchema = z.object({
+  id: z.union([z.string(), z.number()]).transform(val => val !== undefined && val !== null ? String(val) : undefined).optional(),
+  email: z.string().optional(),
+  title: z.string().optional(),
+  value: z.string().optional(),
+  loginName: z.string().optional(),
+}).optional();
 
 /**
  * Request information section schema (Draft stage)
@@ -65,8 +79,15 @@ export const requestInformationSchema = z.object({
     .date({
       message: 'Target return date is required and must be a valid date',
     })
-    .refine(date => date > new Date(), {
-      message: 'Target return date must be in the future',
+    .refine(date => {
+      // Compare dates only (ignore time) - target date should be today or later
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const targetDate = new Date(date.getTime());
+      targetDate.setHours(0, 0, 0, 0);
+      return targetDate >= today;
+    }, {
+      message: 'Target return date must be today or in the future',
     }),
   reviewAudience: z.enum([ReviewAudience.Legal, ReviewAudience.Compliance, ReviewAudience.Both], {
     message: 'Review audience is required',
@@ -135,22 +156,22 @@ export const requestInformationSchema = z.object({
       ])
     )
     .optional(),
-  separateAccountStrategies: z
+  separateAcctStrategies: z
     .array(
       z.enum([
-        SeparateAccountStrategies.AllSeparateAccountStrategies,
-        SeparateAccountStrategies.Equity,
-        SeparateAccountStrategies.FixedIncome,
-        SeparateAccountStrategies.Balanced,
+        SeparateAcctStrategies.AllSeparateAccountStrategies,
+        SeparateAcctStrategies.Equity,
+        SeparateAcctStrategies.FixedIncome,
+        SeparateAcctStrategies.Balanced,
       ])
     )
     .optional(),
-  separateAccountStrategiesIncludes: z
+  separateAcctStrategiesIncl: z
     .array(
       z.enum([
-        SeparateAccountStrategiesIncludes.ClientRelatedDataOnly,
-        SeparateAccountStrategiesIncludes.RepresentativeAccount,
-        SeparateAccountStrategiesIncludes.CompositeData,
+        SeparateAcctStrategiesIncl.ClientRelatedDataOnly,
+        SeparateAcctStrategiesIncl.RepresentativeAccount,
+        SeparateAcctStrategiesIncl.CompositeData,
       ])
     )
     .optional(),
@@ -189,41 +210,52 @@ export const createRequestSchema = requestInformationSchema.merge(approvalsSchem
  * Save (Draft) request schema - minimal required fields
  * Required for Save: requestTitle only (minimum to save a draft)
  */
-export const saveRequestSchema = z.object({
-  requestTitle: z
-    .string()
-    .min(1, 'Request title is required')
-    .max(255, 'Request title cannot exceed 255 characters'),
-  // All other fields are optional for Save
-  submissionType: z.enum([SubmissionType.New, SubmissionType.MaterialUpdates]).optional(),
-  submissionItem: z.string().optional(),
-  submissionItemOther: z.string().optional(),
-  requestType: z
-    .enum([RequestType.Communication, RequestType.GeneralReview, RequestType.IMAReview])
-    .optional(),
-  purpose: z.string().max(1000).optional(),
-  targetReturnDate: z.date().optional(),
-  reviewAudience: z
-    .enum([ReviewAudience.Legal, ReviewAudience.Compliance, ReviewAudience.Both])
-    .optional(),
-  requiresCommunicationsApproval: z.boolean().optional(),
-  approvals: z.array(z.any()).optional(),
-  department: z.string().max(100).optional(),
-  distributionMethod: z.array(z.any()).optional(),
-  priorSubmissions: z.array(lookupSchema).optional(),
-  priorSubmissionNotes: z.string().max(1000).optional(),
-  dateOfFirstUse: z.date().optional(),
-  additionalParty: z.array(principalSchema).optional(),
-  rushRationale: z.string().max(500).optional(),
-  isRushRequest: z.boolean().optional(),
-  // FINRA Audience & Product Fields
-  finraAudienceCategory: z.array(z.any()).optional(),
-  audience: z.array(z.any()).optional(),
-  usFunds: z.array(z.any()).optional(),
-  ucits: z.array(z.any()).optional(),
-  separateAccountStrategies: z.array(z.any()).optional(),
-  separateAccountStrategiesIncludes: z.array(z.any()).optional(),
-});
+export const saveRequestSchema = z
+  .object({
+    requestTitle: z
+      .string()
+      .min(1, 'Request title is required')
+      .max(255, 'Request title cannot exceed 255 characters'),
+    // All other fields are optional for Save
+    submissionType: z.enum([SubmissionType.New, SubmissionType.MaterialUpdates]).optional(),
+    submissionItem: z.string().optional(),
+    submissionItemOther: z.string().optional(),
+    requestType: z
+      .enum([RequestType.Communication, RequestType.GeneralReview, RequestType.IMAReview])
+      .optional(),
+    purpose: z.string().max(1000).optional(),
+    targetReturnDate: z.date().optional(),
+    reviewAudience: z
+      .enum([ReviewAudience.Legal, ReviewAudience.Compliance, ReviewAudience.Both])
+      .optional(),
+    requiresCommunicationsApproval: z.boolean().optional(),
+    approvals: z.array(z.any()).optional(),
+    department: z.string().max(100).optional(),
+    distributionMethod: z.array(z.any()).optional(),
+    priorSubmissions: z.array(lookupSchema).optional(),
+    priorSubmissionNotes: z.string().max(1000).optional(),
+    dateOfFirstUse: z.date().optional(),
+    additionalParty: z.array(principalSchema).optional(),
+    rushRationale: z.string().max(500).optional(),
+    isRushRequest: z.boolean().optional(),
+    // FINRA Audience & Product Fields
+    finraAudienceCategory: z.array(z.any()).optional(),
+    audience: z.array(z.any()).optional(),
+    usFunds: z.array(z.any()).optional(),
+    ucits: z.array(z.any()).optional(),
+    separateAcctStrategies: z.array(z.any()).optional(),
+    separateAcctStrategiesIncl: z.array(z.any()).optional(),
+  })
+  .superRefine((data, ctx) => {
+    // Rush rationale is required when isRushRequest is true
+    if (data.isRushRequest && (!data.rushRationale || data.rushRationale.trim().length === 0)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Rush rationale is required for rush requests',
+        path: ['rushRationale'],
+      });
+    }
+  });
 
 /**
  * Submit request schema - all required fields except prior submissions
@@ -233,67 +265,42 @@ export const saveRequestSchema = z.object({
  */
 export const submitRequestSchema = z
   .object({
-    requestType: z.enum(
-      [RequestType.Communication, RequestType.GeneralReview, RequestType.IMAReview],
-      {
-        message: 'Request type is required',
-      }
-    ),
-    requestTitle: z
-      .string()
-      .min(3, 'Request title must be at least 3 characters')
-      .max(255, 'Request title cannot exceed 255 characters'),
-    purpose: z
-      .string()
-      .min(10, 'Purpose must be at least 10 characters')
-      .max(1000, 'Purpose cannot exceed 1000 characters'),
-    submissionType: z.enum([SubmissionType.New, SubmissionType.MaterialUpdates], {
-      message: 'Submission type is required',
-    }),
-    submissionItem: z.string().min(1, 'Submission item is required'), // Changed from lookup to text
+    // All fields use lenient types - actual validation happens in superRefine
+    // This ensures ALL errors are collected and shown at once
+    requestType: z.any(),
+    requestTitle: z.any(),
+    purpose: z.any(),
+    submissionType: z.any(),
+    submissionItem: z.any(),
     submissionItemOther: z.string().optional(),
-    targetReturnDate: z
-      .date({
-        message: 'Target return date is required and must be a valid date',
+    targetReturnDate: z.any(),
+    reviewAudience: z.any(),
+    requiresCommunicationsApproval: z.boolean().optional(),
+    approvals: z.array(
+      z.object({
+        type: z.enum([
+          ApprovalType.Communications,
+          ApprovalType.PortfolioManager,
+          ApprovalType.ResearchAnalyst,
+          ApprovalType.SubjectMatterExpert,
+          ApprovalType.Performance,
+          ApprovalType.Other,
+        ]),
+        approvalDate: z.any().optional(),
+        approver: lenientPrincipalSchema,
+        documentId: z.string().optional(),
+        existingFiles: z.array(z.any()).optional(),
+        notes: z.string().optional(),
+        approvalTitle: z.string().optional(),
+        _hasDocumentInStore: z.boolean().optional(),
       })
-      .refine(date => date > new Date(), {
-        message: 'Target return date must be in the future',
-      }),
-    reviewAudience: z.enum([ReviewAudience.Legal, ReviewAudience.Compliance, ReviewAudience.Both], {
-      message: 'Review audience is required',
-    }),
-    requiresCommunicationsApproval: z.boolean(),
-    approvals: z
-      .array(
-        z.object({
-          type: z.enum([
-            ApprovalType.Communications,
-            ApprovalType.PortfolioManager,
-            ApprovalType.ResearchAnalyst,
-            ApprovalType.SubjectMatterExpert,
-            ApprovalType.Performance,
-            ApprovalType.Other,
-          ]),
-          approvalDate: z.date({ message: 'Approval date is required' }),
-          approver: principalSchema,
-          documentId: z.string().optional(),
-          existingFiles: z.array(z.any()).optional(),
-          notes: z.string().optional(),
-          approvalTitle: z.string().optional(),
-        })
-      )
-      .min(1, 'At least one approval is required'),
-    // Required fields for Communication requests
-    distributionMethod: z
-      .array(z.any())
-      .min(1, 'At least one distribution method is required'),
-    dateOfFirstUse: z.date({
-      message: 'Date of first use is required',
-    }),
+    ).optional(),
+    distributionMethod: z.array(z.any()).optional(),
+    dateOfFirstUse: z.any().optional(),
     // Optional fields
     department: z.string().max(100).optional(),
-    priorSubmissions: z.array(lookupSchema).optional(), // NOT REQUIRED
-    priorSubmissionNotes: z.string().max(1000).optional(), // NOT REQUIRED
+    priorSubmissions: z.array(lookupSchema).optional(),
+    priorSubmissionNotes: z.string().max(1000).optional(),
     additionalParty: z.array(principalSchema).optional(),
     rushRationale: z.string().max(500).optional(),
     isRushRequest: z.boolean().optional(),
@@ -302,85 +309,307 @@ export const submitRequestSchema = z
     audience: z.array(z.any()).optional(),
     usFunds: z.array(z.any()).optional(),
     ucits: z.array(z.any()).optional(),
-    separateAccountStrategies: z.array(z.any()).optional(),
-    separateAccountStrategiesIncludes: z.array(z.any()).optional(),
+    separateAcctStrategies: z.array(z.any()).optional(),
+    separateAcctStrategiesIncl: z.array(z.any()).optional(),
+    // Marker for attachments validation - injected by validation hook
+    _hasAttachments: z.boolean().optional(),
   })
-  .refine(
-    data => {
-      // At least 1 additional approval required (non-Communications) - ES5 compatible
-      let additionalCount = 0;
-      for (let i = 0; i < data.approvals.length; i++) {
-        if (data.approvals[i].type !== ApprovalType.Communications) {
-          additionalCount++;
-        }
-      }
-      return additionalCount >= 1;
-    },
-    {
-      message: 'At least one additional approval is required',
-      path: ['approvals'],
+  .superRefine((data, ctx) => {
+    // Helper function to check if an approval has a document
+    const hasDocument = (approval: any): boolean => {
+      if (approval._hasDocumentInStore === true) return true;
+      if (approval.existingFiles && Array.isArray(approval.existingFiles) && approval.existingFiles.length > 0) return true;
+      if (approval.documentId && approval.documentId.trim().length > 0) return true;
+      if (approval.files && Array.isArray(approval.files) && approval.files.length > 0) return true;
+      return false;
+    };
+
+    // Helper function to check if an approver has a valid id
+    // Handles both string and number ids (PeoplePicker may return either)
+    const hasValidApproverId = (approver: any): boolean => {
+      if (!approver) return false;
+      const id = approver.id;
+      if (id === undefined || id === null) return false;
+      // Convert to string and check for non-empty
+      const idStr = String(id).trim();
+      return idStr.length > 0 && idStr !== '0';
+    };
+
+    const getApprovalTypeName = (type: string): string => type;
+
+    // Safe approvals array (default to empty if undefined)
+    const approvals = data.approvals || [];
+
+    // ========================================
+    // BASE FIELD VALIDATIONS (previously in schema definition)
+    // All validations run together so ALL errors show at once
+    // ========================================
+
+    // Request Type validation
+    const validRequestTypes = [RequestType.Communication, RequestType.GeneralReview, RequestType.IMAReview];
+    if (!data.requestType || validRequestTypes.indexOf(data.requestType) === -1) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Request type is required',
+        path: ['requestType'],
+      });
     }
-  )
-  .refine(
-    data => {
-      // If communications approval is required, validate it exists and has all required fields
-      if (data.requiresCommunicationsApproval) {
-        // Find communications approval (ES5 compatible)
-        let commApproval: any = null;
-        for (let i = 0; i < data.approvals.length; i++) {
-          if (data.approvals[i].type === ApprovalType.Communications) {
-            commApproval = data.approvals[i];
-            break;
-          }
-        }
-        if (!commApproval) {
-          return false;
-        }
-        // Check that approver, approvalDate, and files exist
-        const hasApprover = commApproval.approver && commApproval.approver.id;
-        const hasDate = commApproval.approvalDate;
-        const hasFiles =
-          (commApproval.existingFiles && commApproval.existingFiles.length > 0) ||
-          commApproval.documentId;
-        return hasApprover && hasDate && hasFiles;
-      }
-      return true;
-    },
-    {
-      message:
-        'Communications approval requires approver, approval date, and approval document',
-      path: ['approvals'],
+
+    // Request Title validation
+    if (!data.requestTitle || typeof data.requestTitle !== 'string') {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Request title is required',
+        path: ['requestTitle'],
+      });
+    } else if (data.requestTitle.length < 3) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Request title must be at least 3 characters',
+        path: ['requestTitle'],
+      });
+    } else if (data.requestTitle.length > 255) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Request title cannot exceed 255 characters',
+        path: ['requestTitle'],
+      });
     }
-  )
-  .refine(
-    data => {
-      // Validate all additional approvals have required fields (ES5 compatible)
-      const additionalApprovals: any[] = [];
-      for (let i = 0; i < data.approvals.length; i++) {
-        if (data.approvals[i].type !== ApprovalType.Communications) {
-          additionalApprovals.push(data.approvals[i]);
+
+    // Purpose validation
+    if (!data.purpose || typeof data.purpose !== 'string') {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Purpose is required',
+        path: ['purpose'],
+      });
+    } else if (data.purpose.length < 10) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Purpose must be at least 10 characters',
+        path: ['purpose'],
+      });
+    } else if (data.purpose.length > 1000) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Purpose cannot exceed 1000 characters',
+        path: ['purpose'],
+      });
+    }
+
+    // Submission Type validation
+    const validSubmissionTypes = [SubmissionType.New, SubmissionType.MaterialUpdates];
+    if (!data.submissionType || validSubmissionTypes.indexOf(data.submissionType) === -1) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Submission type is required',
+        path: ['submissionType'],
+      });
+    }
+
+    // Submission Item validation
+    if (!data.submissionItem || typeof data.submissionItem !== 'string' || data.submissionItem.trim().length === 0) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Submission item is required',
+        path: ['submissionItem'],
+      });
+    }
+
+    // Submission Item Other validation - required when submissionItem is "Other"
+    if (data.submissionItem === 'Other' && (!data.submissionItemOther || data.submissionItemOther.trim().length === 0)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Please specify the submission item type',
+        path: ['submissionItemOther'],
+      });
+    }
+
+    // Target Return Date validation
+    if (!data.targetReturnDate || !(data.targetReturnDate instanceof Date) || isNaN(data.targetReturnDate.getTime())) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Target return date is required and must be a valid date',
+        path: ['targetReturnDate'],
+      });
+    } else {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const targetDate = new Date(data.targetReturnDate.getTime());
+      targetDate.setHours(0, 0, 0, 0);
+      if (targetDate < today) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Target return date must be today or in the future',
+          path: ['targetReturnDate'],
+        });
+      }
+    }
+
+    // Review Audience validation
+    const validReviewAudiences = [ReviewAudience.Legal, ReviewAudience.Compliance, ReviewAudience.Both];
+    if (!data.reviewAudience || validReviewAudiences.indexOf(data.reviewAudience) === -1) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Review audience is required',
+        path: ['reviewAudience'],
+      });
+    }
+
+    // Distribution Method validation
+    if (!data.distributionMethod || !Array.isArray(data.distributionMethod) || data.distributionMethod.length === 0) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'At least one distribution method is required',
+        path: ['distributionMethod'],
+      });
+    }
+
+    // Date of First Use validation
+    if (!data.dateOfFirstUse || !(data.dateOfFirstUse instanceof Date) || isNaN(data.dateOfFirstUse.getTime())) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Date of first use is required',
+        path: ['dateOfFirstUse'],
+      });
+    }
+
+    // ========================================
+    // APPROVAL VALIDATIONS
+    // ========================================
+
+    // At least one approval is required
+    if (approvals.length === 0) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'At least one approval is required',
+        path: ['approvals'],
+      });
+    }
+
+    // Rush rationale validation
+    if (data.isRushRequest && (!data.rushRationale || data.rushRationale.trim().length === 0)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Rush rationale is required for rush requests',
+        path: ['rushRationale'],
+      });
+    }
+
+    // At least 1 additional (non-Communications) approval required
+    let additionalCount = 0;
+    for (let i = 0; i < approvals.length; i++) {
+      if (approvals[i].type !== ApprovalType.Communications) {
+        additionalCount++;
+      }
+    }
+    if (additionalCount < 1) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'At least one additional approval (non-Communications) is required',
+        path: ['approvals'],
+      });
+    }
+
+    // Communications approval validation (if required)
+    if (data.requiresCommunicationsApproval) {
+      let commApproval: any = undefined;
+      let commApprovalIndex = -1;
+      for (let i = 0; i < approvals.length; i++) {
+        if (approvals[i].type === ApprovalType.Communications) {
+          commApproval = approvals[i];
+          commApprovalIndex = i;
+          break;
         }
       }
 
-      for (let i = 0; i < additionalApprovals.length; i++) {
-        const approval = additionalApprovals[i];
-        const hasApprover = approval.approver && approval.approver.id;
-        const hasDate = approval.approvalDate;
-        const hasFiles =
-          (approval.existingFiles && approval.existingFiles.length > 0) ||
-          approval.documentId;
-        if (!hasApprover || !hasDate || !hasFiles) {
-          return false;
+      if (!commApproval) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Communications approval is required but not provided',
+          path: ['approvals'],
+        });
+      } else {
+        if (!hasValidApproverId(commApproval.approver)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Approver is required for Communications approval',
+            path: ['approvals', commApprovalIndex, 'approver'],
+          });
+        }
+        if (!commApproval.approvalDate) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Approval date is required for Communications approval',
+            path: ['approvals', commApprovalIndex, 'approvalDate'],
+          });
+        }
+        if (!hasDocument(commApproval)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Approval document is required for Communications approval',
+            path: ['approvals', commApprovalIndex, '_document'],
+          });
         }
       }
-      return true;
-    },
-    {
-      message:
-        'All approvals must have approver, approval date, and approval document',
-      path: ['approvals'],
     }
-  );
+
+    // Validate each additional approval has all required fields
+    for (let i = 0; i < approvals.length; i++) {
+      const approval = approvals[i];
+      if (approval.type === ApprovalType.Communications) {
+        continue;
+      }
+
+      const approvalName = getApprovalTypeName(approval.type);
+
+      if (!hasValidApproverId(approval.approver)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `Approver is required for ${approvalName} approval`,
+          path: ['approvals', i, 'approver'],
+        });
+      }
+      if (!approval.approvalDate) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `Approval date is required for ${approvalName} approval`,
+          path: ['approvals', i, 'approvalDate'],
+        });
+      }
+      if (!hasDocument(approval)) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `Approval document is required for ${approvalName} approval`,
+          path: ['approvals', i, '_document'],
+        });
+      }
+    }
+
+    // At least 1 approval document is required for the entire request
+    let totalApprovalDocuments = 0;
+    for (let i = 0; i < approvals.length; i++) {
+      if (hasDocument(approvals[i])) {
+        totalApprovalDocuments++;
+      }
+    }
+    if (totalApprovalDocuments < 1 && approvals.length > 0) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'At least one approval document is required',
+        path: ['approvals'],
+      });
+    }
+
+    // At least 1 attachment (Review or Supplemental) is required
+    if (data._hasAttachments !== true) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'At least one attachment (Review or Supplemental document) is required',
+        path: ['attachments'],
+      });
+    }
+  });
 
 /**
  * Legacy: Draft request schema (alias for saveRequestSchema)
@@ -599,22 +828,22 @@ export const fullRequestSchema = z.object({
       ])
     )
     .optional(),
-  separateAccountStrategies: z
+  separateAcctStrategies: z
     .array(
       z.enum([
-        SeparateAccountStrategies.AllSeparateAccountStrategies,
-        SeparateAccountStrategies.Equity,
-        SeparateAccountStrategies.FixedIncome,
-        SeparateAccountStrategies.Balanced,
+        SeparateAcctStrategies.AllSeparateAccountStrategies,
+        SeparateAcctStrategies.Equity,
+        SeparateAcctStrategies.FixedIncome,
+        SeparateAcctStrategies.Balanced,
       ])
     )
     .optional(),
-  separateAccountStrategiesIncludes: z
+  separateAcctStrategiesIncl: z
     .array(
       z.enum([
-        SeparateAccountStrategiesIncludes.ClientRelatedDataOnly,
-        SeparateAccountStrategiesIncludes.RepresentativeAccount,
-        SeparateAccountStrategiesIncludes.CompositeData,
+        SeparateAcctStrategiesIncl.ClientRelatedDataOnly,
+        SeparateAcctStrategiesIncl.RepresentativeAccount,
+        SeparateAcctStrategiesIncl.CompositeData,
       ])
     )
     .optional(),

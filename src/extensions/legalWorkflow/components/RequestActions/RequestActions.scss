@@ -2,9 +2,78 @@
  * RequestActions Component Styles
  */
 
+// ============================================
+// Super Admin Trigger Button
+// Refined, professional admin access button
+// ============================================
+.super-admin-trigger {
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  border-radius: 8px !important;
+  background: linear-gradient(135deg, #1e3a5f 0%, #2d5986 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative;
+  overflow: hidden;
+
+  // Subtle inner glow
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+    border-radius: 8px;
+    pointer-events: none;
+  }
+
+  .ms-Icon {
+    font-size: 18px !important;
+    color: #ffffff !important;
+  }
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #16304d 0%, #1e3a5f 100%) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(30, 58, 95, 0.3) !important;
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(30, 58, 95, 0.2) !important;
+  }
+
+  &:disabled {
+    background: #e5e7eb !important;
+    color: #9ca3af !important;
+    cursor: not-allowed;
+
+    .ms-Icon {
+      color: #9ca3af !important;
+    }
+  }
+
+  // Focus state for accessibility
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4) !important;
+  }
+}
+
 .request-actions {
   width: 100%;
   margin-top: 24px;
+
+  // Base container styles - will be overridden by responsive rules
+  &__container {
+    padding: 24px;
+    width: 100%;
+    box-sizing: border-box;
+  }
 
   .action-buttons-card {
     position: sticky;
@@ -136,6 +205,49 @@
             margin-bottom: 0;
           }
         }
+      }
+    }
+  }
+
+  // Additional responsive breakpoint for tablet/smaller screens
+  @media (max-width: 1024px) {
+    .request-actions__container {
+      padding: 16px !important;
+
+      // Stack sections vertically on smaller screens
+      > .ms-Stack[class*='horizontal'] {
+        flex-direction: column !important;
+        gap: 16px !important;
+
+        > .ms-Stack {
+          width: 100% !important;
+          justify-content: center !important;
+        }
+      }
+    }
+  }
+
+  @media (max-width: 600px) {
+    .request-actions__container {
+      padding: 12px !important;
+
+      // Full width buttons on mobile
+      button {
+        width: 100% !important;
+        min-width: unset !important;
+        margin-left: 0 !important;
+        margin-bottom: 8px;
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
+
+      // Stack all buttons vertically
+      .ms-Stack[class*='horizontal'] {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 8px !important;
       }
     }
   }

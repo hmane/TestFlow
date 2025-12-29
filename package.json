@@ -10,7 +10,8 @@
     "*.scss",
     "*.css",
     "**/node_modules/@pnp/**",
-    "**/node_modules/spfx-toolkit/lib/utilities/context/pnpImports/**"
+    "**/node_modules/spfx-toolkit/lib/utilities/context/pnpImports/**",
+    "**/node_modules/devextreme/dist/css/**"
   ],
   "scripts": {
     "build": "gulp bundle",
@@ -19,7 +20,10 @@
     "release": "gulp clean && gulp bundle --ship && gulp package-solution --ship",
     "clean": "gulp clean && gulp clean-cache",
     "stats": "gulp bundle --ship && gulp analyze-bundle",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@fluentui/react": "^8.106.4",
@@ -62,6 +66,13 @@
     "eslint-plugin-react-hooks": "4.3.0",
     "@microsoft/sp-module-interfaces": "1.21.1",
     "spfx-fast-serve-helpers": "~1.21.0",
-    "webpack-bundle-analyzer": "4.10.2"
+    "webpack-bundle-analyzer": "4.10.2",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "@types/jest": "^29.5.12",
+    "ts-jest": "^29.1.2",
+    "@testing-library/react": "^12.1.5",
+    "@testing-library/jest-dom": "^6.4.2",
+    "identity-obj-proxy": "^3.0.0"
   }
 }

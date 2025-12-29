@@ -1,102 +1,70 @@
 /**
  * RequestApprovals Component Styles
+ *
+ * Collapsible card with summary badges in header
  */
 
-.approvals-card {
-  background: linear-gradient(135deg, #ffffff 0%, #f8fffe 100%);
-  border: 2px solid #e1e4e8;
-  border-left: 4px solid #0078d4;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  animation: slideInUp 0.4s ease;
-  transition: all 0.3s ease;
-
-  &:hover {
-    border-left-color: #106ebe;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  }
-
-  // Icon animation
-  .ms-Icon {
-    animation: pulse 2s ease-in-out infinite;
-  }
-
-  // Separator styling
-  .ms-Separator {
-    &::before {
-      background: linear-gradient(90deg, #e1e4e8 0%, transparent 100%);
-    }
-  }
-
-  // Loading state
-  &.loading {
-    pointer-events: none;
-    opacity: 0.6;
-  }
+.request-approvals-card {
+  margin-bottom: 16px;
 }
 
-// Animation for slide in from bottom
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+// Approval badge in header
+.approval-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
-// Pulse animation for icon
-@keyframes pulse {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
+// Container for badges in header
+.approval-badges-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: 8px;
 }
 
 // Responsive design
 @media (max-width: 768px) {
-  .approvals-card {
-    margin-top: 16px;
-    margin-left: -8px;
-    margin-right: -8px;
-    border-radius: 0;
-    border-left: 4px solid #0078d4;
-    border-right: none;
-
-    .ms-Stack {
-      padding: 16px !important;
+  .request-approvals-card {
+    .approval-badges-container {
+      display: none;
     }
   }
 }
 
 // Print styles
 @media print {
-  .approvals-card {
+  .request-approvals-card {
     box-shadow: none;
-    border: 1px solid #d2d0ce;
+    border: 1px solid #000;
     page-break-inside: avoid;
+  }
 
-    .ms-Icon {
-      animation: none;
-    }
+  .approval-badge {
+    border: 1px solid currentColor;
   }
 }
 
 // High contrast mode support
 @media (prefers-contrast: high) {
-  .approvals-card {
-    border: 3px solid currentColor;
-    border-left-width: 6px;
+  .request-approvals-card {
+    border: 2px solid currentColor;
+  }
+
+  .approval-badge {
+    border: 1px solid currentColor;
   }
 }
 
 // Accessibility enhancements
-*:focus-visible {
-  outline: 2px solid #0078d4;
-  outline-offset: 2px;
+// NOTE: Exclude DevExtreme components (dx-*) which have their own focus styling
+.request-approvals-card {
+  *:focus-visible:not([class*='dx-']) {
+    outline: 2px solid #0078d4;
+    outline-offset: 2px;
+  }
 }

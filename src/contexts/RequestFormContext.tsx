@@ -8,8 +8,8 @@
 
 import * as React from 'react';
 import { Control, UseFormHandleSubmit } from 'react-hook-form';
-import type { ILegalRequest } from '../types';
-import { RequestStatus } from '../types/workflowTypes';
+import type { ILegalRequest } from '@appTypes/index';
+import { RequestStatus } from '@appTypes/workflowTypes';
 
 /**
  * Validation error interface
@@ -36,6 +36,7 @@ export interface IRequestFormContextValue {
   // Form handlers
   handleSubmit: UseFormHandleSubmit<ILegalRequest>;
   onSubmit: (data: ILegalRequest) => void | Promise<void>;
+  onSubmitDirect: () => void | Promise<void>; // Direct submit without RHF wrapper
   onSaveDraft: () => void | Promise<void>;
   onPutOnHold?: (reason: string) => void | Promise<void>;
   onCancelRequest?: (reason: string) => void | Promise<void>;

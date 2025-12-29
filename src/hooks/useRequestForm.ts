@@ -5,10 +5,10 @@
 
 import * as React from 'react';
 import { FieldPath } from 'react-hook-form';
-import { SPContext } from 'spfx-toolkit';
-import { createRequestSchema, draftRequestSchema } from '../schemas';
-import { useRequest } from '../stores';
-import type { ILegalRequest } from '../types';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
+import { createRequestSchema, draftRequestSchema } from '@schemas/index';
+import { useRequest } from '@stores/index';
+import type { ILegalRequest } from '@appTypes/index';
 import { useFormValidation } from './useFormValidation';
 
 /**

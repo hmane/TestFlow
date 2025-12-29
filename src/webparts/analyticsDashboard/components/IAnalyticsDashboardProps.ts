@@ -1,0 +1,120 @@
+import { WebPartContext } from '@microsoft/sp-webpart-base';
+
+/**
+ * Date range options for filtering
+ */
+export type DateRangeOption = '7' | '30' | '90' | 'custom';
+
+/**
+ * KPI Summary Metrics
+ */
+export interface IKPIMetrics {
+  totalRequests: number;
+  totalRequestsTrend: number; // percentage change from previous period
+  avgTurnaroundDays: number;
+  avgTurnaroundTrend: number;
+  pendingReviews: number;
+  rushRequestPercentage: number;
+  slaCompliancePercentage: number;
+  totalHoursLogged: number;
+}
+
+/**
+ * Status distribution data point
+ */
+export interface IStatusData {
+  status: string;
+  count: number;
+  color: string;
+}
+
+/**
+ * Volume trend data point
+ */
+export interface IVolumeData {
+  date: Date;
+  submitted: number;
+  completed: number;
+  cancelled: number;
+}
+
+/**
+ * Attorney workload data
+ */
+export interface IAttorneyWorkload {
+  attorneyId: number;
+  attorneyName: string;
+  assignedCount: number;
+  inProgressCount: number;
+  completedCount: number;
+  avgHours: number;
+}
+
+/**
+ * Request at risk data
+ */
+export interface IRequestAtRisk {
+  id: number;
+  requestId: string;
+  requestTitle: string;
+  status: string;
+  targetReturnDate: Date;
+  daysOverdue: number;
+  attorney: string;
+}
+
+/**
+ * Time by stage metrics
+ */
+export interface ITimeByStage {
+  stage: string;
+  avgReviewerHours: number;
+  avgSubmitterHours: number;
+  totalHours: number;
+  color: string;
+}
+
+/**
+ * Review outcome data
+ */
+export interface IReviewOutcome {
+  outcome: string;
+  legalCount: number;
+  complianceCount: number;
+  color: string;
+}
+
+/**
+ * Complete dashboard data
+ */
+export interface IDashboardData {
+  kpiMetrics: IKPIMetrics;
+  statusDistribution: IStatusData[];
+  volumeTrends: IVolumeData[];
+  attorneyWorkload: IAttorneyWorkload[];
+  requestsAtRisk: IRequestAtRisk[];
+  timeByStage: ITimeByStage[];
+  reviewOutcomes: IReviewOutcome[];
+  lastUpdated: Date;
+}
+
+/**
+ * User access level
+ */
+export interface IUserAccess {
+  isAdmin: boolean;
+  isLegalAdmin: boolean;
+  hasAccess: boolean;
+}
+
+/**
+ * Analytics Dashboard Props
+ */
+export interface IAnalyticsDashboardProps {
+  title: string;
+  useMockData: boolean;
+  defaultDateRange: DateRangeOption;
+  context: WebPartContext;
+  isDarkTheme: boolean;
+  hasTeamsContext: boolean;
+}

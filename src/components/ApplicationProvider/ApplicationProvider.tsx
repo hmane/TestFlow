@@ -10,15 +10,18 @@
  * - Provide SPContext to all child components
  */
 
-import { MessageBar, MessageBarType, Stack } from '@fluentui/react';
+import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
+import { Stack } from '@fluentui/react/lib/Stack';
 import * as React from 'react';
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { SpinnerLoading } from 'spfx-toolkit/lib/components/Card/components/LoadingStates';
 import { ErrorBoundary } from 'spfx-toolkit/lib/components/ErrorBoundary';
-import { useConfigStore } from '../../stores/configStore';
-import { useRequestStore } from '../../stores/requestStore';
-import { useSubmissionItemsStore } from '../../stores/submissionItemsStore';
-import type { RequestType } from '../../types';
+import { useConfigStore } from '@stores/configStore';
+import { useRequestStore } from '@stores/requestStore';
+import { useSubmissionItemsStore } from '@stores/submissionItemsStore';
+import { usePermissionsStore } from '@stores/permissionsStore';
+import { useDocumentsStore } from '@stores/documentsStore';
+import type { RequestType } from '@appTypes/index';
 
 /**
  * Application initialization state
@@ -29,7 +32,9 @@ interface IInitializationState {
   error: string | undefined;
   configLoaded: boolean;
   submissionItemsLoaded: boolean;
+  permissionsLoaded: boolean;
   requestLoaded: boolean;
+  documentsLoaded: boolean;
 }
 
 /**
@@ -92,16 +97,31 @@ export const ApplicationProvider: React.FC<IApplicationProviderProps> = ({
     error: undefined,
     configLoaded: false,
     submissionItemsLoaded: false,
+    permissionsLoaded: false,
     requestLoaded: false,
+    documentsLoaded: false,
   });
 
   // Get store methods
   const { loadConfigs } = useConfigStore();
   const { loadItems } = useSubmissionItemsStore();
+  const { loadPermissions } = usePermissionsStore();
   const { loadRequest, initializeNewRequest } = useRequestStore();
+  const { loadAllDocuments } = useDocumentsStore();
 
   /**
-   * Initialize application data
+   * Initialize application data using store-first architecture
+   *
+   * Phase 1: Load global data in parallel (required for all views)
+   * - Config store (application settings)
+   * - Submission items store (request types)
+   * - Permissions store (user roles - SINGLE load, no more per-component calls)
+   *
+   * Phase 2: Load request-specific data (only if itemId provided)
+   * - Request store (request data)
+   * - Documents store (all documents + library ID in ONE call)
+   *
+   * This prevents the 400+ duplicate API calls that were causing throttling.
    */
   const initializeApplication = React.useCallback(async (): Promise<void> => {
     try {
@@ -111,35 +131,39 @@ export const ApplicationProvider: React.FC<IApplicationProviderProps> = ({
         error: undefined,
         configLoaded: false,
         submissionItemsLoaded: false,
+        permissionsLoaded: false,
         requestLoaded: false,
+        documentsLoaded: false,
       });
 
-      SPContext.logger.info('ApplicationProvider: Starting initialization', {
+      SPContext.logger.info('ApplicationProvider: Starting store-first initialization', {
         requestType,
         itemId,
       });
 
-      // Step 1: Load configurations and submission items in parallel (required for all)
-      // ES5 compatible Promise.allSettled alternative
-      const corePromises = [loadConfigs(), loadItems()];
-      const coreResults: Array<{
-        status: 'fulfilled' | 'rejected';
-        reason?: unknown;
-        value?: unknown;
-      }> = [];
+      // ========================================
+      // PHASE 1: Load global data in parallel
+      // ========================================
+      SPContext.logger.info('ApplicationProvider: Phase 1 - Loading global stores');
 
-      for (const promise of corePromises) {
-        try {
-          const value = await promise;
-          coreResults.push({ status: 'fulfilled', value });
-        } catch (reason) {
-          coreResults.push({ status: 'rejected', reason });
-        }
-      }
+      const [configResult, itemsResult, permissionsResult] = await Promise.all([
+        loadConfigs().then(
+          (value) => ({ status: 'fulfilled' as const, value }),
+          (reason) => ({ status: 'rejected' as const, reason })
+        ),
+        loadItems().then(
+          (value) => ({ status: 'fulfilled' as const, value }),
+          (reason) => ({ status: 'rejected' as const, reason })
+        ),
+        loadPermissions().then(
+          (value) => ({ status: 'fulfilled' as const, value }),
+          (reason) => ({ status: 'rejected' as const, reason })
+        ),
+      ]);
 
-      // Check if config loading failed
-      if (coreResults[0].status === 'rejected') {
-        const configError = coreResults[0].reason;
+      // Check for failures
+      if (configResult.status === 'rejected') {
+        const configError = configResult.reason;
         SPContext.logger.error('ApplicationProvider: Config loading failed', configError);
         throw new Error(
           `Failed to load application configuration: ${
@@ -148,9 +172,8 @@ export const ApplicationProvider: React.FC<IApplicationProviderProps> = ({
         );
       }
 
-      // Check if submission items loading failed
-      if (coreResults[1].status === 'rejected') {
-        const itemsError = coreResults[1].reason;
+      if (itemsResult.status === 'rejected') {
+        const itemsError = itemsResult.reason;
         SPContext.logger.error('ApplicationProvider: Submission items loading failed', itemsError);
         throw new Error(
           `Failed to load submission items: ${
@@ -159,32 +182,65 @@ export const ApplicationProvider: React.FC<IApplicationProviderProps> = ({
         );
       }
 
-      // Step 2: Initialize request store (if itemId provided, load existing; otherwise initialize new)
+      if (permissionsResult.status === 'rejected') {
+        const permError = permissionsResult.reason;
+        SPContext.logger.error('ApplicationProvider: Permissions loading failed', permError);
+        throw new Error(
+          `Failed to load user permissions: ${
+            permError instanceof Error ? permError.message : String(permError)
+          }`
+        );
+      }
+
+      SPContext.logger.success('ApplicationProvider: Phase 1 complete - global stores loaded');
+
+      // ========================================
+      // PHASE 2: Load request-specific data
+      // ========================================
       let requestLoaded = true;
+      let documentsLoaded = false;
+
       if (itemId) {
-        try {
-          SPContext.logger.info('ApplicationProvider: Loading existing request', { itemId });
-          await loadRequest(itemId);
-          SPContext.logger.success('ApplicationProvider: Request loaded', { itemId });
-        } catch (requestError: unknown) {
-          SPContext.logger.error('ApplicationProvider: Request loading failed', requestError, {
-            itemId,
-          });
+        SPContext.logger.info('ApplicationProvider: Phase 2 - Loading request-specific data', { itemId });
+
+        // Load request and documents in parallel
+        const [requestResult, docsResult] = await Promise.all([
+          loadRequest(itemId).then(
+            (value) => ({ status: 'fulfilled' as const, value }),
+            (reason) => ({ status: 'rejected' as const, reason })
+          ),
+          loadAllDocuments(itemId).then(
+            (value) => ({ status: 'fulfilled' as const, value }),
+            (reason) => ({ status: 'rejected' as const, reason })
+          ),
+        ]);
+
+        if (requestResult.status === 'rejected') {
+          const requestError = requestResult.reason;
+          SPContext.logger.error('ApplicationProvider: Request loading failed', requestError, { itemId });
           throw new Error(
             `Failed to load request: ${
               requestError instanceof Error ? requestError.message : String(requestError)
             }`
           );
         }
+
+        if (docsResult.status === 'rejected') {
+          // Documents failing is not critical - log warning but continue
+          SPContext.logger.warn('ApplicationProvider: Documents loading failed', { itemId, error: docsResult.reason });
+        } else {
+          documentsLoaded = true;
+        }
+
+        SPContext.logger.success('ApplicationProvider: Phase 2 complete - request data loaded', { itemId });
       } else {
-        // Initialize new request
+        // Initialize new request (no documents to load)
         try {
           SPContext.logger.info('ApplicationProvider: Initializing new request');
           initializeNewRequest();
           SPContext.logger.success('ApplicationProvider: New request initialized');
         } catch (initError: unknown) {
           SPContext.logger.warn('ApplicationProvider: Request initialization failed', initError);
-          // Don't throw - new request initialization is not critical
           requestLoaded = false;
         }
       }
@@ -196,13 +252,17 @@ export const ApplicationProvider: React.FC<IApplicationProviderProps> = ({
         error: undefined,
         configLoaded: true,
         submissionItemsLoaded: true,
+        permissionsLoaded: true,
         requestLoaded,
+        documentsLoaded,
       });
 
       SPContext.logger.success('ApplicationProvider: Initialization complete', {
         configLoaded: true,
         submissionItemsLoaded: true,
+        permissionsLoaded: true,
         requestLoaded,
+        documentsLoaded,
         itemId: itemId || 'new',
       });
 
@@ -220,14 +280,16 @@ export const ApplicationProvider: React.FC<IApplicationProviderProps> = ({
         error: errorMessage,
         configLoaded: false,
         submissionItemsLoaded: false,
+        permissionsLoaded: false,
         requestLoaded: false,
+        documentsLoaded: false,
       });
 
       if (onInitializationError) {
         onInitializationError(errorMessage);
       }
     }
-  }, [requestType, itemId, loadConfigs, loadItems, onInitialized, onInitializationError]);
+  }, [requestType, itemId, loadConfigs, loadItems, loadPermissions, loadRequest, loadAllDocuments, initializeNewRequest, onInitialized, onInitializationError]);
 
   /**
    * Initialize on mount
@@ -301,7 +363,11 @@ export const ApplicationProvider: React.FC<IApplicationProviderProps> = ({
                   {'\n'}
                   Submission Items Loaded: {initState.submissionItemsLoaded ? 'Yes' : 'No'}
                   {'\n'}
+                  Permissions Loaded: {initState.permissionsLoaded ? 'Yes' : 'No'}
+                  {'\n'}
                   Request Loaded: {initState.requestLoaded ? 'Yes' : 'No'}
+                  {'\n'}
+                  Documents Loaded: {initState.documentsLoaded ? 'Yes' : 'No'}
                   {'\n'}
                   Request Type: {requestType || 'None'}
                   {'\n'}
@@ -346,6 +412,11 @@ export const ApplicationProvider: React.FC<IApplicationProviderProps> = ({
 
   /**
    * Render initialized application with error boundary
+   *
+   * Note: PermissionsProvider has been replaced with permissionsStore.
+   * Permissions are now loaded during initialization (Phase 1) and stored in Zustand.
+   * Components use usePermissionsStore selectors instead of PermissionsContext.
+   * This prevents duplicate API calls that were causing "page unavailable" errors.
    */
   return (
     <ErrorBoundary
@@ -370,9 +441,10 @@ export const ApplicationProvider: React.FC<IApplicationProviderProps> = ({
 export function useApplicationInitialized(): boolean {
   const { isLoaded: configLoaded } = useConfigStore();
   const { isLoaded: itemsLoaded } = useSubmissionItemsStore();
+  const { isLoaded: permissionsLoaded } = usePermissionsStore();
 
-  // Request store is optional - app is considered initialized if config and items are loaded
-  return configLoaded && itemsLoaded;
+  // App is considered initialized when global stores are loaded
+  return configLoaded && itemsLoaded && permissionsLoaded;
 }
 
 /**
@@ -382,16 +454,19 @@ export function useApplicationStatus(): {
   isInitialized: boolean;
   configLoaded: boolean;
   submissionItemsLoaded: boolean;
+  permissionsLoaded: boolean;
   requestLoaded: boolean;
 } {
   const { isLoaded: configLoaded } = useConfigStore();
   const { isLoaded: itemsLoaded } = useSubmissionItemsStore();
+  const { isLoaded: permissionsLoaded } = usePermissionsStore();
   const { currentRequest } = useRequestStore();
 
   return {
-    isInitialized: configLoaded && itemsLoaded,
+    isInitialized: configLoaded && itemsLoaded && permissionsLoaded,
     configLoaded,
     submissionItemsLoaded: itemsLoaded,
+    permissionsLoaded,
     requestLoaded: Boolean(currentRequest),
   };
 }

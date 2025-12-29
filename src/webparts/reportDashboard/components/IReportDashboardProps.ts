@@ -46,6 +46,9 @@ export interface ISearchResult {
   progressColor: ProgressBarColor;
   currentStep: number;
   totalSteps: number;
+  // Time tracking
+  totalReviewerHours: number;
+  totalSubmitterHours: number;
 }
 
 /**

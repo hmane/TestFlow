@@ -10,16 +10,17 @@
 
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import type {
   IStagedFile,
   FileOperationStatus,
-} from '../services/approvalFileService';
-import { DocumentType } from '../types/documentTypes';
+} from '@services/approvalFileService';
+import { DocumentType } from '@appTypes/documentTypes';
 import {
   loadDocuments as loadDocumentsFromService,
-} from '../services/documentService';
-import * as documentService from '../services/documentService';
+  getRequestDocumentsLibraryId,
+} from '@services/documentService';
+import * as documentService from '@services/documentService';
 
 /**
  * Existing file interface (from SharePoint)
@@ -101,6 +102,9 @@ export interface IPendingCounts {
  * Documents store state
  */
 interface IDocumentsState {
+  // RequestDocuments library ID (loaded once, used for file operations)
+  libraryId: string | null;
+
   // Document collections keyed by DocumentType
   documents: Map<DocumentType, IDocument[]>;
 
@@ -120,8 +124,8 @@ interface IDocumentsState {
   error?: string;
 
   // Actions - Load & Initialize
-  loadDocuments: (itemId: number, documentType?: DocumentType) => Promise<void>;
-  loadAllDocuments: (itemId: number) => Promise<void>;
+  loadDocuments: (itemId: number, documentType?: DocumentType, forceReload?: boolean) => Promise<void>;
+  loadAllDocuments: (itemId: number, forceReload?: boolean) => Promise<void>;
 
   // Actions - File Staging
   stageFiles: (files: File[], documentType: DocumentType, itemId?: number) => void;
@@ -165,6 +169,7 @@ interface IDocumentsState {
  * Initial state
  */
 const initialState = {
+  libraryId: null as string | null,
   documents: new Map<DocumentType, IDocument[]>(),
   stagedFiles: [],
   filesToDelete: [],
@@ -177,6 +182,10 @@ const initialState = {
   error: undefined,
 };
 
+// Track pending load promise to deduplicate concurrent calls
+let pendingLoadPromise: Promise<void> | null = null;
+let lastLoadedItemId: number | null = null;
+
 /**
  * Documents store
  */
@@ -188,50 +197,85 @@ export const useDocumentsStore = create<IDocumentsState>()(
       /**
        * Load ALL documents for an item (CAML query loads all recursively)
        * Note: documentType parameter is kept for backward compatibility but ignored
+       *
+       * Deduplication: If multiple components call loadDocuments for the same itemId
+       * concurrently, only one API call is made and all callers await the same promise.
        */
-      loadDocuments: async (itemId: number, documentType?: DocumentType): Promise<void> => {
-        set({ isLoading: true, error: undefined });
-
-        try {
-          SPContext.logger.info('Loading all documents', { itemId });
-
-          // Load ALL documents recursively from RequestDocuments/{itemId}
-          // The service now uses CAML query to load all files in one call
-          const loadedDocs = await loadDocumentsFromService(itemId);
-
-          // Group documents by type (ES5 compatible)
-          const groupedDocs = new Map<DocumentType, IDocument[]>();
-          for (let i = 0; i < loadedDocs.length; i++) {
-            const doc = loadedDocs[i];
-            const existing = groupedDocs.get(doc.documentType) || [];
-            existing.push(doc);
-            groupedDocs.set(doc.documentType, existing);
-          }
-
-          // Replace the documents Map with newly loaded docs
-          set({
-            documents: groupedDocs,
-            isLoading: false,
-          });
-
-          SPContext.logger.success('All documents loaded successfully', {
-            itemId,
-            totalCount: loadedDocs.length,
-            typeCount: groupedDocs.size,
-          });
-        } catch (error: unknown) {
-          const errorMessage = error instanceof Error ? error.message : 'Failed to load documents';
-          SPContext.logger.error('Failed to load documents', error, { itemId });
-          set({ error: errorMessage, isLoading: false });
+      loadDocuments: async (itemId: number, documentType?: DocumentType, forceReload?: boolean): Promise<void> => {
+        // If we already have a pending load for this itemId, wait for it (unless force reload)
+        if (pendingLoadPromise && lastLoadedItemId === itemId && !forceReload) {
+          SPContext.logger.info('Documents load already in progress, waiting...', { itemId });
+          return pendingLoadPromise;
         }
+
+        // If documents are already loaded for this itemId and no force reload, skip
+        const state = get();
+        if (!forceReload && lastLoadedItemId === itemId && state.documents.size > 0 && !state.isLoading) {
+          SPContext.logger.info('Documents already loaded, skipping reload', { itemId });
+          return;
+        }
+
+        set({ isLoading: true, error: undefined });
+        lastLoadedItemId = itemId;
+
+        // Create the load promise and track it
+        pendingLoadPromise = (async (): Promise<void> => {
+          try {
+            SPContext.logger.info('Loading all documents', { itemId });
+
+            // Load library ID if not already loaded (ONE API call, cached)
+            const currentState = get();
+            let libraryId = currentState.libraryId;
+            if (!libraryId) {
+              SPContext.logger.info('Loading RequestDocuments library ID');
+              libraryId = await getRequestDocumentsLibraryId();
+              set({ libraryId });
+              SPContext.logger.success('Library ID loaded', { libraryId });
+            }
+
+            // Load ALL documents recursively from RequestDocuments/{itemId}
+            // The service now uses CAML query to load all files in one call
+            const loadedDocs = await loadDocumentsFromService(itemId);
+
+            // Group documents by type (ES5 compatible)
+            const groupedDocs = new Map<DocumentType, IDocument[]>();
+            for (let i = 0; i < loadedDocs.length; i++) {
+              const doc = loadedDocs[i];
+              const existing = groupedDocs.get(doc.documentType) || [];
+              existing.push(doc);
+              groupedDocs.set(doc.documentType, existing);
+            }
+
+            // Replace the documents Map with newly loaded docs
+            set({
+              documents: groupedDocs,
+              isLoading: false,
+            });
+
+            SPContext.logger.success('All documents loaded successfully', {
+              itemId,
+              totalCount: loadedDocs.length,
+              typeCount: groupedDocs.size,
+            });
+          } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : 'Failed to load documents';
+            SPContext.logger.error('Failed to load documents', error, { itemId });
+            set({ error: errorMessage, isLoading: false });
+          } finally {
+            // Clear pending promise after completion
+            pendingLoadPromise = null;
+          }
+        })();
+
+        return pendingLoadPromise;
       },
 
       /**
        * Load all documents for an item (alias for loadDocuments)
        * Both functions now do the same thing since CAML query loads all documents
        */
-      loadAllDocuments: async (itemId: number): Promise<void> => {
-        return get().loadDocuments(itemId);
+      loadAllDocuments: async (itemId: number, forceReload?: boolean): Promise<void> => {
+        return get().loadDocuments(itemId, undefined, forceReload);
       },
 
       /**
@@ -522,11 +566,169 @@ export const useDocumentsStore = create<IDocumentsState>()(
 
       /**
        * Retry failed upload
+       * Note: The file must still be in stagedFiles to retry
        */
       retryUpload: async (fileId: string): Promise<void> => {
         SPContext.logger.info('Retrying file upload', { fileId });
 
-        // TODO: Implement retry logic
+        const state = get();
+
+        // Find the failed file in upload progress
+        const failedProgress = state.uploadProgress.get(fileId);
+        if (!failedProgress || failedProgress.status !== 'error') {
+          SPContext.logger.warn('Cannot retry: file not found or not in error state', { fileId });
+          return;
+        }
+
+        // Check max retries
+        if (failedProgress.retryCount >= failedProgress.maxRetries) {
+          SPContext.logger.warn('Cannot retry: max retries exceeded', {
+            fileId,
+            retryCount: failedProgress.retryCount,
+            maxRetries: failedProgress.maxRetries,
+          });
+          return;
+        }
+
+        // Find the staged file by matching the fileId or fileName
+        let stagedFile: IStagedDocument | undefined;
+        for (let i = 0; i < state.stagedFiles.length; i++) {
+          const sf = state.stagedFiles[i];
+          if (
+            `upload-${sf.file.name}` === fileId ||
+            fileId.indexOf(sf.file.name) !== -1 ||
+            sf.file.name === failedProgress.fileName
+          ) {
+            stagedFile = sf;
+            break;
+          }
+        }
+
+        if (!stagedFile || !stagedFile.itemId) {
+          SPContext.logger.warn('Cannot retry: staged file not found or missing itemId', {
+            fileId,
+            fileName: failedProgress.fileName,
+          });
+          return;
+        }
+
+        // Update progress to show retrying
+        set(currentState => {
+          const newProgress = new Map<string, IUploadProgress>();
+          currentState.uploadProgress.forEach((value, key) => {
+            newProgress.set(key, value);
+          });
+
+          newProgress.set(fileId, {
+            ...failedProgress,
+            status: 'uploading' as FileOperationStatus,
+            progress: 0,
+            error: undefined,
+            retryCount: failedProgress.retryCount + 1,
+          });
+
+          // Update retry count
+          const newRetryCount = new Map<string, number>();
+          currentState.retryCount.forEach((value, key) => {
+            newRetryCount.set(key, value);
+          });
+          newRetryCount.set(fileId, failedProgress.retryCount + 1);
+
+          return {
+            uploadProgress: newProgress,
+            retryCount: newRetryCount,
+          };
+        });
+
+        try {
+          // Import batchUploadFiles dynamically
+          const { batchUploadFiles } = await import('../services/documentService');
+
+          // Upload just this one file
+          await batchUploadFiles(
+            [{ file: stagedFile.file, documentType: stagedFile.documentType }],
+            stagedFile.itemId,
+            // onFileProgress callback
+            (progressFileId: string, progress: number, status: FileOperationStatus) => {
+              set(currentState => {
+                const newProgress = new Map<string, IUploadProgress>();
+                currentState.uploadProgress.forEach((value, key) => {
+                  newProgress.set(key, value);
+                });
+
+                const existing = newProgress.get(fileId);
+                if (existing) {
+                  newProgress.set(fileId, {
+                    ...existing,
+                    status,
+                    progress,
+                  });
+                }
+
+                return { uploadProgress: newProgress };
+              });
+            },
+            // onFileComplete callback
+            (completeFileId: string, result: any) => {
+              set(currentState => {
+                const newProgress = new Map<string, IUploadProgress>();
+                currentState.uploadProgress.forEach((value, key) => {
+                  newProgress.set(key, value);
+                });
+
+                const existing = newProgress.get(fileId);
+                if (existing) {
+                  newProgress.set(fileId, {
+                    ...existing,
+                    status: result.success ? 'success' as FileOperationStatus : 'error' as FileOperationStatus,
+                    progress: result.success ? 100 : existing.progress,
+                    error: result.error,
+                  });
+                }
+
+                // If successful, remove from staged files
+                let newStagedFiles = currentState.stagedFiles;
+                if (result.success && stagedFile) {
+                  newStagedFiles = currentState.stagedFiles.filter(
+                    sf => sf.file.name !== stagedFile!.file.name
+                  );
+                }
+
+                return {
+                  uploadProgress: newProgress,
+                  stagedFiles: newStagedFiles,
+                };
+              });
+
+              if (result.success) {
+                SPContext.logger.success('Retry upload succeeded', { fileId });
+              } else {
+                SPContext.logger.error('Retry upload failed', result.error, { fileId });
+              }
+            }
+          );
+        } catch (error) {
+          SPContext.logger.error('Retry upload error', error, { fileId });
+
+          // Update progress with error
+          set(currentState => {
+            const newProgress = new Map<string, IUploadProgress>();
+            currentState.uploadProgress.forEach((value, key) => {
+              newProgress.set(key, value);
+            });
+
+            const existing = newProgress.get(fileId);
+            if (existing) {
+              newProgress.set(fileId, {
+                ...existing,
+                status: 'error' as FileOperationStatus,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+
+            return { uploadProgress: newProgress };
+          });
+        }
       },
 
       /**
@@ -568,9 +770,42 @@ export const useDocumentsStore = create<IDocumentsState>()(
         try {
           SPContext.logger.info('Deleting files', { count: state.filesToDelete.length });
 
-          // TODO: Implement delete logic in documentService.ts
+          // Track affected document types for reload
+          const affectedTypes = new Set<DocumentType>();
+          const itemIds = new Set<number>();
+
+          // Delete each file
+          for (let i = 0; i < state.filesToDelete.length; i++) {
+            const fileToDelete = state.filesToDelete[i];
+            affectedTypes.add(fileToDelete.documentType);
+            if (fileToDelete.listItemId) {
+              itemIds.add(fileToDelete.listItemId);
+            }
+
+            try {
+              await documentService.deleteFile(fileToDelete);
+              SPContext.logger.success('File deleted', { fileName: fileToDelete.name });
+            } catch (deleteError) {
+              SPContext.logger.error('Failed to delete file', deleteError, {
+                fileName: fileToDelete.name,
+              });
+              // Continue with other deletions even if one fails
+            }
+          }
 
           set({ filesToDelete: [] });
+
+          // Reload documents for affected types
+          const reloadPromises: Array<Promise<void>> = [];
+          itemIds.forEach((itemId) => {
+            affectedTypes.forEach((docType) => {
+              reloadPromises.push(get().loadDocuments(itemId, docType));
+            });
+          });
+
+          if (reloadPromises.length > 0) {
+            await Promise.all(reloadPromises);
+          }
 
           SPContext.logger.success('Files deleted successfully');
         } catch (error: unknown) {
@@ -689,9 +924,41 @@ export const useDocumentsStore = create<IDocumentsState>()(
             itemId,
           });
 
-          // TODO: Implement type change logic in documentService.ts
+          // Group files by their new type
+          const filesByNewType = new Map<DocumentType, IDocument[]>();
+          const affectedTypes = new Set<DocumentType>();
+
+          for (let i = 0; i < state.filesToChangeType.length; i++) {
+            const change = state.filesToChangeType[i];
+            affectedTypes.add(change.file.documentType); // Old type
+            affectedTypes.add(change.newType); // New type
+
+            const existing = filesByNewType.get(change.newType) || [];
+            existing.push(change.file);
+            filesByNewType.set(change.newType, existing);
+          }
+
+          // Process each group of files by new type
+          const changePromises: Array<Promise<void>> = [];
+          filesByNewType.forEach((files, newType) => {
+            changePromises.push(
+              documentService.changeDocumentType(files, newType, itemId)
+            );
+          });
+
+          await Promise.all(changePromises);
 
           set({ filesToChangeType: [] });
+
+          // Reload documents for affected types
+          const reloadPromises: Array<Promise<void>> = [];
+          affectedTypes.forEach((docType) => {
+            reloadPromises.push(get().loadDocuments(itemId, docType));
+          });
+
+          if (reloadPromises.length > 0) {
+            await Promise.all(reloadPromises);
+          }
 
           SPContext.logger.success('Document types changed successfully');
         } catch (error: unknown) {
@@ -791,9 +1058,107 @@ export const useDocumentsStore = create<IDocumentsState>()(
        */
       reset: (): void => {
         set(initialState);
+        // Reset tracking variables
+        pendingLoadPromise = null;
+        lastLoadedItemId = null;
         SPContext.logger.info('Documents store reset');
       },
     }),
     { name: 'DocumentsStore' }
   )
 );
+
+// ============================================
+// ZUSTAND SELECTORS FOR OPTIMIZED RE-RENDERS
+// ============================================
+
+/**
+ * Selector for library ID only
+ * Use this in components that need the RequestDocuments library ID
+ */
+export const useDocumentLibraryId = (): string | null =>
+  useDocumentsStore(state => state.libraryId);
+
+/**
+ * Selector for loading state only
+ */
+export const useDocumentsLoading = (): boolean =>
+  useDocumentsStore(state => state.isLoading);
+
+/**
+ * Selector for uploading state only
+ */
+export const useDocumentsUploading = (): boolean =>
+  useDocumentsStore(state => state.isUploading);
+
+/**
+ * Selector for error state only
+ */
+export const useDocumentsError = (): string | undefined =>
+  useDocumentsStore(state => state.error);
+
+/**
+ * Selector for staged files count (for badge display)
+ */
+export const useStagedFilesCount = (): number =>
+  useDocumentsStore(state => state.stagedFiles.length);
+
+/**
+ * Selector for files to delete count (for badge display)
+ */
+export const useFilesToDeleteCount = (): number =>
+  useDocumentsStore(state => state.filesToDelete.length);
+
+/**
+ * Selector for pending operations check
+ */
+export const useHasPendingDocumentOperations = (): boolean =>
+  useDocumentsStore(state =>
+    state.stagedFiles.length > 0 ||
+    state.filesToDelete.length > 0 ||
+    state.filesToRename.length > 0 ||
+    state.filesToChangeType.length > 0
+  );
+
+/**
+ * Selector for upload progress (returns entire Map)
+ */
+export const useUploadProgress = (): Map<string, IUploadProgress> =>
+  useDocumentsStore(state => state.uploadProgress);
+
+/**
+ * Selector for documents store actions only (stable reference)
+ * Use this when you only need actions without subscribing to state changes
+ */
+export const useDocumentsActions = (): {
+  loadDocuments: (itemId: number, documentType?: DocumentType) => Promise<void>;
+  loadAllDocuments: (itemId: number) => Promise<void>;
+  stageFiles: (files: File[], documentType: DocumentType, itemId?: number) => void;
+  removeStagedFile: (fileId: string) => void;
+  markForDeletion: (file: IDocument) => void;
+  undoDelete: (file: IDocument) => void;
+  markForRename: (file: IDocument, newName: string) => void;
+  cancelRename: (fileId: string) => void;
+  uploadPendingFiles: (itemId: number, onProgress: (fileId: string, progress: number, status: FileOperationStatus) => void) => Promise<void>;
+  retryUpload: (fileId: string) => Promise<void>;
+  skipUpload: (fileId: string) => void;
+  clearPendingOperations: () => void;
+  clearError: () => void;
+  reset: () => void;
+} =>
+  useDocumentsStore(state => ({
+    loadDocuments: state.loadDocuments,
+    loadAllDocuments: state.loadAllDocuments,
+    stageFiles: state.stageFiles,
+    removeStagedFile: state.removeStagedFile,
+    markForDeletion: state.markForDeletion,
+    undoDelete: state.undoDelete,
+    markForRename: state.markForRename,
+    cancelRename: state.cancelRename,
+    uploadPendingFiles: state.uploadPendingFiles,
+    retryUpload: state.retryUpload,
+    skipUpload: state.skipUpload,
+    clearPendingOperations: state.clearPendingOperations,
+    clearError: state.clearError,
+    reset: state.reset,
+  }));

@@ -6,7 +6,7 @@
  * that occur when Flow breaks inheritance asynchronously.
  */
 
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import type { RequestStatus } from '@appTypes/workflowTypes';
 
 /**

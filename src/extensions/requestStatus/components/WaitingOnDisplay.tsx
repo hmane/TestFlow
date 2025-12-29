@@ -8,8 +8,9 @@
  */
 
 import * as React from 'react';
-import { Stack, Text } from '@fluentui/react';
-import { SPContext } from 'spfx-toolkit';
+import { Stack } from '@fluentui/react/lib/Stack';
+import { Text } from '@fluentui/react/lib/Text';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { UserPersona } from 'spfx-toolkit/lib/components/UserPersona';
 import { GroupViewer } from 'spfx-toolkit/lib/components/GroupViewer';
 import type { IWaitingOnDisplayProps } from '../types';

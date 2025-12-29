@@ -15,25 +15,21 @@
 
 import {
   ILegalRequest,
-  RequestType
 } from '@appTypes/index';
-import { useWorkflowStepper } from '@components/WorkflowStepper/useWorkflowStepper';
 import { useNotification } from '@contexts/NotificationContext';
 import { RequestFormProvider } from '@contexts/RequestFormContext';
-import {
-  Icon,
-  MessageBar,
-  MessageBarType,
-  Stack,
-  Text,
-} from '@fluentui/react';
+import { Icon } from '@fluentui/react/lib/Icon';
+import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
+import { Stack } from '@fluentui/react/lib/Stack';
+import { Text } from '@fluentui/react/lib/Text';
+import { saveRequestSchema } from '@schemas/requestSchema';
 import { useRequestStore } from '@stores/requestStore';
 import { useSubmissionItemsStore } from '@stores/submissionItemsStore';
 import * as React from 'react';
 import { FieldError, FormProvider as RHFFormProvider, useForm } from 'react-hook-form';
-import { SPContext } from 'spfx-toolkit';
-import { Card } from 'spfx-toolkit/lib/components/Card';
-import { FormErrorSummary, FormProvider as SPFormProvider } from 'spfx-toolkit/lib/components/spForm';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
+import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
+import { FormProvider as SPFormProvider } from 'spfx-toolkit/lib/components/spForm';
 import type { IRequestFormProps } from '../RequestContainer';
 import './RequestInfo.scss';
 import {
@@ -48,13 +44,9 @@ import { useRequestInfoActions } from './useRequestInfoActions';
 /**
  * Shared style constants to prevent recreation on every render
  */
-const FORM_CONTAINER_STYLES = { root: { padding: '24px', width: '100%', margin: '0' } };
+const FORM_CONTAINER_STYLES = { root: { width: '100%', margin: '0' } };
 const FORM_CONTAINER_TOKENS = { childrenGap: 24 };
-const HEADER_TOKENS = { childrenGap: 8 };
-const TAG_ICON_STYLES = { root: { color: '#0078d4' } };
 const MESSAGE_BAR_STYLES = { root: { borderRadius: '4px' } };
-const PAGE_TITLE_STYLES = { root: { fontWeight: 600 as const, color: '#323130' } };
-const REQUEST_ID_TEXT_STYLES = { root: { color: '#605e5c' } };
 const FORM_SECTIONS_TOKENS = { childrenGap: 20 };
 
 /**
@@ -136,14 +128,106 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
     }
   }, [currentRequest, reset, watch]);
 
+  // Watch all form values for revalidation on change
+  const watchedValues = watch();
+  const previousValuesRef = React.useRef<Partial<ILegalRequest>>({});
+
+  // Track if validation has been triggered (set to true after first validation attempt)
+  const hasBeenValidatedRef = React.useRef(false);
+
+  // Track fields that should be excluded from revalidation (programmatically set fields)
+  // These are fields that get set by calculations/effects, not direct user interaction
+  const programmaticFieldsRef = React.useRef<Set<keyof ILegalRequest>>(new Set<keyof ILegalRequest>(['isRushRequest']));
+
+  // Update hasBeenValidatedRef when errors appear (indicates validation was triggered)
+  React.useEffect(() => {
+    if (Object.keys(errors).length > 0) {
+      hasBeenValidatedRef.current = true;
+    }
+  }, [errors]);
+
+  React.useEffect(() => {
+    // Only re-validate if validation has been triggered before
+    if (!hasBeenValidatedRef.current) {
+      previousValuesRef.current = watchedValues;
+      return;
+    }
+
+    // Find which fields have changed
+    const changedFields: (keyof ILegalRequest)[] = [];
+    const allFields = Object.keys(watchedValues) as (keyof ILegalRequest)[];
+
+    allFields.forEach((fieldName) => {
+      const currentValue = watchedValues[fieldName];
+      const previousValue = previousValuesRef.current[fieldName];
+
+      if (currentValue !== previousValue) {
+        changedFields.push(fieldName);
+      }
+    });
+
+    // If any fields changed, re-validate them
+    if (changedFields.length > 0) {
+      // Re-validate the entire form with save schema to get current errors
+      const validation = saveRequestSchema.safeParse(watchedValues);
+
+      changedFields.forEach((fieldName) => {
+        // Skip validation for fields that depend on programmatic changes
+        // (e.g., rushRationale depends on isRushRequest which is calculated)
+        if (programmaticFieldsRef.current.has(fieldName)) {
+          // If isRushRequest changed, don't validate rushRationale immediately
+          // It will be validated on submit or when user interacts with it
+          return;
+        }
+
+        // Skip rushRationale if isRushRequest just changed (not user interaction)
+        if (fieldName === 'rushRationale' && changedFields.includes('isRushRequest')) {
+          return;
+        }
+
+        if (!validation.success) {
+          // Check if this field has an error (ES5 compatible)
+          let fieldError: { message: string } | undefined;
+          const issues = validation.error.issues;
+          for (let i = 0; i < issues.length; i++) {
+            const issue = issues[i];
+            if (issue.path.length > 0 && issue.path[0] === fieldName) {
+              fieldError = { message: issue.message };
+              break;
+            }
+          }
+
+          if (fieldError) {
+            // Set the error for this field
+            setError(fieldName as keyof ILegalRequest, {
+              type: 'manual',
+              message: fieldError.message,
+            });
+          } else {
+            // No error for this field, clear it
+            clearErrors(fieldName);
+          }
+        } else {
+          // Validation passed, clear errors for changed fields
+          clearErrors(fieldName);
+        }
+      });
+    }
+
+    previousValuesRef.current = watchedValues;
+  }, [watchedValues, setError, clearErrors]);
+
   const readFormValues = React.useCallback(() => watch(), [watch]);
 
   const {
     onSubmit,
+    handleSubmitDirect,
     handleSaveDraft,
     handleClose,
     handleCancelRequest,
     handlePutOnHold,
+    validationErrors: actionValidationErrors,
+    setValidationErrors: setActionValidationErrors,
   } = useRequestInfoActions({
     itemId,
     watch: readFormValues,
@@ -156,27 +240,6 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
   });
 
   const shouldRenderChildren = renderApprovalsAndActions || !!children;
-
-  /**
-   * Get submission items for dropdown
-   */
-  /**
-   * Handle step click - memoized to prevent recreation
-   */
-  const handleStepClick = React.useCallback((step: any) => {
-    SPContext.logger.info('RequestInfo: Step clicked', { stepId: step.id || step });
-  }, []);
-
-  /**
-   * Render workflow stepper in progress mode (not informational)
-   * Shows actual progress with completed, current, and pending steps
-   */
-  const { renderStepper } = useWorkflowStepper({
-    requestType: currentRequest?.requestType || RequestType.Communication,
-    currentStatus: currentRequest?.status,
-    mode: 'progress', // Show progress, not full step details
-    onStepClick: handleStepClick,
-  });
 
   /**
    * Watch for request type and other fields to show conditional fields
@@ -246,12 +309,20 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
 
   /**
    * Update isRushRequest field when calculated value changes
+   * Also clear rushRationale when request is no longer a rush to avoid saving stale data
    */
   React.useEffect(() => {
     if (targetReturnDate && submissionItemSelection && calculatedIsRush !== isRushRequest) {
       setValue('isRushRequest', calculatedIsRush, { shouldDirty: true });
+
+      // Clear rushRationale when transitioning from rush to non-rush
+      if (!calculatedIsRush) {
+        setValue('rushRationale', '', { shouldDirty: true });
+        // Also clear any validation errors for this field
+        clearErrors('rushRationale');
+      }
     }
-  }, [calculatedIsRush, isRushRequest, targetReturnDate, submissionItemSelection, setValue]);
+  }, [calculatedIsRush, isRushRequest, targetReturnDate, submissionItemSelection, setValue, clearErrors]);
 
   /**
    * Scroll to first error field when errors change
@@ -391,6 +462,19 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
   }, [errors, isSubmitted]);
 
   /**
+   * Combine validation errors from both sources:
+   * - actionValidationErrors: from Zod validation in useRequestInfoActions (Save/Submit)
+   * - validationErrorsFromForm: from React Hook Form errors (for form-level validation)
+   * Priority: actionValidationErrors takes precedence when present
+   */
+  const combinedValidationErrors = React.useMemo(() => {
+    if (actionValidationErrors.length > 0) {
+      return actionValidationErrors;
+    }
+    return validationErrorsFromForm;
+  }, [actionValidationErrors, validationErrorsFromForm]);
+
+  /**
    * Prepare context value
    */
   const contextValue = React.useMemo(
@@ -400,14 +484,15 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
       isLoading,
       itemId,
       status: currentRequest?.status,
-      validationErrors: validationErrorsFromForm,
+      validationErrors: combinedValidationErrors,
       handleSubmit,
       onSubmit,
+      onSubmitDirect: handleSubmitDirect,
       onSaveDraft: handleSaveDraft,
       onPutOnHold: handlePutOnHold,
       onCancelRequest: handleCancelRequest,
       onClose: handleClose,
-      setValidationErrors: () => {}, // No-op function for compatibility
+      setValidationErrors: setActionValidationErrors,
     }),
     [
       control,
@@ -415,13 +500,15 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
       isLoading,
       itemId,
       currentRequest?.status,
-      validationErrorsFromForm,
+      combinedValidationErrors,
       handleSubmit,
       onSubmit,
+      handleSubmitDirect,
       handleSaveDraft,
       handlePutOnHold,
       handleCancelRequest,
       handleClose,
+      setActionValidationErrors,
     ]
   );
 
@@ -431,21 +518,6 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
         <SPFormProvider control={control as any} autoShowErrors={true}>
           <div className='request-info'>
           <Stack tokens={FORM_CONTAINER_TOKENS} styles={FORM_CONTAINER_STYLES}>
-          {/* Header */}
-          <Stack tokens={HEADER_TOKENS}>
-            <Text variant='xxLarge' styles={PAGE_TITLE_STYLES}>
-              {itemId ? 'Edit Request' : 'New Legal Review Request'}
-            </Text>
-            {currentRequest?.requestId && (
-              <Stack horizontal verticalAlign='center' tokens={HEADER_TOKENS}>
-                <Icon iconName='Tag' styles={TAG_ICON_STYLES} />
-                <Text variant='large' styles={REQUEST_ID_TEXT_STYLES}>
-                  Request ID: {currentRequest.requestId}
-                </Text>
-              </Stack>
-            )}
-          </Stack>
-
           {/* Error message */}
           {error && (
             <MessageBar
@@ -457,47 +529,62 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
             </MessageBar>
           )}
 
-          {/* Workflow Stepper */}
-          {currentRequest?.requestType && (
-            <Card id='workflow-card' className='workflow-stepper-card'>
-              {renderStepper()}
-            </Card>
-          )}
+          {/* Form - Single Card with Header and Content */}
+          <form onSubmit={handleSubmit(onSubmit)} style={{ width: '100%' }}>
+            <Card
+              id='request-form-card'
+              className='request-form-card'
+              allowExpand={!!itemId}
+              defaultExpanded={true}
+            >
+              <Header size='regular'>
+                <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
+                  <Icon iconName='EditNote' styles={{ root: { fontSize: '20px', color: '#0078d4' } }} />
+                  <Text variant='large' styles={{ root: { fontWeight: 600 } }}>
+                    Request Information
+                  </Text>
+                  {calculatedIsRush && (
+                    <span
+                      style={{
+                        backgroundColor: '#fde7e9',
+                        color: '#d13438',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                      }}
+                    >
+                      RUSH
+                    </span>
+                  )}
+                </Stack>
+              </Header>
 
-          {/* Form Error Summary */}
-          <FormErrorSummary
-            position='sticky'
-            clickToScroll
-            showFieldLabels
-            maxErrors={10}
-          />
-
-          {/* Form - Single Card with Multiple Sections */}
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <Card id='request-form-card' className='request-form-card'>
-              <Stack tokens={FORM_SECTIONS_TOKENS} styles={{ root: { padding: '24px' } }}>
-                <BasicInfoSection
-                  errors={errors}
-                  hasSubmissionItemSelection={hasSubmissionItemSelection}
-                  calculatedIsRush={calculatedIsRush}
-                />
-                <ProductAudienceSection
-                  errors={errors}
-                  requestType={requestType}
-                />
-                <DistributionAudienceSection
-                  errors={errors}
-                  requestType={requestType}
-                />
-                <PriorSubmissionsSection
-                  errors={errors}
-                  priorSubmissions={priorSubmissions}
-                  onPriorSubmissionsChange={handlePriorSubmissionsChange}
-                  isLoading={isLoading}
-                  currentUserDepartment={SPContext.currentUser?.department}
-                />
-                <AdditionalPartiesSection errors={errors} />
-              </Stack>
+              <Content padding='comfortable'>
+                <Stack tokens={FORM_SECTIONS_TOKENS}>
+                  <BasicInfoSection
+                    errors={errors}
+                    hasSubmissionItemSelection={hasSubmissionItemSelection}
+                    calculatedIsRush={calculatedIsRush}
+                  />
+                  <ProductAudienceSection
+                    errors={errors}
+                    requestType={requestType}
+                  />
+                  <DistributionAudienceSection
+                    errors={errors}
+                    requestType={requestType}
+                  />
+                  <PriorSubmissionsSection
+                    errors={errors}
+                    priorSubmissions={priorSubmissions}
+                    onPriorSubmissionsChange={handlePriorSubmissionsChange}
+                    isLoading={isLoading}
+                    currentUserDepartment={SPContext.currentUser?.department}
+                  />
+                  <AdditionalPartiesSection errors={errors} />
+                </Stack>
+              </Content>
             </Card>
           </form>
         </Stack>

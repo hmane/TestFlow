@@ -12,7 +12,7 @@
     <Field Type="Choice"
            DisplayName="Document Type"
            Name="DocumentType"
-           ID="{D1234567-0001-0001-0001-000000000001}"
+           ID="{B6D2F593-667D-4731-B6CE-8879937F19EC}"
            Required="TRUE"
            Group="Document Metadata">
       <CHOICES>
@@ -30,7 +30,7 @@
     <Field Type="Lookup"
            DisplayName="Request"
            Name="Request"
-           ID="{D1234567-0001-0001-0001-000000000002}"
+           ID="{1A1D1177-DF07-433C-BAE5-27D2BC82C050}"
            Required="TRUE"
            List="Lists/Requests"
            ShowField="Title"
@@ -39,7 +39,7 @@
     <Field Type="Note"
            DisplayName="Description"
            Name="Description"
-           ID="{D1234567-0001-0001-0001-000000000003}"
+           ID="{ACC418A3-B576-4DE0-B523-6AF87815386D}"
            Required="FALSE"
            RichText="FALSE"
            NumLines="6"

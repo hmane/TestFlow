@@ -8,12 +8,12 @@
  * - Handles file conflicts (overwrite, rename, skip)
  */
 
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 
 import { Lists } from '@sp/Lists';
 
-import type { IExistingFile } from '../stores/documentsStore';
-import { ApprovalType } from '../types/approvalTypes';
+import type { IExistingFile } from '@stores/documentsStore';
+import { ApprovalType } from '@appTypes/approvalTypes';
 
 /**
  * File operation status
@@ -88,21 +88,22 @@ export interface IBatchOperationResult {
 
 /**
  * Get approval type folder name
+ * Must match the folder names used by documentService.ts when uploading files
  */
 function getApprovalTypeFolderName(approvalType: ApprovalType): string {
   switch (approvalType) {
     case ApprovalType.Communications:
-      return 'Communications';
+      return 'CommunicationsApproval';
     case ApprovalType.PortfolioManager:
-      return 'PortfolioManager';
+      return 'PortfolioManagerApproval';
     case ApprovalType.ResearchAnalyst:
-      return 'ResearchAnalyst';
+      return 'ResearchAnalystApproval';
     case ApprovalType.SubjectMatterExpert:
-      return 'SubjectMatterExpert';
+      return 'SubjectMatterExpertApproval';
     case ApprovalType.Performance:
-      return 'Performance';
+      return 'PerformanceApproval';
     case ApprovalType.Other:
-      return 'Other';
+      return 'OtherApproval';
     default:
       return 'Unknown';
   }
@@ -451,9 +452,17 @@ export async function loadApprovalFiles(
       )
       .expand('Author', 'Editor', 'ListItemAllFields')();
 
+    // Build absolute URL from server-relative path
+    // SPContext.webAbsoluteUrl format: "https://tenant.sharepoint.com/sites/sitename"
+    // ServerRelativeUrl format: "/sites/sitename/RequestDocuments/1/file.pdf"
+    const urlParts = SPContext.webAbsoluteUrl.split('/');
+    const protocol = urlParts[0]; // "https:"
+    const domain = urlParts[2]; // "tenant.sharepoint.com"
+    const origin = `${protocol}//${domain}`;
+
     const existingFiles: IExistingFile[] = files.map((file: any) => ({
       name: file.Name,
-      url: file.ServerRelativeUrl,
+      url: `${origin}${file.ServerRelativeUrl}`, // Convert to absolute URL for DocumentLink preview
       size: file.Length,
       timeCreated: file.TimeCreated,
       timeLastModified: file.TimeLastModified,

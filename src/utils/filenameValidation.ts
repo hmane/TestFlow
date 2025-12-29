@@ -3,8 +3,8 @@
  * Provides validation and parsing functions for document filenames
  */
 
-import type { IDocument } from '../stores/documentsStore';
-import type { DocumentType } from '../types/documentTypes';
+import type { IDocument } from '@stores/documentsStore';
+import type { DocumentType } from '@appTypes/documentTypes';
 
 /**
  * Invalid characters for SharePoint filenames

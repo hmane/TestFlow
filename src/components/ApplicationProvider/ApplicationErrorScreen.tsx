@@ -4,16 +4,12 @@
  * Custom error screen for application initialization failures
  */
 
-import {
-  DefaultButton,
-  MessageBar,
-  MessageBarType,
-  PrimaryButton,
-  Stack,
-  Text,
-} from '@fluentui/react';
+import { DefaultButton, PrimaryButton } from '@fluentui/react/lib/Button';
+import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
+import { Stack } from '@fluentui/react/lib/Stack';
+import { Text } from '@fluentui/react/lib/Text';
 import * as React from 'react';
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import './ApplicationProvider.scss';
 
 export interface IApplicationErrorScreenProps {

@@ -6,7 +6,7 @@
  * efficient than standard REST API queries.
  */
 
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
 import type { IRenderListDataParameters, IRenderListDataAsStreamResult } from '@pnp/sp/lists';
 
@@ -163,9 +163,10 @@ export async function renderListData<T = any>(
       RenderOptions: 2, // 2 = ContextInfo, includes field schemas
     };
 
-    // Execute renderListDataAsStream using PnP method
+    // Execute renderListDataAsStream using PnP method with pessimistic caching
+    // Use spPessimistic to bypass cache and always get fresh data
     // PnP handles authentication, request digest, and headers automatically
-    const data: IRenderListDataAsStreamResult = await SPContext.sp.web.lists
+    const data: IRenderListDataAsStreamResult = await SPContext.spPessimistic.web.lists
       .getByTitle(listTitle)
       .renderListDataAsStream(parameters);
 

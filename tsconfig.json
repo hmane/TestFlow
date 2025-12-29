@@ -28,8 +28,10 @@
       "@appTypes/*": ["src/types/*"],
       "@services/*": ["src/services/*"],
       "@extensions/*": ["src/extensions/*"],
-      "@sp/*": ["src/sp/*"]
+      "@sp/*": ["src/sp/*"],
+      "@utils/*": ["src/utils/*"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules", "lib", "src/**/*.test.ts", "src/**/*.test.tsx", "src/__tests__/**", "src/__mocks__/**", "src/setupTests.ts"]
 }

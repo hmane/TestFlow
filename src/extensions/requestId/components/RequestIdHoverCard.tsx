@@ -2,19 +2,14 @@
  * RequestIdHoverCard Component
  *
  * Wrapper component that provides hover card functionality for RequestId field
- * Uses Fluent UI HoverCard with expanding card type
- * - Compact view: Shows static list data immediately
- * - Expanded view: Loads full request details dynamically
+ * Uses Fluent UI HoverCard with plain card type (no expansion)
+ * Shows all request details in a single card view
  */
 
 import * as React from 'react';
-import {
-  HoverCard,
-  HoverCardType,
-  type IExpandingCardProps,
-} from '@fluentui/react';
+import { HoverCard, HoverCardType, type IPlainCardProps } from '@fluentui/react/lib/HoverCard';
+import { DirectionalHint } from 'spfx-toolkit/lib/types/fluentui-types';
 import { RequestCompactCard } from './RequestCompactCard';
-import { RequestExpandedCard } from './RequestExpandedCard';
 import type { IRequestIdHoverCardProps } from '../types';
 import styles from './RequestIdHoverCard.module.scss';
 
@@ -25,64 +20,49 @@ export const RequestIdHoverCard: React.FC<IRequestIdHoverCardProps> = ({
   requestId,
   itemData,
   editFormUrl,
-  webUrl,
-  listTitle,
+  listId,
 }) => {
   /**
-   * Render compact card (default view)
+   * Render plain card content
    */
-  const onRenderCompactCard = React.useCallback(
+  const onRenderPlainCard = React.useCallback(
     (): JSX.Element => {
       return (
         <RequestCompactCard
           itemData={itemData}
-          editFormUrl={editFormUrl}
-          webUrl={webUrl}
-          listTitle={listTitle}
+          listId={listId}
         />
       );
     },
-    [itemData, editFormUrl, webUrl, listTitle]
+    [itemData, listId]
   );
 
   /**
-   * Render expanded card (when user expands)
+   * Plain card props configuration
    */
-  const onRenderExpandedCard = React.useCallback(
-    (): JSX.Element => {
-      return (
-        <RequestExpandedCard
-          itemId={itemData.id}
-          itemData={itemData}
-          webUrl={webUrl}
-          listTitle={listTitle}
-        />
-      );
-    },
-    [itemData, webUrl, listTitle]
-  );
-
-  /**
-   * Expanding card props configuration
-   */
-  const expandingCardProps: IExpandingCardProps = React.useMemo(
+  const plainCardProps: IPlainCardProps = React.useMemo(
     () => ({
-      onRenderCompactCard,
-      onRenderExpandedCard,
+      onRenderPlainCard,
       renderData: itemData,
-      compactCardHeight: 320,
-      expandedCardHeight: 480,
+      directionalHint: DirectionalHint.bottomLeftEdge,
+      directionalHintFixed: false,
+      calloutProps: {
+        isBeakVisible: true,
+        gapSpace: 8,
+        preventDismissOnScroll: false,
+        setInitialFocus: false,
+      },
     }),
-    [onRenderCompactCard, onRenderExpandedCard, itemData]
+    [onRenderPlainCard, itemData]
   );
 
   return (
     <HoverCard
-      type={HoverCardType.expanding}
-      expandingCardProps={expandingCardProps}
+      type={HoverCardType.plain}
+      plainCardProps={plainCardProps}
       instantOpenOnClick={false}
       cardOpenDelay={300}
-      cardDismissDelay={100}
+      cardDismissDelay={200}
       styles={{
         host: {
           display: 'inline-block',

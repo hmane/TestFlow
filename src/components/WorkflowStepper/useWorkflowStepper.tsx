@@ -8,8 +8,8 @@
 import * as React from 'react';
 import { LazyWorkflowStepper } from 'spfx-toolkit/lib/components/lazy';
 import type { StepData } from 'spfx-toolkit/lib/components/WorkflowStepper/types';
-import { SPContext } from 'spfx-toolkit';
-import { RequestType } from '../../types';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
+import { RequestType } from '@appTypes/index';
 import { getStepsForStepper } from './workflowStepConfig';
 import type { IWorkflowStepperProps } from './WorkflowStepperTypes';
 
@@ -43,12 +43,12 @@ export interface IUseWorkflowStepperResult {
  * Provides easy integration with spfx-toolkit WorkflowStepper
  */
 export function useWorkflowStepper(props: IWorkflowStepperProps): IUseWorkflowStepperResult {
-  const { mode, requestType, currentStatus, onStepClick, className } = props;
+  const { mode, requestType, currentStatus, onStepClick, className, requestMetadata } = props;
 
   // Get steps in toolkit format
   const steps = React.useMemo(() => {
-    return getStepsForStepper(requestType, currentStatus, mode);
-  }, [requestType, currentStatus, mode]);
+    return getStepsForStepper(requestType, currentStatus, mode, requestMetadata);
+  }, [requestType, currentStatus, mode, requestMetadata]);
 
   // Track selected step
   const [selectedStepId, setSelectedStepId] = React.useState<string | undefined>(undefined);

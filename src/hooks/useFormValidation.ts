@@ -6,7 +6,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as React from 'react';
 import { DefaultValues, FieldPath, FieldValues, useForm, UseFormReturn } from 'react-hook-form';
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import type { z } from 'zod';
 
 /**

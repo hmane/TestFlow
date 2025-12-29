@@ -3,7 +3,7 @@
  */
 
 import { z } from 'zod';
-import { DocumentType } from '../types/documentTypes';
+import { DocumentType } from '@appTypes/documentTypes';
 
 /**
  * Allowed file extensions

@@ -22,7 +22,10 @@ export {
   useHasAnyRole,
   useHasAllRoles,
 } from './usePermissions';
-export type { IUserPermissions, IItemPermissions } from './usePermissions';
+export type { IUserPermissions, IItemPermissionsResult } from './usePermissions';
+
+// Re-export IItemPermissions from the store for compatibility
+export type { IItemPermissions } from '@stores/permissionsStore';
 
 // Document upload
 export { useDocumentUpload } from './useDocumentUpload';

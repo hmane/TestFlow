@@ -1,5 +1,9 @@
 import * as React from 'react';
-import { Icon, Separator, Stack, Text, Spinner, SpinnerSize } from '@fluentui/react';
+import { Icon } from '@fluentui/react/lib/Icon';
+import { Separator } from '@fluentui/react/lib/Separator';
+import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
+import { Stack } from '@fluentui/react/lib/Stack';
+import { Text } from '@fluentui/react/lib/Text';
 import { SelectBox } from 'devextreme-react/select-box';
 import { Controller, FieldErrors, useFormContext } from 'react-hook-form';
 
@@ -17,7 +21,7 @@ import {
   SPTextField,
   SPTextFieldMode,
 } from 'spfx-toolkit/lib/components/spFields';
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 
 import { Lists } from '@sp/Lists';
 
@@ -28,8 +32,8 @@ import {
   FINRAAudienceCategory,
   RequestType,
   ReviewAudience,
-  SeparateAccountStrategies,
-  SeparateAccountStrategiesIncludes,
+  SeparateAcctStrategies,
+  SeparateAcctStrategiesIncl,
   SubmissionType,
   UCITS,
   USFunds,
@@ -100,19 +104,18 @@ const UCITS_CHOICES: UCITS[] = [
   UCITS.USStockFund,
 ];
 
-const SEPARATE_ACCOUNT_STRATEGIES_CHOICES: SeparateAccountStrategies[] = [
-  SeparateAccountStrategies.AllSeparateAccountStrategies,
-  SeparateAccountStrategies.Equity,
-  SeparateAccountStrategies.FixedIncome,
-  SeparateAccountStrategies.Balanced,
+const SEPARATE_ACCT_STRATEGIES_CHOICES: SeparateAcctStrategies[] = [
+  SeparateAcctStrategies.AllSeparateAccountStrategies,
+  SeparateAcctStrategies.Equity,
+  SeparateAcctStrategies.FixedIncome,
+  SeparateAcctStrategies.Balanced,
 ];
 
-const SEPARATE_ACCOUNT_STRATEGIES_INCLUDES_CHOICES: SeparateAccountStrategiesIncludes[] = [
-  SeparateAccountStrategiesIncludes.ClientRelatedDataOnly,
-  SeparateAccountStrategiesIncludes.RepresentativeAccount,
-  SeparateAccountStrategiesIncludes.CompositeData,
+const SEPARATE_ACCT_STRATEGIES_INCL_CHOICES: SeparateAcctStrategiesIncl[] = [
+  SeparateAcctStrategiesIncl.ClientRelatedDataOnly,
+  SeparateAcctStrategiesIncl.RepresentativeAccount,
+  SeparateAcctStrategiesIncl.CompositeData,
 ];
-
 
 interface SectionHeaderProps {
   icon: string;
@@ -145,23 +148,37 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
   hasSubmissionItemSelection,
   calculatedIsRush,
 }) => {
-  const { control } = useFormContext<ILegalRequest>();
+  const { control, setValue, clearErrors } = useFormContext<ILegalRequest>();
   const requestListIdentifier = Lists.Requests.Title; //React.useMemo(() => getRequestListIdentifier(), []);
-  const { items: submissionItems, isLoading: isLoadingSubmissionItems, error: submissionItemsError } = useSubmissionItems();
+  const {
+    items: submissionItems,
+    isLoading: isLoadingSubmissionItems,
+    error: submissionItemsError,
+  } = useSubmissionItems();
 
   // Track if "Other" is selected
   const [isOtherSelected, setIsOtherSelected] = React.useState(false);
 
+  /**
+   * Handle submission item change - clear submissionItemOther when non-Other is selected
+   */
+  const handleSubmissionItemChange = React.useCallback(
+    (selectedValue: string, fieldOnChange: (value: string) => void) => {
+      fieldOnChange(selectedValue);
+      const isOther = selectedValue === 'Other';
+      setIsOtherSelected(isOther);
+
+      // Clear submissionItemOther when switching away from "Other" to avoid saving stale data
+      if (!isOther) {
+        setValue('submissionItemOther', '', { shouldDirty: false });
+        clearErrors('submissionItemOther');
+      }
+    },
+    [setValue, clearErrors]
+  );
+
   return (
     <>
-      <SectionHeader
-        icon='Info'
-        title='Basic Information'
-        description='Provide essential details about your request'
-      />
-
-      <Separator />
-
       <FormContainer labelWidth='200px'>
         <FormItem fieldName='requestTitle'>
           <FormLabel isRequired>Request Title</FormLabel>
@@ -224,9 +241,9 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
             control={control}
             rules={{ required: 'Submission Item is required' }}
             render={({ field, fieldState }) => (
-              <Stack tokens={{ childrenGap: 8 }}>
+              <Stack tokens={{ childrenGap: 4 }}>
                 {isLoadingSubmissionItems && (
-                  <Spinner size={SpinnerSize.small} label="Loading submission items..." />
+                  <Spinner size={SpinnerSize.small} label='Loading submission items...' />
                 )}
                 {submissionItemsError && (
                   <Text variant='small' styles={{ root: { color: '#d13438' } }}>
@@ -239,10 +256,8 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
                     displayExpr='title'
                     valueExpr='title'
                     value={field.value}
-                    onValueChanged={(e) => {
-                      const selectedValue = e.value;
-                      field.onChange(selectedValue);
-                      setIsOtherSelected(selectedValue === 'Other');
+                    onValueChanged={e => {
+                      handleSubmissionItemChange(e.value, field.onChange);
                     }}
                     placeholder='Select submission item'
                     searchEnabled={true}
@@ -250,15 +265,24 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
                     stylingMode='outlined'
                     disabled={submissionItems.length === 0}
                     isValid={!fieldState.error}
-                    validationError={fieldState.error ? { message: fieldState.error.message } : undefined}
                   />
+                )}
+                {fieldState.error && (
+                  <div className='sp-field-meta-row'>
+                    <span className='sp-field-error' role='alert'>
+                      <span className='sp-field-error-text'>{fieldState.error.message}</span>
+                    </span>
+                  </div>
                 )}
               </Stack>
             )}
           />
         </FormItem>
 
-        <FormItem fieldName='submissionItemOther' style={{ display: isOtherSelected ? 'block' : 'none' }}>
+        <FormItem
+          fieldName='submissionItemOther'
+          style={{ display: isOtherSelected ? 'block' : 'none' }}
+        >
           <FormLabel isRequired>Specify Other Submission Item</FormLabel>
           <SPTextField
             name='submissionItemOther'
@@ -267,7 +291,11 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
             maxLength={255}
             showCharacterCount
             stylingMode='outlined'
-            rules={{ required: isOtherSelected ? 'Please specify the submission item when selecting Other' : false }}
+            rules={{
+              required: isOtherSelected
+                ? 'Please specify the submission item when selecting Other'
+                : false,
+            }}
           />
         </FormItem>
 
@@ -279,6 +307,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
             dateTimeFormat={SPDateTimeFormat.DateOnly}
             displayFormat='MM/dd/yyyy'
             showClearButton
+            minDate={new Date()}
             disabled={!hasSubmissionItemSelection}
             rules={{
               required: 'Target return date is required',
@@ -291,25 +320,32 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
           )}
         </FormItem>
 
-        <FormItem fieldName='rushRationale' style={{ display: calculatedIsRush ? 'block' : 'none' }}>
-          <FormLabel isRequired>Rush Rationale</FormLabel>
-          <SPTextField
-            name='rushRationale'
-            placeholder='This is a rush request based on the turnaround time. Please explain why this deadline is necessary.'
-            mode={SPTextFieldMode.MultiLine}
-            rows={3}
-            maxLength={500}
-            showCharacterCount
-            stylingMode='outlined'
-            rules={{
-              required: calculatedIsRush ? 'Rush rationale is required for rush requests' : false,
-              maxLength: { value: 500, message: 'Rush rationale cannot exceed 500 characters' },
-            }}
-          />
-          <Text variant='small' styles={{ root: { color: '#d13438', marginTop: '4px' } }}>
-            ⚠️ Rush request: Target date is sooner than standard turnaround time
-          </Text>
-        </FormItem>
+        {calculatedIsRush && (
+          <FormItem fieldName='rushRationale'>
+            <FormLabel isRequired>Rush Rationale</FormLabel>
+            <>
+              <Text
+                variant='small'
+                styles={{ root: { color: '#c67700', marginBottom: '8px', display: 'block' } }}
+              >
+                ⚠️ Rush request: Target date is sooner than standard turnaround time
+              </Text>
+              <SPTextField
+                name='rushRationale'
+                placeholder='Please explain why this deadline is necessary.'
+                mode={SPTextFieldMode.MultiLine}
+                rows={3}
+                maxLength={500}
+                showCharacterCount
+                stylingMode='outlined'
+                rules={{
+                  required: 'Rush rationale is required for rush requests',
+                  maxLength: { value: 500, message: 'Rush rationale cannot exceed 500 characters' },
+                }}
+              />
+            </>
+          </FormItem>
+        )}
       </FormContainer>
     </>
   );
@@ -363,7 +399,7 @@ export const DistributionAudienceSection: React.FC<DistributionAudienceSectionPr
         </FormItem>
 
         <FormItem fieldName='distributionMethod'>
-          <FormLabel>Distribution Method</FormLabel>
+          <FormLabel isRequired={isVisible}>Distribution Method</FormLabel>
           <SPChoiceField
             name='distributionMethod'
             placeholder='Select one or more distribution methods'
@@ -375,17 +411,23 @@ export const DistributionAudienceSection: React.FC<DistributionAudienceSectionPr
               listNameOrId: requestListIdentifier,
               fieldInternalName: 'DistributionMethod',
             }}
+            rules={{
+              required: isVisible ? 'At least one distribution method is required' : false,
+            }}
           />
         </FormItem>
 
         <FormItem fieldName='dateOfFirstUse'>
-          <FormLabel>Date of First Use</FormLabel>
+          <FormLabel isRequired={isVisible}>Date of First Use</FormLabel>
           <SPDateField
             name='dateOfFirstUse'
             placeholder='Select date of first use'
             dateTimeFormat={SPDateTimeFormat.DateOnly}
             displayFormat='MM/dd/yyyy'
             showClearButton
+            rules={{
+              required: isVisible ? 'Date of first use is required' : false,
+            }}
           />
         </FormItem>
       </FormContainer>
@@ -417,103 +459,135 @@ export const ProductAudienceSection: React.FC<ProductAudienceSectionProps> = ({
           description='Specify the target audience and products for this communication'
         />
       </div>
-      <FormContainer labelWidth='200px' style={{ display: isVisible ? 'block' : 'none' }}>
-        <FormItem fieldName='finraAudienceCategory'>
-          <FormLabel>FINRA Audience Category</FormLabel>
-          <SPChoiceField
-            name='finraAudienceCategory'
-            placeholder='Select FINRA audience categories'
-            allowMultiple
-            displayType={SPChoiceDisplayType.Checkboxes}
-            choices={FINRA_AUDIENCE_CATEGORY_CHOICES}
-            dataSource={{
-              type: 'list',
-              listNameOrId: requestListIdentifier,
-              fieldInternalName: 'FINRAAudienceCategory',
-            }}
-          />
-        </FormItem>
+      <div style={{ display: isVisible ? 'block' : 'none' }}>
+        {/* FINRA Audience Category and Audience in one row */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '24px',
+            marginBottom: '16px',
+          }}
+        >
+          <FormContainer>
+            <FormItem fieldName='finraAudienceCategory'>
+              <FormLabel>FINRA Audience Category</FormLabel>
+              <SPChoiceField
+                name='finraAudienceCategory'
+                placeholder='Select FINRA audience categories'
+                allowMultiple
+                displayType={SPChoiceDisplayType.Checkboxes}
+                choices={FINRA_AUDIENCE_CATEGORY_CHOICES}
+                dataSource={{
+                  type: 'list',
+                  listNameOrId: requestListIdentifier,
+                  fieldInternalName: 'FINRAAudienceCategory',
+                }}
+              />
+            </FormItem>
+          </FormContainer>
+          <FormContainer>
+            <FormItem fieldName='audience'>
+              <FormLabel>Audience</FormLabel>
+              <SPChoiceField
+                name='audience'
+                placeholder='Select target audiences'
+                allowMultiple
+                displayType={SPChoiceDisplayType.Checkboxes}
+                choices={AUDIENCE_CHOICES}
+                dataSource={{
+                  type: 'list',
+                  listNameOrId: requestListIdentifier,
+                  fieldInternalName: 'Audience',
+                }}
+              />
+            </FormItem>
+          </FormContainer>
+        </div>
 
-        <FormItem fieldName='audience'>
-          <FormLabel>Audience</FormLabel>
-          <SPChoiceField
-            name='audience'
-            placeholder='Select target audiences'
-            allowMultiple
-            displayType={SPChoiceDisplayType.Checkboxes}
-            choices={AUDIENCE_CHOICES}
-            dataSource={{
-              type: 'list',
-              listNameOrId: requestListIdentifier,
-              fieldInternalName: 'Audience',
-            }}
-          />
-        </FormItem>
+        {/* U.S. Funds and UCITS in one row */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '24px',
+            marginBottom: '16px',
+          }}
+        >
+          <FormContainer>
+            <FormItem fieldName='usFunds'>
+              <FormLabel>U.S. Funds</FormLabel>
+              <SPChoiceField
+                name='usFunds'
+                placeholder='Select U.S. funds'
+                allowMultiple
+                displayType={SPChoiceDisplayType.Checkboxes}
+                choices={US_FUNDS_CHOICES}
+                dataSource={{
+                  type: 'list',
+                  listNameOrId: requestListIdentifier,
+                  fieldInternalName: 'USFunds',
+                }}
+              />
+            </FormItem>
+          </FormContainer>
+          <FormContainer>
+            <FormItem fieldName='ucits'>
+              <FormLabel>UCITS</FormLabel>
+              <SPChoiceField
+                name='ucits'
+                placeholder='Select UCITS funds'
+                allowMultiple
+                displayType={SPChoiceDisplayType.Checkboxes}
+                choices={UCITS_CHOICES}
+                dataSource={{
+                  type: 'list',
+                  listNameOrId: requestListIdentifier,
+                  fieldInternalName: 'UCITS',
+                }}
+              />
+            </FormItem>
+          </FormContainer>
+        </div>
 
-        <FormItem fieldName='usFunds'>
-          <FormLabel>U.S. Funds</FormLabel>
-          <SPChoiceField
-            name='usFunds'
-            placeholder='Select U.S. funds'
-            allowMultiple
-            displayType={SPChoiceDisplayType.Checkboxes}
-            choices={US_FUNDS_CHOICES}
-            dataSource={{
-              type: 'list',
-              listNameOrId: requestListIdentifier,
-              fieldInternalName: 'USFunds',
-            }}
-          />
-        </FormItem>
+        {/* Separate Account Strategies */}
+        <FormContainer>
+          <FormItem fieldName='separateAcctStrategies'>
+            <FormLabel>Separate Account Strategies</FormLabel>
+            <SPChoiceField
+              name='separateAcctStrategies'
+              placeholder='Select separate account strategies'
+              allowMultiple
+              displayType={SPChoiceDisplayType.Checkboxes}
+              choices={SEPARATE_ACCT_STRATEGIES_CHOICES}
+              dataSource={{
+                type: 'list',
+                listNameOrId: requestListIdentifier,
+                fieldInternalName: 'SeparateAcctStrategies',
+              }}
+            />
+          </FormItem>
+        </FormContainer>
 
-        <FormItem fieldName='ucits'>
-          <FormLabel>UCITS</FormLabel>
-          <SPChoiceField
-            name='ucits'
-            placeholder='Select UCITS funds'
-            allowMultiple
-            displayType={SPChoiceDisplayType.Checkboxes}
-            choices={UCITS_CHOICES}
-            dataSource={{
-              type: 'list',
-              listNameOrId: requestListIdentifier,
-              fieldInternalName: 'UCITS',
-            }}
-          />
-        </FormItem>
-
-        <FormItem fieldName='separateAccountStrategies'>
-          <FormLabel>Separate Account Strategies</FormLabel>
-          <SPChoiceField
-            name='separateAccountStrategies'
-            placeholder='Select separate account strategies'
-            allowMultiple
-            displayType={SPChoiceDisplayType.Checkboxes}
-            choices={SEPARATE_ACCOUNT_STRATEGIES_CHOICES}
-            dataSource={{
-              type: 'list',
-              listNameOrId: requestListIdentifier,
-              fieldInternalName: 'SeparateAccountStrategies',
-            }}
-          />
-        </FormItem>
-
-        <FormItem fieldName='separateAccountStrategiesIncludes'>
-          <FormLabel>Separate Account Strategies Includes</FormLabel>
-          <SPChoiceField
-            name='separateAccountStrategiesIncludes'
-            placeholder='Select what separate account strategies include'
-            allowMultiple
-            displayType={SPChoiceDisplayType.Checkboxes}
-            choices={SEPARATE_ACCOUNT_STRATEGIES_INCLUDES_CHOICES}
-            dataSource={{
-              type: 'list',
-              listNameOrId: requestListIdentifier,
-              fieldInternalName: 'SeparateAccountStrategiesIncludes',
-            }}
-          />
-        </FormItem>
-      </FormContainer>
+        {/* Includes */}
+        <FormContainer>
+          <FormItem fieldName='separateAcctStrategiesIncl'>
+            <FormLabel>Includes</FormLabel>
+            <SPChoiceField
+              name='separateAcctStrategiesIncl'
+              placeholder='Select what separate account strategies include'
+              allowMultiple
+              displayType={SPChoiceDisplayType.Checkboxes}
+              choices={SEPARATE_ACCT_STRATEGIES_INCL_CHOICES}
+              dataSource={{
+                type: 'list',
+                listNameOrId: requestListIdentifier,
+                fieldInternalName: 'SeparateAcctStrategiesIncl',
+              }}
+            />
+          </FormItem>
+        </FormContainer>
+      </div>
     </>
   );
 };
@@ -574,32 +648,30 @@ interface AdditionalPartiesSectionProps {
   errors: FieldErrors<ILegalRequest>;
 }
 
-export const AdditionalPartiesSection: React.FC<AdditionalPartiesSectionProps> = ({
-  errors,
-}) => {
+export const AdditionalPartiesSection: React.FC<AdditionalPartiesSectionProps> = ({ errors }) => {
   const { control } = useFormContext<ILegalRequest>();
 
   return (
-  <>
-    <Separator />
-    <SectionHeader
-      icon='People'
-      title='Additional Parties'
-      description='Add other people who should be notified or involved'
-    />
-    <FormContainer labelWidth='200px'>
-      <FormItem fieldName='additionalParty'>
-        <FormLabel>Additional Parties</FormLabel>
-        <PnPPeoplePicker
-          name='additionalParty'
-          control={control}
-          context={SPContext.peoplepickerContext}
-          placeholder='Search for people to add'
-          personSelectionLimit={10}
-          ensureUser={true}
-        />
-      </FormItem>
-    </FormContainer>
-  </>
+    <>
+      <Separator />
+      <SectionHeader
+        icon='People'
+        title='Additional Parties'
+        description='Add other people who should be notified or involved'
+      />
+      <FormContainer labelWidth='200px'>
+        <FormItem fieldName='additionalParty'>
+          <FormLabel>Additional Parties</FormLabel>
+          <PnPPeoplePicker
+            name='additionalParty'
+            control={control}
+            context={SPContext.peoplepickerContext}
+            placeholder='Search for people to add'
+            personSelectionLimit={10}
+            ensureUser={true}
+          />
+        </FormItem>
+      </FormContainer>
+    </>
   );
 };

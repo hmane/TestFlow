@@ -1,42 +1,242 @@
 /**
  * RequestContainer styles
+ *
+ * Layout Structure:
+ * - Stepper at top (full width)
+ * - Header row (Request ID + Manage Access + Comments toggle)
+ * - 70/30 split: Form cards (left) + Comments panel (right)
+ * - Full width when comments collapsed
  */
 
 .request-container {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  background-color: #faf9f8;
+  width: 100%;
+  max-width: 100%;
+  background-color: #ffffff;
+  box-sizing: border-box;
+  overflow-x: hidden; // Prevent horizontal scroll
 
-  &--with-drawer {
-    position: relative;
+  // Ensure all children use border-box
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
   }
 
-  &__main-content {
+  // Stepper area - full width at top
+  &__stepper {
+    width: 100%;
+    padding: 16px 24px;
+    background-color: #ffffff;
+    border-bottom: 1px solid #edebe9;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+
+  // Header area - Request ID + Manage Access + Comments toggle
+  &__header {
+    width: 100%;
+    padding: 16px 24px;
+    background-color: #ffffff;
+    border-bottom: 1px solid #edebe9;
+  }
+
+  &__status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  // Request type token - elegant badge like hover card
+  &__type-token {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  // Manage Access container
+  &__manage-access {
+    display: flex;
+    align-items: center;
+  }
+
+  // Comments toggle button
+  &__comments-toggle {
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    min-width: 32px;
+    min-height: 32px;
+    flex-shrink: 0; // Prevent button from shrinking
+
+    &.active {
+      background-color: #deecf9;
+      color: #0078d4;
+    }
+
+    &:hover {
+      background-color: #edebe9;
+    }
+  }
+
+  // Main content area
+  &__main {
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 
+  // Draft layout - full width, no split
+  &__draft-layout {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    width: 100%;
+  }
+
+  // Full layout - when comments collapsed
+  &__full-layout {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    width: 100%;
+  }
+
+  // Split layout - 70/30 for submitted requests with comments open
+  &__split-layout {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    max-width: 100%;
+    min-height: calc(100vh - 150px);
+    overflow: hidden;
+  }
+
+  // Form area - left side (70%)
+  &__form-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-width: 0; // Allow flex shrink
+  }
+
+  // Comments area - right side (fixed width)
+  &__comments-area {
+    width: 360px;
+    min-width: 360px;
+    max-width: 400px;
+    flex-shrink: 0; // Don't shrink
+    display: flex;
+    flex-direction: column;
+    border-left: 1px solid #edebe9;
+    background-color: #ffffff;
+    transition: width 0.3s ease;
+  }
+
+  // Comments panel
   &__comments-panel {
     display: flex;
     flex-direction: column;
     height: 100%;
     background-color: #ffffff;
-    border-left: 1px solid #edebe9;
+  }
+
+  &__comments-header {
+    padding: 16px;
+    border-bottom: 1px solid #edebe9;
+    background-color: #faf9f8;
+  }
+
+  // Warning message for special characters
+  &__comments-warning {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background-color: #fff4ce;
+    border-bottom: 1px solid #ffb900;
+    font-size: 11px;
+    color: #8a6914;
+
+    i {
+      font-size: 12px;
+      color: #8a6914;
+    }
   }
 
   &__comments-content {
     flex: 1;
     overflow-y: auto;
     padding: 16px;
+
+    // Enable text selection in comments
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+
+    // PnP ListItemComments overrides
+    .ql-container {
+      min-height: 100px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .ql-editor {
+      font-size: 14px;
+      line-height: 1.5;
+      user-select: text; // Enable text selection in editor
+    }
+
+    // Comment list styling - enable selection
+    .ms-List {
+      max-height: calc(100vh - 400px);
+      overflow-y: auto;
+      user-select: text;
+    }
+
+    .ms-ListItem {
+      border-bottom: 1px solid #edebe9;
+      padding: 12px 0;
+      user-select: text;
+      cursor: text;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      // Ensure all text content is selectable
+      * {
+        user-select: text;
+      }
+    }
+
+    // Comment text content
+    [class*='comment'],
+    [class*='Comment'] {
+      user-select: text;
+      cursor: text;
+    }
   }
 
-  &__drawer-toggle {
-    position: relative;
-  }
-
+  // Placeholder for unknown states
   &__placeholder {
     flex: 1;
     display: flex;
@@ -46,111 +246,116 @@
   }
 }
 
-// DevExtreme Drawer overrides
-.dx-drawer {
-  height: 100vh;
-
-  .dx-drawer-panel-content {
-    height: 100%;
-  }
-
-  .dx-drawer-wrapper {
-    height: 100%;
-    overflow: hidden;
-  }
-
-  // Drawer animation
-  .dx-drawer-shader {
-    background-color: rgba(0, 0, 0, 0.3);
-    transition: background-color 0.3s ease;
-  }
-}
-
-// Comments panel styling
-.request-container__comments-panel {
-  // PnP ListItemComments overrides
-  .ql-container {
-    min-height: 100px;
-    max-height: 200px;
-    overflow-y: auto;
-  }
-
-  .ql-editor {
-    font-size: 14px;
-    line-height: 1.5;
-  }
-
-  // Comment list styling
-  .ms-List {
-    max-height: calc(100vh - 300px);
-    overflow-y: auto;
-  }
-
-  .ms-ListItem {
-    border-bottom: 1px solid #edebe9;
-    padding: 12px 0;
-
-    &:last-child {
-      border-bottom: none;
-    }
-  }
-}
-
-// Floating toggle button animation
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(0, 120, 212, 0.7);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(0, 120, 212, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(0, 120, 212, 0);
-  }
-}
-
-.request-container__drawer-toggle button {
-  animation: pulse 2s infinite;
-
-  &:hover {
-    animation: none;
-    box-shadow: 0 4px 12px rgba(0, 120, 212, 0.3);
-  }
-}
-
 // Responsive design
-@media (max-width: 1024px) {
-  .dx-drawer[data-dx-drawer-opened='true'] {
-    .dx-drawer-panel-content {
-      width: 350px !important;
+@media (max-width: 1200px) {
+  .request-container {
+    &__split-layout {
+      flex-direction: column;
+    }
+
+    &__form-area {
+      width: 100%;
+    }
+
+    &__comments-area {
+      width: 100%;
+      max-width: none;
+      border-left: none;
+      border-top: 1px solid #edebe9;
+      height: 400px;
     }
   }
 }
 
 @media (max-width: 768px) {
-  .dx-drawer[data-dx-drawer-opened='true'] {
-    .dx-drawer-panel-content {
-      width: 100% !important;
-      max-width: 320px;
+  .request-container {
+    &__stepper {
+      padding: 12px 16px;
     }
-  }
 
-  .request-container__comments-content {
-    padding: 12px;
+    &__header {
+      padding: 12px 16px;
+
+      .ms-Stack {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+    }
+
+    &__draft-layout,
+    &__full-layout,
+    &__form-area {
+      padding: 16px;
+    }
+
+    &__comments-content {
+      padding: 12px;
+    }
+
+    &__manage-access {
+      display: none;
+    }
   }
 }
 
 // Print styles
 @media print {
-  .request-container__comments-panel {
-    display: none;
-  }
+  .request-container {
+    &__comments-area {
+      display: none;
+    }
 
-  .request-container__drawer-toggle {
-    display: none;
-  }
+    &__stepper {
+      box-shadow: none;
+      border-bottom: 2px solid #000;
+    }
 
-  .dx-drawer-shader {
-    display: none;
+    &__header {
+      border-bottom: 1px solid #000;
+
+      button {
+        display: none;
+      }
+    }
+
+    &__manage-access {
+      display: none;
+    }
+
+    &__comments-toggle {
+      display: none;
+    }
+  }
+}
+
+// High contrast mode support
+@media (prefers-contrast: high) {
+  .request-container {
+    &__stepper,
+    &__header {
+      border-bottom: 2px solid currentColor;
+    }
+
+    &__comments-area {
+      border-left: 2px solid currentColor;
+    }
+
+    &__status-badge {
+      border: 2px solid currentColor;
+    }
+
+    &__comments-toggle {
+      border: 1px solid currentColor;
+    }
+  }
+}
+
+// Accessibility enhancements
+// NOTE: Exclude DevExtreme components (dx-*) which have their own focus styling
+.request-container {
+  *:focus-visible:not([class*='dx-']) {
+    outline: 2px solid #0078d4;
+    outline-offset: 2px;
   }
 }

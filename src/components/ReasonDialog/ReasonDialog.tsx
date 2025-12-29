@@ -4,17 +4,11 @@
  */
 
 import * as React from 'react';
-import {
-  Dialog,
-  DialogType,
-  DialogFooter,
-  PrimaryButton,
-  DefaultButton,
-  TextField,
-  Stack,
-  MessageBar,
-  MessageBarType,
-} from '@fluentui/react';
+import { Dialog, DialogType, DialogFooter } from '@fluentui/react/lib/Dialog';
+import { DefaultButton, PrimaryButton } from '@fluentui/react/lib/Button';
+import { TextField } from '@fluentui/react/lib/TextField';
+import { Stack } from '@fluentui/react/lib/Stack';
+import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
 
 /**
  * Action type for the dialog

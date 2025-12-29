@@ -1,258 +1,483 @@
 /**
  * RequestSummary Component Styles
+ *
+ * Compact multi-column layout for request summary display
+ * Uses CSS Grid for efficient space usage
  */
+
+// Card container overrides
+.request-summary-card {
+  margin-bottom: 16px;
+
+  // Override Card header if needed
+  .card-header {
+    border-bottom: 1px solid #edebe9;
+  }
+}
 
 .request-summary {
   width: 100%;
 
-  .summary-header-card {
-    background: linear-gradient(135deg, #ffffff 0%, #f3f9fd 100%);
-    border: 2px solid #0078d4;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 120, 212, 0.15);
-    margin-bottom: 24px;
-    animation: slideInDown 0.4s ease;
+  // Section container
+  .summary-section {
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #edebe9;
 
-    .summary-icon {
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #e6f2ff 0%, #cce4ff 100%);
+    &:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+
+    // Section header
+    &__header {
       display: flex;
       align-items: center;
-      justify-content: center;
-      animation: pulse 2s ease-in-out infinite;
+      gap: 8px;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #f3f2f1;
     }
 
-    button {
-      transition: all 0.2s ease;
+    &__icon {
+      font-size: 14px;
+      color: #0078d4;
+    }
 
-      &:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 120, 212, 0.2);
-      }
+    &__title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #323130;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+  }
 
-      &:active {
-        transform: translateY(0);
+  // Grid layouts
+  .summary-grid {
+    display: grid;
+    gap: 12px 24px;
+
+    &--2col {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    &--3col {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    &--4col {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  // Full width field (for long content like Purpose)
+  .summary-full-width {
+    grid-column: 1 / -1;
+    margin-top: 8px;
+  }
+
+  // Highlight variations
+  .summary-highlight--danger {
+    background-color: #fde7e9;
+    border-radius: 4px;
+    padding: 8px 12px;
+    border-left: 3px solid #d13438;
+  }
+
+  .summary-highlight--warning {
+    background-color: #fff4ce;
+    border-radius: 4px;
+    padding: 8px 12px;
+    border-left: 3px solid #ffb900;
+  }
+
+  .summary-highlight--info {
+    background-color: #e6f2ff;
+    border-radius: 4px;
+    padding: 8px 12px;
+    border-left: 3px solid #0078d4;
+  }
+
+  // Compact field display
+  .summary-field {
+    display: flex;
+    flex-direction: column;
+    min-width: 0; // Allow text truncation
+
+    &__label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #8a8886; // Muted gray for label
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-bottom: 4px;
+    }
+
+    &__icon {
+      font-size: 12px;
+      color: #0078d4; // Blue accent for icon
+      flex-shrink: 0;
+      width: 14px; // Fixed width for alignment
+    }
+
+    &__value {
+      font-size: 14px;
+      font-weight: 500; // Slightly bolder for emphasis
+      color: #201f1e; // Darker for better contrast
+      line-height: 1.4;
+      word-break: break-word;
+      margin-left: 20px; // Align with label text (past the icon)
+    }
+
+    // Badges variant
+    &--badges {
+      .summary-field__value {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
       }
     }
   }
 
-  .summary-section-card {
-    background-color: #ffffff;
-    border: 1px solid #e1e4e8;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    margin-bottom: 20px;
-    transition: all 0.3s ease;
-    animation: fadeInUp 0.5s ease;
+  // Badge component
+  .summary-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  // Badges container
+  .summary-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  // Link styling for prior submissions
+  .summary-link {
+    color: #0078d4;
+    cursor: pointer;
+    text-decoration: none;
 
     &:hover {
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
-      transform: translateY(-2px);
-    }
-
-    // Section icons
-    .ms-Icon {
-      transition: transform 0.3s ease;
-    }
-
-    &:hover .ms-Icon {
-      transform: scale(1.1);
+      text-decoration: underline;
     }
   }
 
-  .summary-info-card {
-    background-color: #f3f9fd;
-    border: 1px solid #cce4ff;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    animation: fadeInUp 0.6s ease;
+  // Approvals list container
+  .summary-approvals-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
   }
 
-  // Field display styling
-  .ms-Label {
-    font-weight: 600;
-    color: #323130;
-    margin-bottom: 4px;
-  }
-
-  // Badge styling (handled inline but we can add global styles)
-  .badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 600;
-    margin-right: 8px;
-    margin-bottom: 8px;
-    animation: scaleIn 0.3s ease;
-  }
-
-  // Approval card styling
-  .ms-Card {
-    transition: all 0.2s ease;
+  // Approval card with attachment support
+  .summary-approval-card {
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+    background-color: #faf9f8;
+    border-radius: 6px;
+    border: 1px solid #edebe9;
+    transition: box-shadow 0.2s ease;
 
     &:hover {
-      transform: scale(1.02);
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     }
-  }
 
-  // Separator styling
-  .ms-Separator {
-    &::before {
-      background: linear-gradient(90deg, #e1e4e8 0%, transparent 100%);
+    &__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
     }
-  }
 
-  // Animations
-  @keyframes slideInDown {
-    from {
-      opacity: 0;
-      transform: translateY(-20px);
+    &__type {
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
 
-  @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
+    &__icon {
+      font-size: 14px;
+      color: #107c10;
     }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
 
-  @keyframes pulse {
-    0%,
-    100% {
-      transform: scale(1);
+    &__type-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #323130;
     }
-    50% {
-      transform: scale(1.05);
+
+    &__date {
+      font-size: 11px;
+      color: #8a8886;
     }
-  }
 
-  @keyframes scaleIn {
-    from {
-      opacity: 0;
-      transform: scale(0.8);
+    &__approver {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #605e5c;
+      margin-bottom: 8px;
     }
-    to {
-      opacity: 1;
-      transform: scale(1);
+
+    &__approver-icon {
+      font-size: 12px;
+      color: #8a8886;
     }
-  }
 
-  // Responsive design
-  @media (max-width: 768px) {
-    padding: 0 8px;
+    &__attachment {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-top: 10px;
+      border-top: 1px solid #edebe9;
+      margin-top: 4px;
 
-    .summary-header-card {
-      border-radius: 0;
-      border-left: none;
-      border-right: none;
-      margin-bottom: 16px;
-
-      .ms-Stack {
-        padding: 16px !important;
+      // DocumentLink component styling - ensure each link is on its own line
+      > * {
+        display: block;
+        width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
-      .summary-icon {
-        width: 48px;
-        height: 48px;
+      .document-link-container,
+      .document-link-wrapper {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+      }
 
-        .ms-Icon {
-          font-size: 24px !important;
+      // Target the link inside DocumentLink component
+      a {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        max-width: 100%;
+        font-size: 12px;
+        color: #0078d4;
+        text-decoration: none;
+        overflow: hidden;
+
+        &:hover {
+          text-decoration: underline;
+        }
+
+        // Truncate long filenames
+        span,
+        .document-link-text {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
       }
-    }
 
-    .summary-section-card {
-      border-radius: 0;
-      border-left: none;
-      border-right: none;
-      margin-bottom: 16px;
-
-      .ms-Stack {
-        padding: 16px !important;
+      // File icon styling
+      i,
+      .ms-Icon {
+        flex-shrink: 0;
+        font-size: 14px;
       }
     }
 
-    .summary-info-card {
-      border-radius: 0;
-      border-left: none;
-      border-right: none;
-      margin-bottom: 16px;
+    &__no-attachment {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-top: 8px;
+      border-top: 1px solid #edebe9;
+      margin-top: 4px;
+      font-size: 11px;
+      color: #a19f9d;
+      font-style: italic;
 
-      .ms-Stack {
-        padding: 12px 16px !important;
+      i {
+        font-size: 12px;
       }
     }
   }
 
-  // Print styles
-  @media print {
-    .summary-header-card {
-      box-shadow: none;
-      border: 2px solid #000;
-      page-break-inside: avoid;
+  // Legacy approval item (keep for backwards compatibility)
+  .summary-approval-item {
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+    background-color: #faf9f8;
+    border-radius: 4px;
+    border: 1px solid #edebe9;
 
-      button {
-        display: none;
-      }
-
-      .summary-icon {
-        animation: none;
-      }
+    &__type {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #323130;
+      margin-bottom: 4px;
     }
 
-    .summary-section-card {
-      box-shadow: none;
-      border: 1px solid #000;
-      page-break-inside: avoid;
-      animation: none;
-
-      &:hover {
-        transform: none;
-      }
+    &__icon {
+      font-size: 12px;
+      color: #107c10;
     }
 
-    .summary-info-card {
-      box-shadow: none;
-      border: 1px solid #000;
-      page-break-inside: avoid;
+    &__details {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    &__approver {
+      font-size: 12px;
+      color: #605e5c;
+    }
+
+    &__date {
+      font-size: 11px;
+      color: #8a8886;
     }
   }
 
-  // High contrast mode support
-  @media (prefers-contrast: high) {
-    .summary-header-card {
-      border: 3px solid currentColor;
+  // Footer section (submitted by/on)
+  .summary-footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding-top: 12px;
+    margin-top: 16px;
+    border-top: 1px solid #edebe9;
+    background-color: #faf9f8;
+    border-radius: 4px;
+    padding: 12px;
+
+    &__item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #605e5c;
+
+      strong {
+        color: #323130;
+      }
     }
 
-    .summary-section-card {
+    &__icon {
+      font-size: 12px;
+      color: #8a8886;
+    }
+  }
+}
+
+// Responsive design
+@media (max-width: 1024px) {
+  .request-summary {
+    .summary-grid {
+      &--3col,
+      &--4col {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .request-summary {
+    .summary-grid {
+      &--2col,
+      &--3col,
+      &--4col {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .summary-footer {
+      flex-direction: column;
+      gap: 8px;
+    }
+  }
+}
+
+// Print styles
+@media print {
+  .request-summary-card {
+    box-shadow: none;
+    border: 1px solid #000;
+    page-break-inside: avoid;
+  }
+
+  .request-summary {
+    .summary-section {
+      page-break-inside: avoid;
+    }
+
+    .summary-badge {
+      border: 1px solid currentColor;
+    }
+
+    .summary-footer {
+      background-color: transparent;
+    }
+  }
+}
+
+// High contrast mode support
+@media (prefers-contrast: high) {
+  .request-summary-card {
+    border: 2px solid currentColor;
+  }
+
+  .request-summary {
+    .summary-section {
+      border-color: currentColor;
+
+      &__header {
+        border-color: currentColor;
+      }
+    }
+
+    .summary-field {
+      &__label {
+        color: currentColor;
+      }
+    }
+
+    .summary-badge {
+      border: 1px solid currentColor;
+    }
+
+    .summary-approval-item {
       border: 2px solid currentColor;
     }
 
-    .summary-info-card {
-      border: 2px solid currentColor;
+    .summary-footer {
+      border: 1px solid currentColor;
     }
   }
+}
 
-  // Accessibility enhancements
+// Accessibility enhancements
+.request-summary {
   *:focus-visible {
     outline: 2px solid #0078d4;
     outline-offset: 2px;
   }
 
-  button:focus-visible {
-    box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.3);
+  .summary-link:focus-visible {
+    outline: 2px solid #0078d4;
+    outline-offset: 1px;
+    border-radius: 2px;
   }
 }

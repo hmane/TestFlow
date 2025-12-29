@@ -5,7 +5,9 @@
  */
 
 import * as React from 'react';
-import { Stack, Text, ProgressIndicator } from '@fluentui/react';
+import { Stack } from '@fluentui/react/lib/Stack';
+import { Text } from '@fluentui/react/lib/Text';
+import { ProgressIndicator } from '@fluentui/react/lib/ProgressIndicator';
 import { ShimmerLoading } from 'spfx-toolkit/lib/components/Card/components/LoadingStates';
 import './ApplicationProvider.scss';
 

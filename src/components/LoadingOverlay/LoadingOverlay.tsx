@@ -12,7 +12,9 @@
  */
 
 import * as React from 'react';
-import { Spinner, SpinnerSize, Stack, Text } from '@fluentui/react';
+import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
+import { Stack } from '@fluentui/react/lib/Stack';
+import { Text } from '@fluentui/react/lib/Text';
 import './LoadingOverlay.scss';
 
 /**

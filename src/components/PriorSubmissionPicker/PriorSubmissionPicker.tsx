@@ -10,19 +10,16 @@
  * - Remove capability for selected items
  */
 
-import {
-  Icon,
-  IconButton,
-  Link,
-  Spinner,
-  SpinnerSize,
-  Stack,
-  Text,
-  TooltipHost,
-} from '@fluentui/react';
+import { Icon } from '@fluentui/react/lib/Icon';
+import { IconButton } from '@fluentui/react/lib/Button';
+import { Link } from '@fluentui/react/lib/Link';
+import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
+import { Stack } from '@fluentui/react/lib/Stack';
+import { Text } from '@fluentui/react/lib/Text';
+import { TooltipHost } from '@fluentui/react/lib/Tooltip';
 import Autocomplete from 'devextreme-react/autocomplete';
 import * as React from 'react';
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import type { SPLookup } from 'spfx-toolkit/lib/types';
 import './PriorSubmissionPicker.scss';
 
@@ -83,6 +80,10 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [searchValue, setSearchValue] = React.useState<string>('');
 
+  // Cache for submission details to avoid duplicate API calls
+  // When user selects from dropdown, we already have the data - cache it
+  const submissionCacheRef = React.useRef<Map<number, IPriorSubmission>>(new Map());
+
   /**
    * Load prior submissions from SharePoint
    */
@@ -138,6 +139,11 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
           department: item.Department,
         }));
 
+        // Cache search results to avoid duplicate API calls when selecting
+        submissions.forEach(submission => {
+          submissionCacheRef.current.set(submission.id, submission);
+        });
+
         setDataSource(submissions);
       } catch (error: unknown) {
         SPContext.logger.error('Failed to load prior submissions', error);
@@ -163,7 +169,8 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
   }, [searchValue, loadPriorSubmissions]);
 
   /**
-   * Load selected requests details
+   * Load selected requests details - uses cache to avoid duplicate API calls
+   * Only fetches items that aren't already cached (e.g., on initial load with pre-selected values)
    */
   React.useEffect(() => {
     if (!value || value.length === 0) {
@@ -173,23 +180,36 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
 
     const loadSelectedDetails = async (): Promise<void> => {
       try {
-        // Build array of IDs
-        const ids: number[] = [];
+        // Build array of IDs and check cache
+        const cachedSubmissions: IPriorSubmission[] = [];
+        const uncachedIds: number[] = [];
+
         for (let i = 0; i < value.length; i++) {
-          if (value[i].id !== undefined && value[i].id !== null) {
-            ids.push(value[i].id as number);
+          const id = value[i].id;
+          if (id !== undefined && id !== null) {
+            const cached = submissionCacheRef.current.get(id as number);
+            if (cached) {
+              cachedSubmissions.push(cached);
+            } else {
+              uncachedIds.push(id as number);
+            }
           }
         }
 
-        if (ids.length === 0) {
-          setSelectedRequests([]);
+        // If all items are cached, no API call needed
+        if (uncachedIds.length === 0) {
+          // Preserve order from value array
+          const orderedSubmissions = value
+            .map(v => submissionCacheRef.current.get(v.id as number))
+            .filter((s): s is IPriorSubmission => s !== undefined);
+          setSelectedRequests(orderedSubmissions);
           return;
         }
 
-        // Build filter with OR conditions
+        // Only fetch uncached items
         const filterParts: string[] = [];
-        for (let i = 0; i < ids.length; i++) {
-          filterParts.push(`Id eq ${ids[i]}`);
+        for (let i = 0; i < uncachedIds.length; i++) {
+          filterParts.push(`Id eq ${uncachedIds[i]}`);
         }
         const filter = filterParts.join(' or ');
 
@@ -209,7 +229,7 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
           .filter(filter)
           .orderBy('Created', false)();
 
-        const submissions: IPriorSubmission[] = items.map((item: any) => ({
+        const fetchedSubmissions: IPriorSubmission[] = items.map((item: any) => ({
           id: item.Id,
           requestId: item.RequestID || item.Title,
           title: item.Title,
@@ -220,7 +240,17 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
           department: item.Department,
         }));
 
-        setSelectedRequests(submissions);
+        // Cache the newly fetched items
+        fetchedSubmissions.forEach(submission => {
+          submissionCacheRef.current.set(submission.id, submission);
+        });
+
+        // Combine and order by value array order
+        const orderedSubmissions = value
+          .map(v => submissionCacheRef.current.get(v.id as number))
+          .filter((s): s is IPriorSubmission => s !== undefined);
+
+        setSelectedRequests(orderedSubmissions);
       } catch (error: unknown) {
         SPContext.logger.error('Failed to load selected requests', error);
       }

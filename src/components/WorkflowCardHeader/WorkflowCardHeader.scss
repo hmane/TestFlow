@@ -1,0 +1,369 @@
+/**
+ * WorkflowCardHeader Styles
+ *
+ * Refined, professional styling for workflow stage headers.
+ * Uses subtle gradients, smooth transitions, and purposeful micro-interactions.
+ */
+
+// ============================================
+// DESIGN TOKENS
+// ============================================
+
+// In Progress theme (Blue)
+$color-progress-primary: #0078d4;
+$color-progress-secondary: #106ebe;
+$color-progress-bg: rgba(0, 120, 212, 0.06);
+$color-progress-bg-hover: rgba(0, 120, 212, 0.1);
+$color-progress-border: rgba(0, 120, 212, 0.15);
+
+// Completed theme (Green)
+$color-completed-primary: #107c10;
+$color-completed-secondary: #0e6b0e;
+$color-completed-bg: rgba(16, 124, 16, 0.06);
+$color-completed-bg-hover: rgba(16, 124, 16, 0.1);
+$color-completed-border: rgba(16, 124, 16, 0.15);
+
+// Neutral colors
+$color-text-primary: #323130;
+$color-text-secondary: #605e5c;
+$color-text-tertiary: #8a8886;
+
+// Transitions
+$transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+$transition-medium: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+
+// ============================================
+// HEADER CONTAINER
+// ============================================
+
+.workflow-header {
+  position: relative;
+  padding: 0;
+  border-radius: 4px 4px 0 0;
+  transition: background-color $transition-fast;
+
+  &--progress {
+    background: linear-gradient(135deg, $color-progress-bg 0%, transparent 100%);
+
+    &:hover {
+      background: linear-gradient(135deg, $color-progress-bg-hover 0%, transparent 100%);
+    }
+  }
+
+  &--completed {
+    background: linear-gradient(135deg, $color-completed-bg 0%, transparent 100%);
+
+    &:hover {
+      background: linear-gradient(135deg, $color-completed-bg-hover 0%, transparent 100%);
+    }
+  }
+}
+
+.workflow-header__content {
+  padding: 12px 16px;
+  min-height: 48px;
+}
+
+// ============================================
+// ACCENT LINE
+// ============================================
+
+.workflow-header__accent {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  opacity: 0.6;
+  transition: opacity $transition-fast, transform $transition-fast;
+
+  &.workflow-header--progress {
+    background: linear-gradient(90deg, $color-progress-primary 0%, $color-progress-secondary 50%, transparent 100%);
+  }
+
+  &.workflow-header--completed {
+    background: linear-gradient(90deg, $color-completed-primary 0%, $color-completed-secondary 50%, transparent 100%);
+  }
+
+  .workflow-header:hover & {
+    opacity: 1;
+    transform: scaleX(1.02);
+  }
+}
+
+// ============================================
+// STATUS ICON
+// ============================================
+
+.workflow-header__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  transition: transform $transition-fast, box-shadow $transition-fast;
+
+  &--progress {
+    background: linear-gradient(135deg, rgba($color-progress-primary, 0.12) 0%, rgba($color-progress-primary, 0.08) 100%);
+    color: $color-progress-primary;
+    box-shadow: 0 1px 3px rgba($color-progress-primary, 0.1);
+
+    .ms-Icon {
+      font-size: 18px;
+      animation: workflow-header-pulse 2s ease-in-out infinite;
+    }
+  }
+
+  &--completed {
+    background: linear-gradient(135deg, rgba($color-completed-primary, 0.12) 0%, rgba($color-completed-primary, 0.08) 100%);
+    color: $color-completed-primary;
+    box-shadow: 0 1px 3px rgba($color-completed-primary, 0.1);
+
+    .ms-Icon {
+      font-size: 18px;
+    }
+  }
+
+  .workflow-header:hover & {
+    transform: scale(1.05);
+
+    &--progress {
+      box-shadow: 0 2px 6px rgba($color-progress-primary, 0.2);
+    }
+
+    &--completed {
+      box-shadow: 0 2px 6px rgba($color-completed-primary, 0.2);
+    }
+  }
+}
+
+@keyframes workflow-header-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+// ============================================
+// TITLE
+// ============================================
+
+.workflow-header__title {
+  font-size: 15px;
+  font-weight: 600;
+  color: $color-text-primary;
+  letter-spacing: -0.01em;
+  transition: color $transition-fast;
+
+  &--completed {
+    color: $color-completed-primary;
+  }
+}
+
+// ============================================
+// BADGES
+// ============================================
+
+.workflow-header__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border-radius: 12px;
+  transition: transform $transition-fast, box-shadow $transition-fast;
+
+  &--progress {
+    background: linear-gradient(135deg, rgba($color-progress-primary, 0.1) 0%, rgba($color-progress-primary, 0.15) 100%);
+    color: $color-progress-primary;
+    border: 1px solid $color-progress-border;
+  }
+
+  &--completed {
+    background: linear-gradient(135deg, rgba($color-completed-primary, 0.1) 0%, rgba($color-completed-primary, 0.15) 100%);
+    color: $color-completed-primary;
+    border: 1px solid $color-completed-border;
+  }
+
+  .workflow-header:hover & {
+    transform: translateY(-1px);
+
+    &--progress {
+      box-shadow: 0 2px 4px rgba($color-progress-primary, 0.15);
+    }
+
+    &--completed {
+      box-shadow: 0 2px 4px rgba($color-completed-primary, 0.15);
+    }
+  }
+}
+
+.workflow-header__outcome {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border-radius: 12px;
+  border: 1px solid;
+  transition: transform $transition-fast, box-shadow $transition-fast;
+
+  .workflow-header:hover & {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  }
+}
+
+// ============================================
+// CONTEXT INFO
+// ============================================
+
+.workflow-header__spacer {
+  flex: 1;
+  min-width: 16px;
+}
+
+.workflow-header__context {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.workflow-header__context-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: $color-text-secondary;
+}
+
+.workflow-header__context-icon {
+  font-size: 12px;
+  color: $color-text-tertiary;
+}
+
+.workflow-header__context-label {
+  color: $color-text-tertiary;
+  font-weight: 400;
+}
+
+.workflow-header__context-value {
+  color: $color-text-primary;
+  font-weight: 500;
+}
+
+.workflow-header__context-date {
+  color: $color-text-secondary;
+  font-weight: 400;
+}
+
+.workflow-header__context-sep {
+  color: $color-text-tertiary;
+  margin: 0 2px;
+}
+
+// ============================================
+// DURATION BADGE
+// ============================================
+
+.workflow-header__duration {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 14px;
+  cursor: default;
+  transition: transform $transition-fast, box-shadow $transition-fast, background-color $transition-fast;
+
+  &--progress {
+    background: rgba($color-progress-primary, 0.08);
+    color: $color-progress-primary;
+    border: 1px solid rgba($color-progress-primary, 0.12);
+  }
+
+  &--completed {
+    background: rgba($color-completed-primary, 0.08);
+    color: $color-completed-primary;
+    border: 1px solid rgba($color-completed-primary, 0.12);
+  }
+
+  &:hover {
+    transform: translateY(-1px);
+
+    &.workflow-header__duration--progress {
+      background: rgba($color-progress-primary, 0.12);
+      box-shadow: 0 2px 6px rgba($color-progress-primary, 0.15);
+    }
+
+    &.workflow-header__duration--completed {
+      background: rgba($color-completed-primary, 0.12);
+      box-shadow: 0 2px 6px rgba($color-completed-primary, 0.15);
+    }
+  }
+}
+
+.workflow-header__duration-icon {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.workflow-header__duration-text {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+// ============================================
+// DURATION TOOLTIP
+// ============================================
+
+.workflow-header__tooltip {
+  padding: 4px 0;
+  font-size: 12px;
+  line-height: 1.5;
+
+  div {
+    white-space: nowrap;
+  }
+}
+
+// ============================================
+// RESPONSIVE ADJUSTMENTS
+// ============================================
+
+@media (max-width: 768px) {
+  .workflow-header__content {
+    padding: 10px 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .workflow-header__spacer {
+    display: none;
+  }
+
+  .workflow-header__context {
+    width: 100%;
+    margin-top: 4px;
+    padding-left: 44px; // Align with title (icon width + gap)
+  }
+
+  .workflow-header__title {
+    font-size: 14px;
+  }
+
+  .workflow-header__badge,
+  .workflow-header__outcome {
+    font-size: 10px;
+    padding: 2px 8px;
+  }
+}

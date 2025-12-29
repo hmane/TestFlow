@@ -1,0 +1,442 @@
+/**
+ * Analytics Dashboard Styles
+ *
+ * Fluent UI v8 / SharePoint themed styling.
+ * Uses SharePoint color palette and spacing conventions.
+ */
+
+// SharePoint Theme Colors
+$sp-primary: #0078d4;
+$sp-primary-dark: #106ebe;
+$sp-success: #107c10;
+$sp-warning: #ffaa44;
+$sp-error: #a4262c;
+$sp-purple: #8764b8;
+$sp-gray-10: #faf9f8;
+$sp-gray-20: #f3f2f1;
+$sp-gray-30: #edebe9;
+$sp-gray-40: #e1dfdd;
+$sp-gray-90: #323130;
+$sp-gray-130: #605e5c;
+$sp-gray-160: #8a8886;
+
+// Spacing
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 16px;
+$spacing-lg: 24px;
+$spacing-xl: 32px;
+
+// Border radius
+$border-radius: 4px;
+$border-radius-lg: 8px;
+
+// Shadows
+$shadow-sm: 0 1.6px 3.6px 0 rgba(0, 0, 0, 0.132), 0 0.3px 0.9px 0 rgba(0, 0, 0, 0.108);
+$shadow-md: 0 3.2px 7.2px 0 rgba(0, 0, 0, 0.132), 0 0.6px 1.8px 0 rgba(0, 0, 0, 0.108);
+
+// Container
+.container {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: $spacing-lg;
+  background-color: $sp-gray-10;
+  min-height: 100vh;
+}
+
+// Loading
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+// Header
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: $spacing-md;
+  padding: $spacing-lg;
+  background-color: #ffffff;
+  border-radius: $border-radius-lg;
+  box-shadow: $shadow-sm;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  gap: $spacing-md;
+}
+
+.headerIcon {
+  font-size: 40px;
+  color: $sp-primary;
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+}
+
+.headerTitle {
+  font-weight: 600;
+  color: $sp-gray-90;
+  margin: 0;
+}
+
+.headerSubtitle {
+  color: $sp-gray-130;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+}
+
+.mockBadge {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  padding: $spacing-xs $spacing-sm;
+  background-color: $sp-warning;
+  color: #ffffff;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+// Last Updated
+.lastUpdated {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  margin-bottom: $spacing-md;
+  color: $sp-gray-160;
+
+  i {
+    font-size: 12px;
+  }
+}
+
+// KPI Grid
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: $spacing-md;
+  margin-bottom: $spacing-lg;
+
+  @media (max-width: 1400px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  @media (max-width: 900px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kpiCard {
+  display: flex;
+  align-items: flex-start;
+  gap: $spacing-md;
+  padding: $spacing-lg;
+  background-color: #ffffff;
+  border-radius: $border-radius-lg;
+  box-shadow: $shadow-sm;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+
+  &:hover {
+    box-shadow: $shadow-md;
+    transform: translateY(-2px);
+  }
+}
+
+.kpiIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: $border-radius;
+  flex-shrink: 0;
+}
+
+.kpiContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.kpiTitle {
+  color: $sp-gray-130;
+  font-weight: 500;
+  margin-bottom: $spacing-xs;
+  display: block;
+}
+
+.kpiValueRow {
+  display: flex;
+  align-items: baseline;
+  gap: $spacing-sm;
+}
+
+.kpiValue {
+  font-weight: 600;
+  color: $sp-gray-90;
+  line-height: 1;
+}
+
+.kpiTrend {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.kpiSubtitle {
+  color: $sp-gray-160;
+  margin-top: $spacing-xs;
+  display: block;
+}
+
+// Main Grid
+.mainGrid {
+  display: grid;
+  grid-template-columns: 60% 40%;
+  gap: $spacing-lg;
+
+  @media (max-width: 1200px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.leftColumn,
+.rightColumn {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
+}
+
+// Chart Card
+.chartCard {
+  background-color: #ffffff;
+  border-radius: $border-radius-lg;
+  box-shadow: $shadow-sm;
+  overflow: hidden;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: $spacing-md $spacing-lg;
+  border-bottom: 1px solid $sp-gray-30;
+  background-color: $sp-gray-10;
+}
+
+.sectionIcon {
+  font-size: 18px;
+  color: $sp-primary;
+}
+
+.sectionTitle {
+  font-weight: 600;
+  color: $sp-gray-90;
+}
+
+.sectionAction {
+  display: flex;
+  align-items: center;
+}
+
+.chartContainer {
+  padding: $spacing-lg;
+  min-height: 300px;
+}
+
+.chartContainerSmall {
+  padding: $spacing-md;
+  min-height: 250px;
+}
+
+// Table Card
+.tableCard {
+  background-color: #ffffff;
+  border-radius: $border-radius-lg;
+  box-shadow: $shadow-sm;
+  overflow: hidden;
+}
+
+.tableContainer {
+  padding: $spacing-sm;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+// Table Badges
+.tableBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  padding: 2px $spacing-sm;
+  background-color: $sp-gray-20;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: $sp-gray-90;
+}
+
+.badgeWarning {
+  background-color: rgba($sp-warning, 0.15);
+  color: darken($sp-warning, 15%);
+}
+
+.badgeSuccess {
+  background-color: rgba($sp-success, 0.15);
+  color: $sp-success;
+}
+
+// Status Badges
+.statusBadge {
+  display: inline-block;
+  padding: 2px $spacing-sm;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.statusDraft {
+  background-color: rgba($sp-gray-160, 0.15);
+  color: $sp-gray-130;
+}
+
+.statusLegalIntake {
+  background-color: rgba($sp-primary, 0.15);
+  color: $sp-primary;
+}
+
+.statusAssignAttorney {
+  background-color: rgba($sp-purple, 0.15);
+  color: $sp-purple;
+}
+
+.statusInReview {
+  background-color: rgba($sp-warning, 0.15);
+  color: darken($sp-warning, 15%);
+}
+
+.statusCloseout {
+  background-color: rgba($sp-success, 0.15);
+  color: $sp-success;
+}
+
+.statusCompleted {
+  background-color: rgba($sp-success, 0.15);
+  color: $sp-success;
+}
+
+.statusCancelled {
+  background-color: rgba($sp-error, 0.15);
+  color: $sp-error;
+}
+
+.statusOnHold {
+  background-color: rgba($sp-gray-160, 0.15);
+  color: $sp-gray-130;
+}
+
+// Risk indicators
+.overdue {
+  color: $sp-error;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.dueSoon {
+  color: $sp-warning;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.riskCount {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px $spacing-sm;
+  background-color: rgba($sp-error, 0.15);
+  color: $sp-error;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+// Links
+.requestLink {
+  color: $sp-primary;
+  text-decoration: none;
+  font-weight: 500;
+
+  &:hover {
+    text-decoration: underline;
+    color: $sp-primary-dark;
+  }
+}
+
+// Empty State
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-xl;
+  text-align: center;
+  color: $sp-gray-130;
+}
+
+.emptyIcon {
+  font-size: 32px;
+  color: $sp-gray-40;
+  margin-bottom: $spacing-sm;
+}
+
+.emptyIconSuccess {
+  font-size: 32px;
+  color: $sp-success;
+  margin-bottom: $spacing-sm;
+}
+
+// Footer
+.footer {
+  margin-top: $spacing-xl;
+  padding-top: $spacing-md;
+  border-top: 1px solid $sp-gray-30;
+  text-align: center;
+}
+
+.footerText {
+  color: $sp-gray-160;
+}
+
+// DevExtreme chart overrides for SharePoint theme
+:global {
+  .dx-chart {
+    font-family: 'Segoe UI', 'Segoe UI Web', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  .dx-legend-item-text {
+    font-size: 12px !important;
+    color: $sp-gray-130 !important;
+  }
+
+  .dx-tooltip {
+    font-family: 'Segoe UI', 'Segoe UI Web', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+}

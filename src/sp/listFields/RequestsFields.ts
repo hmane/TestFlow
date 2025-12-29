@@ -31,6 +31,13 @@ export const RequestsFields = {
   SubmissionItem: 'SubmissionItem',
   SubmissionType: 'SubmissionType',
   AdditionalParty: 'AdditionalParty',
+  // FINRA Audience & Product Fields
+  FINRAAudienceCategory: 'FINRAAudienceCategory',
+  Audience: 'Audience',
+  USFunds: 'USFunds',
+  UCITS: 'UCITS',
+  SeparateAcctStrategies: 'SeparateAcctStrategies',
+  SeparateAcctStrategiesIncl: 'SeparateAcctStrategiesIncl',
   HasSMEApproval: 'HasSMEApproval',
   ResearchAnalyst: 'ResearchAnalyst',
   DateOfFirstUse: 'DateOfFirstUse',
@@ -94,6 +101,8 @@ export const RequestsFields = {
   CloseoutSubmitterHours: 'CloseoutSubmitterHours',
   // Time Tracking - Totals
   TotalReviewerHours: 'TotalReviewerHours',
-  TotalSubmitterHours: 'TotalSubmitterHours'
+  TotalSubmitterHours: 'TotalSubmitterHours',
+  // Admin Override Audit Trail
+  AdminOverrideNotes: 'AdminOverrideNotes'
 } as const;
 

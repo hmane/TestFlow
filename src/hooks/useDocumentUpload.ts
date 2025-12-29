@@ -3,10 +3,10 @@
  */
 
 import * as React from 'react';
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import 'spfx-toolkit/lib/utilities/context/pnpImports/files';
-import { documentUploadSchema, validateFile, validateFiles } from '../schemas';
-import type { DocumentType } from '../types';
+import { documentUploadSchema, validateFile, validateFiles } from '@schemas/index';
+import type { DocumentType } from '@appTypes/index';
 
 /**
  * Upload progress info

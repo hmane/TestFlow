@@ -3,7 +3,7 @@ import { BaseFormCustomizer } from '@microsoft/sp-listview-extensibility';
 import { SPComponentLoader } from '@microsoft/sp-loader';
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
 import 'spfx-toolkit/lib/utilities/context/pnpImports/files';
 import LegalWorkflow, { ILegalWorkflowProps } from './components/LegalWorkflow';
@@ -79,6 +79,9 @@ export default class LegalWorkflowFormCustomizer extends BaseFormCustomizer<ILeg
     // Get list ID from properties or context
     const listId = this.properties.listId || this.context.list.guid.toString();
 
+    // Apply full-width styles to the domElement and its parents
+    this.applyFullWidthStyles();
+
     const legalWorkflow: React.ReactElement<ILegalWorkflowProps> = React.createElement(
       LegalWorkflow,
       {
@@ -91,6 +94,47 @@ export default class LegalWorkflowFormCustomizer extends BaseFormCustomizer<ILeg
     );
 
     ReactDOM.render(legalWorkflow, this.domElement);
+  }
+
+  /**
+   * Apply full-width styles to break out of SharePoint's default form width constraints
+   */
+  private applyFullWidthStyles(): void {
+    // Style the domElement itself
+    if (this.domElement) {
+      this.domElement.style.width = '100%';
+      this.domElement.style.maxWidth = 'none';
+      this.domElement.style.margin = '0';
+      this.domElement.style.padding = '0';
+    }
+
+    // Walk up the DOM tree and remove width constraints from parent elements
+    let parent = this.domElement?.parentElement;
+    let depth = 0;
+    const maxDepth = 10; // Limit how far up we go
+
+    while (parent && depth < maxDepth) {
+      // Check if this element has constrained width
+      const computedStyle = window.getComputedStyle(parent);
+      const maxWidth = computedStyle.maxWidth;
+      const width = computedStyle.width;
+
+      // Remove max-width constraints (except for body/html)
+      if (parent.tagName !== 'BODY' && parent.tagName !== 'HTML') {
+        if (maxWidth && maxWidth !== 'none' && maxWidth !== '100%') {
+          parent.style.maxWidth = 'none';
+        }
+        // Ensure width is 100%
+        if (width && width.indexOf('%') === -1) {
+          parent.style.width = '100%';
+        }
+      }
+
+      parent = parent.parentElement;
+      depth++;
+    }
+
+    Log.info(LOG_SOURCE, `Applied full-width styles to ${depth} parent elements`);
   }
 
   public onDispose(): void {

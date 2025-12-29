@@ -1,10 +1,13 @@
 /**
  * RequestInfo styles
  * Modern, clean design with smooth animations
+ *
+ * NOTE: DevExtreme styling (buttons, checkboxes, dropdowns) is handled
+ * centrally in spfx-toolkit/src/components/spForm/spfxForm.css
  */
 
 .request-info {
-  background: linear-gradient(135deg, #fafbfc 0%, #f3f4f6 100%);
+  background-color: #ffffff;
   min-height: 100vh;
   padding-bottom: 40px;
 
@@ -26,6 +29,16 @@
   .workflow-stepper-card {
     background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
     border: 2px solid #e1e4e8;
+  }
+
+  // Request form card - full width with consistent styling
+  .request-form-card {
+    width: 100%;
+
+    // Disable hover transform for form card to prevent jittery feel
+    &:hover {
+      transform: none;
+    }
   }
 
   // Form section card
@@ -93,15 +106,14 @@
 
     button {
       font-weight: 600;
-      transition: all 0.2s ease;
+      transition: box-shadow 0.2s ease, background-color 0.2s ease;
 
       &:hover:not(:disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
       }
 
       &:active:not(:disabled) {
-        transform: translateY(0);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
       }
     }
 
@@ -118,59 +130,8 @@
     animation: slideInDown 0.3s ease;
   }
 
-  // SPForm component overrides
-  .dx-texteditor,
-  .dx-selectbox,
-  .dx-datebox,
-  .dx-textarea,
-  .dx-tagbox {
-    .dx-texteditor-input-container {
-      border-radius: 4px;
-    }
-
-    &.dx-state-focused {
-      .dx-texteditor-input-container {
-        border-color: #0078d4;
-        box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.1);
-      }
-    }
-
-    &.dx-invalid {
-      .dx-texteditor-input-container {
-        border-color: #d13438;
-        box-shadow: 0 0 0 3px rgba(209, 52, 56, 0.1);
-      }
-    }
-  }
-
-  // Switch styling
-  .dx-switch {
-    .dx-switch-handle {
-      transition: all 0.3s ease;
-    }
-
-    &.dx-state-active {
-      .dx-switch-container {
-        background-color: #0078d4;
-      }
-    }
-  }
-
-  // People picker styling
-  .ms-BasePicker {
-    border-radius: 4px;
-    border: 1px solid #d2d0ce;
-    transition: all 0.2s ease;
-
-    &:hover {
-      border-color: #a19f9d;
-    }
-
-    &:focus-within {
-      border-color: #0078d4;
-      box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.1);
-    }
-  }
+  // NOTE: DevExtreme styling removed - using OOB (out-of-box) DevExtreme styles
+  // Previous overrides were causing conflicts with hover, focus, and checkbox states
 
   
   // Form label enhancements
@@ -401,17 +362,8 @@
   }
 }
 
-// Accessibility enhancements
-.request-info {
-  *:focus {
-    outline: 2px solid #0078d4;
-    outline-offset: 2px;
-  }
-
-  button:focus {
-    box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.3);
-  }
-}
+// NOTE: Accessibility focus styles removed - let DevExtreme use its OOB focus styling
+// The previous *:focus selector was overriding DevExtreme's default focus states
 
 // Loading state
 .request-info--loading {

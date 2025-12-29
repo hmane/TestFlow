@@ -11,17 +11,14 @@
  */
 
 import * as React from 'react';
-import {
-  Stack,
-  Text,
-  PrimaryButton,
-  MessageBar,
-  MessageBarType,
-  TextField,
-  Icon,
-} from '@fluentui/react';
+import { PrimaryButton } from '@fluentui/react/lib/Button';
+import { Icon } from '@fluentui/react/lib/Icon';
+import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
+import { Stack } from '@fluentui/react/lib/Stack';
+import { Text } from '@fluentui/react/lib/Text';
+import { TextField } from '@fluentui/react/lib/TextField';
 import { Card } from 'spfx-toolkit/lib/components/Card';
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { useRequestFormContext } from '../../../../contexts/RequestFormContext';
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { LegalReviewStatus, ComplianceReviewStatus } from '../../../../types/workflowTypes';

@@ -1,7 +1,7 @@
 import { FormDisplayMode, Log } from '@microsoft/sp-core-library';
 import { FormCustomizerContext } from '@microsoft/sp-listview-extensibility';
 import * as React from 'react';
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { ApplicationProvider } from '../../../components/ApplicationProvider';
 import { NotificationProvider } from '../../../contexts/NotificationContext';
 import { RequestType } from '../../../types';

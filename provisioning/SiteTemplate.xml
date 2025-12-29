@@ -15,13 +15,16 @@
         <!-- 2. Configuration List -->
         <xi:include href="Lists/Configuration.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
 
-        <!-- 3. Requests List (73+ fields) -->
+        <!-- 3. RequestIds List (Hidden - for ID sequence tracking) -->
+        <xi:include href="Lists/RequestIds.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
+
+        <!-- 4. Requests List (73+ fields) -->
         <xi:include href="Lists/Requests.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
 
-        <!-- 4. RequestDocuments Library -->
+        <!-- 5. RequestDocuments Library -->
         <xi:include href="Lists/RequestDocuments.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
 
-        <!-- 5. SitePages Library (Permissions) - Commented out: System library, permissions should be set separately -->
+        <!-- 6. SitePages Library (Permissions) - Commented out: System library, permissions should be set separately -->
         <!-- <xi:include href="Lists/SitePages.xml" xmlns:xi="http://www.w3.org/2001/XInclude" /> -->
       </pnp:Lists>
 

@@ -15,27 +15,23 @@
  */
 
 import * as React from 'react';
-import {
-  Stack,
-  Text,
-  PrimaryButton,
-  IconButton,
-  Icon,
-  MessageBar,
-  MessageBarType,
-} from '@fluentui/react';
+import { Stack } from '@fluentui/react/lib/Stack';
+import { Text } from '@fluentui/react/lib/Text';
+import { PrimaryButton, IconButton } from '@fluentui/react/lib/Button';
+import { Icon } from '@fluentui/react/lib/Icon';
+import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
 
 import { Lists } from '@sp/Lists';
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 
-import { useDocumentsStore, type IDocument, type IStagedDocument } from '../../stores/documentsStore';
-import { DocumentType } from '../../types/documentTypes';
+import { useDocumentsStore, type IDocument, type IStagedDocument } from '@stores/documentsStore';
+import { DocumentType } from '@appTypes/documentTypes';
 import { DocumentCard } from './DocumentCard';
 import { DropZoneCard } from './DropZoneCard';
 import { DocumentTypeDialog } from './DocumentTypeDialog';
 import { DuplicateFileDialog } from './DuplicateFileDialog';
 import { UploadProgressDialog } from './UploadProgressDialog';
-import { checkDuplicateFiles } from '../../services/documentService';
+import { checkDuplicateFiles } from '@services/documentService';
 import type { IDocumentUploadProps, DocumentAction } from './DocumentUploadTypes';
 import { UploadMode } from './DocumentUploadTypes';
 import './DocumentUpload.scss';
@@ -76,6 +72,7 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
   required = false,
   label,
   description,
+  hasError = false,
   onFilesChange,
   onError,
   siteUrl,
@@ -115,30 +112,29 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
   const [validationError, setValidationError] = React.useState<string | undefined>();
 
   // Document card drag-and-drop state (for moving between sections)
-  const [draggedDocId, setDraggedDocId] = React.useState<string | null>(null);
-  const [dragSourceType, setDragSourceType] = React.useState<DocumentType | null>(null);
-  const [dropTargetType, setDropTargetType] = React.useState<DocumentType | null>(null);
+  const [draggedDocId, setDraggedDocId] = React.useState<string | undefined>(undefined);
+  const [dragSourceType, setDragSourceType] = React.useState<DocumentType | undefined>(undefined);
+  const [dropTargetType, setDropTargetType] = React.useState<DocumentType | undefined>(undefined);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const dragCounter = React.useRef(0); // Track nested drag enter/leave events
-  const dragResetTimerRef = React.useRef<number | null>(null);
+  const dragResetTimerRef = React.useRef<number | undefined>(undefined);
 
   /**
    * Load documents on mount
+   * Note: loadDocuments now loads ALL documents in one CAML query call,
+   * so we only need to call it once regardless of mode.
+   * The documentType parameter is kept for backward compatibility but ignored.
    */
   React.useEffect(() => {
     if (!itemId) {
       return; // Don't load for new requests
     }
 
-    if (mode === UploadMode.Approval && documentType) {
-      void loadDocuments(itemId, documentType as any);
-    } else if (mode === UploadMode.Attachment) {
-      // Load both Review and Supplemental
-      void loadDocuments(itemId, DocumentType.Review);
-      void loadDocuments(itemId, DocumentType.Supplemental);
-    }
-  }, [itemId, documentType, mode, loadDocuments]);
+    // Load all documents in one call - the store handles deduplication
+    // if multiple components call loadDocuments for the same itemId
+    void loadDocuments(itemId);
+  }, [itemId, loadDocuments]);
 
   /**
    * Cleanup timer on unmount
@@ -312,7 +308,7 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
       dragResetTimerRef.current = window.setTimeout(() => {
         dragCounter.current = 0;
         setIsDragging(false);
-        dragResetTimerRef.current = null;
+        dragResetTimerRef.current = undefined;
       }, 200);
 
       // Determine which document type to check for duplicates
@@ -596,7 +592,7 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
         allDocs = allDocs.concat(docs);
       });
 
-      let doc: any = null;
+      let doc: any = undefined;
       for (let i = 0; i < allDocs.length; i++) {
         if (allDocs[i].uniqueId === action.documentId) {
           doc = allDocs[i];
@@ -668,9 +664,9 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
   }, []);
 
   const handleCardDragEnd = React.useCallback(() => {
-    setDraggedDocId(null);
-    setDragSourceType(null);
-    setDropTargetType(null);
+    setDraggedDocId(undefined);
+    setDragSourceType(undefined);
+    setDropTargetType(undefined);
   }, []);
 
   const handleSectionDragOver = React.useCallback(
@@ -695,7 +691,7 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
     const currentTarget = e.currentTarget as HTMLElement;
 
     if (!currentTarget.contains(relatedTarget)) {
-      setDropTargetType(null);
+      setDropTargetType(undefined);
     }
   }, []);
 
@@ -711,7 +707,7 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
         // It's a file drop from outside the app
         // Force reset drag state immediately
         forceResetDragState();
-        setDropTargetType(null);
+        setDropTargetType(undefined);
 
         if (isReadOnly) return;
 
@@ -723,13 +719,13 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
 
       // It's a document card drop (moving between sections)
       if (!draggedDocId || !dragSourceType || dragSourceType === targetType) {
-        setDropTargetType(null);
+        setDropTargetType(undefined);
         return;
       }
 
       // Check if it's a staged file (not yet uploaded)
       let isStagedFile = false;
-      let stagedFile: IStagedDocument | null = null;
+      let stagedFile: IStagedDocument | undefined = undefined;
 
       for (let i = 0; i < stagedFiles.length; i++) {
         if (stagedFiles[i].id === draggedDocId) {
@@ -756,9 +752,9 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
       }
 
       // Reset drag state
-      setDraggedDocId(null);
-      setDragSourceType(null);
-      setDropTargetType(null);
+      setDraggedDocId(undefined);
+      setDragSourceType(undefined);
+      setDropTargetType(undefined);
     },
     [draggedDocId, dragSourceType, stagedFiles, removeStagedFile, stageFiles, itemId, onFilesChange, handleDocumentAction, forceResetDragState, isReadOnly, handleFilesSelected]
   );
@@ -875,6 +871,7 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
                   ? 'drop-zone-card--compact'
                   : 'drop-zone-card--full-width'
               }
+              isError={hasError && !hasDocuments}
             />
           )}
 
@@ -927,7 +924,7 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
               const isDeleted = filesToDelete.some(fd => fd.uniqueId === doc.uniqueId);
 
               // ES5 compatible: Manual loop instead of .find()
-              let renameInfo: any = null;
+              let renameInfo: any = undefined;
               for (let i = 0; i < filesToRename.length; i++) {
                 if (filesToRename[i].file.uniqueId === doc.uniqueId) {
                   renameInfo = filesToRename[i];
@@ -1072,6 +1069,7 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
             onDragLeave={handleDragLeave}
             onClick={() => fileInputRef.current?.click()}
             className={isDragging ? 'drop-zone-card--active drop-zone-card--full-width' : 'drop-zone-card--full-width'}
+            isError={hasError}
           />
         </div>
       );
@@ -1102,8 +1100,8 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
       // Check if this section is a drop target
       const isDropTarget =
         !isReadOnly &&
-        draggedDocId !== null &&
-        dragSourceType !== null &&
+        draggedDocId !== undefined &&
+        dragSourceType !== undefined &&
         dragSourceType !== documentType &&
         dropTargetType === documentType;
 
@@ -1156,7 +1154,7 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
               const isDeleted = filesToDelete.some(fd => fd.uniqueId === doc.uniqueId);
 
               // ES5 compatible: Manual loop instead of .find()
-              let renameInfo: any = null;
+              let renameInfo: any = undefined;
               for (let i = 0; i < filesToRename.length; i++) {
                 if (filesToRename[i].file.uniqueId === doc.uniqueId) {
                   renameInfo = filesToRename[i];
@@ -1252,7 +1250,7 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
           renderEmptyState()
         ) : (
           <div
-            className={`attachments-container ${isDragging ? 'drop-active' : ''}`}
+            className={`attachments-container ${isDragging ? 'drop-active' : ''} ${hasError ? 'attachments-container--error' : ''}`}
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onDragEnter={handleDragEnter}
@@ -1363,7 +1361,7 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
         isOpen={isDuplicateDialogOpen}
         duplicateFiles={duplicateFiles.map(name => {
           // ES5 compatible: Manual loop instead of .find()
-          let file: File | null = null;
+          let file: File | undefined = undefined;
           for (let i = 0; i < pendingFiles.length; i++) {
             if (pendingFiles[i].name === name) {
               file = pendingFiles[i];

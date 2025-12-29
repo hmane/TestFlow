@@ -1,29 +1,17 @@
 import * as React from 'react';
 import styles from './ReportDashboard.module.scss';
 import type { IReportDashboardProps, IUserGroups, ISearchConfig, ISearchResult, ProgressBarColor } from './IReportDashboardProps';
-import { SPContext } from 'spfx-toolkit';
-import {
-  CommandBarButton,
-  Icon,
-  Spinner,
-  SpinnerSize,
-} from '@fluentui/react';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
+import { CommandBarButton } from '@fluentui/react/lib/Button';
+import { Icon } from '@fluentui/react/lib/Icon';
+import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
+import { getUserGroupMembership } from '@services/userGroupsService';
 
 // Constants
 const RECENT_SEARCHES_KEY = 'lrs_recent_searches';
 const DEFAULT_SEARCH_LIMIT = 10;
 const DEFAULT_RECENT_LIMIT = 5;
 const DEBOUNCE_DELAY = 300;
-
-// SharePoint group names
-const SP_GROUPS = {
-  SUBMITTERS: 'LW - Submitters',
-  LEGAL_ADMIN: 'LW - Legal Admin',
-  ATTORNEY_ASSIGNER: 'LW - Attorney Assigner',
-  ATTORNEYS: 'LW - Attorneys',
-  COMPLIANCE: 'LW - Compliance Users',
-  ADMIN: 'LW - Admin',
-};
 
 // Dashboard page URLs
 const DASHBOARD_URLS = {
@@ -152,6 +140,21 @@ const getProgressColorClass = (color: ProgressBarColor): string => {
 };
 
 /**
+ * Format hours for display
+ */
+const formatHours = (hours: number): string => {
+  if (hours === 0) return '0h';
+  if (hours < 1) {
+    const minutes = Math.round(hours * 60);
+    return `${minutes}m`;
+  }
+  if (hours % 1 === 0) {
+    return `${hours}h`;
+  }
+  return `${hours.toFixed(1)}h`;
+};
+
+/**
  * RequestDashboard Toolbar Component
  * Provides command bar navigation and spotlight search functionality
  */
@@ -184,20 +187,20 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
 
   /**
    * Load user groups on mount
+   * Uses centralized userGroupsService with caching and deduplication
    */
   React.useEffect(() => {
     const loadUserGroups = async (): Promise<void> => {
       try {
-        const groups = await SPContext.sp.web.currentUser.groups();
-        const groupTitles = groups.map((g: { Title: string }) => g.Title);
+        const membership = await getUserGroupMembership();
 
         setUserGroups({
-          isSubmitter: groupTitles.includes(SP_GROUPS.SUBMITTERS) || groupTitles.includes(SP_GROUPS.ADMIN),
-          isLegalAdmin: groupTitles.includes(SP_GROUPS.LEGAL_ADMIN) || groupTitles.includes(SP_GROUPS.ADMIN),
-          isAttorneyAssigner: groupTitles.includes(SP_GROUPS.ATTORNEY_ASSIGNER) || groupTitles.includes(SP_GROUPS.ADMIN),
-          isAttorney: groupTitles.includes(SP_GROUPS.ATTORNEYS) || groupTitles.includes(SP_GROUPS.ADMIN),
-          isComplianceUser: groupTitles.includes(SP_GROUPS.COMPLIANCE) || groupTitles.includes(SP_GROUPS.ADMIN),
-          isAdmin: groupTitles.includes(SP_GROUPS.ADMIN),
+          isSubmitter: membership.isSubmitter,
+          isLegalAdmin: membership.isLegalAdmin,
+          isAttorneyAssigner: membership.isAttorneyAssigner,
+          isAttorney: membership.isAttorney,
+          isComplianceUser: membership.isComplianceUser,
+          isAdmin: membership.isAdmin,
         });
       } catch (error: unknown) {
         SPContext.logger.error('Failed to load user groups', error);
@@ -317,7 +320,9 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
           'Attorney/Title',
           'SubmittedToAssignAttorneyOn',
           'PreviousStatus',
-          'IsRushRequest'
+          'IsRushRequest',
+          'TotalReviewerHours',
+          'TotalSubmitterHours'
         )
         .expand('Author', 'Attorney')
         .filter(filter)
@@ -336,6 +341,8 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
         SubmittedToAssignAttorneyOn?: string | null;
         PreviousStatus?: string | null;
         IsRushRequest?: boolean;
+        TotalReviewerHours?: number;
+        TotalSubmitterHours?: number;
       }) => {
         const targetDate = item.TargetReturnDate ? new Date(item.TargetReturnDate) : null;
         const assignAttorneyDate = item.SubmittedToAssignAttorneyOn
@@ -365,6 +372,8 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
           progressColor: color,
           currentStep,
           totalSteps,
+          totalReviewerHours: item.TotalReviewerHours || 0,
+          totalSubmitterHours: item.TotalSubmitterHours || 0,
         };
       });
 
@@ -586,6 +595,12 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
                         </span>
                         {result.submittedBy && <span className={styles.metaItem}>By: {result.submittedBy}</span>}
                         {result.attorney && <span className={styles.metaItem}>Attorney: {result.attorney}</span>}
+                        {(result.totalReviewerHours > 0 || result.totalSubmitterHours > 0) && (
+                          <span className={styles.metaItem}>
+                            <Icon iconName="Clock" style={{ fontSize: '10px', marginRight: '4px' }} />
+                            {formatHours(result.totalReviewerHours + result.totalSubmitterHours)}
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}

@@ -1,0 +1,101 @@
+<pnp:ListInstance xmlns:pnp="http://schemas.dev.office.com/PnP/2022/09/ProvisioningSchema"
+                  Title="RequestIds"
+                  Description="System list for tracking request ID sequences across all request types"
+                  TemplateType="100"
+                  Url="Lists/RequestIds"
+                  OnQuickLaunch="false"
+                  EnableVersioning="false"
+                  EnableMinorVersions="false"
+                  EnableAttachments="false">
+
+  <!--
+    RequestIds List
+    ===============
+    Purpose: Track request ID sequences independently of item-level permissions on Requests list.
+
+    This hidden list stores all generated request IDs to ensure:
+    1. Unique sequential numbering across all request types
+    2. Works regardless of item-level permissions on Requests list
+    3. All site users can query for the last ID to generate the next one
+
+    Format: {PREFIX}-{YY}-{N}
+    - CRR = Communication Review Request
+    - GRR = General Review Request (Phase 2)
+    - IMA = IMA Review Request (Phase 2)
+    - YY = 2-digit year
+    - N = Sequential number (no zero-padding)
+
+    Examples: CRR-25-1, CRR-25-2, GRR-25-1
+  -->
+
+  <pnp:Fields>
+    <!-- Year field for efficient filtering -->
+    <Field Type="Number"
+           DisplayName="Year"
+           Name="Year"
+           ID="{B8E3C5A1-4D2F-4E8A-9B7C-1F2D3E4A5B6C}"
+           Required="TRUE"
+           Min="2020"
+           Max="2099"
+           Decimals="0"
+           Indexed="TRUE"
+           Group="Request IDs">
+      <Default></Default>
+    </Field>
+
+    <!-- Request Type Prefix for filtering by type -->
+    <Field Type="Text"
+           DisplayName="Prefix"
+           Name="Prefix"
+           ID="{C9F4D6B2-5E3A-4F9B-8C8D-2A3B4C5D6E7F}"
+           Required="TRUE"
+           MaxLength="10"
+           Indexed="TRUE"
+           Group="Request IDs" />
+
+    <!-- Sequence Number for the year/prefix combination -->
+    <Field Type="Number"
+           DisplayName="Sequence"
+           Name="Sequence"
+           ID="{D0A5E7C3-6F4B-4A0C-9D9E-3B4C5D6E7F8A}"
+           Required="TRUE"
+           Min="1"
+           Decimals="0"
+           Group="Request IDs" />
+  </pnp:Fields>
+
+  <pnp:Views>
+    <pnp:View Name="AllItems" DisplayName="All Items" DefaultView="true" RowLimit="100" Paged="true">
+      <pnp:Query>
+        <OrderBy>
+          <FieldRef Name="Year" Ascending="FALSE" />
+          <FieldRef Name="Prefix" Ascending="TRUE" />
+          <FieldRef Name="Sequence" Ascending="FALSE" />
+        </OrderBy>
+      </pnp:Query>
+      <pnp:ViewFields>
+        <FieldRef Name="LinkTitle" />
+        <FieldRef Name="Year" />
+        <FieldRef Name="Prefix" />
+        <FieldRef Name="Sequence" />
+        <FieldRef Name="Created" />
+      </pnp:ViewFields>
+    </pnp:View>
+
+    <pnp:View Name="ByYearAndPrefix" DisplayName="By Year and Prefix" RowLimit="50" Paged="true">
+      <pnp:Query>
+        <OrderBy>
+          <FieldRef Name="Year" Ascending="FALSE" />
+          <FieldRef Name="Prefix" Ascending="TRUE" />
+          <FieldRef Name="Sequence" Ascending="FALSE" />
+        </OrderBy>
+      </pnp:Query>
+      <pnp:ViewFields>
+        <FieldRef Name="LinkTitle" />
+        <FieldRef Name="Year" />
+        <FieldRef Name="Prefix" />
+        <FieldRef Name="Sequence" />
+      </pnp:ViewFields>
+    </pnp:View>
+  </pnp:Views>
+</pnp:ListInstance>

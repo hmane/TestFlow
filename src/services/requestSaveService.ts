@@ -10,7 +10,7 @@
  * users continue (vs. async Flow that breaks inheritance later).
  */
 
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import type { IPrincipal } from 'spfx-toolkit/lib/types';
 import { createSPUpdater } from 'spfx-toolkit/lib/utilities/listItemHelper';
 
@@ -23,7 +23,7 @@ import { batchUploadFiles, deleteFile, renameFile } from './documentService';
 import type { ILegalRequest } from '@appTypes/requestTypes';
 import { RequestStatus, ReviewOutcome } from '@appTypes/workflowTypes';
 import { ApprovalType } from '@appTypes/approvalTypes';
-import type { IStagedDocument, IDocument } from '../stores/documentsStore';
+import type { IStagedDocument, IDocument } from '@stores/documentsStore';
 
 // Type aliases for review outcomes
 type LegalReviewOutcome = ReviewOutcome;
@@ -263,72 +263,80 @@ export function buildRequestUpdatePayload(
   // Only include fields that have changed
   if (originalRequest) {
     // Basic request information
-    updater.set('RequestTitle', request.requestTitle, originalRequest.requestTitle);
-    updater.set('Purpose', request.purpose, originalRequest.purpose);
-    updater.set('RequestType', request.requestType, originalRequest.requestType);
-    updater.set('SubmissionType', request.submissionType, originalRequest.submissionType);
-    updater.set('SubmissionItem', request.submissionItem, originalRequest.submissionItem);
+    updater.set(RequestsFields.RequestTitle, request.requestTitle, originalRequest.requestTitle);
+    updater.set(RequestsFields.Purpose, request.purpose, originalRequest.purpose);
+    updater.set(RequestsFields.RequestType, request.requestType, originalRequest.requestType);
+    updater.set(RequestsFields.SubmissionType, request.submissionType, originalRequest.submissionType);
+    updater.set(RequestsFields.SubmissionItem, request.submissionItem, originalRequest.submissionItem);
 
     // Date fields - pass Date objects directly (not ISO strings)
     // SPUpdater handles date normalization and comparison
-    updater.set('TargetReturnDate', request.targetReturnDate, originalRequest.targetReturnDate);
-    updater.set('DateOfFirstUse', request.dateOfFirstUse, originalRequest.dateOfFirstUse);
+    updater.set(RequestsFields.TargetReturnDate, request.targetReturnDate, originalRequest.targetReturnDate);
+    updater.set(RequestsFields.DateOfFirstUse, request.dateOfFirstUse, originalRequest.dateOfFirstUse);
 
-    updater.set('ReviewAudience', request.reviewAudience, originalRequest.reviewAudience);
-    updater.set('IsRushRequest', request.isRushRequest, originalRequest.isRushRequest);
-    updater.set('RushRationale', request.rushRationale, originalRequest.rushRationale);
-    updater.set('Status', request.status, originalRequest.status);
-    updater.set('Department', request.department, originalRequest.department);
+    updater.set(RequestsFields.ReviewAudience, request.reviewAudience, originalRequest.reviewAudience);
+    updater.set(RequestsFields.IsRushRequest, request.isRushRequest, originalRequest.isRushRequest);
+    updater.set(RequestsFields.RushRationale, request.rushRationale, originalRequest.rushRationale);
+    updater.set(RequestsFields.Status, request.status, originalRequest.status);
+    updater.set(RequestsFields.Department, request.department, originalRequest.department);
 
     // Attorney fields - validate that attorney has id before saving
     const attorneyValue = request.attorney && request.attorney.id ? request.attorney : null;
     const origAttorneyValue = originalRequest.attorney && originalRequest.attorney.id ? originalRequest.attorney : null;
-    updater.set('Attorney', attorneyValue, origAttorneyValue);
-    updater.set('AttorneyAssignNotes', request.attorneyAssignNotes, originalRequest.attorneyAssignNotes);
+    updater.set(RequestsFields.Attorney, attorneyValue, origAttorneyValue);
+    updater.set(RequestsFields.AttorneyAssignNotes, request.attorneyAssignNotes, originalRequest.attorneyAssignNotes);
 
     // Multi-choice field - pass array directly (not wrapped with {results: []})
     // SPUpdater automatically wraps multi-value fields in SharePoint format
-    updater.set('DistributionMethod', request.distributionMethod, originalRequest.distributionMethod);
+    updater.set(RequestsFields.DistributionMethod, request.distributionMethod, originalRequest.distributionMethod);
 
-    updater.set('PriorSubmissionNotes', request.priorSubmissionNotes, originalRequest.priorSubmissionNotes);
-    updater.set('TrackingId', request.trackingId, originalRequest.trackingId);
+    updater.set(RequestsFields.PriorSubmissionNotes, request.priorSubmissionNotes, originalRequest.priorSubmissionNotes);
+    updater.set(RequestsFields.TrackingId, request.trackingId, originalRequest.trackingId);
 
     // Multi-value lookup fields - pass arrays directly
     // SPUpdater handles ID extraction and {results: []} wrapping automatically
-    updater.set('PriorSubmissionsId', request.priorSubmissions, originalRequest.priorSubmissions);
-    updater.set('AdditionalParty', request.additionalParty, originalRequest.additionalParty);
+    updater.set(RequestsFields.PriorSubmissions + 'Id', request.priorSubmissions, originalRequest.priorSubmissions);
+    updater.set(RequestsFields.AdditionalParty, request.additionalParty, originalRequest.additionalParty);
+
+    // FINRA Audience & Product Fields
+    updater.set(RequestsFields.FINRAAudienceCategory, request.finraAudienceCategory, originalRequest.finraAudienceCategory);
+    updater.set(RequestsFields.Audience, request.audience, originalRequest.audience);
+    updater.set(RequestsFields.USFunds, request.usFunds, originalRequest.usFunds);
+    updater.set(RequestsFields.UCITS, request.ucits, originalRequest.ucits);
+    updater.set(RequestsFields.SeparateAcctStrategies, request.separateAcctStrategies, originalRequest.separateAcctStrategies);
+    updater.set(RequestsFields.SeparateAcctStrategiesIncl, request.separateAcctStrategiesIncl, originalRequest.separateAcctStrategiesIncl);
 
     // Legal Review fields
-    updater.set('LegalReviewStatus', request.legalReviewStatus, originalRequest.legalReviewStatus);
-    updater.set('LegalReviewOutcome', request.legalReviewOutcome, originalRequest.legalReviewOutcome);
-    updater.set('LegalReviewNotes', request.legalReviewNotes, originalRequest.legalReviewNotes);
-    updater.set('LegalStatusUpdatedOn', request.legalStatusUpdatedOn, originalRequest.legalStatusUpdatedOn);
-    updater.set('LegalStatusUpdatedBy', request.legalStatusUpdatedBy, originalRequest.legalStatusUpdatedBy);
-    updater.set('LegalReviewCompletedOn', request.legalReviewCompletedOn, originalRequest.legalReviewCompletedOn);
-    updater.set('LegalReviewCompletedBy', request.legalReviewCompletedBy, originalRequest.legalReviewCompletedBy);
+    updater.set(RequestsFields.LegalReviewStatus, request.legalReviewStatus, originalRequest.legalReviewStatus);
+    updater.set(RequestsFields.LegalReviewOutcome, request.legalReviewOutcome, originalRequest.legalReviewOutcome);
+    updater.set(RequestsFields.LegalReviewNotes, request.legalReviewNotes, originalRequest.legalReviewNotes);
+    updater.set(RequestsFields.LegalStatusUpdatedOn, request.legalStatusUpdatedOn, originalRequest.legalStatusUpdatedOn);
+    updater.set(RequestsFields.LegalStatusUpdatedBy, request.legalStatusUpdatedBy, originalRequest.legalStatusUpdatedBy);
+    updater.set(RequestsFields.LegalReviewCompletedOn, request.legalReviewCompletedOn, originalRequest.legalReviewCompletedOn);
+    updater.set(RequestsFields.LegalReviewCompletedBy, request.legalReviewCompletedBy, originalRequest.legalReviewCompletedBy);
 
     // Compliance Review fields
-    updater.set('ComplianceReviewStatus', request.complianceReviewStatus, originalRequest.complianceReviewStatus);
-    updater.set('ComplianceReviewOutcome', request.complianceReviewOutcome, originalRequest.complianceReviewOutcome);
-    updater.set('ComplianceReviewNotes', request.complianceReviewNotes, originalRequest.complianceReviewNotes);
-    updater.set('IsForesideReviewRequired', request.isForesideReviewRequired, originalRequest.isForesideReviewRequired);
-    updater.set('IsRetailUse', request.isRetailUse, originalRequest.isRetailUse);
-    updater.set('ComplianceStatusUpdatedOn', request.complianceStatusUpdatedOn, originalRequest.complianceStatusUpdatedOn);
-    updater.set('ComplianceStatusUpdatedBy', request.complianceStatusUpdatedBy, originalRequest.complianceStatusUpdatedBy);
-    updater.set('ComplianceReviewCompletedOn', request.complianceReviewCompletedOn, originalRequest.complianceReviewCompletedOn);
-    updater.set('ComplianceReviewCompletedBy', request.complianceReviewCompletedBy, originalRequest.complianceReviewCompletedBy);
+    updater.set(RequestsFields.ComplianceReviewStatus, request.complianceReviewStatus, originalRequest.complianceReviewStatus);
+    updater.set(RequestsFields.ComplianceReviewOutcome, request.complianceReviewOutcome, originalRequest.complianceReviewOutcome);
+    updater.set(RequestsFields.ComplianceReviewNotes, request.complianceReviewNotes, originalRequest.complianceReviewNotes);
+    updater.set(RequestsFields.IsForesideReviewRequired, request.isForesideReviewRequired, originalRequest.isForesideReviewRequired);
+    updater.set(RequestsFields.IsRetailUse, request.isRetailUse, originalRequest.isRetailUse);
+    updater.set(RequestsFields.ComplianceStatusUpdatedOn, request.complianceStatusUpdatedOn, originalRequest.complianceStatusUpdatedOn);
+    updater.set(RequestsFields.ComplianceStatusUpdatedBy, request.complianceStatusUpdatedBy, originalRequest.complianceStatusUpdatedBy);
+    updater.set(RequestsFields.ComplianceReviewCompletedOn, request.complianceReviewCompletedOn, originalRequest.complianceReviewCompletedOn);
+    updater.set(RequestsFields.ComplianceReviewCompletedBy, request.complianceReviewCompletedBy, originalRequest.complianceReviewCompletedBy);
 
     // Time Tracking fields
-    updater.set('LegalIntakeLegalAdminHours', request.legalIntakeLegalAdminHours, originalRequest.legalIntakeLegalAdminHours);
-    updater.set('LegalIntakeSubmitterHours', request.legalIntakeSubmitterHours, originalRequest.legalIntakeSubmitterHours);
-    updater.set('LegalReviewAttorneyHours', request.legalReviewAttorneyHours, originalRequest.legalReviewAttorneyHours);
-    updater.set('LegalReviewSubmitterHours', request.legalReviewSubmitterHours, originalRequest.legalReviewSubmitterHours);
-    updater.set('ComplianceReviewReviewerHours', request.complianceReviewReviewerHours, originalRequest.complianceReviewReviewerHours);
-    updater.set('ComplianceReviewSubmitterHours', request.complianceReviewSubmitterHours, originalRequest.complianceReviewSubmitterHours);
-    updater.set('CloseoutReviewerHours', request.closeoutReviewerHours, originalRequest.closeoutReviewerHours);
-    updater.set('CloseoutSubmitterHours', request.closeoutSubmitterHours, originalRequest.closeoutSubmitterHours);
-    updater.set('TotalReviewerHours', request.totalReviewerHours, originalRequest.totalReviewerHours);
-    updater.set('TotalSubmitterHours', request.totalSubmitterHours, originalRequest.totalSubmitterHours);
+    updater.set(RequestsFields.LegalIntakeLegalAdminHours, request.legalIntakeLegalAdminHours, originalRequest.legalIntakeLegalAdminHours);
+    updater.set(RequestsFields.LegalIntakeSubmitterHours, request.legalIntakeSubmitterHours, originalRequest.legalIntakeSubmitterHours);
+    updater.set(RequestsFields.LegalReviewAttorneyHours, request.legalReviewAttorneyHours, originalRequest.legalReviewAttorneyHours);
+    updater.set(RequestsFields.LegalReviewSubmitterHours, request.legalReviewSubmitterHours, originalRequest.legalReviewSubmitterHours);
+    updater.set(RequestsFields.ComplianceReviewReviewerHours, request.complianceReviewReviewerHours, originalRequest.complianceReviewReviewerHours);
+    updater.set(RequestsFields.ComplianceReviewSubmitterHours, request.complianceReviewSubmitterHours, originalRequest.complianceReviewSubmitterHours);
+    updater.set(RequestsFields.CloseoutReviewerHours, request.closeoutReviewerHours, originalRequest.closeoutReviewerHours);
+    updater.set(RequestsFields.CloseoutSubmitterHours, request.closeoutSubmitterHours, originalRequest.closeoutSubmitterHours);
+    updater.set(RequestsFields.TotalReviewerHours, request.totalReviewerHours, originalRequest.totalReviewerHours);
+    updater.set(RequestsFields.TotalSubmitterHours, request.totalSubmitterHours, originalRequest.totalSubmitterHours);
 
     // Map approvals array to individual SharePoint fields
     // This handles RequiresCommunicationsApproval and all approval-specific fields
@@ -348,14 +356,14 @@ export function buildRequestUpdatePayload(
 
     // Build payload with proper null/undefined handling
     const payload: Record<string, any> = {
-      Title: request.requestId,
-      RequestType: request.requestType,
-      RequestTitle: request.requestTitle,
-      Purpose: request.purpose || '',
-      SubmissionType: request.submissionType,
-      ReviewAudience: request.reviewAudience,
-      IsRushRequest: request.isRushRequest,
-      Status: request.status,
+      [RequestsFields.RequestId]: request.requestId,
+      [RequestsFields.RequestType]: request.requestType,
+      [RequestsFields.RequestTitle]: request.requestTitle,
+      [RequestsFields.Purpose]: request.purpose || '',
+      [RequestsFields.SubmissionType]: request.submissionType,
+      [RequestsFields.ReviewAudience]: request.reviewAudience,
+      [RequestsFields.IsRushRequest]: request.isRushRequest,
+      [RequestsFields.Status]: request.status,
     };
 
     // Map approvals for new request
@@ -373,58 +381,78 @@ export function buildRequestUpdatePayload(
 
     // Add optional fields only if they have values
     if (request.submissionItem) {
-      payload.SubmissionItem = request.submissionItem;
+      payload[RequestsFields.SubmissionItem] = request.submissionItem;
     }
 
     if (request.targetReturnDate) {
-      payload.TargetReturnDate = request.targetReturnDate.toISOString();
+      payload[RequestsFields.TargetReturnDate] = request.targetReturnDate.toISOString();
     }
 
     if (request.rushRationale) {
-      payload.RushRationale = request.rushRationale;
+      payload[RequestsFields.RushRationale] = request.rushRationale;
     }
 
     if (request.department) {
-      payload.Department = request.department;
+      payload[RequestsFields.Department] = request.department;
     }
 
     // Multi-choice field - use SharePoint format with results array
     if (request.distributionMethod && request.distributionMethod.length > 0) {
-      payload.DistributionMethod = { results: request.distributionMethod };
+      payload[RequestsFields.DistributionMethod] = { results: request.distributionMethod };
     }
 
     // Lookup fields - only add if there are actual IDs
     if (priorSubmissionsIds.length > 0) {
-      payload.PriorSubmissionsId = { results: priorSubmissionsIds };
+      payload[RequestsFields.PriorSubmissions + 'Id'] = { results: priorSubmissionsIds };
     }
 
     if (request.priorSubmissionNotes) {
-      payload.PriorSubmissionNotes = request.priorSubmissionNotes;
+      payload[RequestsFields.PriorSubmissionNotes] = request.priorSubmissionNotes;
     }
 
     if (request.dateOfFirstUse) {
-      payload.DateOfFirstUse = request.dateOfFirstUse.toISOString();
+      payload[RequestsFields.DateOfFirstUse] = request.dateOfFirstUse.toISOString();
     }
 
     // User lookup field - only add if there are actual IDs
     if (additionalPartyIds.length > 0) {
-      payload.AdditionalPartyId = { results: additionalPartyIds };
+      payload[RequestsFields.AdditionalParty + 'Id'] = { results: additionalPartyIds };
     }
 
     if (request.trackingId) {
-      payload.TrackingId = request.trackingId;
+      payload[RequestsFields.TrackingId] = request.trackingId;
     }
 
     // Attorney fields - validate that attorney has id before saving
     if (request.attorney) {
       const attorneyValue = request.attorney && request.attorney.id ? request.attorney : null;
       if (attorneyValue) {
-        payload.Attorney = attorneyValue;
+        payload[RequestsFields.Attorney] = attorneyValue;
       }
     }
 
     if (request.attorneyAssignNotes) {
-      payload.AttorneyAssignNotes = request.attorneyAssignNotes;
+      payload[RequestsFields.AttorneyAssignNotes] = request.attorneyAssignNotes;
+    }
+
+    // FINRA Audience & Product Fields
+    if (request.finraAudienceCategory && request.finraAudienceCategory.length > 0) {
+      payload[RequestsFields.FINRAAudienceCategory] = { results: request.finraAudienceCategory };
+    }
+    if (request.audience && request.audience.length > 0) {
+      payload[RequestsFields.Audience] = { results: request.audience };
+    }
+    if (request.usFunds && request.usFunds.length > 0) {
+      payload[RequestsFields.USFunds] = { results: request.usFunds };
+    }
+    if (request.ucits && request.ucits.length > 0) {
+      payload[RequestsFields.UCITS] = { results: request.ucits };
+    }
+    if (request.separateAcctStrategies && request.separateAcctStrategies.length > 0) {
+      payload[RequestsFields.SeparateAcctStrategies] = { results: request.separateAcctStrategies };
+    }
+    if (request.separateAcctStrategiesIncl && request.separateAcctStrategiesIncl.length > 0) {
+      payload[RequestsFields.SeparateAcctStrategiesIncl] = { results: request.separateAcctStrategiesIncl };
     }
 
     return payload;
@@ -466,53 +494,127 @@ export function getChangedFields(
 }
 
 /**
- * Pad number with leading zeros
+ * Request ID prefix mapping based on request type
+ *
+ * Format: {PREFIX}-{YY}-{N}
+ * - CRR = Communication Review Request
+ * - GRR = General Review Request (Phase 2)
+ * - IMA = IMA Review Request (Phase 2)
  */
-function padNumber(num: number, size: number): string {
-  let s = num.toString();
-  while (s.length < size) {
-    s = '0' + s;
-  }
-  return s;
+const REQUEST_ID_PREFIXES: Record<string, string> = {
+  'Communication': 'CRR',
+  'General Review': 'GRR',
+  'IMA Review': 'IMA',
+};
+
+/**
+ * Get 2-digit year from current date
+ */
+function getTwoDigitYear(): string {
+  return new Date().getFullYear().toString().slice(-2);
 }
 
 /**
- * Generate request ID in format CRR-YYYY-####
+ * Get the next sequence number from RequestIds list
  *
- * Gets the last request created in current year and increments the number.
+ * Queries the hidden RequestIds list to find the last sequence number
+ * for the given prefix and year, then returns the next number.
  *
- * @returns Promise resolving to new request ID
+ * @param prefix - Request type prefix (CRR, GRR, IMA)
+ * @param year - 4-digit year
+ * @returns Promise resolving to next sequence number
  */
-export async function generateRequestId(): Promise<string> {
-  const currentYear = new Date().getFullYear();
-
+async function getNextSequenceNumber(prefix: string, year: number): Promise<number> {
   try {
-    SPContext.logger.info('RequestSaveService: Generating request ID', { year: currentYear });
-
-    // Get the last request created this year
+    // Query RequestIds list for the last sequence number for this prefix/year
     const items = await SPContext.sp.web.lists
-      .getByTitle(Lists.Requests.Title)
-      .items.select(RequestsFields.RequestId)
-      .filter(`startswith(${RequestsFields.RequestId},'CRR-${currentYear}')`)
-      .orderBy(RequestsFields.Created, false)
+      .getByTitle(Lists.RequestIds.Title)
+      .items.select('Sequence')
+      .filter(`Prefix eq '${prefix}' and Year eq ${year}`)
+      .orderBy('Sequence', false)
       .top(1)();
 
-    let nextNumber = 1;
-
     if (items.length > 0) {
-      const lastRequestId = items[0].Title;
-      const parts = lastRequestId.split('-');
-
-      if (parts.length === 3) {
-        const lastNumber = parseInt(parts[2], 10);
-        if (!isNaN(lastNumber)) {
-          nextNumber = lastNumber + 1;
-        }
-      }
+      return (items[0].Sequence as number) + 1;
     }
 
-    const paddedNumber = padNumber(nextNumber, 4);
-    const requestId = `CRR-${currentYear}-${paddedNumber}`;
+    return 1;
+  } catch (error: unknown) {
+    SPContext.logger.warn('RequestSaveService: Failed to query RequestIds list, starting at 1', error);
+    return 1;
+  }
+}
+
+/**
+ * Register a new request ID in the RequestIds list
+ *
+ * Adds an entry to the hidden RequestIds list to track the sequence.
+ * This ensures unique IDs even when users can't see all requests.
+ *
+ * @param requestId - The full request ID (e.g., CRR-25-1)
+ * @param prefix - Request type prefix
+ * @param year - 4-digit year
+ * @param sequence - Sequence number
+ */
+async function registerRequestId(
+  requestId: string,
+  prefix: string,
+  year: number,
+  sequence: number
+): Promise<void> {
+  try {
+    await SPContext.sp.web.lists
+      .getByTitle(Lists.RequestIds.Title)
+      .items.add({
+        Title: requestId,
+        Prefix: prefix,
+        Year: year,
+        Sequence: sequence,
+      });
+
+    SPContext.logger.info('RequestSaveService: Request ID registered', { requestId, prefix, year, sequence });
+  } catch (error: unknown) {
+    SPContext.logger.error('RequestSaveService: Failed to register request ID', error, { requestId });
+    // Don't throw - the request ID is still valid, just not tracked
+    // This could cause duplicate IDs in edge cases, but better than failing the save
+  }
+}
+
+/**
+ * Generate request ID in format {PREFIX}-{YY}-{N}
+ *
+ * Uses the hidden RequestIds list to ensure unique sequential numbering
+ * regardless of item-level permissions on the Requests list.
+ *
+ * Format examples:
+ * - CRR-25-1 (Communication Review Request, year 2025, first request)
+ * - CRR-25-42 (Communication Review Request, year 2025, 42nd request)
+ * - GRR-25-1 (General Review Request - Phase 2)
+ * - IMA-25-1 (IMA Review Request - Phase 2)
+ *
+ * @param requestType - Optional request type (defaults to Communication)
+ * @returns Promise resolving to new request ID
+ */
+export async function generateRequestId(requestType?: string): Promise<string> {
+  const currentYear = new Date().getFullYear();
+  const twoDigitYear = getTwoDigitYear();
+  const prefix = REQUEST_ID_PREFIXES[requestType || 'Communication'] || 'CRR';
+
+  try {
+    SPContext.logger.info('RequestSaveService: Generating request ID', {
+      requestType,
+      prefix,
+      year: currentYear,
+    });
+
+    // Get next sequence number from RequestIds list
+    const nextNumber = await getNextSequenceNumber(prefix, currentYear);
+
+    // Build request ID: PREFIX-YY-N (no zero-padding)
+    const requestId = `${prefix}-${twoDigitYear}-${nextNumber}`;
+
+    // Register the ID in the RequestIds list
+    await registerRequestId(requestId, prefix, currentYear, nextNumber);
 
     SPContext.logger.info('RequestSaveService: Request ID generated', { requestId });
 
@@ -521,7 +623,7 @@ export async function generateRequestId(): Promise<string> {
   } catch (error: unknown) {
     SPContext.logger.error('RequestSaveService: Failed to generate request ID', error);
     // Fallback to timestamp-based ID
-    return `CRR-${currentYear}-${Date.now()}`;
+    return `${prefix}-${twoDigitYear}-${Date.now()}`;
   }
 }
 
@@ -737,8 +839,8 @@ export async function saveDraft(
       return { itemId, saved: result.saved, updatedRequest: result.updatedRequest };
 
     } else {
-      // Create new draft
-      const requestId = await generateRequestId();
+      // Create new draft - pass request type for proper prefix
+      const requestId = await generateRequestId(data.requestType);
 
       // Build payload using buildRequestUpdatePayload (passing undefined for originalRequest)
       const draftData = {

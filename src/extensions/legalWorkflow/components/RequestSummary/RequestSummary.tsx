@@ -1,30 +1,27 @@
 /**
  * RequestSummary Component
  *
- * Displays a read-only summary of the request with all submitted information.
- * Provides an "Edit" button to switch back to edit mode.
+ * Displays a compact, read-only summary of the request in a collapsible Card.
+ * Uses multi-column layout for efficient space usage.
  *
  * Features:
- * - Read-only display of all form data
- * - Organized into sections matching the form
- * - User-friendly formatting (dates, enums, etc.)
- * - Edit button to return to form view
+ * - Single collapsible card containing all request information
+ * - Card headerActions for collapse/expand and Edit button
+ * - Multi-column compact layout
+ * - Organized sections: Basic Info, Product & Audience, Distribution, Prior Submissions, Additional Parties
  * - Badge indicators for status and flags
  */
 
-import {
-  DefaultButton,
-  DirectionalHint,
-  Icon,
-  Label,
-  Separator,
-  Stack,
-  Text,
-  TooltipHost,
-} from '@fluentui/react';
+import { Icon } from '@fluentui/react/lib/Icon';
+import { Stack } from '@fluentui/react/lib/Stack';
+import { Text } from '@fluentui/react/lib/Text';
 import * as React from 'react';
-import { Card } from 'spfx-toolkit/lib/components/Card';
+import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
+import type { CardAction } from 'spfx-toolkit/lib/components/Card/Card.types';
+import { DocumentLink } from 'spfx-toolkit/lib/components/DocumentLink';
+import { usePermissions } from '../../../../hooks/usePermissions';
 import { useRequestStore } from '../../../../stores/requestStore';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import {
   ApprovalType,
   DistributionMethod,
@@ -38,74 +35,106 @@ import './RequestSummary.scss';
  * Props for RequestSummary component
  */
 export interface IRequestSummaryProps {
+  /** Callback when Edit button is clicked */
   onEditClick?: () => void;
+  /** Whether card is expanded by default */
+  defaultExpanded?: boolean;
 }
 
 /**
- * Helper component to display a field value
+ * Compact field display for multi-column layout
  */
-interface IFieldDisplayProps {
+interface ICompactFieldProps {
   label: string;
   value?: string | React.ReactNode;
   icon?: string;
-  isEmpty?: boolean;
 }
 
-const FieldDisplay: React.FC<IFieldDisplayProps> = ({ label, value, icon, isEmpty = false }) => {
-  if (isEmpty) {
-    return null;
-  }
+const CompactField: React.FC<ICompactFieldProps> = ({ label, value, icon }) => {
+  if (!value) return null;
 
   return (
-    <Stack tokens={{ childrenGap: 4 }} styles={{ root: { marginBottom: '16px' } }}>
-      <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
-        {icon && <Icon iconName={icon} styles={{ root: { fontSize: '14px', color: '#605e5c' } }} />}
-        <Label styles={{ root: { fontWeight: 600, color: '#323130', margin: 0 } }}>{label}</Label>
-      </Stack>
-      <Text
-        variant='medium'
-        styles={{ root: { color: '#323130', paddingLeft: icon ? '22px' : '0' } }}
-      >
-        {value || <span style={{ color: '#a19f9d', fontStyle: 'italic' }}>Not provided</span>}
-      </Text>
-    </Stack>
-  );
-};
-
-/**
- * Helper component to display a badge
- */
-interface IBadgeProps {
-  text: string;
-  color?: string;
-  backgroundColor?: string;
-}
-
-const Badge: React.FC<IBadgeProps> = ({ text, color = '#ffffff', backgroundColor = '#0078d4' }) => {
-  return (
-    <div
-      style={{
-        display: 'inline-block',
-        padding: '4px 12px',
-        borderRadius: '12px',
-        backgroundColor,
-        color,
-        fontSize: '12px',
-        fontWeight: 600,
-        marginRight: '8px',
-        marginBottom: '8px',
-      }}
-    >
-      {text}
+    <div className='summary-field'>
+      <div className='summary-field__label'>
+        {icon && <Icon iconName={icon} className='summary-field__icon' />}
+        <span>{label}</span>
+      </div>
+      <div className='summary-field__value'>{value}</div>
     </div>
   );
 };
 
 /**
+ * Badge component for status and tags
+ */
+interface IBadgeProps {
+  text: string;
+  variant?: 'default' | 'success' | 'warning' | 'danger' | 'info';
+}
+
+const Badge: React.FC<IBadgeProps> = ({ text, variant = 'default' }) => {
+  const colorMap = {
+    default: { bg: '#e1dfdd', color: '#323130' },
+    success: { bg: '#dff6dd', color: '#107c10' },
+    warning: { bg: '#fff4ce', color: '#797673' },
+    danger: { bg: '#fde7e9', color: '#d13438' },
+    info: { bg: '#e6f2ff', color: '#0078d4' },
+  };
+  const colors = colorMap[variant];
+
+  return (
+    <span
+      className='summary-badge'
+      style={{ backgroundColor: colors.bg, color: colors.color }}
+    >
+      {text}
+    </span>
+  );
+};
+
+/**
+ * Section header within the summary
+ */
+interface ISectionHeaderProps {
+  title: string;
+  icon: string;
+}
+
+const SectionHeader: React.FC<ISectionHeaderProps> = ({ title, icon }) => (
+  <div className='summary-section__header'>
+    <Icon iconName={icon} className='summary-section__icon' />
+    <span className='summary-section__title'>{title}</span>
+  </div>
+);
+
+/**
  * RequestSummary Component
  */
-export const RequestSummary: React.FC<IRequestSummaryProps> = ({ onEditClick }) => {
+export const RequestSummary: React.FC<IRequestSummaryProps> = ({
+  onEditClick,
+  defaultExpanded = true,
+}) => {
   const { currentRequest } = useRequestStore();
+  const permissions = usePermissions();
+
+  /**
+   * Check if user can edit request information
+   * Only submitter (author) or admin can edit request info
+   */
+  const canEditRequestInfo = React.useMemo((): boolean => {
+    if (!currentRequest) return false;
+
+    // Admin can always edit
+    if (permissions.isAdmin) return true;
+
+    // Check if current user is the submitter/author
+    const currentUserId = SPContext.currentUser?.id?.toString() ?? '';
+    const isOwner =
+      currentRequest.submittedBy?.id === currentUserId ||
+      currentRequest.author?.id === currentUserId;
+
+    return isOwner;
+  }, [currentRequest, permissions.isAdmin]);
 
   /**
    * Format date for display
@@ -115,13 +144,13 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({ onEditClick }) 
     const dateObj = typeof date === 'string' ? new Date(date) : date;
     return dateObj.toLocaleDateString('en-US', {
       year: 'numeric',
-      month: 'long',
+      month: 'short',
       day: 'numeric',
     });
   };
 
   /**
-   * Get readable enum value
+   * Get readable enum values
    */
   const getRequestTypeLabel = (type?: RequestType): string => {
     switch (type) {
@@ -154,7 +183,7 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({ onEditClick }) 
       case ReviewAudience.Compliance:
         return 'Compliance';
       case ReviewAudience.Both:
-        return 'Both Legal and Compliance';
+        return 'Both';
       default:
         return '';
     }
@@ -162,393 +191,331 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({ onEditClick }) 
 
   const getDistributionMethodLabel = (method: DistributionMethod): string => {
     const labels: Record<DistributionMethod, string> = {
-      [DistributionMethod.DodgeCoxWebsiteUS]: 'Dodge & Cox Website - U.S.',
-      [DistributionMethod.DodgeCoxWebsiteNonUS]: 'Dodge & Cox Website - Non-U.S.',
+      [DistributionMethod.DodgeCoxWebsiteUS]: 'D&C Website (US)',
+      [DistributionMethod.DodgeCoxWebsiteNonUS]: 'D&C Website (Non-US)',
       [DistributionMethod.ThirdPartyWebsite]: 'Third Party Website',
-      [DistributionMethod.EmailMail]: 'Email / Mail',
+      [DistributionMethod.EmailMail]: 'Email/Mail',
       [DistributionMethod.MobileApp]: 'Mobile App',
-      [DistributionMethod.DisplayCardSignage]: 'Display Card / Signage',
+      [DistributionMethod.DisplayCardSignage]: 'Display/Signage',
       [DistributionMethod.Hangout]: 'Hangout',
-      [DistributionMethod.LiveTalkingPoints]: 'Live - Talking Points',
+      [DistributionMethod.LiveTalkingPoints]: 'Live Talking Points',
       [DistributionMethod.SocialMedia]: 'Social Media',
     };
     return labels[method] || method;
   };
 
   const getApprovalTypeLabel = (type: ApprovalType): string => {
-    return type;
+    switch (type) {
+      case ApprovalType.Communications:
+        return 'Communications';
+      case ApprovalType.PortfolioManager:
+        return 'Portfolio Manager';
+      case ApprovalType.ResearchAnalyst:
+        return 'Research Analyst';
+      case ApprovalType.SubjectMatterExpert:
+        return 'SME';
+      case ApprovalType.Performance:
+        return 'Performance';
+      case ApprovalType.Other:
+        return 'Other';
+      default:
+        return type;
+    }
   };
+
+  // Build header actions for the Card
+  // Edit button only shown if user can edit request info (submitter/author or admin)
+  const headerActions: CardAction[] = React.useMemo(() => {
+    const actions: CardAction[] = [];
+
+    // Only show Edit button if callback provided AND user has permission
+    if (onEditClick && canEditRequestInfo) {
+      actions.push({
+        id: 'edit-request',
+        label: 'Edit',
+        icon: 'Edit',
+        onClick: onEditClick,
+        tooltip: 'Edit request information',
+        ariaLabel: 'Edit request information',
+      });
+    }
+
+    return actions;
+  }, [onEditClick, canEditRequestInfo]);
 
   if (!currentRequest) {
     return null;
   }
 
-  return (
-    <div className='request-summary'>
-      {/* Header Card */}
-      <Card id='summary-header' className='summary-header-card'>
-        <Stack
-          horizontal
-          verticalAlign='center'
-          horizontalAlign='space-between'
-          styles={{ root: { padding: '24px' } }}
-        >
-          <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 16 }}>
-            <div className='summary-icon'>
-              <Icon iconName='ViewAll' styles={{ root: { fontSize: '32px', color: '#0078d4' } }} />
-            </div>
-            <Stack tokens={{ childrenGap: 4 }}>
-              <Text variant='xxLarge' styles={{ root: { fontWeight: 600, color: '#323130' } }}>
-                Request Summary
-              </Text>
-              <Text variant='medium' styles={{ root: { color: '#605e5c' } }}>
-                Review your submitted request details
-              </Text>
-            </Stack>
-          </Stack>
+  // Calculate approval summary for header
+  const approvalCount = currentRequest.approvals?.length || 0;
 
-          {onEditClick && (
-            <TooltipHost content='Edit this request' directionalHint={DirectionalHint.bottomCenter}>
-              <DefaultButton
-                text='Edit Request'
-                iconProps={{ iconName: 'Edit' }}
-                onClick={onEditClick}
-                styles={{
-                  root: {
-                    minWidth: '140px',
-                    height: '44px',
-                    borderRadius: '4px',
-                    borderColor: '#0078d4',
-                    color: '#0078d4',
-                  },
-                  rootHovered: {
-                    backgroundColor: '#f3f9fd',
-                    borderColor: '#106ebe',
-                    color: '#106ebe',
-                  },
-                }}
-              />
-            </TooltipHost>
+  return (
+    <Card
+      id='request-summary'
+      className='request-summary-card'
+      allowExpand={true}
+      defaultExpanded={defaultExpanded}
+    >
+      <Header actions={headerActions} size='regular'>
+        <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
+          <Icon iconName='ClipboardList' styles={{ root: { fontSize: '20px', color: '#0078d4' } }} />
+          <Text variant='large' styles={{ root: { fontWeight: 600 } }}>
+            Request Summary
+          </Text>
+          {currentRequest.isRushRequest && <Badge text='RUSH' variant='danger' />}
+          {approvalCount > 0 && (
+            <Text variant='small' styles={{ root: { color: '#605e5c' } }}>
+              ({approvalCount} approval{approvalCount !== 1 ? 's' : ''})
+            </Text>
           )}
         </Stack>
-      </Card>
+      </Header>
 
-      {/* Request ID and Status */}
-      {currentRequest.requestId && (
-        <Card id='summary-id' className='summary-section-card'>
-          <Stack tokens={{ childrenGap: 16 }} styles={{ root: { padding: '24px' } }}>
-            <Stack horizontal tokens={{ childrenGap: 16 }} wrap>
-              <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
-                <Icon iconName='Tag' styles={{ root: { fontSize: '16px', color: '#0078d4' } }} />
-                <Text variant='large' styles={{ root: { fontWeight: 600 } }}>
-                  Request ID: {currentRequest.requestId}
-                </Text>
-              </Stack>
-              {currentRequest.status && (
-                <Badge text={currentRequest.status} backgroundColor='#107c10' />
-              )}
-              {currentRequest.isRushRequest && (
-                <Badge text='RUSH REQUEST' backgroundColor='#d13438' />
-              )}
-            </Stack>
-          </Stack>
-        </Card>
-      )}
-
-      {/* Basic Information Section */}
-      <Card id='summary-basic-info' className='summary-section-card'>
-        <Stack tokens={{ childrenGap: 20 }} styles={{ root: { padding: '24px' } }}>
-          <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
-            <Icon iconName='Info' styles={{ root: { fontSize: '20px', color: '#0078d4' } }} />
-            <Text variant='xLarge' styles={{ root: { fontWeight: 600, color: '#323130' } }}>
-              Basic Information
-            </Text>
-          </Stack>
-
-          <Separator />
-
-          <Stack tokens={{ childrenGap: 8 }}>
-            <FieldDisplay
-              label='Request Type'
-              value={getRequestTypeLabel(currentRequest.requestType)}
-              icon='DocumentSearch'
-            />
-
-            <FieldDisplay label='Request Title' value={currentRequest.requestTitle} icon='Title' />
-
-            <FieldDisplay label='Purpose' value={currentRequest.purpose} icon='TextDocument' />
-
-            <FieldDisplay
-              label='Submission Type'
-              value={getSubmissionTypeLabel(currentRequest.submissionType)}
-              icon='CloudUpload'
-            />
-
-            <FieldDisplay
-              label='Submission Item'
-              value={currentRequest.submissionItem}
-              icon='BulletedList'
-            />
-
-            <FieldDisplay
-              label='Review Audience'
-              value={getReviewAudienceLabel(currentRequest.reviewAudience)}
-              icon='People'
-            />
-
-            <FieldDisplay
-              label='Target Return Date'
-              value={formatDate(currentRequest.targetReturnDate)}
-              icon='Calendar'
-            />
-
-            {currentRequest.isRushRequest && (
-              <FieldDisplay
-                label='Rush Rationale'
-                value={currentRequest.rushRationale}
-                icon='Warning'
+      <Content padding='comfortable'>
+        <div className='request-summary'>
+          {/* Basic Information Section */}
+          <div className='summary-section'>
+            <SectionHeader title='Basic Information' icon='Info' />
+            <div className='summary-grid summary-grid--3col'>
+              <CompactField
+                label='Request Type'
+                value={getRequestTypeLabel(currentRequest.requestType)}
+                icon='DocumentSearch'
               />
-            )}
-
-            {currentRequest.department && (
-              <FieldDisplay
-                label='Department'
-                value={currentRequest.department}
-                icon='OfficeLogo'
+              <CompactField
+                label='Submission Type'
+                value={getSubmissionTypeLabel(currentRequest.submissionType)}
+                icon='CloudUpload'
               />
-            )}
-          </Stack>
-        </Stack>
-      </Card>
-
-      {/* Distribution & Audience Section (for Communication requests) */}
-      {currentRequest.requestType === RequestType.Communication &&
-        (currentRequest.distributionMethod?.length || currentRequest.dateOfFirstUse) && (
-          <Card id='summary-distribution' className='summary-section-card'>
-            <Stack tokens={{ childrenGap: 20 }} styles={{ root: { padding: '24px' } }}>
-              <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
-                <Icon
-                  iconName='Megaphone'
-                  styles={{ root: { fontSize: '20px', color: '#0078d4' } }}
+              <CompactField
+                label='Review Audience'
+                value={getReviewAudienceLabel(currentRequest.reviewAudience)}
+                icon='People'
+              />
+              <CompactField
+                label='Request Title'
+                value={currentRequest.requestTitle}
+                icon='Title'
+              />
+              <CompactField
+                label='Submission Item'
+                value={currentRequest.submissionItem}
+                icon='BulletedList'
+              />
+              <CompactField
+                label='Target Return Date'
+                value={formatDate(currentRequest.targetReturnDate)}
+                icon='Calendar'
+              />
+            </div>
+            {currentRequest.purpose && (
+              <div className='summary-full-width'>
+                <CompactField
+                  label='Purpose'
+                  value={currentRequest.purpose}
+                  icon='TextDocument'
                 />
-                <Text variant='xLarge' styles={{ root: { fontWeight: 600, color: '#323130' } }}>
-                  Distribution & Audience
-                </Text>
-              </Stack>
+              </div>
+            )}
+            {currentRequest.isRushRequest && currentRequest.rushRationale && (
+              <div className='summary-full-width summary-highlight--danger'>
+                <CompactField
+                  label='Rush Rationale'
+                  value={currentRequest.rushRationale}
+                  icon='Warning'
+                />
+              </div>
+            )}
+          </div>
 
-              <Separator />
+          {/* FINRA Product & Audience Section */}
+          {(currentRequest.finraAudienceCategory ||
+            currentRequest.audience ||
+            currentRequest.usFunds ||
+            currentRequest.ucits ||
+            currentRequest.separateAcctStrategies) && (
+            <div className='summary-section'>
+              <SectionHeader title='Product & Audience' icon='ProductRelease' />
+              <div className='summary-grid summary-grid--3col'>
+                <CompactField
+                  label='FINRA Audience'
+                  value={currentRequest.finraAudienceCategory}
+                  icon='Group'
+                />
+                <CompactField
+                  label='Audience'
+                  value={currentRequest.audience}
+                  icon='People'
+                />
+                {currentRequest.usFunds && currentRequest.usFunds.length > 0 && (
+                  <CompactField
+                    label='US Funds'
+                    value={currentRequest.usFunds.join(', ')}
+                    icon='Money'
+                  />
+                )}
+                {currentRequest.ucits && currentRequest.ucits.length > 0 && (
+                  <CompactField
+                    label='UCITS'
+                    value={currentRequest.ucits.join(', ')}
+                    icon='Globe'
+                  />
+                )}
+                {currentRequest.separateAcctStrategies && currentRequest.separateAcctStrategies.length > 0 && (
+                  <CompactField
+                    label='Separate Account Strategies'
+                    value={currentRequest.separateAcctStrategies.join(', ')}
+                    icon='AccountManagement'
+                  />
+                )}
+              </div>
+            </div>
+          )}
 
-              <Stack tokens={{ childrenGap: 8 }}>
-                {currentRequest.distributionMethod &&
-                  currentRequest.distributionMethod.length > 0 && (
-                    <Stack tokens={{ childrenGap: 4 }}>
-                      <Label styles={{ root: { fontWeight: 600, color: '#323130', margin: 0 } }}>
-                        Distribution Methods
-                      </Label>
-                      <Stack horizontal tokens={{ childrenGap: 8 }} wrap>
+          {/* Distribution Section */}
+          {currentRequest.requestType === RequestType.Communication &&
+            (currentRequest.distributionMethod?.length || currentRequest.dateOfFirstUse) && (
+              <div className='summary-section'>
+                <SectionHeader title='Distribution' icon='Megaphone' />
+                <div className='summary-grid summary-grid--2col'>
+                  {currentRequest.distributionMethod && currentRequest.distributionMethod.length > 0 && (
+                    <div className='summary-field summary-field--badges'>
+                      <div className='summary-field__label'>
+                        <Icon iconName='Send' className='summary-field__icon' />
+                        <span>Distribution Methods</span>
+                      </div>
+                      <div className='summary-field__value summary-badges'>
                         {currentRequest.distributionMethod.map(method => (
-                          <Badge
-                            key={method}
-                            text={getDistributionMethodLabel(method)}
-                            backgroundColor='#e6f2ff'
-                            color='#0078d4'
-                          />
+                          <Badge key={method} text={getDistributionMethodLabel(method)} variant='info' />
                         ))}
-                      </Stack>
-                    </Stack>
+                      </div>
+                    </div>
                   )}
-
-                {currentRequest.dateOfFirstUse && (
-                  <FieldDisplay
+                  <CompactField
                     label='Date of First Use'
                     value={formatDate(currentRequest.dateOfFirstUse)}
                     icon='Calendar'
                   />
+                </div>
+              </div>
+            )}
+
+          {/* Prior Submissions Section */}
+          {(currentRequest.priorSubmissions?.length || currentRequest.priorSubmissionNotes) && (
+            <div className='summary-section'>
+              <SectionHeader title='Prior Submissions' icon='History' />
+              <div className='summary-grid summary-grid--2col'>
+                {currentRequest.priorSubmissions && currentRequest.priorSubmissions.length > 0 && (
+                  <div className='summary-field'>
+                    <div className='summary-field__label'>
+                      <Icon iconName='Link' className='summary-field__icon' />
+                      <span>Related Requests</span>
+                    </div>
+                    <div className='summary-field__value'>
+                      {currentRequest.priorSubmissions.map((sub, idx) => (
+                        <span key={idx} className='summary-link'>
+                          {sub.title}
+                          {idx < currentRequest.priorSubmissions!.length - 1 && ', '}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 )}
-              </Stack>
-            </Stack>
-          </Card>
-        )}
-
-      {/* Approvals Section */}
-      {currentRequest.approvals && currentRequest.approvals.length > 0 && (
-        <Card id='summary-approvals' className='summary-section-card'>
-          <Stack tokens={{ childrenGap: 20 }} styles={{ root: { padding: '24px' } }}>
-            <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
-              <Icon
-                iconName='CheckMark'
-                styles={{ root: { fontSize: '20px', color: '#0078d4' } }}
-              />
-              <Text variant='xLarge' styles={{ root: { fontWeight: 600, color: '#323130' } }}>
-                Approvals ({currentRequest.approvals.length})
-              </Text>
-            </Stack>
-
-            <Separator />
-
-            <Stack tokens={{ childrenGap: 16 }}>
-              {currentRequest.approvals.map((approval, index) => (
-                <Card
-                  key={index}
-                  id={`approval-${index}`}
-                  style={{
-                    padding: '16px',
-                    backgroundColor: '#f3f2f1',
-                    border: '1px solid #edebe9',
-                    borderRadius: '4px',
-                  }}
-                >
-                  <Stack tokens={{ childrenGap: 12 }}>
-                    <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
-                      <Icon iconName='Completed' styles={{ root: { color: '#107c10' } }} />
-                      <Text variant='mediumPlus' styles={{ root: { fontWeight: 600 } }}>
-                        {getApprovalTypeLabel(approval.type)}
-                        {approval.type === ApprovalType.Other && approval.approvalTitle
-                          ? ` - ${approval.approvalTitle}`
-                          : ''}
-                      </Text>
-                    </Stack>
-
-                    <Stack tokens={{ childrenGap: 8 }}>
-                      <Stack horizontal tokens={{ childrenGap: 16 }}>
-                        <Stack tokens={{ childrenGap: 4 }}>
-                          <Label styles={{ root: { fontSize: '12px', margin: 0 } }}>Approver</Label>
-                          <Text variant='small'>{approval.approver?.title || 'Unknown'}</Text>
-                        </Stack>
-                        <Stack tokens={{ childrenGap: 4 }}>
-                          <Label styles={{ root: { fontSize: '12px', margin: 0 } }}>Date</Label>
-                          <Text variant='small'>{formatDate(approval.approvalDate)}</Text>
-                        </Stack>
-                      </Stack>
-
-                      {approval.notes && (
-                        <Stack tokens={{ childrenGap: 4 }}>
-                          <Label styles={{ root: { fontSize: '12px', margin: 0 } }}>Notes</Label>
-                          <Text variant='small' styles={{ root: { fontStyle: 'italic' } }}>
-                            {approval.notes}
-                          </Text>
-                        </Stack>
-                      )}
-                    </Stack>
-                  </Stack>
-                </Card>
-              ))}
-            </Stack>
-
-            {currentRequest.requiresCommunicationsApproval && (
-              <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
-                <Icon iconName='Info' styles={{ root: { fontSize: '14px', color: '#0078d4' } }} />
-                <Text variant='small' styles={{ root: { color: '#605e5c' } }}>
-                  Communications approval was required for this request
-                </Text>
-              </Stack>
-            )}
-          </Stack>
-        </Card>
-      )}
-
-      {/* Prior Submissions Section */}
-      {(currentRequest.priorSubmissions?.length || currentRequest.priorSubmissionNotes) && (
-        <Card id='summary-prior-submissions' className='summary-section-card'>
-          <Stack tokens={{ childrenGap: 20 }} styles={{ root: { padding: '24px' } }}>
-            <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
-              <Icon iconName='History' styles={{ root: { fontSize: '20px', color: '#0078d4' } }} />
-              <Text variant='xLarge' styles={{ root: { fontWeight: 600, color: '#323130' } }}>
-                Prior Submissions
-              </Text>
-            </Stack>
-
-            <Separator />
-
-            <Stack tokens={{ childrenGap: 8 }}>
-              {currentRequest.priorSubmissions && currentRequest.priorSubmissions.length > 0 && (
-                <Stack tokens={{ childrenGap: 4 }}>
-                  <Label styles={{ root: { fontWeight: 600, margin: 0 } }}>Related Requests</Label>
-                  <Stack tokens={{ childrenGap: 4 }}>
-                    {currentRequest.priorSubmissions.map((submission, index) => (
-                      <Text key={index} variant='medium'>
-                        • {submission.title}
-                      </Text>
-                    ))}
-                  </Stack>
-                </Stack>
-              )}
-
-              {currentRequest.priorSubmissionNotes && (
-                <FieldDisplay
-                  label='Notes'
-                  value={currentRequest.priorSubmissionNotes}
-                  icon='StickyNotes'
-                />
-              )}
-            </Stack>
-          </Stack>
-        </Card>
-      )}
-
-      {/* Additional Parties Section */}
-      {currentRequest.additionalParty && currentRequest.additionalParty.length > 0 && (
-        <Card id='summary-additional-parties' className='summary-section-card'>
-          <Stack tokens={{ childrenGap: 20 }} styles={{ root: { padding: '24px' } }}>
-            <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
-              <Icon iconName='People' styles={{ root: { fontSize: '20px', color: '#0078d4' } }} />
-              <Text variant='xLarge' styles={{ root: { fontWeight: 600, color: '#323130' } }}>
-                Additional Parties
-              </Text>
-            </Stack>
-
-            <Separator />
-
-            <Stack tokens={{ childrenGap: 8 }}>
-              {currentRequest.additionalParty.map((person, index) => (
-                <Stack
-                  key={index}
-                  horizontal
-                  verticalAlign='center'
-                  tokens={{ childrenGap: 8 }}
-                  styles={{ root: { padding: '8px 0' } }}
-                >
-                  <Icon
-                    iconName='Contact'
-                    styles={{ root: { fontSize: '16px', color: '#605e5c' } }}
+                {currentRequest.priorSubmissionNotes && (
+                  <CompactField
+                    label='Notes'
+                    value={currentRequest.priorSubmissionNotes}
+                    icon='StickyNotes'
                   />
-                  <Text variant='medium'>{person.title || person.email}</Text>
-                </Stack>
-              ))}
-            </Stack>
-          </Stack>
-        </Card>
-      )}
+                )}
+              </div>
+            </div>
+          )}
 
-      {/* Submission Info */}
-      {(currentRequest.submittedBy || currentRequest.submittedOn) && (
-        <Card id='summary-submission-info' className='summary-info-card'>
-          <Stack
-            horizontal
-            tokens={{ childrenGap: 24 }}
-            wrap
-            styles={{ root: { padding: '16px 24px', backgroundColor: '#f3f9fd' } }}
-          >
-            {currentRequest.submittedBy && (
-              <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
-                <Icon iconName='People' styles={{ root: { fontSize: '14px', color: '#0078d4' } }} />
-                <Text variant='small' styles={{ root: { color: '#323130' } }}>
+          {/* Additional Parties Section */}
+          {currentRequest.additionalParty && currentRequest.additionalParty.length > 0 && (
+            <div className='summary-section'>
+              <SectionHeader title='Additional Parties' icon='People' />
+              <div className='summary-badges'>
+                {currentRequest.additionalParty.map((person, idx) => (
+                  <Badge key={idx} text={person.title || person.email || 'Unknown'} variant='default' />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Approvals Section with DocumentLink for attachments */}
+          {currentRequest.approvals && currentRequest.approvals.length > 0 && (
+            <div className='summary-section'>
+              <SectionHeader title={`Approvals (${approvalCount})`} icon='CheckMark' />
+              <div className='summary-approvals-list'>
+                {currentRequest.approvals.map((approval, idx) => (
+                  <div key={idx} className='summary-approval-card'>
+                    <div className='summary-approval-card__header'>
+                      <div className='summary-approval-card__type'>
+                        <Icon iconName='Completed' className='summary-approval-card__icon' />
+                        <span className='summary-approval-card__type-label'>
+                          {getApprovalTypeLabel(approval.type)}
+                        </span>
+                      </div>
+                      <span className='summary-approval-card__date'>
+                        {formatDate(approval.approvalDate)}
+                      </span>
+                    </div>
+                    <div className='summary-approval-card__approver'>
+                      <Icon iconName='Contact' className='summary-approval-card__approver-icon' />
+                      <span>{approval.approver?.title || 'Unknown'}</span>
+                    </div>
+                    {/* Approval Attachments with DocumentLink */}
+                    {approval.existingFiles && approval.existingFiles.length > 0 ? (
+                      <div className='summary-approval-card__attachment'>
+                        {approval.existingFiles.map((file, fileIdx) => (
+                          <DocumentLink
+                            key={fileIdx}
+                            documentUrl={file.url}
+                            layout='linkWithIcon'
+                            enableHoverCard={true}
+                            showVersionHistory={false}
+                            showDownloadInCard={true}
+                            onClick='preview'
+                            previewMode='view'
+                            previewTarget='modal'
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className='summary-approval-card__no-attachment'>
+                        <Icon iconName='Attach' />
+                        <span>No document attached</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Submission Footer */}
+          {(currentRequest.submittedBy || currentRequest.submittedOn) && (
+            <div className='summary-footer'>
+              {currentRequest.submittedBy && (
+                <span className='summary-footer__item'>
+                  <Icon iconName='Contact' className='summary-footer__icon' />
                   <strong>Submitted by:</strong> {currentRequest.submittedBy.title}
-                </Text>
-              </Stack>
-            )}
-            {currentRequest.submittedOn && (
-              <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
-                <Icon iconName='Clock' styles={{ root: { fontSize: '14px', color: '#0078d4' } }} />
-                <Text variant='small' styles={{ root: { color: '#323130' } }}>
-                  <strong>Submitted on:</strong> {formatDate(currentRequest.submittedOn)}
-                </Text>
-              </Stack>
-            )}
-          </Stack>
-        </Card>
-      )}
-    </div>
+                </span>
+              )}
+              {currentRequest.submittedOn && (
+                <span className='summary-footer__item'>
+                  <Icon iconName='Clock' className='summary-footer__icon' />
+                  <strong>Submitted:</strong> {formatDate(currentRequest.submittedOn)}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </Content>
+    </Card>
   );
 };
 

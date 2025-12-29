@@ -38,19 +38,17 @@
  * 3. Update requestStore to handle file operations during save
  */
 
-import {
-  Icon,
-  IconButton,
-  Label,
-  MessageBar,
-  MessageBarType,
-  Stack,
-  Text,
-  Toggle,
-} from '@fluentui/react';
+import { IconButton } from '@fluentui/react/lib/Button';
+import { Icon } from '@fluentui/react/lib/Icon';
+import { Label } from '@fluentui/react/lib/Label';
+import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
+import { Stack } from '@fluentui/react/lib/Stack';
+import { Text } from '@fluentui/react/lib/Text';
+import { Toggle } from '@fluentui/react/lib/Toggle';
+import { SelectBox } from 'devextreme-react/select-box';
 import * as React from 'react';
-import { Control, useFieldArray, useWatch, useController } from 'react-hook-form';
-import { SPContext } from 'spfx-toolkit';
+import { Control, useFieldArray, useWatch, useController, useFormState } from 'react-hook-form';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 
 import { Lists } from '@sp/Lists';
 
@@ -199,7 +197,47 @@ const AdditionalApprovalItem: React.FC<IAdditionalApprovalItemProps> = ({
     name: `approvals.${index}.approver` as const,
   });
 
-  
+  // Get form errors to check for document validation errors
+  const { errors } = useFormState({ control });
+
+  // Check if this approval has a document error
+  const hasDocumentError = React.useMemo(() => {
+    // Check for flat error key format (setError with string path creates flat keys)
+    const flatKey = `approvals.${index}._document`;
+    if ((errors as any)?.[flatKey]) {
+      return true;
+    }
+    // Also check nested structure (in case React Hook Form handles it differently)
+    const approvalErrors = errors?.approvals;
+    if (approvalErrors) {
+      const approvalError = (approvalErrors as any)[index];
+      if (approvalError && (approvalError as any)?._document) {
+        return true;
+      }
+    }
+    return false;
+  }, [errors, index]);
+
+  // Check if this approval has an approver error
+  const hasApproverError = React.useMemo(() => {
+    // Check for flat error key format (setError with string path creates flat keys)
+    const flatKey = `approvals.${index}.approver`;
+    if ((errors as any)?.[flatKey]) {
+      return true;
+    }
+    // Also check nested structure (in case React Hook Form handles it differently)
+    const approvalErrors = errors?.approvals;
+    if (approvalErrors) {
+      const approvalError = (approvalErrors as any)[index];
+      if (approvalError && (approvalError as any)?.approver) {
+        return true;
+      }
+    }
+    return false;
+  }, [errors, index]);
+
+  // Note: Approval date errors are handled by SPDateField's built-in validation display
+
   // Note: File management is now handled by DocumentUpload component via documentsStore
   /**
    * Get approval type display name
@@ -284,6 +322,7 @@ const AdditionalApprovalItem: React.FC<IAdditionalApprovalItemProps> = ({
             showPhoto
             showEmail
             disabled={disabled}
+            hasError={hasApproverError}
           />
         </FormItem>
 
@@ -316,6 +355,7 @@ const AdditionalApprovalItem: React.FC<IAdditionalApprovalItemProps> = ({
             maxFileSize={250 * 1024 * 1024}
             required={true}
             isReadOnly={disabled}
+            hasError={hasDocumentError}
             allowedExtensions={[
               'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
               'jpg', 'jpeg', 'png', 'gif', 'bmp',
@@ -367,7 +407,8 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
     name: 'approvals',
   });
 
-  // Note: File management is now handled by DocumentUpload component via documentsStore
+  // Get form errors to check for document validation errors
+  const { errors } = useFormState({ control });
 
   // Controller for requiresCommunicationsApproval toggle
   const {
@@ -383,9 +424,84 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
     name: 'approvals',
   });
 
+  // Count additional (non-Communications) approvals
+  const additionalApprovalsCount = React.useMemo(() => {
+    if (!approvals || !Array.isArray(approvals)) return 0;
+    let count = 0;
+    for (let i = 0; i < approvals.length; i++) {
+      const approval = approvals[i] as any;
+      if (approval.type !== ApprovalType.Communications) {
+        count++;
+      }
+    }
+    return count;
+  }, [approvals]);
+
+  // Check if there's an error requiring additional approval (non-Communications)
+  const hasApprovalDropdownError = React.useMemo(() => {
+    // Helper to check if message indicates additional approval error
+    const isAdditionalApprovalError = (msg: string | undefined): boolean => {
+      if (!msg) return false;
+      const msgLower = String(msg).toLowerCase();
+      return (
+        msgLower.indexOf('additional approval') !== -1 ||
+        msgLower.indexOf('non-communications') !== -1 ||
+        msgLower.indexOf('at least one additional') !== -1
+      );
+    };
+
+    // Helper to recursively search for error messages in an object
+    const findErrorMessage = (obj: any, depth = 0): string | undefined => {
+      if (!obj || depth > 5) return undefined;
+      if (typeof obj === 'string') return obj;
+      if (obj.message && typeof obj.message === 'string') return obj.message;
+      if (obj.root?.message) return obj.root.message;
+      if (obj.type && typeof obj.type === 'string') return obj.type;
+      // Check array elements
+      if (Array.isArray(obj)) {
+        for (const item of obj) {
+          const msg = findErrorMessage(item, depth + 1);
+          if (msg) return msg;
+        }
+      }
+      return undefined;
+    };
+
+    // Check for error at errors.approvals (direct)
+    const approvalsError = errors?.approvals;
+    if (approvalsError) {
+      const msg = findErrorMessage(approvalsError);
+      if (isAdditionalApprovalError(msg)) {
+        return true;
+      }
+    }
+
+    // Check all top-level error keys for any that match
+    if (errors) {
+      const errorKeys = Object.keys(errors);
+      for (const key of errorKeys) {
+        const err = (errors as any)[key];
+        const msg = findErrorMessage(err);
+        if (isAdditionalApprovalError(msg)) {
+          return true;
+        }
+      }
+    }
+
+    // If no additional approvals exist and we have any errors in approvals section,
+    // it's likely the "at least one additional approval" error
+    if (additionalApprovalsCount === 0 && errors?.approvals) {
+      return true;
+    }
+
+    return false;
+  }, [errors, additionalApprovalsCount]);
+
+  // Note: File management is now handled by DocumentUpload component via documentsStore
+
   // State for dropdown selection
-  const [selectedAdditionalType, setSelectedAdditionalType] = React.useState<ApprovalType | null>(
-    null
+  const [selectedAdditionalType, setSelectedAdditionalType] = React.useState<ApprovalType | undefined>(
+    undefined
   );
 
   /**
@@ -438,6 +554,50 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
   }, [approvals]);
 
   /**
+   * Check if Communications approval has a document error
+   */
+  const hasCommDocumentError = React.useMemo(() => {
+    if (communicationsApprovalIndex === -1) return false;
+    // Check for flat error key format (setError with string path creates flat keys)
+    const flatKey = `approvals.${communicationsApprovalIndex}._document`;
+    if ((errors as any)?.[flatKey]) {
+      return true;
+    }
+    // Also check nested structure
+    const approvalErrors = errors?.approvals;
+    if (approvalErrors) {
+      const approvalError = (approvalErrors as any)[communicationsApprovalIndex];
+      if (approvalError && (approvalError as any)?._document) {
+        return true;
+      }
+    }
+    return false;
+  }, [errors, communicationsApprovalIndex]);
+
+  /**
+   * Check if Communications approval has an approver error
+   */
+  const hasCommApproverError = React.useMemo(() => {
+    if (communicationsApprovalIndex === -1) return false;
+    // Check for flat error key format (setError with string path creates flat keys)
+    const flatKey = `approvals.${communicationsApprovalIndex}.approver`;
+    if ((errors as any)?.[flatKey]) {
+      return true;
+    }
+    // Also check nested structure
+    const approvalErrors = errors?.approvals;
+    if (approvalErrors) {
+      const approvalError = (approvalErrors as any)[communicationsApprovalIndex];
+      if (approvalError && (approvalError as any)?.approver) {
+        return true;
+      }
+    }
+    return false;
+  }, [errors, communicationsApprovalIndex]);
+
+  // Note: Approval date errors are handled by SPDateField's built-in validation display
+
+  /**
    * Handle communications approval toggle change
    */
   const handleCommApprovalToggle = React.useCallback(
@@ -478,7 +638,7 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
       if (!value) return;
 
       const approvalType = value as ApprovalType;
-      setSelectedAdditionalType(null); // Reset dropdown
+      setSelectedAdditionalType(undefined); // Reset dropdown
 
       const newApproval = {
         type: approvalType,
@@ -575,6 +735,7 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
                   showPhoto
                   showEmail
                   disabled={disabled}
+                  hasError={hasCommApproverError}
                 />
               </FormItem>
 
@@ -607,6 +768,7 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
                   maxFileSize={250 * 1024 * 1024}
                   required={true}
                   isReadOnly={disabled}
+                  hasError={hasCommDocumentError}
                   allowedExtensions={[
                     'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
                     'jpg', 'jpeg', 'png', 'gif', 'bmp',
@@ -683,34 +845,25 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
           </Stack>
 
           {availableApprovalOptions.length > 0 ? (
-            <Stack>
-              <select
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  borderRadius: '4px',
-                  border: '1px solid #d2d0ce',
-                  fontSize: '14px',
-                  backgroundColor: '#ffffff',
-                  cursor: 'pointer',
-                }}
-                value={selectedAdditionalType || ''}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value) {
-                    handleAddAdditionalApproval(value);
-                  }
-                }}
-                disabled={disabled}
-              >
-                <option value=''>Select an approval type to add...</option>
-                {availableApprovalOptions.map((opt) => (
-                  <option key={opt.id} value={opt.id}>
-                    {opt.text}
-                  </option>
-                ))}
-              </select>
-            </Stack>
+            <SelectBox
+              dataSource={availableApprovalOptions}
+              displayExpr='text'
+              valueExpr='id'
+              value={selectedAdditionalType}
+              onValueChanged={(e) => {
+                const value = e.value;
+                if (value) {
+                  handleAddAdditionalApproval(value);
+                }
+              }}
+              placeholder='Select an approval type to add...'
+              searchEnabled={false}
+              showClearButton={false}
+              stylingMode='outlined'
+              disabled={disabled}
+              isValid={!hasApprovalDropdownError}
+              validationError={hasApprovalDropdownError ? { message: 'At least one additional approval is required' } : undefined}
+            />
           ) : (
             <MessageBar messageBarType={MessageBarType.success} isMultiline={false}>
               All available approval types have been added

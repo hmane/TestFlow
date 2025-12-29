@@ -4,7 +4,7 @@
  */
 
 import * as React from 'react';
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 
 /**
  * Custom hook for localStorage with type safety

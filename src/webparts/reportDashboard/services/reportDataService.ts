@@ -5,7 +5,7 @@
  * Provides metrics for volume, time tracking, SLA performance, and status analytics.
  */
 
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { ILegalRequest } from '../../../types/requestTypes';
 import { RequestsFields } from '../../../sp/listFields/RequestsFields';
 

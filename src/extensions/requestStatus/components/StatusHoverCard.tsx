@@ -8,13 +8,19 @@
  * - Days in current stage
  * - Target date information
  * - Review status details (legal/compliance)
+ *
+ * Loads full data on mount to get proper user field information.
  */
 
 import * as React from 'react';
-import { Stack, Text, Icon, Separator } from '@fluentui/react';
-import { HoverCard, HoverCardType, type IPlainCardProps } from '@fluentui/react';
+import { Stack } from '@fluentui/react/lib/Stack';
+import { Text } from '@fluentui/react/lib/Text';
+import { Icon } from '@fluentui/react/lib/Icon';
+import { Separator } from '@fluentui/react/lib/Separator';
+import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
+import { HoverCard, HoverCardType, type IPlainCardProps } from '@fluentui/react/lib/HoverCard';
 import { WaitingOnDisplay } from './WaitingOnDisplay';
-import type { IStatusHoverCardProps } from '../types';
+import type { IStatusHoverCardProps, IStatusListItemData } from '../types';
 import {
   RequestStatus,
   ReviewAudience,
@@ -25,8 +31,11 @@ import {
   formatStageDurationText,
   formatDaysRemainingText,
   formatDate,
+  getStageTimingInfo,
 } from '../utils/stageTimingHelper';
-import { getActionText } from '../utils/waitingOnHelper';
+import { getActionText, determineWaitingOn } from '../utils/waitingOnHelper';
+import { calculateProgress } from '../utils/progressCalculator';
+import { loadStatusFullData } from '../services/statusDataService';
 import styles from './RequestStatusProgress.module.scss';
 
 /**
@@ -78,11 +87,105 @@ export const StatusHoverCard: React.FC<
   webUrl,
   children,
 }) => {
+  // State for loaded data
+  const [fullData, setFullData] = React.useState<IStatusListItemData | null>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+
+  // Load full data on mount
+  React.useEffect(() => {
+    let isMounted = true;
+
+    const loadData = async (): Promise<void> => {
+      try {
+        const data = await loadStatusFullData(itemData.id);
+        if (isMounted) {
+          setFullData(data);
+          setIsLoading(false);
+        }
+      } catch (err: unknown) {
+        if (isMounted) {
+          setError('Failed to load details');
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [itemData.id]);
+
+  // Use loaded data or fall back to initial data
+  const displayData = fullData || itemData;
+
+  // Recalculate progress/waitingOn/timing with loaded data
+  const displayProgressData = React.useMemo(
+    () => (fullData ? calculateProgress(fullData) : progressData),
+    [fullData, progressData]
+  );
+  const displayWaitingOn = React.useMemo(
+    () => (fullData ? determineWaitingOn(fullData) : waitingOn),
+    [fullData, waitingOn]
+  );
+  const displayTimingInfo = React.useMemo(
+    () => (fullData ? getStageTimingInfo(fullData) : timingInfo),
+    [fullData, timingInfo]
+  );
+
   /**
    * Render hover card content
    */
   const onRenderPlainCard = React.useCallback((): JSX.Element => {
-    const statusBadge = getStatusBadgeColor(itemData.status);
+    const statusBadge = getStatusBadgeColor(displayData.status);
+
+    // Loading state
+    if (isLoading) {
+      return (
+        <div className={styles.statusHoverCard}>
+          <div className={styles.cardHeader}>
+            <div
+              className={styles.statusBadge}
+              style={{
+                backgroundColor: statusBadge.backgroundColor,
+                color: statusBadge.color,
+              }}
+            >
+              {displayData.status}
+            </div>
+          </div>
+          <div className={styles.loadingContainer}>
+            <Spinner size={SpinnerSize.small} label="Loading details..." />
+          </div>
+        </div>
+      );
+    }
+
+    // Error state
+    if (error) {
+      return (
+        <div className={styles.statusHoverCard}>
+          <div className={styles.cardHeader}>
+            <div
+              className={styles.statusBadge}
+              style={{
+                backgroundColor: statusBadge.backgroundColor,
+                color: statusBadge.color,
+              }}
+            >
+              {displayData.status}
+            </div>
+          </div>
+          <div className={styles.cardContent}>
+            <Text variant="small" styles={{ root: { color: '#a4262c' } }}>
+              {error}
+            </Text>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className={styles.statusHoverCard}>
@@ -95,9 +198,9 @@ export const StatusHoverCard: React.FC<
               color: statusBadge.color,
             }}
           >
-            {itemData.status}
+            {displayData.status}
           </div>
-          {itemData.isRushRequest && (
+          {displayData.isRushRequest && (
             <div className={styles.rushBadge}>
               <Icon iconName="StatusCircleErrorX" styles={{ root: { marginRight: 4 } }} />
               Rush
@@ -115,52 +218,52 @@ export const StatusHoverCard: React.FC<
               Progress:
             </Text>
             <Text variant="small" className={styles.fieldValue}>
-              {Math.round(progressData.progress)}%
+              {Math.round(displayProgressData.progress)}%
             </Text>
           </div>
 
           {/* Waiting on */}
-          <WaitingOnDisplay waitingOn={waitingOn} webUrl={webUrl} />
+          <WaitingOnDisplay waitingOn={displayWaitingOn} webUrl={webUrl} />
 
           {/* Days in current stage */}
-          {timingInfo.stageStartDate && (
+          {displayTimingInfo.stageStartDate && (
             <div className={styles.fieldRow}>
               <Text variant="small" className={styles.fieldLabel}>
                 In this stage:
               </Text>
               <Text variant="small" className={styles.fieldValue}>
-                {formatStageDurationText(timingInfo.daysInStage)}
+                {formatStageDurationText(displayTimingInfo.daysInStage)}
               </Text>
             </div>
           )}
 
           {/* Target date information */}
-          {timingInfo.targetReturnDate && (
+          {displayTimingInfo.targetReturnDate && (
             <>
               <div className={styles.fieldRow}>
                 <Text variant="small" className={styles.fieldLabel}>
                   Target date:
                 </Text>
                 <Text variant="small" className={styles.fieldValue}>
-                  {formatDate(timingInfo.targetReturnDate)}
+                  {formatDate(displayTimingInfo.targetReturnDate)}
                 </Text>
               </div>
 
               <div className={styles.fieldRow}>
                 <Text variant="small" className={styles.fieldLabel}>
-                  {timingInfo.isOverdue ? 'Overdue by:' : 'Days remaining:'}
+                  {displayTimingInfo.isOverdue ? 'Overdue by:' : 'Days remaining:'}
                 </Text>
                 <Text
                   variant="small"
                   className={styles.fieldValue}
                   styles={{
                     root: {
-                      color: timingInfo.isOverdue ? '#a4262c' : timingInfo.daysRemaining === 0 || timingInfo.daysRemaining === 1 ? '#ca5010' : '#107c10',
-                      fontWeight: timingInfo.isOverdue || timingInfo.daysRemaining! <= 1 ? 600 : 400,
+                      color: displayTimingInfo.isOverdue ? '#a4262c' : displayTimingInfo.daysRemaining === 0 || displayTimingInfo.daysRemaining === 1 ? '#ca5010' : '#107c10',
+                      fontWeight: displayTimingInfo.isOverdue || displayTimingInfo.daysRemaining! <= 1 ? 600 : 400,
                     },
                   }}
                 >
-                  {formatDaysRemainingText(timingInfo.daysRemaining!)}
+                  {formatDaysRemainingText(displayTimingInfo.daysRemaining!)}
                 </Text>
               </div>
             </>
@@ -172,7 +275,7 @@ export const StatusHoverCard: React.FC<
               Action needed:
             </Text>
             <Text variant="small" className={styles.fieldValue}>
-              {getActionText(waitingOn, itemData.status)}
+              {getActionText(displayWaitingOn, displayData.status)}
             </Text>
           </div>
         </Stack>
@@ -187,8 +290,8 @@ export const StatusHoverCard: React.FC<
 
           <Stack tokens={{ childrenGap: 8 }}>
             {/* Legal Review */}
-            {(itemData.reviewAudience === ReviewAudience.Legal ||
-              itemData.reviewAudience === ReviewAudience.Both) && (
+            {(displayData.reviewAudience === ReviewAudience.Legal ||
+              displayData.reviewAudience === ReviewAudience.Both) && (
               <div className={styles.reviewRow}>
                 <Icon iconName="CheckboxComposite" className={styles.reviewIcon} />
                 <Stack horizontal tokens={{ childrenGap: 8 }}>
@@ -196,15 +299,15 @@ export const StatusHoverCard: React.FC<
                     Legal:
                   </Text>
                   <Text variant="small">
-                    {formatReviewStatus(itemData.legalReviewStatus)}
+                    {formatReviewStatus(displayData.legalReviewStatus)}
                   </Text>
                 </Stack>
               </div>
             )}
 
             {/* Compliance Review */}
-            {(itemData.reviewAudience === ReviewAudience.Compliance ||
-              itemData.reviewAudience === ReviewAudience.Both) && (
+            {(displayData.reviewAudience === ReviewAudience.Compliance ||
+              displayData.reviewAudience === ReviewAudience.Both) && (
               <div className={styles.reviewRow}>
                 <Icon iconName="CheckboxComposite" className={styles.reviewIcon} />
                 <Stack horizontal tokens={{ childrenGap: 8 }}>
@@ -212,17 +315,17 @@ export const StatusHoverCard: React.FC<
                     Compliance:
                   </Text>
                   <Text variant="small">
-                    {formatReviewStatus(itemData.complianceReviewStatus)}
+                    {formatReviewStatus(displayData.complianceReviewStatus)}
                   </Text>
                 </Stack>
               </div>
             )}
 
             {/* No reviews required */}
-            {!itemData.reviewAudience ||
-              (itemData.reviewAudience !== ReviewAudience.Legal &&
-                itemData.reviewAudience !== ReviewAudience.Compliance &&
-                itemData.reviewAudience !== ReviewAudience.Both && (
+            {!displayData.reviewAudience ||
+              (displayData.reviewAudience !== ReviewAudience.Legal &&
+                displayData.reviewAudience !== ReviewAudience.Compliance &&
+                displayData.reviewAudience !== ReviewAudience.Both && (
                   <Text variant="small" styles={{ root: { color: '#8a8886', fontStyle: 'italic' } }}>
                     No reviews required
                   </Text>
@@ -231,7 +334,7 @@ export const StatusHoverCard: React.FC<
         </div>
       </div>
     );
-  }, [itemData, progressData, waitingOn, timingInfo, webUrl]);
+  }, [displayData, displayProgressData, displayWaitingOn, displayTimingInfo, webUrl, isLoading, error]);
 
   const plainCardProps: IPlainCardProps = React.useMemo(
     () => ({

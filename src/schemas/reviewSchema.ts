@@ -3,7 +3,7 @@
  */
 
 import { z } from 'zod';
-import { ComplianceReviewStatus, LegalReviewStatus, ReviewOutcome } from '../types/workflowTypes';
+import { ComplianceReviewStatus, LegalReviewStatus, ReviewOutcome } from '@appTypes/workflowTypes';
 
 /**
  * IPrincipal schema (shared)

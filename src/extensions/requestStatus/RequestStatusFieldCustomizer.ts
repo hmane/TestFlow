@@ -7,7 +7,7 @@ import {
   type IFieldCustomizerCellEventParameters
 } from '@microsoft/sp-listview-extensibility';
 
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
 
 import * as strings from 'RequestStatusFieldCustomizerStrings';
@@ -106,6 +106,18 @@ export default class RequestStatusFieldCustomizer
         onHoldReason: listItem.getValueByName('OnHoldReason') as string | undefined,
         cancelReason: listItem.getValueByName('CancelReason') as string | undefined,
       };
+
+      // Remove padding from parent cell so status fills entire cell
+      const parentCell = event.domElement.closest('.ms-DetailsRow-cell') as HTMLElement;
+      if (parentCell) {
+        parentCell.style.padding = '0';
+        parentCell.style.overflow = 'hidden';
+      }
+
+      // Ensure domElement fills the cell
+      event.domElement.style.width = '100%';
+      event.domElement.style.height = '100%';
+      event.domElement.style.display = 'flex';
 
       // Render RequestStatusProgress component
       const progressBar = React.createElement(RequestStatusProgress, {

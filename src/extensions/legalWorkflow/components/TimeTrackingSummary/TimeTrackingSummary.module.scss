@@ -1,0 +1,245 @@
+/**
+ * TimeTrackingSummary Styles
+ *
+ * Visual styling for the time tracking summary component.
+ * Uses consistent color scheme and spacing.
+ */
+
+// Colors
+$blue-primary: #0078d4;
+$green-primary: #107c10;
+$purple-primary: #8764b8;
+$orange-primary: #ffaa44;
+$gray-text: #605e5c;
+$gray-light: #f3f2f1;
+$gray-border: #edebe9;
+$text-primary: #323130;
+
+.container {
+  padding: 16px;
+  background-color: #ffffff;
+  border-radius: 8px;
+  border: 1px solid $gray-border;
+}
+
+// Header
+.header {
+  margin-bottom: 16px;
+}
+
+.headerIcon {
+  font-size: 20px;
+  color: $blue-primary;
+}
+
+.headerText {
+  font-weight: 600;
+  color: $text-primary;
+}
+
+.totalBadge {
+  background-color: $gray-light;
+  padding: 4px 10px;
+  border-radius: 12px;
+  color: $gray-text;
+  font-weight: 500;
+  margin-left: auto;
+}
+
+// Summary Row
+.summaryRow {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.summaryItem {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  background-color: $gray-light;
+  border-radius: 6px;
+}
+
+.summaryDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.summaryContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.summaryLabel {
+  color: $gray-text;
+  font-weight: 500;
+}
+
+.summaryValue {
+  font-weight: 600;
+  color: $text-primary;
+}
+
+.summaryPercent {
+  color: $gray-text;
+  font-weight: 500;
+}
+
+// Split Bar
+.splitBar {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 20px;
+  background-color: $gray-light;
+}
+
+.splitBarReviewer {
+  background: linear-gradient(135deg, #0078d4 0%, #106ebe 100%);
+  transition: width 0.3s ease;
+}
+
+.splitBarSubmitter {
+  background: linear-gradient(135deg, #107c10 0%, #13a10e 100%);
+  transition: width 0.3s ease;
+}
+
+// Stage Breakdown
+.stageBreakdown {
+  margin-top: 16px;
+}
+
+.breakdownTitle {
+  color: $gray-text;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+  display: block;
+}
+
+.stageList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stageItem {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stageHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stageLabel {
+  color: $text-primary;
+  font-weight: 500;
+}
+
+.stageHours {
+  color: $gray-text;
+  font-weight: 500;
+}
+
+.stageBar {
+  height: 6px;
+  background-color: $gray-light;
+  border-radius: 3px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.stageBarFill {
+  height: 100%;
+  border-radius: 3px;
+  position: relative;
+  transition: width 0.3s ease;
+  opacity: 0.8;
+}
+
+.stageBarReviewer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.4);
+  border-radius: 3px 0 0 3px;
+}
+
+// Legend
+.legend {
+  display: flex;
+  gap: 16px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid $gray-border;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.legendText {
+  color: $gray-text;
+}
+
+// Empty State
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+}
+
+.emptyIcon {
+  font-size: 32px;
+  color: $gray-border;
+  margin-bottom: 8px;
+}
+
+.emptyText {
+  color: $gray-text;
+}
+
+// Compact Mode
+.compactContainer {
+  display: inline-flex;
+  align-items: center;
+  background-color: $gray-light;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.compactIcon {
+  font-size: 12px;
+  color: $gray-text;
+}
+
+.compactText {
+  color: $text-primary;
+  font-weight: 500;
+}

@@ -7,9 +7,9 @@
  * @module services/timeTrackingService
  */
 
-import { SPContext } from 'spfx-toolkit';
-import type { ILegalRequest, TimeTrackingOwner, TimeTrackingStage } from '../types/requestTypes';
-import { calculateBusinessHours } from '../utils/businessHoursCalculator';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
+import type { ILegalRequest, TimeTrackingOwner, TimeTrackingStage } from '@appTypes/requestTypes';
+import { calculateBusinessHours } from '@utils/businessHoursCalculator';
 import { getWorkingHoursConfig } from './configurationService';
 
 /**

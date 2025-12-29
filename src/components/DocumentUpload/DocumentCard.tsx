@@ -11,27 +11,23 @@
  */
 
 import * as React from 'react';
-import {
-  IconButton,
-  Text,
-  TooltipHost,
-  DirectionalHint,
-  Stack,
-  HoverCard,
-  HoverCardType,
-  Separator,
-  Link,
-  useTheme,
-} from '@fluentui/react';
+import { IconButton } from '@fluentui/react/lib/Button';
+import { Text } from '@fluentui/react/lib/Text';
+import { TooltipHost } from '@fluentui/react/lib/Tooltip';
+import { DirectionalHint } from 'spfx-toolkit/lib/types/fluentui-types';
+import { Stack } from '@fluentui/react/lib/Stack';
+import { HoverCard, HoverCardType } from '@fluentui/react/lib/HoverCard';
+import { Separator } from '@fluentui/react/lib/Separator';
+import { Link } from '@fluentui/react/lib/Link';
+import { useTheme } from '@fluentui/react/lib/Theme';
+// Import FileTypeIcon directly - lazy loading causes chunk load errors in SPFx
 import { FileTypeIcon, IconType, ImageSize } from '@pnp/spfx-controls-react/lib/FileTypeIcon';
 import { UserPersona } from 'spfx-toolkit/lib/components/UserPersona';
 import { DocumentLink } from 'spfx-toolkit/lib/components/DocumentLink';
-import { VersionHistory } from 'spfx-toolkit/lib/components/VersionHistory';
-import { SPContext } from 'spfx-toolkit';
-import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
-import { formatRelativeTime } from '../../services/documentService';
-import { DocumentType } from '../../types/documentTypes';
-import { Lists } from '@sp/Lists';
+import { LazyVersionHistory } from 'spfx-toolkit/lib/components/lazy';
+import { formatRelativeTime } from '@services/documentService';
+import { DocumentType } from '@appTypes/documentTypes';
+import { useDocumentLibraryId } from '@stores/documentsStore';
 import type { IDocumentCardProps } from './DocumentUploadTypes';
 import { RenameDialog } from './RenameDialog';
 
@@ -81,28 +77,13 @@ export const DocumentCard: React.FC<IDocumentCardProps> = ({
   const displayType = pendingType || document.documentType;
   const theme = useTheme();
 
+  // Get library ID from store (loaded once during ApplicationProvider initialization)
+  // This eliminates the per-card API calls that were causing throttling
+  const documentLibraryId = useDocumentLibraryId();
+
   // Dialog states
   const [showVersionHistory, setShowVersionHistory] = React.useState(false);
   const [showRenameDialog, setShowRenameDialog] = React.useState(false);
-  const [documentLibraryId, setDocumentLibraryId] = React.useState<string>('');
-
-  // Fetch RequestDocuments library ID on mount
-  React.useEffect(() => {
-    const fetchLibraryId = async (): Promise<void> => {
-      try {
-        const list = await SPContext.sp.web.lists.getByTitle(Lists.RequestDocuments.Title).select('Id')();
-        setDocumentLibraryId(list.Id);
-      } catch (error: unknown) {
-        SPContext.logger.error('Failed to fetch RequestDocuments library ID', error);
-      }
-    };
-
-    if (!documentLibraryId) {
-      fetchLibraryId().catch(err => {
-        SPContext.logger.error('Error in fetchLibraryId', err);
-      });
-    }
-  }, [documentLibraryId]);
 
   // Calculate relative time
   const { text: relativeTime, tooltip: fullDatetime } = React.useMemo(() => {
@@ -424,8 +405,11 @@ export const DocumentCard: React.FC<IDocumentCardProps> = ({
                 </Text>
               ) : (
                 // Show as clickable DocumentLink
+                // Prefer uniqueId over URL to avoid URL encoding issues
                 <DocumentLink
-                  documentUrl={document.url}
+                  {...(document.uniqueId
+                    ? { documentUniqueId: document.uniqueId }
+                    : { documentUrl: document.url })}
                   layout="linkOnly"
                   enableHoverCard={false}
                   showVersionHistory={false}
@@ -593,7 +577,7 @@ export const DocumentCard: React.FC<IDocumentCardProps> = ({
 
       {/* Version History Modal */}
       {showVersionHistory && document.listItemId && documentLibraryId && (
-        <VersionHistory
+        <LazyVersionHistory
           listId={documentLibraryId}
           itemId={document.listItemId}
           onClose={() => setShowVersionHistory(false)}

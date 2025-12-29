@@ -7,7 +7,7 @@ import {
   type IFieldCustomizerCellEventParameters
 } from '@microsoft/sp-listview-extensibility';
 
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
 
 import * as strings from 'TurnAroundDateFieldCustomizerStrings';

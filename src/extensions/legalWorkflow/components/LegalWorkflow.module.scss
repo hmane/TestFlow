@@ -10,4 +10,83 @@
 
   // Ensure proper rendering
   box-sizing: border-box;
+
+  // Override SharePoint form customizer width constraints
+  // SharePoint may apply max-width to form containers
+  max-width: none !important;
+}
+
+// Global overrides for SharePoint form customizer containers
+// These need to be at root level to affect parent elements
+:global {
+  // Override SharePoint's form container width restrictions
+  .SPCanvas-canvas,
+  .CanvasZone,
+  .ControlZone,
+  .ControlZone-control,
+  [class*="formCustomizerContent"],
+  [class*="SPPageChrome"],
+  [class*="commandBarWrapper"] + div,
+  .mainContent,
+  .SPCanvas {
+    max-width: none !important;
+    width: 100% !important;
+  }
+
+  // SharePoint list form container overrides
+  div[class*="listForm"],
+  div[class*="formFieldsContainer"],
+  div[class*="formContainer"] {
+    max-width: none !important;
+    width: 100% !important;
+  }
+
+  // Modern page content area
+  .CanvasSection {
+    max-width: none !important;
+  }
+
+  // SharePoint Form Customizer specific overrides
+  // These target the container that SPFx creates for form customizers
+  [data-sp-feature-instance-id],
+  [data-sp-feature-tag*="FormCustomizer"] {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  // SharePoint list form panel/dialog overrides
+  .ms-Panel-content,
+  .ms-Panel-scrollableContent,
+  .ms-Dialog-content,
+  [class*="listFormPanel"],
+  [class*="formPanel"] {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  // SPFx extension container
+  div[class*="clientSideComponent"],
+  div[class*="extensionContainer"],
+  div[class*="formCustomizer"] {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  // SharePoint modern list form content area
+  .od-ItemContent,
+  [class*="itemContent"],
+  [class*="formContent"] {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  // Target the main content wrapper that often has 640px max-width
+  div[style*="max-width: 640px"],
+  div[style*="max-width:640px"] {
+    max-width: none !important;
+    width: 100% !important;
+  }
 }

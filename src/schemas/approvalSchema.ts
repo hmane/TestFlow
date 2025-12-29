@@ -3,13 +3,14 @@
  */
 
 import { z } from 'zod';
-import { ApprovalType } from '../types/approvalTypes';
+import { ApprovalType } from '@appTypes/approvalTypes';
 
 /**
  * IPrincipal validation schema
+ * Accepts id as string or number (coerced to string) since PeoplePicker may return either
  */
 const principalSchema = z.object({
-  id: z.string().min(1, 'User ID is required'),
+  id: z.union([z.string(), z.number()]).transform(val => String(val)).pipe(z.string().min(1, 'User ID is required')),
   email: z.string().email('Invalid email').optional(),
   title: z.string().optional(),
   value: z.string().optional(),

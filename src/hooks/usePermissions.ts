@@ -1,24 +1,22 @@
 /**
  * Custom hook for permission checking and role-based access control
+ *
+ * ARCHITECTURE UPDATE: This hook now uses permissionsStore (Zustand) instead of PermissionsContext.
+ * Permissions are loaded ONCE during ApplicationProvider initialization and stored in the
+ * global permissionsStore. This eliminates duplicate API calls across components.
+ *
+ * Components can use either:
+ * 1. This hook (usePermissions) for backward compatibility
+ * 2. Direct store selectors (useUserRoles, useUserCapabilities) for optimized re-renders
  */
 
 import * as React from 'react';
-import { SPContext } from 'spfx-toolkit';
-import 'spfx-toolkit/lib/utilities/context/pnpImports/security';
-import { createPermissionHelper } from 'spfx-toolkit/lib/utilities/permissionHelper';
-import { AppRole } from '../types/configTypes';
+import { usePermissionsStore } from '@stores/permissionsStore';
+import type { IItemPermissions } from '@stores/permissionsStore';
+import { AppRole } from '@appTypes/configTypes';
 
 /**
- * SharePoint permission levels
- */
-enum SPPermissionLevel {
-  Read = 'Read',
-  Edit = 'Edit',
-  FullControl = 'Full Control',
-}
-
-/**
- * User permissions result
+ * User permissions result (backward compatible interface)
  */
 export interface IUserPermissions {
   isSubmitter: boolean;
@@ -36,118 +34,52 @@ export interface IUserPermissions {
 }
 
 /**
- * Item permissions result
+ * Item permissions result with loading state
  */
-export interface IItemPermissions {
-  canView: boolean;
-  canEdit: boolean;
-  canDelete: boolean;
-  hasFullControl: boolean;
+export interface IItemPermissionsResult extends IItemPermissions {
   isLoading: boolean;
   error?: string;
 }
 
 /**
  * Custom hook for checking user permissions
- * Determines user roles and capabilities
+ * Reads from permissionsStore (loaded during ApplicationProvider initialization)
+ *
+ * This is a backward-compatible wrapper. For optimized re-renders, consider using:
+ * - useUserRoles() - for role flags only
+ * - useUserCapabilities() - for derived permissions only
  */
 export function usePermissions(): IUserPermissions & { isLoading: boolean; error?: string } {
-  const [permissions, setPermissions] = React.useState<IUserPermissions>({
-    isSubmitter: false,
-    isLegalAdmin: false,
-    isAttorneyAssigner: false,
-    isAttorney: false,
-    isComplianceUser: false,
-    isAdmin: false,
-    roles: [],
-    canCreateRequest: false,
-    canViewAllRequests: false,
-    canAssignAttorney: false,
-    canReviewLegal: false,
-    canReviewCompliance: false,
-  });
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | undefined>(undefined);
-
-  React.useEffect(() => {
-    async function checkPermissions(): Promise<void> {
-      try {
-        setIsLoading(true);
-        const permissionHelper = createPermissionHelper(SPContext.sp);
-
-        // Check all role memberships in parallel
-        const [submitter, legalAdmin, attorneyAssigner, attorneys, complianceUsers, admin] =
-          await Promise.all([
-            permissionHelper.userHasRole(AppRole.Submitters),
-            permissionHelper.userHasRole(AppRole.LegalAdmin),
-            permissionHelper.userHasRole(AppRole.AttorneyAssigner),
-            permissionHelper.userHasRole(AppRole.Attorneys),
-            permissionHelper.userHasRole(AppRole.ComplianceUsers),
-            permissionHelper.userHasRole(AppRole.Admin),
-          ]);
-
-        const roles: AppRole[] = [];
-        if (submitter.hasPermission) roles.push(AppRole.Submitters);
-        if (legalAdmin.hasPermission) roles.push(AppRole.LegalAdmin);
-        if (attorneyAssigner.hasPermission) roles.push(AppRole.AttorneyAssigner);
-        if (attorneys.hasPermission) roles.push(AppRole.Attorneys);
-        if (complianceUsers.hasPermission) roles.push(AppRole.ComplianceUsers);
-        if (admin.hasPermission) roles.push(AppRole.Admin);
-
-        setPermissions({
-          isSubmitter: submitter.hasPermission,
-          isLegalAdmin: legalAdmin.hasPermission,
-          isAttorneyAssigner: attorneyAssigner.hasPermission,
-          isAttorney: attorneys.hasPermission,
-          isComplianceUser: complianceUsers.hasPermission,
-          isAdmin: admin.hasPermission,
-          roles,
-          canCreateRequest: submitter.hasPermission || admin.hasPermission,
-          canViewAllRequests:
-            legalAdmin.hasPermission ||
-            attorneyAssigner.hasPermission ||
-            attorneys.hasPermission ||
-            complianceUsers.hasPermission ||
-            admin.hasPermission,
-          canAssignAttorney:
-            legalAdmin.hasPermission || attorneyAssigner.hasPermission || admin.hasPermission,
-          canReviewLegal:
-            attorneys.hasPermission || legalAdmin.hasPermission || admin.hasPermission,
-          canReviewCompliance: complianceUsers.hasPermission || admin.hasPermission,
-        });
-
-        SPContext.logger.success('User permissions loaded', {
-          userId: SPContext.currentUser.id,
-          roles: roles.length,
-        });
-
-        setError(undefined);
-      } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : String(err);
-        SPContext.logger.error('Failed to load user permissions', err);
-        setError(message);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    checkPermissions().catch((error: unknown) => {
-      SPContext.logger.error('Failed to initialize permissions', error);
-    });
-  }, []);
-
-  return {
-    ...permissions,
-    isLoading,
-    error,
-  };
+  // Read directly from the store (no API calls - data already loaded)
+  return usePermissionsStore((state) => ({
+    isSubmitter: state.isSubmitter,
+    isLegalAdmin: state.isLegalAdmin,
+    isAttorneyAssigner: state.isAttorneyAssigner,
+    isAttorney: state.isAttorney,
+    isComplianceUser: state.isComplianceUser,
+    isAdmin: state.isAdmin,
+    roles: state.roles,
+    canCreateRequest: state.canCreateRequest,
+    canViewAllRequests: state.canViewAllRequests,
+    canAssignAttorney: state.canAssignAttorney,
+    canReviewLegal: state.canReviewLegal,
+    canReviewCompliance: state.canReviewCompliance,
+    isLoading: state.isLoading,
+    error: state.error,
+  }));
 }
 
 /**
  * Custom hook for checking item-level permissions
+ * Uses permissionsStore.checkItemPermissions() which caches results
  */
-export function useItemPermissions(listName: string, itemId: number | undefined): IItemPermissions {
-  const [permissions, setPermissions] = React.useState<IItemPermissions>({
+export function useItemPermissions(listName: string, itemId: number | undefined): IItemPermissionsResult {
+  const checkItemPermissions = usePermissionsStore((state) => state.checkItemPermissions);
+  const cachedPermissions = usePermissionsStore((state) =>
+    itemId ? state.itemPermissions.get(`${listName}_${itemId}`) : undefined
+  );
+
+  const [permissions, setPermissions] = React.useState<IItemPermissionsResult>({
     canView: false,
     canEdit: false,
     canDelete: false,
@@ -155,6 +87,9 @@ export function useItemPermissions(listName: string, itemId: number | undefined)
     isLoading: true,
     error: undefined,
   });
+
+  // Track if check is in progress to prevent duplicate calls
+  const isCheckingRef = React.useRef<boolean>(false);
 
   React.useEffect(() => {
     if (!itemId) {
@@ -169,47 +104,44 @@ export function useItemPermissions(listName: string, itemId: number | undefined)
       return;
     }
 
-    async function checkItemPermissions(): Promise<void> {
+    // If we have cached permissions, use them immediately
+    if (cachedPermissions) {
+      setPermissions({
+        ...cachedPermissions,
+        isLoading: false,
+        error: undefined,
+      });
+      return;
+    }
+
+    // Prevent duplicate checks
+    if (isCheckingRef.current) {
+      return;
+    }
+
+    let isMounted = true;
+    isCheckingRef.current = true;
+
+    async function loadItemPermissions(): Promise<void> {
       try {
-        setPermissions(prev => ({ ...prev, isLoading: true }));
-
-        const permissionHelper = createPermissionHelper(SPContext.sp);
-
-        // Ensure itemId is defined before checking permissions
-        if (itemId === undefined) {
-          throw new Error('Item ID is required for permission checks');
+        if (isMounted) {
+          setPermissions((prev) => ({ ...prev, isLoading: true }));
         }
 
-        // Check permissions in parallel
-        const [viewPerm, editPerm, deletePerm, fullControlPerm] = await Promise.all([
-          permissionHelper.userHasPermissionOnItem(listName, itemId, SPPermissionLevel.Read),
-          permissionHelper.userHasPermissionOnItem(listName, itemId, SPPermissionLevel.Edit),
-          permissionHelper.userHasPermissionOnItem(listName, itemId, SPPermissionLevel.Edit),
-          permissionHelper.userHasPermissionOnItem(listName, itemId, SPPermissionLevel.FullControl),
-        ]);
+        // Use the store's checkItemPermissions which handles caching
+        const result = await checkItemPermissions(listName, itemId as number);
+
+        if (!isMounted) return;
 
         setPermissions({
-          canView: viewPerm.hasPermission,
-          canEdit: editPerm.hasPermission,
-          canDelete: deletePerm.hasPermission,
-          hasFullControl: fullControlPerm.hasPermission,
+          ...result,
           isLoading: false,
           error: undefined,
         });
-
-        SPContext.logger.info('Item permissions checked', {
-          listName,
-          itemId,
-          canView: viewPerm.hasPermission,
-          canEdit: editPerm.hasPermission,
-        });
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : String(err);
-        SPContext.logger.error('Failed to check item permissions', err, {
-          listName,
-          itemId,
-        });
+        if (!isMounted) return;
 
+        const message = err instanceof Error ? err.message : String(err);
         setPermissions({
           canView: false,
           canEdit: false,
@@ -218,13 +150,19 @@ export function useItemPermissions(listName: string, itemId: number | undefined)
           isLoading: false,
           error: message,
         });
+      } finally {
+        isCheckingRef.current = false;
       }
     }
 
-    checkItemPermissions().catch((error: unknown) => {
-      SPContext.logger.error('Failed to check item permissions', error);
+    loadItemPermissions().catch(() => {
+      // Error already handled in the async function
     });
-  }, [listName, itemId]);
+
+    return () => {
+      isMounted = false;
+    };
+  }, [listName, itemId, cachedPermissions, checkItemPermissions]);
 
   return permissions;
 }
@@ -233,22 +171,22 @@ export function useItemPermissions(listName: string, itemId: number | undefined)
  * Hook to check if current user has specific role
  */
 export function useHasRole(role: AppRole): boolean {
-  const { roles } = usePermissions();
+  const roles = usePermissionsStore((state) => state.roles);
   return roles.indexOf(role) !== -1;
 }
 
 /**
  * Hook to check if current user has any of the specified roles
  */
-export function useHasAnyRole(roles: AppRole[]): boolean {
-  const { roles: userRoles } = usePermissions();
-  return roles.some(role => userRoles.indexOf(role) !== -1);
+export function useHasAnyRole(rolesToCheck: AppRole[]): boolean {
+  const roles = usePermissionsStore((state) => state.roles);
+  return rolesToCheck.some((role) => roles.indexOf(role) !== -1);
 }
 
 /**
  * Hook to check if current user has all of the specified roles
  */
-export function useHasAllRoles(roles: AppRole[]): boolean {
-  const { roles: userRoles } = usePermissions();
-  return roles.every(role => userRoles.indexOf(role) !== -1);
+export function useHasAllRoles(rolesToCheck: AppRole[]): boolean {
+  const roles = usePermissionsStore((state) => state.roles);
+  return rolesToCheck.every((role) => roles.indexOf(role) !== -1);
 }

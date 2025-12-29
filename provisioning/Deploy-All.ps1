@@ -66,14 +66,14 @@ try {
     Write-Host ""
 
     # Connect to SharePoint
-    Write-Host "[1/3] Connecting to SharePoint..." -ForegroundColor Cyan
+    Write-Host "[1/4] Connecting to SharePoint..." -ForegroundColor Cyan
     Connect-PnPOnline -Url $SiteUrl -ClientId $clientId -Interactive
     Write-Host "Connected successfully" -ForegroundColor Green
     Write-Host ""
 
     # Validate template before applying
     if (-not $SkipValidation) {
-        Write-Host "[2/3] Validating provisioning template..." -ForegroundColor Cyan
+        Write-Host "[2/4] Validating provisioning template..." -ForegroundColor Cyan
         try {
             $validationResult = Test-PnPProvisioningTemplate -Path $TemplatePath
             if ($validationResult -eq $false) {
@@ -88,10 +88,41 @@ try {
     }
 
     # Apply provisioning template (includes lists, security, pages, navigation)
-    Write-Host "[3/3] Applying provisioning template..." -ForegroundColor Cyan
+    Write-Host "[3/4] Applying provisioning template..." -ForegroundColor Cyan
     Write-Host "This may take several minutes..." -ForegroundColor Yellow
     Invoke-PnPSiteTemplate -Path $TemplatePath
     Write-Host "Template applied successfully" -ForegroundColor Green
+    Write-Host ""
+
+    # Associate Form Customizer with Requests list
+    Write-Host "[4/4] Configuring Form Customizer for Requests list..." -ForegroundColor Cyan
+
+    # Form Customizer Component ID from LegalWorkflowFormCustomizer.manifest.json
+    $formCustomizerId = "419289ae-db48-48cf-84d8-bd90dcbc6aab"
+
+    # Get the Requests list
+    $requestsList = Get-PnPList -Identity "Lists/Requests" -ErrorAction SilentlyContinue
+
+    if ($requestsList) {
+        # Get the default content type (Item) for the list
+        $contentTypes = Get-PnPContentType -List $requestsList
+        $defaultContentType = $contentTypes | Where-Object { $_.Name -eq "Item" } | Select-Object -First 1
+
+        if ($defaultContentType) {
+            # Set Form Customizer for New, Edit, and Display forms
+            Write-Host "  Setting Form Customizer for content type: $($defaultContentType.Name)" -ForegroundColor Gray
+
+            # Use PnP PowerShell to set the form customizer
+            # NewFormClientSideComponentId, EditFormClientSideComponentId, DisplayFormClientSideComponentId
+            Set-PnPContentType -List $requestsList -Identity $defaultContentType.Id -NewFormClientSideComponentId $formCustomizerId -EditFormClientSideComponentId $formCustomizerId -DisplayFormClientSideComponentId $formCustomizerId
+
+            Write-Host "  Form Customizer associated successfully" -ForegroundColor Green
+        } else {
+            Write-Warning "  Default content type not found on Requests list"
+        }
+    } else {
+        Write-Warning "  Requests list not found - Form Customizer not configured"
+    }
     Write-Host ""
 
     # Verify deployment

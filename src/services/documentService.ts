@@ -8,20 +8,20 @@
  * - Handles duplicate detection and conflict resolution
  */
 
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
 import 'spfx-toolkit/lib/utilities/context/pnpImports/files';
 
 import { Lists } from '@sp/Lists';
 
-import type { IDocument } from '../stores/documentsStore';
+import type { IDocument } from '@stores/documentsStore';
 import type {
   IUploadResult,
   IBatchOperationResult,
   FileOperationStatus,
-} from './approvalFileService';
-import { ConflictResolution } from './approvalFileService';
-import { DocumentType } from '../types/documentTypes';
+} from '@services/approvalFileService';
+import { ConflictResolution } from '@services/approvalFileService';
+import { DocumentType } from '@appTypes/documentTypes';
 
 /**
  * Document library configuration
@@ -708,4 +708,65 @@ export function formatRelativeTime(date: Date | string): { text: string; tooltip
   });
 
   return { text, tooltip };
+}
+
+// ============================================
+// LIBRARY ID CACHING
+// ============================================
+
+/**
+ * Module-level cache for RequestDocuments library ID
+ * Loaded once, shared across all callers
+ */
+let cachedLibraryId: string | null = null;
+let libraryIdPromise: Promise<string> | null = null;
+
+/**
+ * Get the RequestDocuments library ID with module-level caching
+ * Multiple simultaneous calls will share the same promise
+ *
+ * This is used by:
+ * - documentsStore (loads once during initialization)
+ * - DocumentCard (for version history)
+ */
+export async function getRequestDocumentsLibraryId(): Promise<string> {
+  // Return cached value if available
+  if (cachedLibraryId) {
+    SPContext.logger.info('DocumentService: Returning cached library ID');
+    return cachedLibraryId;
+  }
+
+  // Return pending promise if one exists (deduplication)
+  if (libraryIdPromise) {
+    SPContext.logger.info('DocumentService: Library ID load in progress, waiting...');
+    return libraryIdPromise;
+  }
+
+  // Create new promise and cache it
+  libraryIdPromise = (async (): Promise<string> => {
+    try {
+      SPContext.logger.info('DocumentService: Loading RequestDocuments library ID');
+      const list = await SPContext.sp.web.lists.getByTitle(DEFAULT_LIBRARY_TITLE).select('Id')();
+      cachedLibraryId = list.Id;
+      SPContext.logger.success('DocumentService: Library ID loaded', { libraryId: list.Id });
+      return list.Id;
+    } catch (error) {
+      SPContext.logger.error('DocumentService: Failed to load library ID', error);
+      throw error;
+    } finally {
+      libraryIdPromise = null;
+    }
+  })();
+
+  return libraryIdPromise;
+}
+
+/**
+ * Clear the library ID cache
+ * Useful for testing or when the library might have been recreated
+ */
+export function clearLibraryIdCache(): void {
+  cachedLibraryId = null;
+  libraryIdPromise = null;
+  SPContext.logger.info('DocumentService: Library ID cache cleared');
 }

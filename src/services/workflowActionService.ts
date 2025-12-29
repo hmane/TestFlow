@@ -1,0 +1,1292 @@
+/**
+ * Workflow Action Service
+ *
+ * Provides dedicated functions for each workflow action.
+ * Each action only updates the specific fields relevant to that action,
+ * ensuring clean data updates and proper audit trails.
+ *
+ * Actions:
+ * - submitRequest: Submit a draft for review (Draft → Legal Intake)
+ * - assignAttorney: Directly assign an attorney (Legal Intake → In Review)
+ * - sendToCommittee: Send to committee for attorney assignment (Legal Intake → Assign Attorney)
+ * - assignFromCommittee: Committee assigns attorney (Assign Attorney → In Review)
+ * - submitLegalReview: Submit legal review outcome
+ * - submitComplianceReview: Submit compliance review outcome
+ * - closeoutRequest: Complete the request (In Review/Closeout → Completed)
+ * - cancelRequest: Cancel a request
+ * - holdRequest: Put request on hold
+ * - resumeRequest: Resume from hold
+ */
+
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
+import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
+import type { IPrincipal } from 'spfx-toolkit/lib/types';
+import { createSPUpdater } from 'spfx-toolkit/lib/utilities/listItemHelper';
+
+import { Lists } from '@sp/Lists';
+import { RequestsFields } from '@sp/listFields/RequestsFields';
+import { manageRequestPermissions } from './azureFunctionService';
+import { loadRequestById } from './requestLoadService';
+
+import type { ILegalRequest } from '@appTypes/requestTypes';
+import { RequestStatus, ReviewOutcome, LegalReviewStatus, ComplianceReviewStatus, ReviewAudience } from '@appTypes/workflowTypes';
+
+// ============================================
+// TYPES & INTERFACES
+// ============================================
+
+/**
+ * Result of a workflow action
+ */
+export interface IWorkflowActionResult {
+  success: boolean;
+  itemId: number;
+  newStatus: RequestStatus;
+  updatedRequest: ILegalRequest;
+  fieldsUpdated: string[];
+}
+
+/**
+ * Submit request payload - only fields relevant to submission
+ */
+export interface ISubmitRequestPayload {
+  /** Notes to include with submission (optional) */
+  submissionNotes?: string;
+}
+
+/**
+ * Assign attorney payload
+ */
+export interface IAssignAttorneyPayload {
+  /** Attorney to assign */
+  attorney: IPrincipal;
+  /** Assignment notes (optional) */
+  notes?: string;
+}
+
+/**
+ * Send to committee payload
+ */
+export interface ISendToCommitteePayload {
+  /** Notes for the committee (optional) */
+  notes?: string;
+}
+
+/**
+ * Legal review payload
+ */
+export interface ILegalReviewPayload {
+  /** Review outcome */
+  outcome: ReviewOutcome;
+  /** Review notes (required) */
+  notes: string;
+}
+
+/**
+ * Compliance review payload
+ */
+export interface IComplianceReviewPayload {
+  /** Review outcome */
+  outcome: ReviewOutcome;
+  /** Review notes (required) */
+  notes: string;
+  /** Foreside review required flag */
+  isForesideReviewRequired?: boolean;
+  /** Retail use flag */
+  isRetailUse?: boolean;
+}
+
+/**
+ * Closeout payload
+ */
+export interface ICloseoutPayload {
+  /** Tracking ID (required if compliance reviewed with retail/foreside flags) */
+  trackingId?: string;
+}
+
+/**
+ * Cancel request payload
+ */
+export interface ICancelPayload {
+  /** Cancellation reason (required) */
+  reason: string;
+}
+
+/**
+ * Hold request payload
+ */
+export interface IHoldPayload {
+  /** Hold reason (required) */
+  reason: string;
+}
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+/**
+ * Get current user as IPrincipal
+ */
+function getCurrentUserPrincipal(): IPrincipal {
+  return {
+    id: SPContext.currentUser.id.toString(),
+    email: SPContext.currentUser.email,
+    title: SPContext.currentUser.title,
+    loginName: SPContext.currentUser.loginName,
+  } as IPrincipal;
+}
+
+/**
+ * Check if all required reviews are complete based on review audience
+ * Returns true if the request should progress to Closeout
+ *
+ * @param request - Current request state
+ * @param newLegalStatus - New legal review status (if being updated)
+ * @param newComplianceStatus - New compliance review status (if being updated)
+ */
+function areAllReviewsComplete(
+  request: ILegalRequest,
+  newLegalStatus?: LegalReviewStatus,
+  newComplianceStatus?: ComplianceReviewStatus
+): boolean {
+  const reviewAudience = request.reviewAudience;
+
+  // Use new status if provided, otherwise use current status
+  const legalStatus = newLegalStatus || request.legalReview?.status;
+  const complianceStatus = newComplianceStatus || request.complianceReview?.status;
+
+  SPContext.logger.info('WorkflowActionService: Checking if all reviews complete', {
+    reviewAudience,
+    legalStatus,
+    complianceStatus,
+  });
+
+  switch (reviewAudience) {
+    case ReviewAudience.Legal:
+      // Only legal review required
+      return legalStatus === LegalReviewStatus.Completed;
+
+    case ReviewAudience.Compliance:
+      // Only compliance review required
+      return complianceStatus === ComplianceReviewStatus.Completed;
+
+    case ReviewAudience.Both:
+      // Both reviews required
+      return (
+        legalStatus === LegalReviewStatus.Completed &&
+        complianceStatus === ComplianceReviewStatus.Completed
+      );
+
+    default:
+      return false;
+  }
+}
+
+/**
+ * Update SharePoint item with specific fields only
+ */
+async function updateItem(
+  itemId: number,
+  payload: Record<string, any>,
+  context: string
+): Promise<void> {
+  try {
+    SPContext.logger.info(`WorkflowActionService: ${context} - Updating item`, {
+      itemId,
+      listTitle: Lists.Requests.Title,
+      payload: JSON.stringify(payload),
+      fieldsToUpdate: Object.keys(payload),
+    });
+
+    await SPContext.sp.web.lists
+      .getByTitle(Lists.Requests.Title)
+      .items.getById(itemId)
+      .update(payload);
+
+    SPContext.logger.success(`WorkflowActionService: ${context} - Item updated successfully`, {
+      itemId,
+      fieldsUpdated: Object.keys(payload),
+    });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    SPContext.logger.error(`WorkflowActionService: ${context} - Update FAILED`, error, {
+      itemId,
+      payload: JSON.stringify(payload),
+    });
+    throw new Error(`Failed to update item: ${message}`);
+  }
+}
+
+// ============================================
+// WORKFLOW ACTIONS
+// ============================================
+
+/**
+ * Submit request for review
+ *
+ * Transitions: Draft → Legal Intake
+ *
+ * Fields updated:
+ * - Status → Legal Intake
+ * - SubmittedBy → Current user
+ * - SubmittedOn → Current timestamp
+ *
+ * @param itemId - Request item ID
+ * @param _payload - Optional submission payload (currently unused)
+ * @returns Workflow action result
+ */
+export async function submitRequest(
+  itemId: number,
+  _payload?: ISubmitRequestPayload
+): Promise<IWorkflowActionResult> {
+  SPContext.logger.info('WorkflowActionService: submitRequest STARTED', {
+    itemId,
+    timestamp: new Date().toISOString(),
+  });
+
+  try {
+    const currentUser = getCurrentUserPrincipal();
+    const now = new Date();
+
+    SPContext.logger.info('WorkflowActionService: Current user retrieved', {
+      userId: currentUser.id,
+      userEmail: currentUser.email,
+    });
+
+    // Build update payload directly - ONLY status and submission tracking fields
+    // Using direct payload instead of SPUpdater to ensure correct field names
+    const userId = typeof currentUser.id === 'string' ? parseInt(currentUser.id, 10) : currentUser.id;
+
+    // Use hardcoded field names to ensure correct update
+    const newStatus = 'Legal Intake'; // RequestStatus.LegalIntake value
+
+    const payload: Record<string, any> = {
+      Status: newStatus,
+      SubmittedById: userId,
+      SubmittedOn: now.toISOString(),
+    };
+
+    const fieldsUpdated = Object.keys(payload);
+
+    SPContext.logger.info('WorkflowActionService: submitRequest payload built', {
+      itemId,
+      payload: JSON.stringify(payload),
+      fieldsUpdated,
+      userId,
+      newStatus,
+      listTitle: Lists.Requests.Title,
+    });
+
+    // Update SharePoint - this is the critical call
+    SPContext.logger.info('WorkflowActionService: Calling updateItem...', { itemId });
+    await updateItem(itemId, payload, 'submitRequest');
+    SPContext.logger.info('WorkflowActionService: updateItem completed successfully', { itemId });
+
+    // Manage permissions for Legal Intake status
+    try {
+      await manageRequestPermissions(itemId, RequestStatus.LegalIntake);
+      SPContext.logger.info('WorkflowActionService: Permission management completed', { itemId });
+    } catch (permError) {
+      SPContext.logger.warn('WorkflowActionService: Permission management failed (request was submitted)', permError);
+      // Don't fail the action - permissions will be retried by Flow
+    }
+
+    // Reload and return result
+    SPContext.logger.info('WorkflowActionService: Reloading request...', { itemId });
+    const updatedRequest = await loadRequestById(itemId);
+    SPContext.logger.info('WorkflowActionService: Request reloaded', {
+      itemId,
+      loadedStatus: updatedRequest.status,
+    });
+
+    // Log the actual status returned to verify the update worked
+    const statusMatches = updatedRequest.status === 'Legal Intake';
+    SPContext.logger.success('WorkflowActionService: Request submitted successfully', {
+      itemId,
+      requestId: updatedRequest.requestId,
+      expectedStatus: 'Legal Intake',
+      actualStatus: updatedRequest.status,
+      statusMatches,
+    });
+
+    // Warn if status doesn't match expected
+    if (!statusMatches) {
+      SPContext.logger.error('WorkflowActionService: STATUS MISMATCH after update!', {
+        itemId,
+        expected: 'Legal Intake',
+        actual: updatedRequest.status,
+        message: 'The status update may have failed or been overwritten',
+      });
+    }
+
+    return {
+      success: true,
+      itemId,
+      newStatus: RequestStatus.LegalIntake,
+      updatedRequest,
+      fieldsUpdated,
+    };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    SPContext.logger.error('WorkflowActionService: submitRequest FAILED', error, {
+      itemId,
+      errorMessage,
+    });
+    throw error;
+  }
+}
+
+/**
+ * Assign attorney directly
+ *
+ * Transitions: Legal Intake → In Review
+ *
+ * Fields updated:
+ * - Status → In Review
+ * - Attorney → Assigned attorney
+ * - AttorneyAssignNotes → Notes (if provided)
+ * - LegalReviewStatus → Not Started
+ * - SubmittedForReviewBy → Current user
+ * - SubmittedForReviewOn → Current timestamp
+ *
+ * @param itemId - Request item ID
+ * @param payload - Attorney assignment payload
+ * @returns Workflow action result
+ */
+export async function assignAttorney(
+  itemId: number,
+  payload: IAssignAttorneyPayload
+): Promise<IWorkflowActionResult> {
+  SPContext.logger.info('WorkflowActionService: Assigning attorney', {
+    itemId,
+    attorneyId: payload.attorney.id,
+    attorneyEmail: payload.attorney.email,
+    attorneyTitle: payload.attorney.title,
+    attorneyLoginName: payload.attorney.loginName,
+    hasNotes: !!payload.notes,
+  });
+
+  const currentUser = getCurrentUserPrincipal();
+  const now = new Date();
+
+  SPContext.logger.info('WorkflowActionService: Current user for assignment', {
+    userId: currentUser.id,
+    userEmail: currentUser.email,
+  });
+
+  // Build update payload - ONLY attorney assignment fields
+  // Use typed setters for proper SharePoint field formatting
+  const updater = createSPUpdater();
+  updater.setChoice(RequestsFields.Status, RequestStatus.InReview);
+  updater.setUser(RequestsFields.Attorney, payload.attorney);
+  updater.setChoice(RequestsFields.LegalReviewStatus, LegalReviewStatus.NotStarted);
+  updater.setUser(RequestsFields.SubmittedForReviewBy, currentUser);
+  updater.setDate(RequestsFields.SubmittedForReviewOn, now);
+
+  // Always set notes field - overwrites any previous value
+  if (payload.notes) {
+    updater.setText(RequestsFields.AttorneyAssignNotes, payload.notes);
+  }
+
+  const updatePayload = updater.getUpdates();
+  const fieldsUpdated = Object.keys(updatePayload);
+
+  SPContext.logger.info('WorkflowActionService: Update payload built', {
+    itemId,
+    payload: JSON.stringify(updatePayload),
+    fieldsUpdated,
+  });
+
+  // Update SharePoint
+  await updateItem(itemId, updatePayload, 'assignAttorney');
+
+  // Manage permissions for In Review status (attorney gets access)
+  try {
+    await manageRequestPermissions(itemId, RequestStatus.InReview);
+  } catch (permError) {
+    SPContext.logger.warn('WorkflowActionService: Permission management failed (attorney was assigned)', permError);
+  }
+
+  // Reload and return result
+  const updatedRequest = await loadRequestById(itemId);
+
+  SPContext.logger.success('WorkflowActionService: Attorney assigned successfully', {
+    itemId,
+    requestId: updatedRequest.requestId,
+    attorney: payload.attorney.title,
+  });
+
+  return {
+    success: true,
+    itemId,
+    newStatus: RequestStatus.InReview,
+    updatedRequest,
+    fieldsUpdated,
+  };
+}
+
+/**
+ * Send request to committee for attorney assignment
+ *
+ * Transitions: Legal Intake → Assign Attorney
+ *
+ * Fields updated:
+ * - Status → Assign Attorney
+ * - AttorneyAssignNotes → Notes (if provided)
+ * - SubmittedToAssignAttorneyBy → Current user
+ * - SubmittedToAssignAttorneyOn → Current timestamp
+ *
+ * @param itemId - Request item ID
+ * @param payload - Committee notes payload
+ * @returns Workflow action result
+ */
+export async function sendToCommittee(
+  itemId: number,
+  payload?: ISendToCommitteePayload
+): Promise<IWorkflowActionResult> {
+  SPContext.logger.info('WorkflowActionService: Sending to committee', { itemId });
+
+  const currentUser = getCurrentUserPrincipal();
+  const now = new Date();
+
+  // Build update payload - ONLY committee routing fields
+  // Use typed setters for proper SharePoint field formatting
+  const updater = createSPUpdater();
+  updater.setChoice(RequestsFields.Status, RequestStatus.AssignAttorney);
+  updater.setUser(RequestsFields.SubmittedToAssignAttorneyBy, currentUser);
+  updater.setDate(RequestsFields.SubmittedToAssignAttorneyOn, now);
+
+  if (payload?.notes) {
+    updater.setText(RequestsFields.AttorneyAssignNotes, payload.notes);
+  }
+
+  const updatePayload = updater.getUpdates();
+  const fieldsUpdated = Object.keys(updatePayload);
+
+  // Update SharePoint
+  await updateItem(itemId, updatePayload, 'sendToCommittee');
+
+  // Manage permissions for Assign Attorney status (committee gets access)
+  try {
+    await manageRequestPermissions(itemId, RequestStatus.AssignAttorney);
+  } catch (permError) {
+    SPContext.logger.warn('WorkflowActionService: Permission management failed', permError);
+  }
+
+  // Reload and return result
+  const updatedRequest = await loadRequestById(itemId);
+
+  SPContext.logger.success('WorkflowActionService: Sent to committee successfully', {
+    itemId,
+    requestId: updatedRequest.requestId,
+  });
+
+  return {
+    success: true,
+    itemId,
+    newStatus: RequestStatus.AssignAttorney,
+    updatedRequest,
+    fieldsUpdated,
+  };
+}
+
+/**
+ * Committee assigns attorney
+ *
+ * Transitions: Assign Attorney → In Review
+ *
+ * Uses the same fields as assignAttorney but from a different starting status.
+ *
+ * @param itemId - Request item ID
+ * @param payload - Attorney assignment payload
+ * @returns Workflow action result
+ */
+export async function assignFromCommittee(
+  itemId: number,
+  payload: IAssignAttorneyPayload
+): Promise<IWorkflowActionResult> {
+  SPContext.logger.info('WorkflowActionService: Committee assigning attorney', {
+    itemId,
+    attorneyId: payload.attorney.id,
+  });
+
+  // Reuse assignAttorney logic - same fields updated
+  return assignAttorney(itemId, payload);
+}
+
+/**
+ * Submit legal review
+ *
+ * Fields updated:
+ * - LegalReviewOutcome → Outcome
+ * - LegalReviewNotes → Notes
+ * - LegalReviewStatus → Completed
+ * - LegalStatusUpdatedBy → Current user
+ * - LegalStatusUpdatedOn → Current timestamp
+ * - LegalReviewCompletedBy → Current user
+ * - LegalReviewCompletedOn → Current timestamp
+ * - Status → Closeout (if all required reviews are complete)
+ *
+ * Status automatically progresses to Closeout when:
+ * - ReviewAudience is 'Legal' (only legal review required)
+ * - ReviewAudience is 'Both' and compliance review is also Completed
+ *
+ * @param itemId - Request item ID
+ * @param payload - Legal review payload
+ * @returns Workflow action result
+ */
+export async function submitLegalReview(
+  itemId: number,
+  payload: ILegalReviewPayload
+): Promise<IWorkflowActionResult> {
+  SPContext.logger.info('WorkflowActionService: Submitting legal review', {
+    itemId,
+    outcome: payload.outcome,
+  });
+
+  // First, load current request to check review audience and compliance status
+  const currentRequest = await loadRequestById(itemId);
+
+  const currentUser = getCurrentUserPrincipal();
+  const now = new Date();
+
+  // Build update payload - ONLY legal review fields
+  const updater = createSPUpdater();
+  updater.set(RequestsFields.LegalReviewOutcome, payload.outcome);
+  updater.set(RequestsFields.LegalReviewNotes, payload.notes);
+  updater.set(RequestsFields.LegalReviewStatus, LegalReviewStatus.Completed);
+  updater.set(RequestsFields.LegalStatusUpdatedBy, currentUser);
+  updater.set(RequestsFields.LegalStatusUpdatedOn, now.toISOString());
+  updater.set(RequestsFields.LegalReviewCompletedBy, currentUser);
+  updater.set(RequestsFields.LegalReviewCompletedOn, now.toISOString());
+
+  // Check if all reviews will be complete after this submission
+  // and auto-progress to Closeout if so
+  const shouldProgressToCloseout = areAllReviewsComplete(
+    currentRequest,
+    LegalReviewStatus.Completed, // New legal status
+    undefined // No change to compliance status
+  );
+
+  if (shouldProgressToCloseout) {
+    updater.set(RequestsFields.Status, RequestStatus.Closeout);
+    SPContext.logger.info('WorkflowActionService: All reviews complete, progressing to Closeout', {
+      itemId,
+      reviewAudience: currentRequest.reviewAudience,
+    });
+  }
+
+  const updatePayload = updater.getUpdates();
+  const fieldsUpdated = Object.keys(updatePayload);
+
+  // Update SharePoint
+  await updateItem(itemId, updatePayload, 'submitLegalReview');
+
+  // Manage permissions if status changed to Closeout
+  if (shouldProgressToCloseout) {
+    try {
+      await manageRequestPermissions(itemId, RequestStatus.Closeout);
+    } catch (permError) {
+      SPContext.logger.warn('WorkflowActionService: Permission management failed for Closeout transition', permError);
+    }
+  }
+
+  // Reload to get current state
+  const updatedRequest = await loadRequestById(itemId);
+
+  SPContext.logger.success('WorkflowActionService: Legal review submitted', {
+    itemId,
+    requestId: updatedRequest.requestId,
+    outcome: payload.outcome,
+    progressedToCloseout: shouldProgressToCloseout,
+  });
+
+  return {
+    success: true,
+    itemId,
+    newStatus: updatedRequest.status,
+    updatedRequest,
+    fieldsUpdated,
+  };
+}
+
+/**
+ * Submit compliance review
+ *
+ * Fields updated:
+ * - ComplianceReviewOutcome → Outcome
+ * - ComplianceReviewNotes → Notes
+ * - ComplianceReviewStatus → Completed
+ * - IsForesideReviewRequired → Flag (if provided)
+ * - IsRetailUse → Flag (if provided)
+ * - ComplianceStatusUpdatedBy → Current user
+ * - ComplianceStatusUpdatedOn → Current timestamp
+ * - ComplianceReviewCompletedBy → Current user
+ * - ComplianceReviewCompletedOn → Current timestamp
+ * - Status → Closeout (if all required reviews are complete)
+ *
+ * Status automatically progresses to Closeout when:
+ * - ReviewAudience is 'Compliance' (only compliance review required)
+ * - ReviewAudience is 'Both' and legal review is also Completed
+ *
+ * @param itemId - Request item ID
+ * @param payload - Compliance review payload
+ * @returns Workflow action result
+ */
+export async function submitComplianceReview(
+  itemId: number,
+  payload: IComplianceReviewPayload
+): Promise<IWorkflowActionResult> {
+  SPContext.logger.info('WorkflowActionService: Submitting compliance review', {
+    itemId,
+    outcome: payload.outcome,
+  });
+
+  // First, load current request to check review audience and legal status
+  const currentRequest = await loadRequestById(itemId);
+
+  const currentUser = getCurrentUserPrincipal();
+  const now = new Date();
+
+  // Build update payload - ONLY compliance review fields
+  const updater = createSPUpdater();
+  updater.set(RequestsFields.ComplianceReviewOutcome, payload.outcome);
+  updater.set(RequestsFields.ComplianceReviewNotes, payload.notes);
+  updater.set(RequestsFields.ComplianceReviewStatus, ComplianceReviewStatus.Completed);
+  updater.set(RequestsFields.ComplianceStatusUpdatedBy, currentUser);
+  updater.set(RequestsFields.ComplianceStatusUpdatedOn, now.toISOString());
+  updater.set(RequestsFields.ComplianceReviewCompletedBy, currentUser);
+  updater.set(RequestsFields.ComplianceReviewCompletedOn, now.toISOString());
+
+  // Optional flags
+  if (payload.isForesideReviewRequired !== undefined) {
+    updater.set(RequestsFields.IsForesideReviewRequired, payload.isForesideReviewRequired);
+  }
+  if (payload.isRetailUse !== undefined) {
+    updater.set(RequestsFields.IsRetailUse, payload.isRetailUse);
+  }
+
+  // Check if all reviews will be complete after this submission
+  // and auto-progress to Closeout if so
+  const shouldProgressToCloseout = areAllReviewsComplete(
+    currentRequest,
+    undefined, // No change to legal status
+    ComplianceReviewStatus.Completed // New compliance status
+  );
+
+  if (shouldProgressToCloseout) {
+    updater.set(RequestsFields.Status, RequestStatus.Closeout);
+    SPContext.logger.info('WorkflowActionService: All reviews complete, progressing to Closeout', {
+      itemId,
+      reviewAudience: currentRequest.reviewAudience,
+    });
+  }
+
+  const updatePayload = updater.getUpdates();
+  const fieldsUpdated = Object.keys(updatePayload);
+
+  // Update SharePoint
+  await updateItem(itemId, updatePayload, 'submitComplianceReview');
+
+  // Manage permissions if status changed to Closeout
+  if (shouldProgressToCloseout) {
+    try {
+      await manageRequestPermissions(itemId, RequestStatus.Closeout);
+    } catch (permError) {
+      SPContext.logger.warn('WorkflowActionService: Permission management failed for Closeout transition', permError);
+    }
+  }
+
+  // Reload to get current state
+  const updatedRequest = await loadRequestById(itemId);
+
+  SPContext.logger.success('WorkflowActionService: Compliance review submitted', {
+    itemId,
+    requestId: updatedRequest.requestId,
+    outcome: payload.outcome,
+    progressedToCloseout: shouldProgressToCloseout,
+  });
+
+  return {
+    success: true,
+    itemId,
+    newStatus: updatedRequest.status,
+    updatedRequest,
+    fieldsUpdated,
+  };
+}
+
+/**
+ * Closeout request
+ *
+ * Transitions: In Review/Closeout → Completed
+ *
+ * Fields updated:
+ * - Status → Completed
+ * - TrackingId → Tracking ID (if provided)
+ * - CloseoutBy → Current user
+ * - CloseoutOn → Current timestamp
+ *
+ * @param itemId - Request item ID
+ * @param payload - Closeout payload
+ * @returns Workflow action result
+ */
+export async function closeoutRequest(
+  itemId: number,
+  payload?: ICloseoutPayload
+): Promise<IWorkflowActionResult> {
+  SPContext.logger.info('WorkflowActionService: Closing out request', {
+    itemId,
+    trackingId: payload?.trackingId,
+  });
+
+  const currentUser = getCurrentUserPrincipal();
+  const now = new Date();
+
+  // Build update payload - ONLY closeout fields
+  const updater = createSPUpdater();
+  updater.set(RequestsFields.Status, RequestStatus.Completed);
+  updater.set(RequestsFields.CloseoutBy, currentUser);
+  updater.set(RequestsFields.CloseoutOn, now.toISOString());
+
+  if (payload?.trackingId) {
+    updater.set(RequestsFields.TrackingId, payload.trackingId);
+  }
+
+  const updatePayload = updater.getUpdates();
+  const fieldsUpdated = Object.keys(updatePayload);
+
+  // Update SharePoint
+  await updateItem(itemId, updatePayload, 'closeoutRequest');
+
+  // Manage permissions for Completed status
+  try {
+    await manageRequestPermissions(itemId, RequestStatus.Completed);
+  } catch (permError) {
+    SPContext.logger.warn('WorkflowActionService: Permission management failed (request was closed)', permError);
+  }
+
+  // Reload and return result
+  const updatedRequest = await loadRequestById(itemId);
+
+  SPContext.logger.success('WorkflowActionService: Request closed out successfully', {
+    itemId,
+    requestId: updatedRequest.requestId,
+  });
+
+  return {
+    success: true,
+    itemId,
+    newStatus: RequestStatus.Completed,
+    updatedRequest,
+    fieldsUpdated,
+  };
+}
+
+/**
+ * Cancel request
+ *
+ * Transitions: Any active status → Cancelled
+ *
+ * Fields updated:
+ * - Status → Cancelled
+ * - PreviousStatus → Current status (before cancel)
+ * - CancelReason → Reason
+ * - CancelledBy → Current user
+ * - CancelledOn → Current timestamp
+ *
+ * @param itemId - Request item ID
+ * @param payload - Cancel payload
+ * @param currentStatus - Current status before cancellation
+ * @returns Workflow action result
+ */
+export async function cancelRequest(
+  itemId: number,
+  payload: ICancelPayload,
+  currentStatus: RequestStatus
+): Promise<IWorkflowActionResult> {
+  SPContext.logger.info('WorkflowActionService: Cancelling request', {
+    itemId,
+    currentStatus,
+    reason: payload.reason,
+  });
+
+  const currentUser = getCurrentUserPrincipal();
+  const now = new Date();
+
+  // Build update payload - ONLY cancellation fields
+  const updater = createSPUpdater();
+  updater.set(RequestsFields.Status, RequestStatus.Cancelled);
+  updater.set(RequestsFields.PreviousStatus, currentStatus);
+  updater.set(RequestsFields.CancelReason, payload.reason);
+  updater.set(RequestsFields.CancelledBy, currentUser);
+  updater.set(RequestsFields.CancelledOn, now.toISOString());
+
+  const updatePayload = updater.getUpdates();
+  const fieldsUpdated = Object.keys(updatePayload);
+
+  // Update SharePoint
+  await updateItem(itemId, updatePayload, 'cancelRequest');
+
+  // Manage permissions for Cancelled status
+  try {
+    await manageRequestPermissions(itemId, RequestStatus.Cancelled);
+  } catch (permError) {
+    SPContext.logger.warn('WorkflowActionService: Permission management failed', permError);
+  }
+
+  // Reload and return result
+  const updatedRequest = await loadRequestById(itemId);
+
+  SPContext.logger.success('WorkflowActionService: Request cancelled', {
+    itemId,
+    requestId: updatedRequest.requestId,
+  });
+
+  return {
+    success: true,
+    itemId,
+    newStatus: RequestStatus.Cancelled,
+    updatedRequest,
+    fieldsUpdated,
+  };
+}
+
+/**
+ * Put request on hold
+ *
+ * Transitions: Any active status → On Hold
+ *
+ * Fields updated:
+ * - Status → On Hold
+ * - PreviousStatus → Current status (before hold)
+ * - OnHoldReason → Reason
+ * - OnHoldBy → Current user
+ * - OnHoldSince → Current timestamp
+ *
+ * @param itemId - Request item ID
+ * @param payload - Hold payload
+ * @param currentStatus - Current status before hold
+ * @returns Workflow action result
+ */
+export async function holdRequest(
+  itemId: number,
+  payload: IHoldPayload,
+  currentStatus: RequestStatus
+): Promise<IWorkflowActionResult> {
+  SPContext.logger.info('WorkflowActionService: Putting request on hold', {
+    itemId,
+    currentStatus,
+    reason: payload.reason,
+  });
+
+  const currentUser = getCurrentUserPrincipal();
+  const now = new Date();
+
+  // Build update payload - ONLY hold fields
+  const updater = createSPUpdater();
+  updater.set(RequestsFields.Status, RequestStatus.OnHold);
+  updater.set(RequestsFields.PreviousStatus, currentStatus);
+  updater.set(RequestsFields.OnHoldReason, payload.reason);
+  updater.set(RequestsFields.OnHoldBy, currentUser);
+  updater.set(RequestsFields.OnHoldSince, now.toISOString());
+
+  const updatePayload = updater.getUpdates();
+  const fieldsUpdated = Object.keys(updatePayload);
+
+  // Update SharePoint
+  await updateItem(itemId, updatePayload, 'holdRequest');
+
+  // Reload and return result
+  const updatedRequest = await loadRequestById(itemId);
+
+  SPContext.logger.success('WorkflowActionService: Request put on hold', {
+    itemId,
+    requestId: updatedRequest.requestId,
+  });
+
+  return {
+    success: true,
+    itemId,
+    newStatus: RequestStatus.OnHold,
+    updatedRequest,
+    fieldsUpdated,
+  };
+}
+
+/**
+ * Resume request from hold
+ *
+ * Transitions: On Hold → Previous status
+ *
+ * Fields updated:
+ * - Status → Previous status
+ * - PreviousStatus → On Hold
+ * - OnHoldReason → null
+ * - OnHoldBy → null
+ * - OnHoldSince → null
+ *
+ * @param itemId - Request item ID
+ * @param previousStatus - Status to resume to
+ * @returns Workflow action result
+ */
+export async function resumeRequest(
+  itemId: number,
+  previousStatus: RequestStatus
+): Promise<IWorkflowActionResult> {
+  SPContext.logger.info('WorkflowActionService: Resuming request', {
+    itemId,
+    previousStatus,
+  });
+
+  // Build update payload - ONLY resume fields
+  const updater = createSPUpdater();
+  updater.set(RequestsFields.Status, previousStatus);
+  updater.set(RequestsFields.PreviousStatus, RequestStatus.OnHold);
+  // Clear hold fields
+  updater.set(RequestsFields.OnHoldReason, null);
+  updater.set(RequestsFields.OnHoldBy, null);
+  updater.set(RequestsFields.OnHoldSince, null);
+
+  const updatePayload = updater.getUpdates();
+  const fieldsUpdated = Object.keys(updatePayload);
+
+  // Update SharePoint
+  await updateItem(itemId, updatePayload, 'resumeRequest');
+
+  // Reload and return result
+  const updatedRequest = await loadRequestById(itemId);
+
+  SPContext.logger.success('WorkflowActionService: Request resumed', {
+    itemId,
+    requestId: updatedRequest.requestId,
+    newStatus: previousStatus,
+  });
+
+  return {
+    success: true,
+    itemId,
+    newStatus: previousStatus,
+    updatedRequest,
+    fieldsUpdated,
+  };
+}
+
+/**
+ * Move request to closeout stage
+ *
+ * Transitions: In Review → Closeout
+ *
+ * This is called when all reviews are complete and approved.
+ * Actual closeout is done via closeoutRequest().
+ *
+ * Fields updated:
+ * - Status → Closeout
+ *
+ * @param itemId - Request item ID
+ * @returns Workflow action result
+ */
+export async function moveToCloseout(
+  itemId: number
+): Promise<IWorkflowActionResult> {
+  SPContext.logger.info('WorkflowActionService: Moving to closeout', { itemId });
+
+  // Build update payload - ONLY status
+  const updater = createSPUpdater();
+  updater.set(RequestsFields.Status, RequestStatus.Closeout);
+
+  const updatePayload = updater.getUpdates();
+  const fieldsUpdated = Object.keys(updatePayload);
+
+  // Update SharePoint
+  await updateItem(itemId, updatePayload, 'moveToCloseout');
+
+  // Reload and return result
+  const updatedRequest = await loadRequestById(itemId);
+
+  SPContext.logger.success('WorkflowActionService: Moved to closeout', {
+    itemId,
+    requestId: updatedRequest.requestId,
+  });
+
+  return {
+    success: true,
+    itemId,
+    newStatus: RequestStatus.Closeout,
+    updatedRequest,
+    fieldsUpdated,
+  };
+}
+
+/**
+ * Update legal review status (in-progress tracking)
+ *
+ * Used to update the legal review status without completing it.
+ * For example: Not Started → In Progress, In Progress → Waiting On Submitter
+ *
+ * Fields updated:
+ * - LegalReviewStatus → New status
+ * - LegalStatusUpdatedBy → Current user
+ * - LegalStatusUpdatedOn → Current timestamp
+ *
+ * @param itemId - Request item ID
+ * @param status - New legal review status
+ * @returns Workflow action result
+ */
+export async function updateLegalReviewStatus(
+  itemId: number,
+  status: LegalReviewStatus
+): Promise<IWorkflowActionResult> {
+  SPContext.logger.info('WorkflowActionService: Updating legal review status', {
+    itemId,
+    newStatus: status,
+  });
+
+  const currentUser = getCurrentUserPrincipal();
+  const now = new Date();
+
+  const updater = createSPUpdater();
+  updater.set(RequestsFields.LegalReviewStatus, status);
+  updater.set(RequestsFields.LegalStatusUpdatedBy, currentUser);
+  updater.set(RequestsFields.LegalStatusUpdatedOn, now.toISOString());
+
+  const updatePayload = updater.getUpdates();
+  const fieldsUpdated = Object.keys(updatePayload);
+
+  await updateItem(itemId, updatePayload, 'updateLegalReviewStatus');
+
+  const updatedRequest = await loadRequestById(itemId);
+
+  return {
+    success: true,
+    itemId,
+    newStatus: updatedRequest.status,
+    updatedRequest,
+    fieldsUpdated,
+  };
+}
+
+/**
+ * Update compliance review status (in-progress tracking)
+ *
+ * Fields updated:
+ * - ComplianceReviewStatus → New status
+ * - ComplianceStatusUpdatedBy → Current user
+ * - ComplianceStatusUpdatedOn → Current timestamp
+ *
+ * @param itemId - Request item ID
+ * @param status - New compliance review status
+ * @returns Workflow action result
+ */
+export async function updateComplianceReviewStatus(
+  itemId: number,
+  status: ComplianceReviewStatus
+): Promise<IWorkflowActionResult> {
+  SPContext.logger.info('WorkflowActionService: Updating compliance review status', {
+    itemId,
+    newStatus: status,
+  });
+
+  const currentUser = getCurrentUserPrincipal();
+  const now = new Date();
+
+  const updater = createSPUpdater();
+  updater.set(RequestsFields.ComplianceReviewStatus, status);
+  updater.set(RequestsFields.ComplianceStatusUpdatedBy, currentUser);
+  updater.set(RequestsFields.ComplianceStatusUpdatedOn, now.toISOString());
+
+  const updatePayload = updater.getUpdates();
+  const fieldsUpdated = Object.keys(updatePayload);
+
+  await updateItem(itemId, updatePayload, 'updateComplianceReviewStatus');
+
+  const updatedRequest = await loadRequestById(itemId);
+
+  return {
+    success: true,
+    itemId,
+    newStatus: updatedRequest.status,
+    updatedRequest,
+    fieldsUpdated,
+  };
+}
+
+// ============================================
+// SAVE PROGRESS ACTIONS (save without completing)
+// ============================================
+
+/**
+ * Legal review save progress payload
+ */
+export interface ILegalReviewSavePayload {
+  /** Review outcome (optional - save in progress) */
+  outcome?: ReviewOutcome;
+  /** Review notes */
+  notes?: string;
+}
+
+/**
+ * Compliance review save progress payload
+ */
+export interface IComplianceReviewSavePayload {
+  /** Review outcome (optional - save in progress) */
+  outcome?: ReviewOutcome;
+  /** Review notes */
+  notes?: string;
+  /** Foreside review required flag */
+  isForesideReviewRequired?: boolean;
+  /** Retail use flag */
+  isRetailUse?: boolean;
+}
+
+/**
+ * Save legal review progress (without completing)
+ *
+ * Saves the current review state without marking the review as complete.
+ * Used when attorney wants to save their work-in-progress.
+ *
+ * Fields updated:
+ * - LegalReviewOutcome → Outcome (if provided)
+ * - LegalReviewNotes → Notes (if provided)
+ * - LegalReviewStatus → In Progress
+ * - LegalStatusUpdatedBy → Current user
+ * - LegalStatusUpdatedOn → Current timestamp
+ *
+ * @param itemId - Request item ID
+ * @param payload - Save payload
+ * @returns Workflow action result
+ */
+export async function saveLegalReviewProgress(
+  itemId: number,
+  payload: ILegalReviewSavePayload
+): Promise<IWorkflowActionResult> {
+  SPContext.logger.info('WorkflowActionService: Saving legal review progress', {
+    itemId,
+    hasOutcome: !!payload.outcome,
+    hasNotes: !!payload.notes,
+  });
+
+  const currentUser = getCurrentUserPrincipal();
+  const now = new Date();
+
+  // Build update payload - save progress fields
+  const updater = createSPUpdater();
+
+  // Only update outcome if provided
+  if (payload.outcome !== undefined) {
+    updater.set(RequestsFields.LegalReviewOutcome, payload.outcome);
+  }
+
+  // Only update notes if provided
+  if (payload.notes !== undefined) {
+    updater.set(RequestsFields.LegalReviewNotes, payload.notes);
+  }
+
+  // Set status to In Progress (not Completed)
+  updater.set(RequestsFields.LegalReviewStatus, LegalReviewStatus.InProgress);
+  updater.set(RequestsFields.LegalStatusUpdatedBy, currentUser);
+  updater.set(RequestsFields.LegalStatusUpdatedOn, now.toISOString());
+
+  const updatePayload = updater.getUpdates();
+  const fieldsUpdated = Object.keys(updatePayload);
+
+  // Update SharePoint
+  await updateItem(itemId, updatePayload, 'saveLegalReviewProgress');
+
+  // Reload to get current state
+  const updatedRequest = await loadRequestById(itemId);
+
+  SPContext.logger.success('WorkflowActionService: Legal review progress saved', {
+    itemId,
+    requestId: updatedRequest.requestId,
+  });
+
+  return {
+    success: true,
+    itemId,
+    newStatus: updatedRequest.status,
+    updatedRequest,
+    fieldsUpdated,
+  };
+}
+
+/**
+ * Save compliance review progress (without completing)
+ *
+ * Saves the current review state without marking the review as complete.
+ * Used when compliance reviewer wants to save their work-in-progress.
+ *
+ * Fields updated:
+ * - ComplianceReviewOutcome → Outcome (if provided)
+ * - ComplianceReviewNotes → Notes (if provided)
+ * - ComplianceReviewStatus → In Progress
+ * - IsForesideReviewRequired → Flag (if provided)
+ * - IsRetailUse → Flag (if provided)
+ * - ComplianceStatusUpdatedBy → Current user
+ * - ComplianceStatusUpdatedOn → Current timestamp
+ *
+ * @param itemId - Request item ID
+ * @param payload - Save payload
+ * @returns Workflow action result
+ */
+export async function saveComplianceReviewProgress(
+  itemId: number,
+  payload: IComplianceReviewSavePayload
+): Promise<IWorkflowActionResult> {
+  SPContext.logger.info('WorkflowActionService: Saving compliance review progress', {
+    itemId,
+    hasOutcome: !!payload.outcome,
+    hasNotes: !!payload.notes,
+  });
+
+  const currentUser = getCurrentUserPrincipal();
+  const now = new Date();
+
+  // Build update payload - save progress fields
+  const updater = createSPUpdater();
+
+  // Only update outcome if provided
+  if (payload.outcome !== undefined) {
+    updater.set(RequestsFields.ComplianceReviewOutcome, payload.outcome);
+  }
+
+  // Only update notes if provided
+  if (payload.notes !== undefined) {
+    updater.set(RequestsFields.ComplianceReviewNotes, payload.notes);
+  }
+
+  // Set status to In Progress (not Completed)
+  updater.set(RequestsFields.ComplianceReviewStatus, ComplianceReviewStatus.InProgress);
+  updater.set(RequestsFields.ComplianceStatusUpdatedBy, currentUser);
+  updater.set(RequestsFields.ComplianceStatusUpdatedOn, now.toISOString());
+
+  // Optional flags
+  if (payload.isForesideReviewRequired !== undefined) {
+    updater.set(RequestsFields.IsForesideReviewRequired, payload.isForesideReviewRequired);
+  }
+  if (payload.isRetailUse !== undefined) {
+    updater.set(RequestsFields.IsRetailUse, payload.isRetailUse);
+  }
+
+  const updatePayload = updater.getUpdates();
+  const fieldsUpdated = Object.keys(updatePayload);
+
+  // Update SharePoint
+  await updateItem(itemId, updatePayload, 'saveComplianceReviewProgress');
+
+  // Reload to get current state
+  const updatedRequest = await loadRequestById(itemId);
+
+  SPContext.logger.success('WorkflowActionService: Compliance review progress saved', {
+    itemId,
+    requestId: updatedRequest.requestId,
+  });
+
+  return {
+    success: true,
+    itemId,
+    newStatus: updatedRequest.status,
+    updatedRequest,
+    fieldsUpdated,
+  };
+}

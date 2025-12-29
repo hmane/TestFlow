@@ -1,0 +1,730 @@
+/**
+ * SuperAdminPanel Styles
+ *
+ * "Refined Authority" aesthetic - Clean, professional administrative interface
+ * Uses subtle visual hierarchy and refined typography to convey authority
+ * Seamlessly integrates with Fluent UI controls
+ */
+
+// ============================================
+// CSS Custom Properties (Design Tokens)
+// ============================================
+.super-admin-panel {
+  // Scoped CSS variables to avoid global pollution
+  --sap-bg-primary: #ffffff;
+  --sap-bg-secondary: #f8f9fa;
+  --sap-bg-tertiary: #f0f2f4;
+  --sap-bg-elevated: #ffffff;
+
+  // Authority accent - deep slate blue with warmth
+  --sap-accent-primary: #1e3a5f;
+  --sap-accent-secondary: #2d5986;
+  --sap-accent-tertiary: #4a7eb8;
+  --sap-accent-light: #e8f0f8;
+  --sap-accent-hover: #16304d;
+
+  // Warning indicator - refined amber
+  --sap-warning-primary: #b45309;
+  --sap-warning-secondary: #d97706;
+  --sap-warning-light: #fef3c7;
+  --sap-warning-border: rgba(180, 83, 9, 0.2);
+
+  // Danger colors - refined crimson
+  --sap-danger-primary: #991b1b;
+  --sap-danger-secondary: #dc2626;
+  --sap-danger-light: #fef2f2;
+  --sap-danger-border: rgba(153, 27, 27, 0.15);
+
+  // Success colors
+  --sap-success-primary: #166534;
+  --sap-success-light: #f0fdf4;
+
+  // Text colors
+  --sap-text-primary: #1f2937;
+  --sap-text-secondary: #4b5563;
+  --sap-text-tertiary: #6b7280;
+  --sap-text-muted: #9ca3af;
+  --sap-text-inverse: #ffffff;
+
+  // Border colors
+  --sap-border-primary: #e5e7eb;
+  --sap-border-secondary: #f3f4f6;
+  --sap-border-focus: #3b82f6;
+
+  // Shadows - subtle and refined
+  --sap-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --sap-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+  --sap-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.06);
+  --sap-shadow-panel: -8px 0 30px rgba(0, 0, 0, 0.12);
+
+  // Typography
+  --sap-font-primary: 'Segoe UI', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --sap-font-display: 'Segoe UI Semibold', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  // Timing
+  --sap-transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --sap-transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+// ============================================
+// Panel Base Styles
+// ============================================
+.super-admin-panel {
+  .ms-Panel-main {
+    background-color: var(--sap-bg-primary);
+    box-shadow: var(--sap-shadow-panel);
+    border-left: none;
+  }
+
+  .ms-Panel-contentInner {
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  // Remove default header container padding that causes white patch
+  .ms-Panel-header {
+    padding: 0;
+    margin: 0;
+  }
+
+  .ms-Panel-headerText {
+    display: none;
+  }
+
+  .ms-Panel-scrollableContent {
+    overflow-y: auto;
+    flex: 1;
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: var(--sap-border-primary);
+      border-radius: 3px;
+
+      &:hover {
+        background: var(--sap-text-muted);
+      }
+    }
+  }
+}
+
+// ============================================
+// Header - Clean, authoritative
+// ============================================
+.super-admin-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  background: var(--sap-accent-primary);
+  position: relative;
+}
+
+.super-admin-panel__header-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.super-admin-panel__header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  transition: background var(--sap-transition-fast);
+
+  .ms-Icon {
+    font-size: 20px;
+    color: var(--sap-text-inverse);
+  }
+}
+
+.super-admin-panel__header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.super-admin-panel__title {
+  margin: 0;
+  font-family: var(--sap-font-display);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--sap-text-inverse);
+  letter-spacing: -0.01em;
+}
+
+.super-admin-panel__subtitle {
+  margin: 0;
+  font-family: var(--sap-font-primary);
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.super-admin-panel__close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.8);
+  background: transparent;
+  border: none;
+  transition: all var(--sap-transition-fast);
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: var(--sap-text-inverse);
+  }
+
+  .ms-Icon {
+    font-size: 12px;
+  }
+}
+
+// ============================================
+// Content Area
+// ============================================
+.super-admin-panel__content {
+  padding: 24px;
+  position: relative;
+  background: var(--sap-bg-secondary);
+}
+
+// ============================================
+// Warning Banner - Refined alert
+// ============================================
+.super-admin-panel__warning-banner {
+  display: flex;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--sap-warning-light);
+  border: 1px solid var(--sap-warning-border);
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.super-admin-panel__warning-icon {
+  font-size: 18px;
+  color: var(--sap-warning-primary);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.super-admin-panel__warning-text {
+  flex: 1;
+
+  strong {
+    display: block;
+    font-family: var(--sap-font-display);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--sap-warning-primary);
+    margin-bottom: 4px;
+  }
+
+  p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--sap-text-secondary);
+    line-height: 1.5;
+  }
+}
+
+// ============================================
+// Messages
+// ============================================
+.super-admin-panel__message {
+  margin-bottom: 16px;
+  border-radius: 8px;
+}
+
+// ============================================
+// Status Display - Info cards
+// ============================================
+.super-admin-panel__status-display {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.super-admin-panel__status-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  background: var(--sap-bg-primary);
+  border: 1px solid var(--sap-border-primary);
+  border-radius: 8px;
+  transition: border-color var(--sap-transition-fast);
+
+  &:hover {
+    border-color: var(--sap-border-focus);
+  }
+}
+
+.super-admin-panel__status-label {
+  font-family: var(--sap-font-primary);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--sap-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.super-admin-panel__status-value {
+  font-family: var(--sap-font-display);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sap-text-primary);
+
+  // Status-specific colors
+  &--draft { color: var(--sap-text-tertiary); }
+  &--legal-intake { color: #2563eb; }
+  &--assign-attorney { color: #7c3aed; }
+  &--in-review { color: var(--sap-warning-secondary); }
+  &--closeout { color: #0891b2; }
+  &--completed { color: var(--sap-success-primary); }
+  &--cancelled { color: var(--sap-danger-secondary); }
+  &--on-hold { color: var(--sap-text-tertiary); }
+}
+
+// ============================================
+// Reason Section
+// ============================================
+.super-admin-panel__reason-section {
+  margin-bottom: 8px;
+}
+
+.super-admin-panel__reason-field {
+  .ms-TextField-fieldGroup {
+    background: var(--sap-bg-primary);
+    border: 1px solid var(--sap-border-primary);
+    border-radius: 6px;
+    transition: border-color var(--sap-transition-fast), box-shadow var(--sap-transition-fast);
+
+    &:hover {
+      border-color: var(--sap-text-muted);
+    }
+
+    &:focus-within {
+      border-color: var(--sap-border-focus);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+  }
+
+  .ms-TextField-field {
+    color: var(--sap-text-primary);
+    font-size: 13px;
+    font-family: var(--sap-font-primary);
+
+    &::placeholder {
+      color: var(--sap-text-muted);
+    }
+  }
+
+  .ms-Label {
+    font-family: var(--sap-font-display);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--sap-text-primary);
+    margin-bottom: 6px;
+
+    &::after {
+      color: var(--sap-danger-secondary);
+    }
+  }
+
+  .ms-TextField-description {
+    font-size: 11px;
+    color: var(--sap-text-tertiary);
+    margin-top: 6px;
+  }
+}
+
+// ============================================
+// Separator
+// ============================================
+.super-admin-panel__separator {
+  margin: 20px 0 24px;
+
+  &::before {
+    background: var(--sap-border-primary);
+  }
+}
+
+// ============================================
+// Sections - Action cards
+// ============================================
+.super-admin-panel__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.super-admin-panel__section {
+  padding: 18px;
+  background: var(--sap-bg-primary);
+  border: 1px solid var(--sap-border-primary);
+  border-radius: 10px;
+  transition: all var(--sap-transition-fast);
+
+  &:hover {
+    border-color: var(--sap-accent-tertiary);
+    box-shadow: var(--sap-shadow-md);
+  }
+
+  &--danger {
+    background: var(--sap-danger-light);
+    border-color: var(--sap-danger-border);
+
+    &:hover {
+      border-color: rgba(153, 27, 27, 0.3);
+    }
+
+    .super-admin-panel__section-icon {
+      color: var(--sap-danger-secondary);
+    }
+
+    .super-admin-panel__section-header h3 {
+      color: var(--sap-danger-primary);
+    }
+  }
+}
+
+.super-admin-panel__section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+
+  h3 {
+    margin: 0;
+    font-family: var(--sap-font-display);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--sap-text-primary);
+  }
+}
+
+.super-admin-panel__section-icon {
+  font-size: 16px;
+  color: var(--sap-accent-secondary);
+}
+
+.super-admin-panel__section-desc {
+  margin: 0 0 14px;
+  font-size: 12px;
+  color: var(--sap-text-secondary);
+  line-height: 1.5;
+
+  strong {
+    color: var(--sap-accent-primary);
+    font-weight: 600;
+  }
+}
+
+// ============================================
+// Dropdown - Clean styling
+// ============================================
+.super-admin-panel__dropdown {
+  .ms-Dropdown-title {
+    border-radius: 6px;
+    font-size: 13px;
+    border-color: var(--sap-border-primary);
+
+    &:hover {
+      border-color: var(--sap-text-muted);
+    }
+  }
+
+  &.is-open .ms-Dropdown-title {
+    border-color: var(--sap-border-focus);
+  }
+}
+
+// ============================================
+// Action Buttons - Refined
+// ============================================
+.super-admin-panel__action-btn {
+  min-width: 90px;
+  height: 34px;
+  font-family: var(--sap-font-display);
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+  transition: all var(--sap-transition-fast);
+
+  &.ms-Button--primary {
+    background: var(--sap-accent-primary);
+    border: none;
+    color: var(--sap-text-inverse);
+
+    &:hover:not(:disabled) {
+      background: var(--sap-accent-hover);
+    }
+
+    &:disabled {
+      background: var(--sap-bg-tertiary);
+      color: var(--sap-text-muted);
+    }
+  }
+
+  &.ms-Button--default {
+    background: var(--sap-bg-primary);
+    border: 1px solid var(--sap-border-primary);
+    color: var(--sap-text-primary);
+
+    &:hover:not(:disabled) {
+      background: var(--sap-bg-tertiary);
+      border-color: var(--sap-text-muted);
+    }
+
+    &:disabled {
+      background: var(--sap-bg-secondary);
+      color: var(--sap-text-muted);
+      border-color: var(--sap-border-secondary);
+    }
+  }
+
+  &--warning {
+    border-color: var(--sap-warning-border) !important;
+    color: var(--sap-warning-primary) !important;
+
+    &:hover:not(:disabled) {
+      background: var(--sap-warning-light) !important;
+      border-color: var(--sap-warning-secondary) !important;
+    }
+  }
+
+  &--danger {
+    background: var(--sap-danger-primary) !important;
+    border: none !important;
+    color: var(--sap-text-inverse) !important;
+
+    &:hover:not(:disabled) {
+      background: #7f1d1d !important;
+    }
+  }
+}
+
+// ============================================
+// Toggle - Clean styling
+// ============================================
+.super-admin-panel__section {
+  .ms-Toggle {
+    .ms-Label {
+      font-family: var(--sap-font-primary);
+      font-size: 13px;
+      color: var(--sap-text-secondary);
+    }
+
+    &.is-checked .ms-Toggle-background {
+      background: var(--sap-accent-primary);
+      border-color: var(--sap-accent-primary);
+    }
+  }
+}
+
+// ============================================
+// Footer
+// ============================================
+.super-admin-panel__footer {
+  padding: 14px 24px;
+  background: var(--sap-bg-tertiary);
+  border-top: 1px solid var(--sap-border-primary);
+}
+
+.super-admin-panel__footer-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--sap-font-primary);
+  font-size: 11px;
+  color: var(--sap-text-tertiary);
+
+  .ms-Icon {
+    font-size: 12px;
+    color: var(--sap-text-muted);
+  }
+}
+
+// ============================================
+// Processing Overlay
+// ============================================
+.super-admin-panel__processing {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(2px);
+  z-index: 100;
+
+  .ms-Spinner-label {
+    color: var(--sap-text-primary);
+    font-family: var(--sap-font-display);
+    font-weight: 600;
+  }
+}
+
+// ============================================
+// Confirmation Dialog
+// ============================================
+.super-admin-panel__dialog {
+  .ms-Dialog-main {
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .ms-Dialog-title {
+    font-family: var(--sap-font-display);
+    color: var(--sap-text-primary);
+    font-weight: 600;
+  }
+
+  .ms-Dialog-subText {
+    color: var(--sap-text-secondary);
+  }
+}
+
+.super-admin-panel__dialog-warning {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  margin: 0 24px 16px;
+  background: var(--sap-danger-light);
+  border: 1px solid var(--sap-danger-border);
+  border-radius: 8px;
+
+  .ms-Icon {
+    font-size: 16px;
+    color: var(--sap-danger-secondary);
+  }
+
+  span {
+    font-size: 12px;
+    color: var(--sap-danger-primary);
+    font-weight: 500;
+  }
+}
+
+.super-admin-panel__dialog-reason {
+  padding: 14px;
+  margin: 0 24px 16px;
+  background: var(--sap-bg-tertiary);
+  border: 1px solid var(--sap-border-primary);
+  border-radius: 8px;
+
+  strong {
+    font-family: var(--sap-font-primary);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--sap-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  p {
+    margin: 8px 0 0;
+    font-size: 13px;
+    color: var(--sap-text-primary);
+    font-style: italic;
+    line-height: 1.5;
+  }
+}
+
+.super-admin-panel__dialog-confirm {
+  background: var(--sap-danger-primary) !important;
+  border: none !important;
+  color: var(--sap-text-inverse) !important;
+  border-radius: 6px !important;
+
+  &:hover {
+    background: #7f1d1d !important;
+  }
+}
+
+// ============================================
+// Responsive
+// ============================================
+@media (max-width: 600px) {
+  .super-admin-panel__status-display {
+    grid-template-columns: 1fr;
+  }
+
+  .super-admin-panel__section {
+    .ms-Stack[class*='horizontal'] {
+      flex-direction: column;
+
+      .super-admin-panel__dropdown,
+      .super-admin-panel__action-btn {
+        width: 100%;
+      }
+    }
+  }
+
+  .super-admin-panel__header {
+    padding: 16px 20px;
+  }
+
+  .super-admin-panel__content {
+    padding: 20px;
+  }
+}
+
+// ============================================
+// Animations - Subtle entrance
+// ============================================
+@keyframes panelFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.super-admin-panel__content {
+  animation: panelFadeIn 0.2s ease-out;
+}
+
+.super-admin-panel__section {
+  animation: panelFadeIn 0.2s ease-out;
+  animation-fill-mode: both;
+
+  @for $i from 1 through 5 {
+    &:nth-child(#{$i}) {
+      animation-delay: #{$i * 0.03}s;
+    }
+  }
+}
+
+// ============================================
+// Print
+// ============================================
+@media print {
+  .super-admin-panel {
+    display: none;
+  }
+}

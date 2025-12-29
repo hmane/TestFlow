@@ -1,148 +1,79 @@
 /**
  * RequestStatusProgress Styles
  *
- * Styles for status progress bar and hover card components
- * - Progress bar with color coding
- * - Status label overlay
+ * Styles for status field customizer
+ * - Full-width colored container (fills entire cell)
+ * - Status label centered with white text
  * - Hover card content
  * - Responsive design
  */
 
 /* ============================================
-   PROGRESS BAR CONTAINER
+   STATUS CONTAINER (Full-width colored background)
    ============================================ */
 
-.progressBarContainer {
-  position: relative;
+.statusContainer {
   width: 100%;
-  min-width: 150px;
-  max-width: 300px;
-  height: 28px;
+  height: 100%;
+  min-height: 28px;
   display: flex;
   align-items: center;
+  justify-content: center;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: filter 0.2s ease;
+  padding: 4px 12px;
+  box-sizing: border-box;
 
   &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    filter: brightness(1.1);
   }
 
   &:active {
-    transform: translateY(0);
+    filter: brightness(0.95);
   }
 }
 
 /* ============================================
-   PROGRESS BAR TRACK (Background)
-   ============================================ */
-
-.progressBarTrack {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: #edebe9;
-  border-radius: 14px;
-  overflow: hidden;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-/* ============================================
-   PROGRESS BAR FILL (Colored)
-   ============================================ */
-
-.progressBarFill {
-  position: relative;
-  height: 100%;
-  min-width: 2%;
-  border-radius: 14px;
-  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
-
-  /* Gradient overlay for visual depth */
-  .progressBarGradient {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-      to bottom,
-      rgba(255, 255, 255, 0.15) 0%,
-      rgba(255, 255, 255, 0) 50%,
-      rgba(0, 0, 0, 0.05) 100%
-    );
-  }
-}
-
-/* ============================================
-   COLOR VARIANTS
+   COLOR VARIANTS (Full container backgrounds)
    ============================================ */
 
 /* Green - On track */
 .green {
-  &.progressBarFill {
-    background: linear-gradient(135deg, #107c10 0%, #13a10e 100%);
-  }
+  background: linear-gradient(135deg, #107c10 0%, #13a10e 100%);
 }
 
 /* Yellow - Due soon */
 .yellow {
-  &.progressBarFill {
-    background: linear-gradient(135deg, #ffaa44 0%, #ffc83d 100%);
-  }
+  background: linear-gradient(135deg, #ffaa44 0%, #ffc83d 100%);
 }
 
 /* Red - Overdue */
 .red {
-  &.progressBarFill {
-    background: linear-gradient(135deg, #d13438 0%, #a4262c 100%);
-  }
+  background: linear-gradient(135deg, #d13438 0%, #a4262c 100%);
 }
 
 /* Blue - On Hold */
 .blue {
-  &.progressBarFill {
-    background: linear-gradient(135deg, #0078d4 0%, #106ebe 100%);
-  }
+  background: linear-gradient(135deg, #0078d4 0%, #106ebe 100%);
 }
 
 /* Gray - Cancelled or No Target Date */
 .gray {
-  &.progressBarFill {
-    background: linear-gradient(135deg, #8a8886 0%, #605e5c 100%);
-  }
+  background: linear-gradient(135deg, #8a8886 0%, #605e5c 100%);
 }
 
 /* ============================================
-   STATUS LABEL OVERLAY
+   STATUS LABEL
    ============================================ */
-
-.statusLabelContainer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  z-index: 1;
-}
 
 .statusLabel {
   color: #ffffff;
   font-size: 12px;
   font-weight: 600;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 0 12px;
-  max-width: 100%;
 }
 
 /* ============================================
@@ -190,6 +121,15 @@
 /* Card Content */
 .cardContent {
   margin-bottom: 12px;
+}
+
+/* Loading Container */
+.loadingContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60px;
+  padding: 16px 0;
 }
 
 .fieldRow {
@@ -259,10 +199,9 @@
    ============================================ */
 
 @media (max-width: 480px) {
-  .progressBarContainer {
-    min-width: 120px;
-    max-width: 250px;
-    height: 24px;
+  .statusContainer {
+    min-height: 24px;
+    padding: 2px 8px;
   }
 
   .statusLabel {
@@ -286,7 +225,7 @@
 
 /* High Contrast Mode */
 @media (prefers-contrast: high) {
-  .progressBarFill {
+  .statusContainer {
     border: 2px solid currentColor;
   }
 
@@ -296,37 +235,9 @@
 }
 
 /* Focus Visible */
-.progressBarContainer:focus-visible {
+.statusContainer:focus-visible {
   outline: 2px solid #0078d4;
   outline-offset: 2px;
-  border-radius: 14px;
-}
-
-/* ============================================
-   DARK THEME SUPPORT
-   ============================================ */
-
-@media (prefers-color-scheme: dark) {
-  .statusHoverCard {
-    background: #292827;
-    color: #ffffff;
-  }
-
-  .progressBarTrack {
-    background: #3b3a39;
-  }
-
-  .fieldLabel {
-    color: #d2d0ce;
-  }
-
-  .fieldValue {
-    color: #ffffff;
-  }
-
-  .statusBadge {
-    filter: brightness(0.9);
-  }
 }
 
 /* ============================================
@@ -334,30 +245,11 @@
    ============================================ */
 
 @media print {
-  .progressBarContainer {
-    box-shadow: none;
+  .statusContainer {
     border: 1px solid #c8c6c4;
   }
 
   .statusHoverCard {
     display: none;
   }
-}
-
-/* ============================================
-   ANIMATION
-   ============================================ */
-
-@keyframes progressFill {
-  from {
-    width: 0%;
-  }
-  to {
-    width: var(--progress-width);
-  }
-}
-
-/* Apply animation on initial load */
-.progressBarFill {
-  animation: progressFill 1s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }

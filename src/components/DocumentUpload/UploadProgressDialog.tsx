@@ -23,7 +23,7 @@ import {
   MessageBarType,
 } from '@fluentui/react';
 import type { IUploadProgressDialogProps, IFileUploadProgress } from './DocumentUploadTypes';
-import { FileOperationStatus } from '../../services/approvalFileService';
+import { FileOperationStatus } from '@services/approvalFileService';
 
 /**
  * Get status icon name and color

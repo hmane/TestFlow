@@ -6,7 +6,8 @@
  */
 
 import * as React from 'react';
-import { Icon, Text } from '@fluentui/react';
+import { Icon } from '@fluentui/react/lib/Icon';
+import { Text } from '@fluentui/react/lib/Text';
 
 /**
  * Props for DropZoneCard
@@ -17,6 +18,8 @@ export interface IDropZoneCardProps {
   onDragLeave: (e: React.DragEvent<HTMLDivElement>) => void;
   onClick: () => void;
   className?: string;
+  /** Show error state with red border */
+  isError?: boolean;
 }
 
 /**
@@ -28,6 +31,7 @@ export const DropZoneCard: React.FC<IDropZoneCardProps> = ({
   onDragLeave,
   onClick,
   className,
+  isError = false,
 }) => {
   const [isHovered, setIsHovered] = React.useState(false);
 
@@ -53,8 +57,9 @@ export const DropZoneCard: React.FC<IDropZoneCardProps> = ({
     const classes = ['drop-zone-card'];
     if (className) classes.push(className);
     if (isHovered) classes.push('hovered');
+    if (isError) classes.push('drop-zone-card--error');
     return classes.join(' ');
-  }, [className, isHovered]);
+  }, [className, isHovered, isError]);
 
   return (
     <div

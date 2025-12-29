@@ -5,7 +5,7 @@
  */
 
 import * as React from 'react';
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
 import { createSPExtractor } from 'spfx-toolkit/lib/utilities/listItemHelper';
 import { create } from 'zustand';
@@ -14,7 +14,7 @@ import { devtools } from 'zustand/middleware';
 import { Lists } from '@sp/Lists';
 import { SubmissionItemsFields } from '@sp/listFields/SubmissionItemsFields';
 
-import type { ISubmissionItem, ISubmissionItemListItem } from '../types';
+import type { ISubmissionItem, ISubmissionItemListItem } from '@appTypes/index';
 
 /**
  * Submission items store state interface

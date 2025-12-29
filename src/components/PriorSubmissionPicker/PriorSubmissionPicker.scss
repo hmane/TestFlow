@@ -140,19 +140,21 @@
   }
 }
 
-// DevExtreme dropdown list overrides
-.dx-list {
-  .dx-list-item {
-    padding: 0 !important;
-    border-bottom: none !important;
+// DevExtreme dropdown list overrides - SCOPED to this component only
+.prior-submission-picker {
+  .dx-list {
+    .dx-list-item {
+      padding: 0 !important;
+      border-bottom: none !important;
 
-    &:hover {
-      background-color: transparent !important;
+      &:hover {
+        background-color: transparent !important;
+      }
     }
-  }
 
-  .dx-list-item-content {
-    padding: 0 !important;
+    .dx-list-item-content {
+      padding: 0 !important;
+    }
   }
 }
 

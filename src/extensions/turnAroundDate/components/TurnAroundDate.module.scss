@@ -8,31 +8,41 @@
  */
 
 /* ============================================
+   WRAPPER (Relative positioning for absolute child)
+   ============================================ */
+
+.wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 32px;
+}
+
+/* ============================================
    DATE CONTAINER (Full-width colored background)
    ============================================ */
 
 .dateContainer {
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   width: 100%;
-  min-width: 150px;
-  max-width: 300px;
-  height: 28px;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 14px;
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: filter 0.2s ease;
 
   &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    filter: brightness(1.1);
   }
 
   &:active {
-    transform: translateY(0);
+    filter: brightness(0.95);
   }
 }
 
@@ -161,12 +171,6 @@
    ============================================ */
 
 @media (max-width: 480px) {
-  .dateContainer {
-    min-width: 120px;
-    max-width: 250px;
-    height: 24px;
-  }
-
   .dateText {
     font-size: 11px;
   }
@@ -204,33 +208,6 @@
   outline-offset: 2px;
 }
 
-/* ============================================
-   DARK THEME SUPPORT
-   ============================================ */
-
-@media (prefers-color-scheme: dark) {
-  .hoverCard {
-    background: #292827;
-    color: #ffffff;
-  }
-
-  .fieldLabel {
-    color: #d2d0ce;
-  }
-
-  .fieldValue {
-    color: #ffffff;
-  }
-
-  .dateBadge {
-    filter: brightness(0.9);
-  }
-
-  .rushSection {
-    background: #3d2426;
-    border-left-color: #d13438;
-  }
-}
 
 /* ============================================
    PRINT STYLES

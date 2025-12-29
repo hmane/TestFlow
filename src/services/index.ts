@@ -30,3 +30,15 @@ export * from './requestSaveService';
 
 // Time Tracking Service
 export * from './timeTrackingService';
+
+// Workflow Action Service (namespaced to avoid conflicts with requestSaveService)
+export * as WorkflowActions from './workflowActionService';
+
+// Workflow Permission Service
+export * from './workflowPermissionService';
+
+// UI Visibility Service
+export * from './uiVisibilityService';
+
+// User Groups Service
+export * from './userGroupsService';

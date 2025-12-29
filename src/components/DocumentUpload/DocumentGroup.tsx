@@ -9,7 +9,9 @@
  */
 
 import * as React from 'react';
-import { Icon, IconButton, Text } from '@fluentui/react';
+import { Icon } from '@fluentui/react/lib/Icon';
+import { IconButton } from '@fluentui/react/lib/Button';
+import { Text } from '@fluentui/react/lib/Text';
 import { DocumentCard } from './DocumentCard';
 import type { IDocumentGroupProps } from './DocumentUploadTypes';
 

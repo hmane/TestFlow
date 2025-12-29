@@ -4,9 +4,9 @@
  * Type definitions for the unified DocumentUpload component
  */
 
-import type { DocumentType } from '../../types/documentTypes';
-import type { IDocument } from '../../stores/documentsStore';
-import type { FileOperationStatus } from '../../services/approvalFileService';
+import type { DocumentType } from '@appTypes/documentTypes';
+import type { IDocument } from '@stores/documentsStore';
+import type { FileOperationStatus } from '@services/approvalFileService';
 
 /**
  * Props for DocumentUpload component
@@ -26,6 +26,9 @@ export interface IDocumentUploadProps {
   // Labels
   label?: string;                      // Section label
   description?: string;                // Help text
+
+  // Validation state
+  hasError?: boolean;                  // Show error state (red border on drop zone)
 
   // Callbacks
   onFilesChange?: () => void;          // Called when files change

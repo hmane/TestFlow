@@ -4,8 +4,8 @@
  */
 
 import * as React from 'react';
-import { SPContext } from 'spfx-toolkit';
-import type { IRushRequestCalculation, ISubmissionItem } from '../types';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
+import type { IRushRequestCalculation, ISubmissionItem } from '@appTypes/index';
 
 /**
  * Business days calculation options

@@ -5,7 +5,7 @@
  */
 
 import * as React from 'react';
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
 import { createSPExtractor } from 'spfx-toolkit/lib/utilities/listItemHelper';
 import { create } from 'zustand';
@@ -14,7 +14,7 @@ import { devtools } from 'zustand/middleware';
 import { Lists } from '@sp/Lists';
 import { ConfigurationFields } from '@sp/listFields/ConfigurationFields';
 
-import type { IAppConfiguration, IConfigurationListItem } from '../types';
+import type { IAppConfiguration, IConfigurationListItem } from '@appTypes/index';
 
 /**
  * Configuration store state interface

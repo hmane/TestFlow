@@ -4,12 +4,26 @@ import type { UseFormSetError } from 'react-hook-form';
 import { Lists } from '@sp/Lists';
 
 import type { ILegalRequest, IPrincipal, SPLookup } from '@appTypes/index';
+import { ApprovalType } from '@appTypes/approvalTypes';
+import { DocumentType } from '@appTypes/documentTypes';
 import { saveRequestSchema, submitRequestSchema } from '@schemas/requestSchema';
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 
 import type { IValidationError } from '@contexts/RequestFormContext';
 import { useDocumentsStore } from '../../../../stores/documentsStore';
 import { useRequestStore } from '../../../../stores/requestStore';
+
+/**
+ * Map ApprovalType to DocumentType for validation
+ */
+const approvalTypeToDocumentType: Record<ApprovalType, DocumentType> = {
+  [ApprovalType.Communications]: DocumentType.CommunicationApproval,
+  [ApprovalType.PortfolioManager]: DocumentType.PortfolioManagerApproval,
+  [ApprovalType.ResearchAnalyst]: DocumentType.ResearchAnalystApproval,
+  [ApprovalType.SubjectMatterExpert]: DocumentType.SubjectMatterExpertApproval,
+  [ApprovalType.Performance]: DocumentType.PerformanceApproval,
+  [ApprovalType.Other]: DocumentType.OtherApproval,
+};
 
 interface IRequestInfoActionsOptions {
   itemId?: number;
@@ -24,6 +38,7 @@ interface IRequestInfoActionsOptions {
 
 interface IRequestInfoActionsResult {
   onSubmit: (data: ILegalRequest) => Promise<void>;
+  handleSubmitDirect: () => Promise<void>;
   handleSaveDraft: () => Promise<void>;
   handleClose: () => void;
   handleCancelRequest: (reason: string) => Promise<void>;
@@ -164,11 +179,86 @@ export const useRequestInfoActions = ({
 }: IRequestInfoActionsOptions): IRequestInfoActionsResult => {
   const [validationErrors, setValidationErrors] = React.useState<IValidationError[]>([]);
 
-  // Get document operations from store
-  const { renamePendingFiles, deletePendingFiles } = useDocumentsStore();
+  // Get document operations and state from store
+  const {
+    renamePendingFiles,
+    deletePendingFiles,
+    documents,
+    stagedFiles,
+    filesToDelete,
+  } = useDocumentsStore();
 
   // Get workflow actions from request store
-  const { cancelRequest, holdRequest: putRequestOnHold } = useRequestStore();
+  const { cancelRequest, holdRequest: putRequestOnHold, submitRequest } = useRequestStore();
+
+  /**
+   * Check if an approval type has documents in the documentsStore
+   * This checks both existing documents and staged (pending upload) files
+   */
+  const hasDocumentsForApprovalType = React.useCallback(
+    (approvalType: ApprovalType): boolean => {
+      const documentType = approvalTypeToDocumentType[approvalType];
+      if (!documentType) {
+        return false;
+      }
+
+      // Check existing documents (already uploaded to SharePoint)
+      const existingDocs = documents.get(documentType) || [];
+      // Filter out documents marked for deletion
+      const activeExistingDocs = existingDocs.filter(doc => {
+        return !filesToDelete.some(fd => fd.uniqueId === doc.uniqueId);
+      });
+
+      if (activeExistingDocs.length > 0) {
+        return true;
+      }
+
+      // Check staged files (pending upload)
+      const stagedForType = stagedFiles.filter(sf => sf.documentType === documentType);
+      if (stagedForType.length > 0) {
+        return true;
+      }
+
+      return false;
+    },
+    [documents, stagedFiles, filesToDelete]
+  );
+
+  /**
+   * Check if there are any attachments (Review or Supplemental documents) in the store
+   */
+  const hasAttachments = React.useCallback((): boolean => {
+    // Check Review documents
+    const reviewDocs = documents.get(DocumentType.Review) || [];
+    const activeReviewDocs = reviewDocs.filter(doc => {
+      return !filesToDelete.some(fd => fd.uniqueId === doc.uniqueId);
+    });
+    if (activeReviewDocs.length > 0) {
+      return true;
+    }
+
+    // Check Supplemental documents
+    const supplementalDocs = documents.get(DocumentType.Supplemental) || [];
+    const activeSupplementalDocs = supplementalDocs.filter(doc => {
+      return !filesToDelete.some(fd => fd.uniqueId === doc.uniqueId);
+    });
+    if (activeSupplementalDocs.length > 0) {
+      return true;
+    }
+
+    // Check staged files for Review or Supplemental
+    const stagedReview = stagedFiles.filter(sf => sf.documentType === DocumentType.Review);
+    if (stagedReview.length > 0) {
+      return true;
+    }
+
+    const stagedSupplemental = stagedFiles.filter(sf => sf.documentType === DocumentType.Supplemental);
+    if (stagedSupplemental.length > 0) {
+      return true;
+    }
+
+    return false;
+  }, [documents, stagedFiles, filesToDelete]);
 
   const completeSave = React.useCallback(async (): Promise<void> => {
     try {
@@ -239,9 +329,11 @@ export const useRequestInfoActions = ({
         // Don't fail the whole submit if document operations fail
       }
 
-      // Now submit the form - reload will show already-renamed files
-      // TODO: swap placeholder once submit workflow is implemented
-      await saveAsDraft();
+      // Submit the request - this changes status from Draft to Legal Intake
+      // The submitRequest action saves any pending form changes first, then updates status
+      SPContext.logger.info('RequestInfo: Calling submitRequest...');
+      const submittedItemId = await submitRequest();
+      SPContext.logger.success('RequestInfo: submitRequest completed', { itemId: submittedItemId });
 
       showSuccessNotification?.('Request submitted successfully!');
       SPContext.logger.success('RequestInfo: Request submitted successfully');
@@ -251,7 +343,7 @@ export const useRequestInfoActions = ({
       showErrorNotification?.(errorMessage);
       throw error;
     }
-  }, [saveAsDraft, renamePendingFiles, deletePendingFiles, showSuccessNotification, showErrorNotification]);
+  }, [submitRequest, renamePendingFiles, deletePendingFiles, showSuccessNotification, showErrorNotification]);
 
 
   const validateSubmission = React.useCallback(
@@ -262,7 +354,46 @@ export const useRequestInfoActions = ({
       clearFormErrors: () => void
     ): { valid: boolean; normalized?: Partial<ILegalRequest> } => {
       const normalized = normalizeRequestValues(data);
+
+      // Debug: Log isRushRequest and rushRationale values
+      SPContext.logger.info('Validation: Rush request check', {
+        isRushRequest: normalized.isRushRequest,
+        rushRationale: normalized.rushRationale,
+        hasRushRationale: !!normalized.rushRationale,
+      });
+
+      // Inject document availability from documentsStore into approvals
+      // This allows the Zod schema to validate documents correctly
+      if (normalized.approvals && Array.isArray(normalized.approvals)) {
+        normalized.approvals = normalized.approvals.map((approval: any) => {
+          const hasDoc = hasDocumentsForApprovalType(approval.type as ApprovalType);
+          SPContext.logger.info('Validation: Document check for approval', {
+            approvalType: approval.type,
+            hasDocumentInStore: hasDoc,
+          });
+          return {
+            ...approval,
+            // Inject a marker that Zod can check
+            _hasDocumentInStore: hasDoc,
+          };
+        });
+      }
+
+      // Inject attachments availability (Review or Supplemental documents)
+      const hasAttachmentsValue = hasAttachments();
+      SPContext.logger.info('Validation: Attachments check', {
+        hasAttachments: hasAttachmentsValue,
+      });
+      (normalized as any)._hasAttachments = hasAttachmentsValue;
+
       const validation = schema.safeParse(normalized);
+
+      // Debug: Log validation result
+      SPContext.logger.info('Validation: Result', {
+        success: validation.success,
+        errorCount: validation.success ? 0 : validation.error.issues.length,
+        errors: validation.success ? [] : validation.error.issues.map(i => ({ path: i.path, message: i.message })),
+      });
 
       if (validation.success) {
         // Clear any previous errors on successful validation
@@ -277,10 +408,14 @@ export const useRequestInfoActions = ({
       }));
 
       // Set errors in both custom state and react-hook-form
-      setValidationErrors(errors);
+      // Use spread to ensure new array reference for React state update
+      setValidationErrors([...errors]);
 
       // Set errors in react-hook-form so FormErrorSummary can display them
+      // React Hook Form setError with dot notation paths like 'approvals.0.approver'
+      // correctly creates nested structure at errors.approvals[0].approver
       errors.forEach(error => {
+        SPContext.logger.info('Setting form error', { field: error.field, message: error.message });
         setFormErrors(error.field as any, {
           type: 'manual',
           message: error.message,
@@ -289,7 +424,7 @@ export const useRequestInfoActions = ({
 
       return { valid: false };
     },
-    [setValidationErrors]
+    [setValidationErrors, hasDocumentsForApprovalType, hasAttachments]
   );
 
   const onSubmit = React.useCallback(
@@ -338,6 +473,33 @@ export const useRequestInfoActions = ({
       SPContext.logger.error('RequestInfo: Draft save failed', error);
     }
   }, [watch, validateSubmission, updateMultipleFields, completeSave, setError, clearErrors]);
+
+  /**
+   * Direct submit handler that reads form values and validates with submit schema
+   * This bypasses React Hook Form's handleSubmit wrapper
+   */
+  const handleSubmitDirect = React.useCallback(async (): Promise<void> => {
+    try {
+      setValidationErrors([]);
+      clearErrors();
+      SPContext.logger.info('RequestInfo: Validating for submission (direct)', { itemId });
+
+      const formValues = watch();
+
+      const { valid, normalized } = validateSubmission(formValues, submitRequestSchema, setError, clearErrors);
+
+      if (!valid || !normalized) {
+        SPContext.logger.warn('RequestInfo: Submission validation failed (direct)', { itemId });
+        return;
+      }
+
+      updateMultipleFields(normalized);
+
+      await completeSubmit();
+    } catch (error: unknown) {
+      SPContext.logger.error('RequestInfo: Submission failed (direct)', error);
+    }
+  }, [itemId, watch, validateSubmission, updateMultipleFields, completeSubmit, setError, clearErrors]);
 
   const handleClose = React.useCallback((): void => {
     if (window.history.length > 1) {
@@ -393,6 +555,7 @@ export const useRequestInfoActions = ({
 
   return {
     onSubmit,
+    handleSubmitDirect,
     handleSaveDraft,
     handleClose,
     handleCancelRequest,

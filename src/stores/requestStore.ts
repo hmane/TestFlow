@@ -5,19 +5,30 @@
  */
 
 import * as React from 'react';
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 
-import type { IExistingFile } from './documentsStore';
-import { useDocumentsStore } from './documentsStore';
+import type { IExistingFile } from '@stores/documentsStore';
+import { useDocumentsStore } from '@stores/documentsStore';
 import type {
   IStagedFile,
   IFileToDelete,
-} from '../services/approvalFileService';
-import { loadRequestById } from '../services/requestLoadService';
-import { saveDraft, saveRequest, processPendingDocuments } from '../services/requestSaveService';
+} from '@services/approvalFileService';
+import { loadRequestById } from '@services/requestLoadService';
+import { saveDraft, saveRequest, processPendingDocuments } from '@services/requestSaveService';
+import {
+  submitRequest as submitRequestAction,
+  assignAttorney as assignAttorneyAction,
+  sendToCommittee as sendToCommitteeAction,
+  submitLegalReview as submitLegalReviewAction,
+  submitComplianceReview as submitComplianceReviewAction,
+  closeoutRequest as closeoutRequestAction,
+  cancelRequest as cancelRequestAction,
+  holdRequest as holdRequestAction,
+  resumeRequest as resumeRequestAction,
+} from '@services/workflowActionService';
 import type {
   Approval,
   IComplianceReview,
@@ -28,8 +39,8 @@ import type {
   RequestType,
   ReviewAudience,
   SubmissionType,
-} from '../types';
-import { ApprovalType } from '../types/approvalTypes';
+} from '@appTypes/index';
+import { ApprovalType } from '@appTypes/approvalTypes';
 
 /**
  * Process pending document operations after a successful save
@@ -145,10 +156,46 @@ interface IRequestState {
   holdRequest: (reason: string) => Promise<void>;
   resumeRequest: () => Promise<void>;
 
+  // Actions - Admin Override (Super Admin Mode)
+  adminOverrideStatus: (status: RequestStatus, reason: string) => Promise<void>;
+  adminClearAttorney: (reason: string) => Promise<void>;
+  adminOverrideReviewAudience: (audience: ReviewAudience, reason: string) => Promise<void>;
+  adminOverrideLegalReview: (outcome?: string, status?: string, reason?: string) => Promise<void>;
+  adminOverrideComplianceReview: (outcome?: string, status?: string, reason?: string) => Promise<void>;
+  adminReopenRequest: (reason: string) => Promise<void>;
+
   // Actions - Utility
   reset: () => void;
   revertChanges: () => void;
   hasUnsavedChanges: () => boolean;
+}
+
+/**
+ * Format admin override audit entry
+ * Creates a timestamped, formatted entry for the AdminOverrideNotes field
+ */
+function formatAdminAuditEntry(
+  action: string,
+  details: string,
+  reason: string,
+  existingNotes?: string
+): string {
+  const timestamp = new Date().toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const adminEmail = SPContext.currentUser?.email || 'Unknown';
+
+  const newEntry = `[${timestamp}] ${action} by ${adminEmail}\n${details}\nReason: ${reason}`;
+
+  // Prepend new entry to existing notes (most recent first)
+  if (existingNotes) {
+    return `${newEntry}\n\n---\n\n${existingNotes}`;
+  }
+  return newEntry;
 }
 
 /**
@@ -191,6 +238,7 @@ export const useRequestStore = create<IRequestState>()(
           // Load existing approval files for each approval
           if (request.approvals && request.approvals.length > 0) {
             SPContext.logger.info('Loading existing approval files', {
+              itemId,
               requestId: request.requestId,
               approvalCount: request.approvals.length,
             });
@@ -199,7 +247,9 @@ export const useRequestStore = create<IRequestState>()(
             const approvalTypes = request.approvals.map(a => a.type);
 
             try {
-              const filesMap = await loadAllApprovalFiles(request.requestId, approvalTypes);
+              // Use itemId (numeric) instead of requestId (string) to match upload folder structure
+              // Files are uploaded to: RequestDocuments/{itemId}/{ApprovalType}/
+              const filesMap = await loadAllApprovalFiles(String(itemId), approvalTypes);
 
               // Populate existingFiles for each approval
               for (let i = 0; i < request.approvals.length; i++) {
@@ -285,8 +335,8 @@ export const useRequestStore = create<IRequestState>()(
           audience: [],
           usFunds: [],
           ucits: [],
-          separateAccountStrategies: [],
-          separateAccountStrategiesIncludes: [],
+          separateAcctStrategies: [],
+          separateAcctStrategiesIncl: [],
         };
 
         set({
@@ -448,45 +498,70 @@ export const useRequestStore = create<IRequestState>()(
 
       /**
        * Submit request (validate and change status)
+       * Uses dedicated workflow action - only updates status and submission fields
+       *
+       * IMPORTANT: This function works even when no form changes have been made.
+       * The saveAsDraft() call handles any pending form changes, then the
+       * submitRequestAction() always executes to update status fields.
        */
       submitRequest: async (): Promise<number> => {
-        const state = get();
+        const initialState = get();
 
-        if (!state.currentRequest) {
+        if (!initialState.currentRequest) {
           throw new Error('No request to submit');
         }
 
-        // Save first
-        const itemId = await get().saveAsDraft();
+        // Get the itemId from state - for existing drafts, this is already set
+        // For new requests, saveAsDraft will create the item and return the new ID
+        let itemId = initialState.itemId;
 
-        // Then update status to Legal Intake using service
-        const result = await saveRequest(
-          itemId,
-          {
-            ...state.currentRequest,
-            status: 'Legal Intake' as RequestStatus,
-            submittedBy: {
-              id: SPContext.currentUser.id.toString(),
-              email: SPContext.currentUser.email,
-              title: SPContext.currentUser.title,
-            } as IPrincipal,
-            submittedOn: new Date(),
-          },
-          state.currentRequest
-        );
+        SPContext.logger.info('RequestStore: submitRequest starting', {
+          hasItemId: !!itemId,
+          currentStatus: initialState.currentRequest.status,
+          isDirty: initialState.isDirty,
+        });
 
-        // Update store state
-        if (result.updatedRequest) {
-          set({
-            currentRequest: result.updatedRequest,
-            originalRequest: structuredClone(result.updatedRequest),
-            isDirty: false,
-          });
+        // Save draft first if needed (this creates new items or saves pending changes)
+        // Note: saveAsDraft() may skip the actual save if no changes detected,
+        // but it will always return a valid itemId
+        try {
+          itemId = await get().saveAsDraft();
+          SPContext.logger.info('RequestStore: saveAsDraft completed', { itemId });
+        } catch (saveError) {
+          SPContext.logger.error('RequestStore: saveAsDraft failed', saveError);
+          throw saveError;
         }
 
-        SPContext.logger.info('Request submitted successfully', {
+        if (!itemId) {
+          throw new Error('Failed to get item ID after save');
+        }
+
+        // Use dedicated workflow action - ALWAYS updates status, submittedBy, submittedOn
+        // This runs regardless of whether saveAsDraft made any changes
+        SPContext.logger.info('RequestStore: calling submitRequestAction', { itemId });
+
+        const result = await submitRequestAction(itemId);
+
+        SPContext.logger.info('RequestStore: submitRequestAction completed', {
           itemId,
-          requestId: state.currentRequest.requestId,
+          newStatus: result.updatedRequest?.status,
+          success: result.success,
+        });
+
+        // Update store state with result
+        set({
+          itemId: result.itemId,
+          currentRequest: result.updatedRequest,
+          originalRequest: structuredClone(result.updatedRequest),
+          isDirty: false,
+          isSaving: false,
+        });
+
+        SPContext.logger.success('RequestStore: Request submitted successfully', {
+          itemId,
+          requestId: result.updatedRequest.requestId,
+          newStatus: result.updatedRequest.status,
+          fieldsUpdated: result.fieldsUpdated,
         });
 
         return itemId;
@@ -553,111 +628,557 @@ export const useRequestStore = create<IRequestState>()(
 
       /**
        * Assign attorney (direct assignment)
+       * Uses dedicated workflow action - only updates attorney and status fields
        */
       assignAttorney: async (attorney: IPrincipal, notes?: string): Promise<void> => {
-        await get().updateRequest({
-          legalReview: {
-            assignedAttorney: attorney,
-            assignedOn: new Date(),
-          } as ILegalReview,
-          status: 'In Review' as RequestStatus,
+        const state = get();
+
+        if (!state.itemId) {
+          throw new Error('Cannot assign attorney - no item ID');
+        }
+
+        const result = await assignAttorneyAction(state.itemId, {
+          attorney,
+          notes,
+        });
+
+        set({
+          currentRequest: result.updatedRequest,
+          originalRequest: structuredClone(result.updatedRequest),
+          isDirty: false,
+        });
+
+        SPContext.logger.info('Attorney assigned', {
+          itemId: state.itemId,
+          attorney: attorney.title,
+          fieldsUpdated: result.fieldsUpdated,
         });
       },
 
       /**
        * Send to committee for attorney assignment
+       * Uses dedicated workflow action - only updates status and committee fields
        */
       sendToCommittee: async (notes?: string): Promise<void> => {
-        await get().updateRequest({
-          status: 'Assign Attorney' as RequestStatus,
+        const state = get();
+
+        if (!state.itemId) {
+          throw new Error('Cannot send to committee - no item ID');
+        }
+
+        const result = await sendToCommitteeAction(state.itemId, { notes });
+
+        set({
+          currentRequest: result.updatedRequest,
+          originalRequest: structuredClone(result.updatedRequest),
+          isDirty: false,
+        });
+
+        SPContext.logger.info('Sent to committee', {
+          itemId: state.itemId,
+          fieldsUpdated: result.fieldsUpdated,
         });
       },
 
       /**
        * Submit legal review
+       * Uses dedicated workflow action - only updates legal review fields
        */
       submitLegalReview: async (outcome: string, notes: string): Promise<void> => {
-        await get().updateLegalReview({
+        const state = get();
+
+        if (!state.itemId) {
+          throw new Error('Cannot submit legal review - no item ID');
+        }
+
+        const result = await submitLegalReviewAction(state.itemId, {
           outcome: outcome as any,
-          reviewNotes: notes,
-          status: 'Completed' as any,
+          notes,
         });
 
-        await get().saveAsDraft();
+        set({
+          currentRequest: result.updatedRequest,
+          originalRequest: structuredClone(result.updatedRequest),
+          isDirty: false,
+        });
+
+        SPContext.logger.info('Legal review submitted', {
+          itemId: state.itemId,
+          outcome,
+          fieldsUpdated: result.fieldsUpdated,
+        });
       },
 
       /**
        * Submit compliance review
+       * Uses dedicated workflow action - only updates compliance review fields
        */
       submitComplianceReview: async (
         outcome: string,
         notes: string,
         flags?: { isForesideReviewRequired?: boolean; isRetailUse?: boolean }
       ): Promise<void> => {
-        await get().updateComplianceReview({
+        const state = get();
+
+        if (!state.itemId) {
+          throw new Error('Cannot submit compliance review - no item ID');
+        }
+
+        const result = await submitComplianceReviewAction(state.itemId, {
           outcome: outcome as any,
-          reviewNotes: notes,
-          status: 'Completed' as any,
-          ...flags,
+          notes,
+          isForesideReviewRequired: flags?.isForesideReviewRequired,
+          isRetailUse: flags?.isRetailUse,
         });
 
-        await get().saveAsDraft();
+        set({
+          currentRequest: result.updatedRequest,
+          originalRequest: structuredClone(result.updatedRequest),
+          isDirty: false,
+        });
+
+        SPContext.logger.info('Compliance review submitted', {
+          itemId: state.itemId,
+          outcome,
+          fieldsUpdated: result.fieldsUpdated,
+        });
       },
 
       /**
        * Close out request
+       * Uses dedicated workflow action - only updates closeout fields
        */
       closeoutRequest: async (trackingId?: string): Promise<void> => {
-        await get().updateRequest({
+        const state = get();
+
+        if (!state.itemId) {
+          throw new Error('Cannot close out - no item ID');
+        }
+
+        const result = await closeoutRequestAction(state.itemId, { trackingId });
+
+        set({
+          currentRequest: result.updatedRequest,
+          originalRequest: structuredClone(result.updatedRequest),
+          isDirty: false,
+        });
+
+        SPContext.logger.info('Request closed out', {
+          itemId: state.itemId,
           trackingId,
-          status: 'Completed' as RequestStatus,
-          closeoutBy: SPContext.currentUser as IPrincipal,
-          closeoutOn: new Date(),
+          fieldsUpdated: result.fieldsUpdated,
         });
       },
 
       /**
        * Cancel request
+       * Uses dedicated workflow action - only updates cancellation fields
        */
       cancelRequest: async (reason: string): Promise<void> => {
-        await get().updateRequest({
-          status: 'Cancelled' as RequestStatus,
-          cancelReason: reason,
-          cancelledBy: SPContext.currentUser as IPrincipal,
-          cancelledOn: new Date(),
+        const state = get();
+
+        if (!state.itemId || !state.currentRequest) {
+          throw new Error('Cannot cancel - no request loaded');
+        }
+
+        const result = await cancelRequestAction(
+          state.itemId,
+          { reason },
+          state.currentRequest.status
+        );
+
+        set({
+          currentRequest: result.updatedRequest,
+          originalRequest: structuredClone(result.updatedRequest),
+          isDirty: false,
+        });
+
+        SPContext.logger.info('Request cancelled', {
+          itemId: state.itemId,
+          reason,
+          fieldsUpdated: result.fieldsUpdated,
         });
       },
 
       /**
        * Hold request
+       * Uses dedicated workflow action - only updates hold fields
        */
       holdRequest: async (reason: string): Promise<void> => {
         const state = get();
-        await get().updateRequest({
-          previousStatus: state.currentRequest?.status,
-          status: 'On Hold' as RequestStatus,
-          onHoldReason: reason,
-          onHoldBy: SPContext.currentUser as IPrincipal,
-          onHoldSince: new Date(),
+
+        if (!state.itemId || !state.currentRequest) {
+          throw new Error('Cannot hold - no request loaded');
+        }
+
+        const result = await holdRequestAction(
+          state.itemId,
+          { reason },
+          state.currentRequest.status
+        );
+
+        set({
+          currentRequest: result.updatedRequest,
+          originalRequest: structuredClone(result.updatedRequest),
+          isDirty: false,
+        });
+
+        SPContext.logger.info('Request put on hold', {
+          itemId: state.itemId,
+          reason,
+          fieldsUpdated: result.fieldsUpdated,
         });
       },
 
       /**
        * Resume request from hold
+       * Uses dedicated workflow action - only updates resume fields
        */
       resumeRequest: async (): Promise<void> => {
         const state = get();
 
-        if (!state.currentRequest?.previousStatus) {
+        if (!state.itemId || !state.currentRequest) {
+          throw new Error('Cannot resume - no request loaded');
+        }
+
+        if (!state.currentRequest.previousStatus) {
           throw new Error('Cannot resume - no previous status');
         }
 
+        const result = await resumeRequestAction(
+          state.itemId,
+          state.currentRequest.previousStatus
+        );
+
+        set({
+          currentRequest: result.updatedRequest,
+          originalRequest: structuredClone(result.updatedRequest),
+          isDirty: false,
+        });
+
+        SPContext.logger.info('Request resumed', {
+          itemId: state.itemId,
+          newStatus: result.newStatus,
+          fieldsUpdated: result.fieldsUpdated,
+        });
+      },
+
+      // ============================================
+      // ADMIN OVERRIDE METHODS (Super Admin Mode)
+      // ============================================
+
+      /**
+       * Admin override: Force status change
+       * Bypasses normal workflow transition rules
+       */
+      adminOverrideStatus: async (status: RequestStatus, reason: string): Promise<void> => {
+        const state = get();
+
+        if (!state.itemId || !state.currentRequest) {
+          throw new Error('No request loaded');
+        }
+
+        SPContext.logger.warn('ADMIN OVERRIDE: Status change initiated', {
+          requestId: state.currentRequest.requestId,
+          fromStatus: state.currentRequest.status,
+          toStatus: status,
+          reason,
+          adminUser: SPContext.currentUser?.email,
+        });
+
+        // Build admin override audit entry
+        const adminOverrideNotes = formatAdminAuditEntry(
+          'STATUS OVERRIDE',
+          `Changed status from "${state.currentRequest.status}" to "${status}"`,
+          reason,
+          state.currentRequest.adminOverrideNotes
+        );
+
+        // Build update with audit trail
+        const updates: Partial<ILegalRequest> = {
+          status: status,
+          previousStatus: state.currentRequest.status,
+          adminOverrideNotes,
+        };
+
+        await get().updateRequest(updates);
+
+        SPContext.logger.success('Admin status override completed', {
+          requestId: state.currentRequest.requestId,
+          newStatus: status,
+        });
+      },
+
+      /**
+       * Admin override: Clear assigned attorney
+       * Allows reassignment even after review started
+       */
+      adminClearAttorney: async (reason: string): Promise<void> => {
+        const state = get();
+
+        if (!state.itemId || !state.currentRequest) {
+          throw new Error('No request loaded');
+        }
+
+        const previousAttorney = state.currentRequest.attorney || state.currentRequest.legalReview?.assignedAttorney;
+
+        SPContext.logger.warn('ADMIN OVERRIDE: Clearing attorney assignment', {
+          requestId: state.currentRequest.requestId,
+          previousAttorney: previousAttorney?.title,
+          reason,
+          adminUser: SPContext.currentUser?.email,
+        });
+
+        // Build admin override audit entry
+        const adminOverrideNotes = formatAdminAuditEntry(
+          'ATTORNEY CLEARED',
+          `Removed attorney "${previousAttorney?.title || 'Unknown'}" from assignment`,
+          reason,
+          state.currentRequest.adminOverrideNotes
+        );
+
         await get().updateRequest({
-          status: state.currentRequest.previousStatus as RequestStatus,
-          onHoldReason: undefined,
-          onHoldBy: undefined,
-          onHoldSince: undefined,
-          previousStatus: undefined,
+          attorney: undefined,
+          legalReview: {
+            ...state.currentRequest.legalReview,
+            assignedAttorney: undefined,
+            assignedOn: undefined,
+          } as ILegalReview,
+          adminOverrideNotes,
+        });
+
+        SPContext.logger.success('Admin attorney clear completed', {
+          requestId: state.currentRequest.requestId,
+        });
+      },
+
+      /**
+       * Admin override: Change review audience
+       * Changes which review teams are required (Legal, Compliance, or Both)
+       */
+      adminOverrideReviewAudience: async (audience: ReviewAudience, reason: string): Promise<void> => {
+        const state = get();
+
+        if (!state.itemId || !state.currentRequest) {
+          throw new Error('No request loaded');
+        }
+
+        const previousAudience = state.currentRequest.reviewAudience;
+
+        SPContext.logger.warn('ADMIN OVERRIDE: Changing review audience', {
+          requestId: state.currentRequest.requestId,
+          previousAudience,
+          newAudience: audience,
+          reason,
+          adminUser: SPContext.currentUser?.email,
+        });
+
+        // Build admin override audit entry
+        const adminOverrideNotes = formatAdminAuditEntry(
+          'REVIEW AUDIENCE CHANGED',
+          `Changed review audience from "${previousAudience || 'Not set'}" to "${audience}"`,
+          reason,
+          state.currentRequest.adminOverrideNotes
+        );
+
+        await get().updateRequest({
+          reviewAudience: audience,
+          adminOverrideNotes,
+        });
+
+        SPContext.logger.success('Admin review audience change completed', {
+          requestId: state.currentRequest.requestId,
+          previousAudience,
+          newAudience: audience,
+        });
+      },
+
+      /**
+       * Admin override: Modify legal review outcome/status
+       */
+      adminOverrideLegalReview: async (
+        outcome?: string,
+        status?: string,
+        reason?: string
+      ): Promise<void> => {
+        const state = get();
+
+        if (!state.itemId || !state.currentRequest) {
+          throw new Error('No request loaded');
+        }
+
+        const currentLegalReview: Partial<ILegalReview> = state.currentRequest.legalReview || {};
+
+        SPContext.logger.warn('ADMIN OVERRIDE: Modifying legal review', {
+          requestId: state.currentRequest.requestId,
+          previousOutcome: currentLegalReview.outcome,
+          previousStatus: currentLegalReview.status,
+          newOutcome: outcome,
+          newStatus: status,
+          reason,
+          adminUser: SPContext.currentUser?.email,
+        });
+
+        // Build admin override audit entry
+        const changes: string[] = [];
+        if (outcome !== undefined) {
+          changes.push(`Outcome: "${currentLegalReview.outcome || 'Not set'}" → "${outcome || 'Cleared'}"`);
+        }
+        if (status !== undefined) {
+          changes.push(`Status: "${currentLegalReview.status || 'Not set'}" → "${status || 'Cleared'}"`);
+        }
+        const adminOverrideNotes = formatAdminAuditEntry(
+          'LEGAL REVIEW OVERRIDE',
+          changes.join(', '),
+          reason || 'No reason provided',
+          state.currentRequest.adminOverrideNotes
+        );
+
+        const updatedReview: Partial<ILegalReview> = { ...currentLegalReview };
+
+        if (outcome !== undefined) {
+          updatedReview.outcome = outcome === '' ? undefined : (outcome as any);
+        }
+
+        if (status !== undefined) {
+          updatedReview.status = status === '' ? undefined : (status as any);
+        }
+
+        await get().updateRequest({
+          legalReview: updatedReview as ILegalReview,
+          // Also update flat fields for backwards compatibility
+          legalReviewOutcome: outcome === '' ? undefined : outcome,
+          legalReviewStatus: status === '' ? undefined : status,
+          adminOverrideNotes,
+        });
+
+        SPContext.logger.success('Admin legal review override completed', {
+          requestId: state.currentRequest.requestId,
+        });
+      },
+
+      /**
+       * Admin override: Modify compliance review outcome/status
+       */
+      adminOverrideComplianceReview: async (
+        outcome?: string,
+        status?: string,
+        reason?: string
+      ): Promise<void> => {
+        const state = get();
+
+        if (!state.itemId || !state.currentRequest) {
+          throw new Error('No request loaded');
+        }
+
+        const currentComplianceReview: Partial<IComplianceReview> = state.currentRequest.complianceReview || {};
+
+        SPContext.logger.warn('ADMIN OVERRIDE: Modifying compliance review', {
+          requestId: state.currentRequest.requestId,
+          previousOutcome: currentComplianceReview.outcome,
+          previousStatus: currentComplianceReview.status,
+          newOutcome: outcome,
+          newStatus: status,
+          reason,
+          adminUser: SPContext.currentUser?.email,
+        });
+
+        // Build admin override audit entry
+        const changes: string[] = [];
+        if (outcome !== undefined) {
+          changes.push(`Outcome: "${currentComplianceReview.outcome || 'Not set'}" → "${outcome || 'Cleared'}"`);
+        }
+        if (status !== undefined) {
+          changes.push(`Status: "${currentComplianceReview.status || 'Not set'}" → "${status || 'Cleared'}"`);
+        }
+        const adminOverrideNotes = formatAdminAuditEntry(
+          'COMPLIANCE REVIEW OVERRIDE',
+          changes.join(', '),
+          reason || 'No reason provided',
+          state.currentRequest.adminOverrideNotes
+        );
+
+        const updatedReview: Partial<IComplianceReview> = { ...currentComplianceReview };
+
+        if (outcome !== undefined) {
+          updatedReview.outcome = outcome === '' ? undefined : (outcome as any);
+        }
+
+        if (status !== undefined) {
+          updatedReview.status = status === '' ? undefined : (status as any);
+        }
+
+        await get().updateRequest({
+          complianceReview: updatedReview as IComplianceReview,
+          // Also update flat fields for backwards compatibility
+          complianceReviewOutcome: outcome === '' ? undefined : outcome,
+          complianceReviewStatus: status === '' ? undefined : status,
+          adminOverrideNotes,
+        });
+
+        SPContext.logger.success('Admin compliance review override completed', {
+          requestId: state.currentRequest.requestId,
+        });
+      },
+
+      /**
+       * Admin override: Reopen completed/cancelled request
+       * Restores request to an active workflow state
+       */
+      adminReopenRequest: async (reason: string): Promise<void> => {
+        const state = get();
+
+        if (!state.itemId || !state.currentRequest) {
+          throw new Error('No request loaded');
+        }
+
+        const currentStatus = state.currentRequest.status;
+
+        if (currentStatus !== 'Completed' && currentStatus !== 'Cancelled') {
+          throw new Error('Can only reopen Completed or Cancelled requests');
+        }
+
+        SPContext.logger.warn('ADMIN OVERRIDE: Reopening request', {
+          requestId: state.currentRequest.requestId,
+          previousStatus: currentStatus,
+          reason,
+          adminUser: SPContext.currentUser?.email,
+        });
+
+        // Determine appropriate status to reopen to
+        let reopenStatus: RequestStatus;
+
+        if (currentStatus === 'Cancelled') {
+          // Cancelled requests reopen to Draft
+          reopenStatus = 'Draft' as RequestStatus;
+        } else {
+          // Completed requests reopen to Closeout (allowing re-closeout with different data)
+          reopenStatus = 'Closeout' as RequestStatus;
+        }
+
+        // Build admin override audit entry
+        const adminOverrideNotes = formatAdminAuditEntry(
+          'REQUEST REOPENED',
+          `Reopened from "${currentStatus}" to "${reopenStatus}"`,
+          reason,
+          state.currentRequest.adminOverrideNotes
+        );
+
+        await get().updateRequest({
+          status: reopenStatus,
+          previousStatus: currentStatus,
+          // Clear closeout/cancel data
+          closeoutBy: undefined,
+          closeoutOn: undefined,
+          cancelledBy: undefined,
+          cancelledOn: undefined,
+          cancelReason: undefined,
+          adminOverrideNotes,
+        });
+
+        SPContext.logger.success('Admin request reopen completed', {
+          requestId: state.currentRequest.requestId,
+          newStatus: reopenStatus,
         });
       },
 
@@ -838,9 +1359,146 @@ export const useRequestStore = create<IRequestState>()(
   )
 );
 
+// ============================================
+// ZUSTAND SELECTORS FOR OPTIMIZED RE-RENDERS
+// ============================================
+
+/**
+ * Selector for current request status only
+ * Components that only need status won't re-render when other fields change
+ */
+export const useRequestStatus = (): RequestStatus | undefined =>
+  useRequestStore(state => state.currentRequest?.status);
+
+/**
+ * Selector for loading state only
+ */
+export const useRequestLoading = (): boolean =>
+  useRequestStore(state => state.isLoading);
+
+/**
+ * Selector for saving state only
+ */
+export const useRequestSaving = (): boolean =>
+  useRequestStore(state => state.isSaving);
+
+/**
+ * Selector for dirty state only
+ */
+export const useRequestDirty = (): boolean =>
+  useRequestStore(state => state.isDirty);
+
+/**
+ * Selector for error state only
+ */
+export const useRequestError = (): string | undefined =>
+  useRequestStore(state => state.error);
+
+/**
+ * Selector for item ID only
+ */
+export const useRequestItemId = (): number | undefined =>
+  useRequestStore(state => state.itemId);
+
+/**
+ * Selector for request ID only
+ */
+export const useRequestId = (): string | undefined =>
+  useRequestStore(state => state.currentRequest?.requestId);
+
+/**
+ * Selector for legal review data only
+ */
+export const useLegalReviewData = (): ILegalReview | undefined =>
+  useRequestStore(state => state.currentRequest?.legalReview);
+
+/**
+ * Selector for compliance review data only
+ */
+export const useComplianceReviewData = (): IComplianceReview | undefined =>
+  useRequestStore(state => state.currentRequest?.complianceReview);
+
+/**
+ * Selector for approvals array only
+ */
+export const useApprovalsData = (): Approval[] =>
+  useRequestStore(state => state.currentRequest?.approvals || []);
+
+/**
+ * Selector for review audience only
+ */
+export const useReviewAudience = (): ReviewAudience | undefined =>
+  useRequestStore(state => state.currentRequest?.reviewAudience);
+
+/**
+ * Selector for attorney data only
+ */
+export const useAttorneyData = (): IPrincipal | undefined =>
+  useRequestStore(state => state.currentRequest?.attorney);
+
+/**
+ * Selector for file operations state
+ */
+export const useFileOperationsState = (): {
+  stagedFiles: IStagedFile[];
+  filesToDelete: IFileToDelete[];
+  hasPending: boolean;
+} =>
+  useRequestStore(state => ({
+    stagedFiles: state.stagedFiles,
+    filesToDelete: state.filesToDelete,
+    hasPending: state.stagedFiles.length > 0 || state.filesToDelete.length > 0,
+  }));
+
+/**
+ * Selector for store actions only (stable reference)
+ * Use this when you only need actions without subscribing to state changes
+ */
+export const useRequestActions = (): {
+  loadRequest: (itemId: number) => Promise<void>;
+  initializeNewRequest: () => void;
+  updateField: <K extends keyof ILegalRequest>(field: K, value: ILegalRequest[K]) => void;
+  updateMultipleFields: (fields: Partial<ILegalRequest>) => void;
+  saveAsDraft: () => Promise<number>;
+  submitRequest: () => Promise<number>;
+  updateRequest: (updates: Partial<ILegalRequest>) => Promise<void>;
+  assignAttorney: (attorney: IPrincipal, notes?: string) => Promise<void>;
+  sendToCommittee: (notes?: string) => Promise<void>;
+  submitLegalReview: (outcome: string, notes: string) => Promise<void>;
+  submitComplianceReview: (outcome: string, notes: string, flags?: { isForesideReviewRequired?: boolean; isRetailUse?: boolean }) => Promise<void>;
+  closeoutRequest: (trackingId?: string) => Promise<void>;
+  cancelRequest: (reason: string) => Promise<void>;
+  holdRequest: (reason: string) => Promise<void>;
+  resumeRequest: () => Promise<void>;
+  reset: () => void;
+  revertChanges: () => void;
+} =>
+  useRequestStore(state => ({
+    loadRequest: state.loadRequest,
+    initializeNewRequest: state.initializeNewRequest,
+    updateField: state.updateField,
+    updateMultipleFields: state.updateMultipleFields,
+    saveAsDraft: state.saveAsDraft,
+    submitRequest: state.submitRequest,
+    updateRequest: state.updateRequest,
+    assignAttorney: state.assignAttorney,
+    sendToCommittee: state.sendToCommittee,
+    submitLegalReview: state.submitLegalReview,
+    submitComplianceReview: state.submitComplianceReview,
+    closeoutRequest: state.closeoutRequest,
+    cancelRequest: state.cancelRequest,
+    holdRequest: state.holdRequest,
+    resumeRequest: state.resumeRequest,
+    reset: state.reset,
+    revertChanges: state.revertChanges,
+  }));
+
 /**
  * Custom hook to use request store
  * Automatically initializes based on itemId parameter
+ *
+ * NOTE: This hook subscribes to the entire store state.
+ * For optimized re-renders, use the individual selector hooks above.
  */
 export function useRequest(itemId?: number): {
   currentRequest?: ILegalRequest;

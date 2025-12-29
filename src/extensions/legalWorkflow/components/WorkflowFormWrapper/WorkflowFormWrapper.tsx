@@ -11,7 +11,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { RequestFormProvider, type IValidationError } from '../../../../contexts/RequestFormContext';
 import { fullRequestSchema } from '../../../../schemas/requestSchema';
 import { useRequestStore } from '../../../../stores/requestStore';
@@ -90,6 +90,17 @@ export const WorkflowFormWrapper: React.FC<IWorkflowFormWrapperProps> = ({
     [customOnSubmit]
   );
 
+  // Direct submit handler (bypasses RHF's handleSubmit wrapper)
+  const handleDefaultSubmitDirect = React.useCallback(async (): Promise<void> => {
+    if (customOnSubmit) {
+      // Get current form values and pass to submit handler
+      const data = currentRequest as ILegalRequest;
+      await customOnSubmit(data);
+    } else {
+      SPContext.logger.warn('WorkflowFormWrapper: No submit handler provided');
+    }
+  }, [customOnSubmit, currentRequest]);
+
   const handleDefaultSaveDraft = React.useCallback(async (): Promise<void> => {
     if (customOnSaveDraft) {
       await customOnSaveDraft();
@@ -138,6 +149,7 @@ export const WorkflowFormWrapper: React.FC<IWorkflowFormWrapperProps> = ({
       validationErrors,
       handleSubmit,
       onSubmit: handleDefaultSubmit,
+      onSubmitDirect: handleDefaultSubmitDirect,
       onSaveDraft: handleDefaultSaveDraft,
       onPutOnHold: handleDefaultPutOnHold,
       onCancelRequest: handleDefaultCancelRequest,
@@ -154,6 +166,7 @@ export const WorkflowFormWrapper: React.FC<IWorkflowFormWrapperProps> = ({
       validationErrors,
       handleSubmit,
       handleDefaultSubmit,
+      handleDefaultSubmitDirect,
       handleDefaultSaveDraft,
       handleDefaultPutOnHold,
       handleDefaultCancelRequest,

@@ -18,13 +18,13 @@ import {
   MessageBar,
   MessageBarType,
 } from '@fluentui/react';
-import type { IDocument, IStagedDocument } from '../../stores/documentsStore';
-import type { DocumentType } from '../../types/documentTypes';
+import type { IDocument, IStagedDocument } from '@stores/documentsStore';
+import type { DocumentType } from '@appTypes/documentTypes';
 import {
   parseFilename,
   validateRename,
   type IParsedFilename,
-} from '../../utils/filenameValidation';
+} from '@utils/filenameValidation';
 
 /**
  * Props for RenameDialog component

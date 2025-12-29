@@ -12,14 +12,11 @@
  */
 
 import * as React from 'react';
-import {
-  Stack,
-  Label,
-  Icon,
-  TooltipHost,
-  DirectionalHint,
-  ITooltipHostStyles,
-} from '@fluentui/react';
+import { Stack } from '@fluentui/react/lib/Stack';
+import { Label } from '@fluentui/react/lib/Label';
+import { Icon } from '@fluentui/react/lib/Icon';
+import { TooltipHost, ITooltipHostStyles } from '@fluentui/react/lib/Tooltip';
+import { DirectionalHint } from 'spfx-toolkit/lib/types/fluentui-types';
 import { useId } from '@fluentui/react-hooks';
 import './FieldLabelWithTooltip.scss';
 

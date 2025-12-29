@@ -29,7 +29,69 @@
   </pnp:ClientSidePage>
 
   <!-- ========================================================================
-       1. My Requests Dashboard (For Submitters)
+       1. Request Dashboard (Main Dashboard with Toolbar, Open & Closed Requests)
+       ======================================================================== -->
+  <pnp:ClientSidePage PromoteAsNewsArticle="false"
+                       PromoteAsTemplate="false"
+                       Overwrite="true"
+                       Layout="Article"
+                       EnableComments="false"
+                       Title="Request Dashboard"
+                       PageName="RequestDashboard.aspx"
+                       Publish="true">
+
+    <pnp:Header Type="Default" LayoutType="NoImage" ShowTopicHeader="false" ShowPublishDate="false" />
+
+    <pnp:Sections>
+      <!-- Section 1: Request Dashboard Toolbar Webpart -->
+      <pnp:Section Order="1" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="Custom" ControlId="714bf59c-3cd3-4c4a-b3e2-25db6e7f5eee" Order="1" Column="1"
+            JsonControlData="{&quot;id&quot;:&quot;714bf59c-3cd3-4c4a-b3e2-25db6e7f5eee&quot;,&quot;instanceId&quot;:&quot;a1b2c3d4-e5f6-7890-abcd-ef1234567890&quot;,&quot;title&quot;:&quot;Request Dashboard&quot;,&quot;properties&quot;:{&quot;description&quot;:&quot;Request Dashboard Toolbar&quot;}}" />
+        </pnp:Controls>
+      </pnp:Section>
+
+      <!-- Section 2: My Open Requests -->
+      <pnp:Section Order="2" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="Text" ControlId="00000000-0000-0000-0000-000000000101" Order="1" Column="1">
+            <pnp:CanvasControlProperties>
+              <pnp:CanvasControlProperty Key="Text" Value="&lt;h2&gt;My Open Requests&lt;/h2&gt;" />
+            </pnp:CanvasControlProperties>
+          </pnp:CanvasControl>
+        </pnp:Controls>
+      </pnp:Section>
+
+      <pnp:Section Order="3" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="List" ControlId="00000000-0000-0000-0000-000000000102" Order="1" Column="1"
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000102&quot;,&quot;title&quot;:&quot;My Open Requests&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewId:MyOpenRequests}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
+        </pnp:Controls>
+      </pnp:Section>
+
+      <!-- Section 4: My Closed Requests -->
+      <pnp:Section Order="4" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="Text" ControlId="00000000-0000-0000-0000-000000000103" Order="1" Column="1">
+            <pnp:CanvasControlProperties>
+              <pnp:CanvasControlProperty Key="Text" Value="&lt;h2&gt;My Closed Requests&lt;/h2&gt;" />
+            </pnp:CanvasControlProperties>
+          </pnp:CanvasControl>
+        </pnp:Controls>
+      </pnp:Section>
+
+      <pnp:Section Order="5" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="List" ControlId="00000000-0000-0000-0000-000000000104" Order="1" Column="1"
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000104&quot;,&quot;title&quot;:&quot;My Completed Requests&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewId:MyCompletedRequests}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
+        </pnp:Controls>
+      </pnp:Section>
+    </pnp:Sections>
+
+  </pnp:ClientSidePage>
+
+  <!-- ========================================================================
+       2. My Requests Dashboard (For Submitters) - Legacy, redirects to RequestDashboard
        ======================================================================== -->
   <pnp:ClientSidePage PromoteAsNewsArticle="false"
                        PromoteAsTemplate="false"
@@ -63,7 +125,7 @@
   </pnp:ClientSidePage>
 
   <!-- ========================================================================
-       2. Legal Admin Dashboard
+       3. Legal Admin Dashboard
        ======================================================================== -->
   <pnp:ClientSidePage PromoteAsNewsArticle="false"
                        PromoteAsTemplate="false"
@@ -97,7 +159,7 @@
   </pnp:ClientSidePage>
 
   <!-- ========================================================================
-       3. Attorney Assignment Dashboard
+       4. Attorney Assignment Dashboard
        ======================================================================== -->
   <pnp:ClientSidePage PromoteAsNewsArticle="false"
                        PromoteAsTemplate="false"
@@ -131,7 +193,7 @@
   </pnp:ClientSidePage>
 
   <!-- ========================================================================
-       4. Attorney Dashboard
+       5. Attorney Dashboard
        ======================================================================== -->
   <pnp:ClientSidePage PromoteAsNewsArticle="false"
                        PromoteAsTemplate="false"
@@ -165,7 +227,7 @@
   </pnp:ClientSidePage>
 
   <!-- ========================================================================
-       5. Compliance Dashboard
+       6. Compliance Dashboard
        ======================================================================== -->
   <pnp:ClientSidePage PromoteAsNewsArticle="false"
                        PromoteAsTemplate="false"
@@ -192,6 +254,32 @@
         <pnp:Controls>
           <pnp:CanvasControl WebPartType="List" ControlId="00000000-0000-0000-0000-000000000052" Order="1" Column="1"
             JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000052&quot;,&quot;title&quot;:&quot;Requests&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
+        </pnp:Controls>
+      </pnp:Section>
+    </pnp:Sections>
+
+  </pnp:ClientSidePage>
+
+  <!-- ========================================================================
+       7. Analytics Dashboard (Full Page SPA for Admins)
+       Uses SingleWebPartAppPage layout for full-width experience
+       ======================================================================== -->
+  <pnp:ClientSidePage PromoteAsNewsArticle="false"
+                       PromoteAsTemplate="false"
+                       Overwrite="true"
+                       Layout="SingleWebPartAppPage"
+                       EnableComments="false"
+                       Title="Analytics Dashboard"
+                       PageName="AnalyticsDashboard.aspx"
+                       Publish="true">
+
+    <pnp:Header Type="None" LayoutType="NoImage" ShowTopicHeader="false" ShowPublishDate="false" />
+
+    <pnp:Sections>
+      <pnp:Section Order="1" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="Custom" ControlId="a8c3f2d1-5e7b-4a9c-8d6e-3f1b2c4d5e6f" Order="1" Column="1"
+            JsonControlData="{&quot;id&quot;:&quot;a8c3f2d1-5e7b-4a9c-8d6e-3f1b2c4d5e6f&quot;,&quot;instanceId&quot;:&quot;b2c3d4e5-f6a7-8901-bcde-f23456789012&quot;,&quot;title&quot;:&quot;Analytics Dashboard&quot;,&quot;properties&quot;:{&quot;title&quot;:&quot;Analytics Dashboard&quot;,&quot;useMockData&quot;:false,&quot;defaultDateRange&quot;:&quot;30&quot;}}" />
         </pnp:Controls>
       </pnp:Section>
     </pnp:Sections>

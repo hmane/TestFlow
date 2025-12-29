@@ -12,7 +12,7 @@
     <Field Type="Text"
            DisplayName="Config Value"
            Name="ConfigValue"
-           ID="{B1234567-0001-0001-0001-000000000001}"
+           ID="{4F59D052-3E28-4C20-A752-FDA042C6B443}"
            Required="FALSE"
            MaxLength="255"
            Group="Configuration" />
@@ -20,7 +20,7 @@
     <Field Type="Note"
            DisplayName="Description"
            Name="Description"
-           ID="{B1234567-0001-0001-0001-000000000002}"
+           ID="{25502FB5-ABFC-45E8-91B5-C7F36153664C}"
            Required="FALSE"
            RichText="FALSE"
            NumLines="6"
@@ -29,7 +29,7 @@
     <Field Type="Boolean"
            DisplayName="Is Active"
            Name="IsActive"
-           ID="{B1234567-0001-0001-0001-000000000003}"
+           ID="{7B3C457F-FFD2-4F18-81DA-A8D90AF332F5}"
            Required="FALSE"
            Group="Configuration">
       <Default>1</Default>
@@ -38,7 +38,7 @@
     <Field Type="Text"
            DisplayName="Category"
            Name="Category"
-           ID="{B1234567-0001-0001-0001-000000000004}"
+           ID="{26F1AAA6-5DF0-46D1-AB12-D9B31A32674D}"
            Required="FALSE"
            MaxLength="100"
            Group="Configuration" />

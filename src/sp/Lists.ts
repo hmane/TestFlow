@@ -10,6 +10,10 @@ export const Lists = {
     Title: 'RequestDocuments',
     Url: '/Lists/RequestDocuments',
   },
+  RequestIds: {
+    Title: 'RequestIds',
+    Url: '/Lists/RequestIds',
+  },
   Requests: {
     Title: 'Requests',
     Url: '/Lists/Requests',

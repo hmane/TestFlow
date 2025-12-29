@@ -21,7 +21,7 @@ import {
   Text,
   Icon,
 } from '@fluentui/react';
-import { DocumentType } from '../../types/documentTypes';
+import { DocumentType } from '@appTypes/documentTypes';
 import type { IDocumentTypeDialogProps } from './DocumentUploadTypes';
 
 /**

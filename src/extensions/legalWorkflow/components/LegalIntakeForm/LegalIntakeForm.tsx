@@ -1,453 +1,730 @@
 /**
  * LegalIntakeForm Component
  *
- * Form for legal team to process intake and assign attorney
- * Used when request status is "Legal Intake"
+ * Collapsible card for legal intake - attorney assignment
+ * Uses spfx-toolkit Card with Header/Content for consistent styling.
  *
  * Features:
- * - Assign attorney (people picker)
- * - Attorney assign notes
- * - Review request details (read-only)
- * - Action buttons (Assign Attorney, Save Notes)
+ * - Collapsible card showing assigned attorney in header when set
+ * - GroupUsersPicker for attorney selection from LW - Attorneys group
+ * - Review Audience field (editable by Legal Admin only)
+ * - Assignment notes field
+ *
+ * Note: Action buttons (Assign Attorney, Submit to Assign Attorney, Save)
+ * are now handled by the RequestActions component at the bottom of the form.
  */
 
-import {
-  DefaultButton,
-  Icon,
-  MessageBar,
-  MessageBarType,
-  PrimaryButton,
-  Separator,
-  Stack,
-  Text,
-} from '@fluentui/react';
+import { ChoiceGroup, IChoiceGroupOption } from '@fluentui/react/lib/ChoiceGroup';
+import { Icon } from '@fluentui/react/lib/Icon';
+import { IconButton, PrimaryButton, DefaultButton } from '@fluentui/react/lib/Button';
+import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
+import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
+import { Stack } from '@fluentui/react/lib/Stack';
+import { Text } from '@fluentui/react/lib/Text';
 import * as React from 'react';
-import { useForm } from 'react-hook-form';
-import { Card } from 'spfx-toolkit/lib/components/Card';
+import { Controller, useForm } from 'react-hook-form';
+import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
+import { WorkflowCardHeader } from '../../../../components/WorkflowCardHeader';
 import {
   FormContainer,
   FormItem,
   FormLabel,
   FormValue,
   FormProvider,
-  FormErrorSummary,
-  useScrollToError,
 } from 'spfx-toolkit/lib/components/spForm';
+import { GroupUsersPicker } from 'spfx-toolkit/lib/components/spForm/customComponents';
 import {
   SPTextField,
   SPTextFieldMode,
-  SPUserField,
 } from 'spfx-toolkit/lib/components/spFields';
-import type { IPrincipal } from 'spfx-toolkit/lib/types';
-import SPContext from 'spfx-toolkit/lib/utilities/context';
+import { UserPersona } from 'spfx-toolkit/lib/components/UserPersona';
 import { useRequestStore } from '../../../../stores/requestStore';
-import '../RequestForm/RequestInfo.scss';
+import { useLegalIntakeStore } from '../../../../stores/legalIntakeStore';
+import { usePermissions } from '../../../../hooks/usePermissions';
+import { RequestFormContext, IValidationError } from '../../../../contexts/RequestFormContext';
+import { saveRequest } from '../../../../services/requestSaveService';
+import { ReviewAudience, RequestStatus } from '@appTypes/workflowTypes';
+import type { IPrincipal } from '@appTypes/index';
 import './LegalIntakeForm.scss';
 
 /**
+ * Hook to safely get validation errors from RequestFormContext
+ * Returns empty array if context is not available (component used standalone)
+ */
+function useSafeValidationErrors(): IValidationError[] {
+  const context = React.useContext(RequestFormContext);
+  return context?.validationErrors || [];
+}
+
+/**
+ * Review Audience options for ChoiceGroup
+ */
+const reviewAudienceOptions: IChoiceGroupOption[] = [
+  { key: ReviewAudience.Legal, text: 'Legal Only' },
+  { key: ReviewAudience.Compliance, text: 'Compliance Only' },
+  { key: ReviewAudience.Both, text: 'Both Legal & Compliance' },
+];
+
+/**
  * Legal Intake form data
+ * Note: GroupUsersPicker now returns IPrincipal[] directly, so no conversion is needed
  */
 interface ILegalIntakeFormData {
-  attorney?: IPrincipal;
+  attorney?: IPrincipal[];
   attorneyAssignNotes?: string;
+  reviewAudience?: ReviewAudience;
 }
+
+/**
+ * Props for LegalIntakeForm component
+ */
+export interface ILegalIntakeFormProps {
+  /** Whether card is expanded by default */
+  defaultExpanded?: boolean;
+  /** Read-only mode - shows completed summary with green styling */
+  readOnly?: boolean;
+}
+
 
 /**
  * LegalIntakeForm Component
  */
-export const LegalIntakeForm: React.FC = () => {
+export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
+  defaultExpanded = true,
+  readOnly = false,
+}) => {
   const { currentRequest, isLoading } = useRequestStore();
+  const permissions = usePermissions();
   const [showSuccess, setShowSuccess] = React.useState<boolean>(false);
-  const [error, setError] = React.useState<string | undefined>(undefined);
+  const [messageBarError, setMessageBarError] = React.useState<string | undefined>(undefined);
+
+  // Edit mode state - allows admin/legal admin to modify completed Legal Intake
+  const [isEditMode, setIsEditMode] = React.useState<boolean>(false);
+  const [isSaving, setIsSaving] = React.useState<boolean>(false);
+  // Track when form is ready after reset to prevent GroupUsersPicker mounting with stale values
+  const [isFormReady, setIsFormReady] = React.useState<boolean>(false);
+
+  // Check if user can edit review audience (Legal Admin or Admin only)
+  // Disable editing in Closeout or Completed status
+  const isCloseoutOrCompleted = currentRequest?.status === RequestStatus.Closeout ||
+    currentRequest?.status === RequestStatus.Completed;
+  const canEditReviewAudience = (permissions.isLegalAdmin || permissions.isAdmin) && !isCloseoutOrCompleted;
+
+  // Get validation errors from parent context (RequestFormContext)
+  // These errors come from Zod validation in RequestActions
+  const contextValidationErrors = useSafeValidationErrors();
+
+  /**
+   * Convert attorney IPrincipal to have numeric ID for GroupUsersPicker compatibility
+   * The GroupUsersPicker component uses useGroupUsers which returns numeric IDs,
+   * but SPExtractor returns string IDs. This helper ensures ID type consistency.
+   */
+  const normalizeAttorneyForPicker = React.useCallback((attorney: IPrincipal | undefined): IPrincipal[] => {
+    if (!attorney) return [];
+    // Convert ID to number if it's a numeric string
+    const numericId = typeof attorney.id === 'string' ? parseInt(attorney.id, 10) : attorney.id;
+    return [{
+      ...attorney,
+      id: isNaN(numericId as number) ? attorney.id : String(numericId),
+    }];
+  }, []);
 
   // React Hook Form setup
+  // Note: GroupUsersPicker now works with IPrincipal[] directly
   const {
     control,
-    handleSubmit,
-    formState,
     watch,
+    reset,
+    setError: setFormError,
+    clearErrors,
   } = useForm<ILegalIntakeFormData>({
     defaultValues: {
-      attorney: currentRequest?.legalReview?.assignedAttorney,
-      attorneyAssignNotes: undefined, // This is not stored in ILegalReview, will be saved separately
+      // Use attorney from currentRequest (assigned attorney for completed intake)
+      // or from legalReview for in-progress intake
+      attorney: normalizeAttorneyForPicker(
+        currentRequest?.attorney || currentRequest?.legalReview?.assignedAttorney
+      ),
+      attorneyAssignNotes: undefined,
+      reviewAudience: currentRequest?.reviewAudience || ReviewAudience.Both,
     },
     mode: 'onSubmit',
     reValidateMode: 'onChange',
   });
 
-  // Access errors from formState directly (ensures proper subscription)
-  // Note: isDirty removed - not needed as Save Notes is always enabled
+  // Track if we've already processed the edit mode transition to prevent re-runs
+  const hasInitializedEditMode = React.useRef(false);
 
-  // Use scroll to error hook
-  const { scrollToFirstError } = useScrollToError(formState as any);
+  // Reset form values when entering edit mode to ensure attorney is selected
+  // Only run once when isEditMode transitions to true
+  React.useEffect(() => {
+    if (isEditMode && currentRequest && !hasInitializedEditMode.current) {
+      hasInitializedEditMode.current = true;
 
-  // Watch attorney field to enable/disable buttons
-  const attorneyValue = watch('attorney');
+      // Reset form with current request values, normalizing attorney ID for picker
+      reset({
+        attorney: normalizeAttorneyForPicker(currentRequest.attorney),
+        attorneyAssignNotes: undefined, // Start fresh for new notes
+        reviewAudience: currentRequest.reviewAudience || ReviewAudience.Both,
+      });
 
-  /**
-   * Handle submit with attorney assigned (direct assignment)
-   */
-  const handleSubmitWithAttorney = React.useCallback(
-    async (data: ILegalIntakeFormData): Promise<void> => {
-      try {
-        SPContext.logger.info('LegalIntakeForm: Submitting with attorney assigned', data);
-        // TODO: Implement direct attorney assignment in store
-        // This should move status to "In Review" with the assigned attorney
-        setShowSuccess(true);
+      // Mark form as ready after reset
+      setIsFormReady(true);
+    } else if (!isEditMode) {
+      // Reset the flag when exiting edit mode
+      hasInitializedEditMode.current = false;
+      setIsFormReady(false);
+    }
+  }, [isEditMode, currentRequest, reset, normalizeAttorneyForPicker]);
 
-        setTimeout(() => {
-          setShowSuccess(false);
-        }, 5000);
+  // Sync validation errors from RequestFormContext to React Hook Form
+  // This allows field-level errors to be displayed under the form fields
+  React.useEffect(() => {
+    // Clear previous errors for these fields
+    clearErrors(['attorney', 'attorneyAssignNotes', 'reviewAudience']);
 
-        SPContext.logger.success('LegalIntakeForm: Submitted with attorney successfully');
-      } catch (submitError: unknown) {
-        const errorMessage =
-          submitError instanceof Error ? submitError.message : 'Failed to submit';
-        setError(errorMessage);
-        scrollToFirstError();
-        SPContext.logger.error('LegalIntakeForm: Submit failed', submitError);
+    // Set errors from context
+    contextValidationErrors.forEach((validationError) => {
+      const fieldName = validationError.field as keyof ILegalIntakeFormData;
+      // Only set errors for fields that belong to this form
+      if (fieldName === 'attorney' || fieldName === 'attorneyAssignNotes' || fieldName === 'reviewAudience') {
+        setFormError(fieldName, {
+          type: 'manual',
+          message: validationError.message,
+        });
       }
-    },
-    [scrollToFirstError]
-  );
+    });
+  }, [contextValidationErrors, setFormError, clearErrors]);
+
+  // Watch all fields for sync with store
+  const attorneyValue = watch('attorney');
+  const notesValue = watch('attorneyAssignNotes');
+  const reviewAudienceValue = watch('reviewAudience');
+
+  const selectedAttorney = attorneyValue && attorneyValue.length > 0 ? attorneyValue[0] : undefined;
+
+  // Get legal intake store setters - use a single batch update function
+  const { setLegalIntakeValues } = useLegalIntakeStore();
+
+  // Sync form changes to the legal intake store in a single batch update
+  // This prevents multiple re-renders from separate store updates
+  React.useEffect(() => {
+    setLegalIntakeValues({
+      selectedAttorney,
+      assignmentNotes: notesValue,
+      reviewAudience: reviewAudienceValue,
+    });
+  }, [selectedAttorney, notesValue, reviewAudienceValue, setLegalIntakeValues]);
+
+  // Get the loadRequest function from the store to refresh data after save
+  const { loadRequest } = useRequestStore();
 
   /**
-   * Handle submit to committee (for attorney assignment)
+   * Handle saving Legal Intake changes in edit mode
    */
-  const handleSubmitToCommittee = React.useCallback(async (): Promise<void> => {
+  const handleSaveChanges = async (): Promise<void> => {
+    if (!currentRequest || !currentRequest.id) return;
+
+    setIsSaving(true);
+    setMessageBarError(undefined);
+
     try {
-      SPContext.logger.info('LegalIntakeForm: Submitting to committee for attorney assignment');
-      // TODO: Implement submit to committee in store
-      // This should move status to "Assign Attorney" sub-status or similar
-      setShowSuccess(true);
+      // Build the update payload from form values
+      const updatePayload: Record<string, any> = {};
 
-      setTimeout(() => {
-        setShowSuccess(false);
-      }, 5000);
+      // Update attorney if changed
+      if (selectedAttorney) {
+        updatePayload.attorney = selectedAttorney;
+      }
 
-      SPContext.logger.success('LegalIntakeForm: Submitted to committee successfully');
-    } catch (submitError: unknown) {
-      const errorMessage =
-        submitError instanceof Error ? submitError.message : 'Failed to submit to committee';
-      setError(errorMessage);
-      SPContext.logger.error('LegalIntakeForm: Submit to committee failed', submitError);
+      // Update review audience if changed
+      if (reviewAudienceValue && reviewAudienceValue !== currentRequest.reviewAudience) {
+        updatePayload.reviewAudience = reviewAudienceValue;
+      }
+
+      // Update assignment notes if provided
+      if (notesValue) {
+        updatePayload.attorneyAssignNotes = notesValue;
+      }
+
+      // Only save if there are changes
+      if (Object.keys(updatePayload).length > 0) {
+        await saveRequest(currentRequest.id, updatePayload);
+
+        // Reload the request to get fresh data
+        await loadRequest(currentRequest.id);
+
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 3000);
+      }
+
+      // Exit edit mode
+      setIsEditMode(false);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save changes';
+      setMessageBarError(errorMessage);
+    } finally {
+      setIsSaving(false);
     }
-  }, []);
+  };
 
   /**
-   * Handle save notes
+   * Handle canceling edit mode
    */
-  const handleSaveNotes = React.useCallback(async (): Promise<void> => {
-    try {
-      SPContext.logger.info('LegalIntakeForm: Saving notes');
-      // TODO: Implement save notes in store
-      setShowSuccess(true);
-
-      setTimeout(() => {
-        setShowSuccess(false);
-      }, 3000);
-
-      SPContext.logger.success('LegalIntakeForm: Notes saved');
-    } catch (saveError: unknown) {
-      const errorMessage = saveError instanceof Error ? saveError.message : 'Failed to save notes';
-      setError(errorMessage);
-      SPContext.logger.error('LegalIntakeForm: Save notes failed', saveError);
+  const handleCancelEdit = (): void => {
+    // Reset form to original values
+    if (currentRequest) {
+      reset({
+        attorney: currentRequest.attorney ? [currentRequest.attorney] : [],
+        attorneyAssignNotes: undefined,
+        reviewAudience: currentRequest.reviewAudience || ReviewAudience.Both,
+      });
     }
-  }, []);
+    setIsEditMode(false);
+  };
 
   if (!currentRequest) {
     return null;
   }
 
-  return (
-    <FormProvider control={control as any} autoShowErrors={true}>
-      <div className='legal-intake-form request-info'>
-        <Stack
-          tokens={{ childrenGap: 24 }}
-          styles={{ root: { padding: '24px', maxWidth: '1200px', margin: '0 auto' } }}
-        >
-          {/* Header */}
-          <Stack tokens={{ childrenGap: 8 }}>
-            <Text variant='xxLarge' styles={{ root: { fontWeight: 600, color: '#323130' } }}>
-              Legal Intake - Assign Attorney
-            </Text>
-            <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
-              <Icon iconName='Tag' styles={{ root: { color: '#0078d4' } }} />
-              <Text variant='large' styles={{ root: { color: '#605e5c' } }}>
-                Request ID: {currentRequest.requestId}
-              </Text>
-            </Stack>
+  // Read-only mode: Show completed summary card
+  // Admin/Legal Admin can toggle edit mode to modify attorney, review audience, or add notes
+  if (readOnly) {
+    const assignedAttorney = currentRequest.attorney;
+    const assignmentNotes = currentRequest.attorneyAssignNotes;
+    const completedDate = currentRequest.submittedForReviewOn;
+
+    // In edit mode, show editable fields; otherwise show read-only summary
+    // Wait for form to be ready before rendering GroupUsersPicker to ensure it gets correct values
+    if (isEditMode && canEditReviewAudience) {
+      if (!isFormReady) {
+        return (
+          <Card
+            id='legal-intake-loading-card'
+            className='legal-intake-card legal-intake-card--loading'
+            allowExpand={false}
+            defaultExpanded={true}
+          >
+            <Header size='regular'>
+              <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
+                <Spinner size={SpinnerSize.small} />
+                <Text variant='large' styles={{ root: { fontWeight: 600, color: '#323130' } }}>
+                  Loading Edit Form...
+                </Text>
+              </Stack>
+            </Header>
+          </Card>
+        );
+      }
+
+      return (
+        <FormProvider control={control as any} autoShowErrors={true}>
+          <Card
+            id='legal-intake-edit-card'
+            className='legal-intake-card legal-intake-card--editing'
+            allowExpand={true}
+            defaultExpanded={true}
+          >
+            <Header size='regular'>
+              <Stack horizontal verticalAlign='center' horizontalAlign='space-between' styles={{ root: { width: '100%' } }}>
+                <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
+                  <div style={{
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '8px',
+                    backgroundColor: '#fff4ce',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    <Icon iconName='Edit' styles={{ root: { fontSize: '18px', color: '#797673' } }} />
+                  </div>
+                  <Stack tokens={{ childrenGap: 2 }}>
+                    <Text variant='large' styles={{ root: { fontWeight: 600, color: '#323130' } }}>
+                      Edit Legal Intake
+                    </Text>
+                    <Text variant='small' styles={{ root: { color: '#605e5c' } }}>
+                      Modify attorney assignment, review audience, or add notes
+                    </Text>
+                  </Stack>
+                </Stack>
+                <IconButton
+                  iconProps={{ iconName: 'Cancel' }}
+                  title='Cancel editing'
+                  ariaLabel='Cancel editing'
+                  onClick={handleCancelEdit}
+                  disabled={isSaving}
+                  styles={{ root: { color: '#605e5c' } }}
+                />
+              </Stack>
+            </Header>
+
+            <Content padding='comfortable'>
+              <Stack tokens={{ childrenGap: 20 }}>
+                <FormContainer labelWidth='200px'>
+                  {/* Review Audience */}
+                  <FormItem fieldName='reviewAudience'>
+                    <FormLabel infoText='Select which reviews are required for this request.'>
+                      Review Audience
+                    </FormLabel>
+                    <FormValue>
+                      <Controller
+                        name='reviewAudience'
+                        control={control}
+                        render={({ field }) => (
+                          <ChoiceGroup
+                            selectedKey={field.value}
+                            options={reviewAudienceOptions}
+                            onChange={(_, option) => {
+                              if (option) {
+                                field.onChange(option.key as ReviewAudience);
+                              }
+                            }}
+                            disabled={isLoading}
+                            styles={{
+                              flexContainer: {
+                                display: 'flex',
+                                flexDirection: 'row',
+                                gap: '16px',
+                              },
+                            }}
+                          />
+                        )}
+                      />
+                    </FormValue>
+                  </FormItem>
+
+                  {/* Assign Attorney */}
+                  <FormItem fieldName='attorney'>
+                    <FormLabel infoText='Select an attorney from the LW - Attorneys group'>
+                      Assign Attorney
+                    </FormLabel>
+                    <FormValue>
+                      <GroupUsersPicker
+                        name='attorney'
+                        control={control as any}
+                        groupName='LW - Attorneys'
+                        maxUserCount={1}
+                        placeholder='Search for attorney to assign...'
+                        disabled={isLoading}
+                        showClearButton
+                        ensureUser
+                      />
+                    </FormValue>
+                  </FormItem>
+
+                  {/* Assignment Notes */}
+                  <FormItem fieldName='attorneyAssignNotes'>
+                    <FormLabel infoText='Add any notes or instructions for the assigned attorney'>
+                      Assignment Notes
+                    </FormLabel>
+                    <FormValue>
+                      <SPTextField
+                        name='attorneyAssignNotes'
+                        control={control as any}
+                        placeholder='Add any notes or instructions'
+                        mode={SPTextFieldMode.MultiLine}
+                        rows={4}
+                        maxLength={2000}
+                        showCharacterCount
+                        stylingMode='outlined'
+                        spellCheck
+                        disabled={isLoading}
+                        appendOnly
+                        itemId={currentRequest.id}
+                        listNameOrId='Requests'
+                        fieldInternalName='AttorneyAssignNotes'
+                      />
+                    </FormValue>
+                  </FormItem>
+                </FormContainer>
+
+                {/* Error message for edit mode */}
+                {messageBarError && (
+                  <MessageBar
+                    messageBarType={MessageBarType.error}
+                    isMultiline={true}
+                    onDismiss={() => setMessageBarError(undefined)}
+                    styles={{ root: { borderRadius: '4px' } }}
+                  >
+                    {messageBarError}
+                  </MessageBar>
+                )}
+
+                {/* Save/Cancel buttons */}
+                <Stack horizontal tokens={{ childrenGap: 12 }} horizontalAlign='end'>
+                  <DefaultButton
+                    text='Cancel'
+                    onClick={handleCancelEdit}
+                    disabled={isSaving}
+                    styles={{ root: { minWidth: '80px' } }}
+                  />
+                  <PrimaryButton
+                    onClick={handleSaveChanges}
+                    disabled={isSaving}
+                    styles={{ root: { minWidth: '100px' } }}
+                  >
+                    {isSaving ? (
+                      <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
+                        <Spinner size={SpinnerSize.xSmall} />
+                        <span>Saving...</span>
+                      </Stack>
+                    ) : (
+                      'Save Changes'
+                    )}
+                  </PrimaryButton>
+                </Stack>
+              </Stack>
+            </Content>
+          </Card>
+        </FormProvider>
+      );
+    }
+
+    // Default read-only view
+    // Get the user who completed intake (submittedForReviewBy or attorney)
+    const completedBy = currentRequest.submittedForReviewBy || assignedAttorney;
+
+    // Calculate duration in minutes (business hours)
+    const durationMinutes = React.useMemo(() => {
+      if (!currentRequest.submittedOn || !completedDate) return undefined;
+      const startDate = currentRequest.submittedOn instanceof Date
+        ? currentRequest.submittedOn
+        : new Date(currentRequest.submittedOn);
+      const endDate = completedDate instanceof Date ? completedDate : new Date(completedDate);
+      // Simple calculation - can be enhanced with business hours service
+      const diffMs = endDate.getTime() - startDate.getTime();
+      return Math.floor(diffMs / (1000 * 60));
+    }, [currentRequest.submittedOn, completedDate]);
+
+    return (
+      <Card
+        id='legal-intake-summary-card'
+        className='legal-intake-card legal-intake-card--completed'
+        allowExpand={true}
+        defaultExpanded={defaultExpanded}
+      >
+        <Header size='regular'>
+          <Stack horizontal verticalAlign='center' horizontalAlign='space-between' styles={{ root: { width: '100%' } }}>
+            <WorkflowCardHeader
+              title='Legal Intake'
+              status='completed'
+              startedOn={currentRequest.submittedOn}
+              completedOn={completedDate}
+              completedBy={completedBy?.title ? { title: completedBy.title, email: completedBy.email } : undefined}
+              attorney={assignedAttorney?.title ? { title: assignedAttorney.title, email: assignedAttorney.email } : undefined}
+              durationMinutes={durationMinutes}
+            />
+            {/* Edit button - only visible to Admin/Legal Admin, not in Closeout/Completed */}
+            {canEditReviewAudience && (
+              <IconButton
+                iconProps={{ iconName: 'Edit' }}
+                title='Edit Legal Intake'
+                ariaLabel='Edit Legal Intake'
+                onClick={() => setIsEditMode(true)}
+                styles={{
+                  root: {
+                    color: '#0078d4',
+                    backgroundColor: 'transparent',
+                    marginLeft: '8px',
+                    ':hover': {
+                      backgroundColor: '#f3f2f1',
+                    },
+                  },
+                }}
+              />
+            )}
           </Stack>
+        </Header>
 
-        {/* Success message */}
-        {showSuccess && (
-          <MessageBar
-            messageBarType={MessageBarType.success}
-            isMultiline={false}
-            onDismiss={() => setShowSuccess(false)}
-            styles={{ root: { borderRadius: '4px' } }}
-          >
-            <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
-              <Icon iconName='Completed' />
-              <Text>Changes saved successfully!</Text>
-            </Stack>
-          </MessageBar>
-        )}
-
-        {/* Error message */}
-        {error && (
-          <MessageBar
-            messageBarType={MessageBarType.error}
-            isMultiline={true}
-            onDismiss={() => setError(undefined)}
-            styles={{ root: { borderRadius: '4px' } }}
-          >
-            {error}
-          </MessageBar>
-        )}
-
-        {/* Form Error Summary */}
-        <FormErrorSummary
-          position='sticky'
-          clickToScroll
-          showFieldLabels
-          maxErrors={10}
-        />
-
-        {/* Request Summary (Read-Only) */}
-        <Card id='request-summary-card' className='form-section-card'>
-          <Stack tokens={{ childrenGap: 16 }} styles={{ root: { padding: '24px' } }}>
-            <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
-              <div className='section-icon'>
-                <Icon iconName='Info' styles={{ root: { fontSize: '20px', color: '#0078d4' } }} />
-              </div>
-              <Text variant='xLarge' styles={{ root: { fontWeight: 600 } }}>
-                Request Summary
-              </Text>
-            </Stack>
-
-            <Separator />
-
-            <FormContainer labelWidth='200px'>
+        <Content padding='comfortable'>
+          <Stack tokens={{ childrenGap: 16 }}>
+            <FormContainer labelWidth='180px'>
               <FormItem>
-                <FormLabel>Request Type</FormLabel>
-                <FormValue>{currentRequest.requestType}</FormValue>
-              </FormItem>
-
-              <FormItem>
-                <FormLabel>Request Title</FormLabel>
-                <FormValue>{currentRequest.requestTitle}</FormValue>
-              </FormItem>
-
-              <FormItem>
-                <FormLabel>Purpose</FormLabel>
-                <FormValue>{currentRequest.purpose}</FormValue>
-              </FormItem>
-
-              <FormItem>
-                <FormLabel>Submission Type</FormLabel>
-                <FormValue>{currentRequest.submissionType}</FormValue>
-              </FormItem>
-
-              <FormItem>
-                <FormLabel>Target Return Date</FormLabel>
+                <FormLabel>Assigned Attorney</FormLabel>
                 <FormValue>
-                  {currentRequest.targetReturnDate
-                    ? typeof currentRequest.targetReturnDate === 'string'
-                      ? new Date(currentRequest.targetReturnDate).toLocaleDateString()
-                      : currentRequest.targetReturnDate.toLocaleDateString()
-                    : 'N/A'}
-                </FormValue>
-              </FormItem>
-
-              <FormItem>
-                <FormLabel>Rush Request</FormLabel>
-                <FormValue>
-                  {currentRequest.isRushRequest ? (
-                    <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 4 }}>
-                      <Icon iconName='Warning' styles={{ root: { color: '#d13438' } }} />
-                      <Text styles={{ root: { color: '#d13438', fontWeight: 600 } }}>Yes</Text>
-                    </Stack>
+                  {assignedAttorney?.email ? (
+                    <UserPersona
+                      userIdentifier={assignedAttorney.email}
+                      displayName={assignedAttorney.title}
+                      email={assignedAttorney.email}
+                      size={32}
+                      displayMode='avatarAndName'
+                      showSecondaryText={false}
+                    />
                   ) : (
-                    'No'
+                    <Text styles={{ root: { color: '#605e5c', fontStyle: 'italic' } }}>Not assigned</Text>
                   )}
                 </FormValue>
               </FormItem>
 
-              {currentRequest.isRushRequest && currentRequest.rushRationale && (
-                <FormItem>
-                  <FormLabel>Rush Rationale</FormLabel>
-                  <FormValue>{currentRequest.rushRationale}</FormValue>
-                </FormItem>
-              )}
-
               <FormItem>
-                <FormLabel>Submitted By</FormLabel>
-                <FormValue>{currentRequest.submittedBy?.title || 'N/A'}</FormValue>
+                <FormLabel>Review Audience</FormLabel>
+                <FormValue>
+                  <Text>{currentRequest.reviewAudience || 'Both'}</Text>
+                </FormValue>
               </FormItem>
 
               <FormItem>
-                <FormLabel>Submitted On</FormLabel>
+                <FormLabel>Assignment Notes</FormLabel>
                 <FormValue>
-                  {currentRequest.submittedOn
-                    ? typeof currentRequest.submittedOn === 'string'
-                      ? new Date(currentRequest.submittedOn).toLocaleString()
-                      : currentRequest.submittedOn.toLocaleString()
-                    : 'N/A'}
+                  <SPTextField
+                    value={assignmentNotes || ''}
+                    mode={SPTextFieldMode.MultiLine}
+                    rows={3}
+                    appendOnly
+                    itemId={currentRequest.id}
+                    listNameOrId='Requests'
+                    fieldInternalName='AttorneyAssignNotes'
+                    readOnly={true}
+                    stylingMode='outlined'
+                  />
                 </FormValue>
               </FormItem>
             </FormContainer>
           </Stack>
-        </Card>
+        </Content>
+      </Card>
+    );
+  }
 
-        {/* Attorney Assignment Form */}
-        <Stack tokens={{ childrenGap: 20 }}>
-          <Card id='attorney-assignment-card' className='form-section-card'>
-            <Stack tokens={{ childrenGap: 16 }} styles={{ root: { padding: '24px' } }}>
-              <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
-                <div className='section-icon'>
-                  <Icon
-                    iconName='UserFollowed'
-                    styles={{ root: { fontSize: '20px', color: '#0078d4' } }}
+  return (
+    <FormProvider control={control as any} autoShowErrors={true}>
+      <Card
+        id='legal-intake-card'
+        className='legal-intake-card'
+        allowExpand={true}
+        defaultExpanded={defaultExpanded}
+      >
+        <Header size='regular'>
+          <WorkflowCardHeader
+            title='Legal Intake'
+            status='in-progress'
+            startedOn={currentRequest.submittedOn}
+            attorney={selectedAttorney?.title ? { title: selectedAttorney.title, email: selectedAttorney.email } : undefined}
+          />
+        </Header>
+
+        <Content padding='comfortable'>
+          <Stack tokens={{ childrenGap: 20 }}>
+            {/* Success message */}
+            {showSuccess && (
+              <MessageBar
+                messageBarType={MessageBarType.success}
+                isMultiline={false}
+                onDismiss={() => setShowSuccess(false)}
+                styles={{ root: { borderRadius: '4px' } }}
+              >
+                <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
+                  <Icon iconName='Completed' />
+                  <Text>Changes saved successfully!</Text>
+                </Stack>
+              </MessageBar>
+            )}
+
+            {/* Error message */}
+            {messageBarError && (
+              <MessageBar
+                messageBarType={MessageBarType.error}
+                isMultiline={true}
+                onDismiss={() => setMessageBarError(undefined)}
+                styles={{ root: { borderRadius: '4px' } }}
+              >
+                {messageBarError}
+              </MessageBar>
+            )}
+
+            {/* Attorney Assignment Form */}
+            <FormContainer labelWidth='200px'>
+              {/* Review Audience - editable by Legal Admin only */}
+              <FormItem fieldName='reviewAudience'>
+                <FormLabel infoText='Select which reviews are required for this request. Legal Admin can override the submitter selection.'>
+                  Review Audience
+                </FormLabel>
+                <FormValue>
+                  <Controller
+                    name='reviewAudience'
+                    control={control}
+                    render={({ field }) => (
+                      <ChoiceGroup
+                        selectedKey={field.value}
+                        options={reviewAudienceOptions}
+                        onChange={(_, option) => {
+                          if (option) {
+                            field.onChange(option.key as ReviewAudience);
+                          }
+                        }}
+                        disabled={isLoading || !canEditReviewAudience}
+                        styles={{
+                          flexContainer: {
+                            display: 'flex',
+                            flexDirection: 'row',
+                            gap: '16px',
+                          },
+                        }}
+                      />
+                    )}
                   />
-                </div>
-                <Text variant='xLarge' styles={{ root: { fontWeight: 600 } }}>
-                  Attorney Assignment
-                </Text>
-              </Stack>
+                  {!canEditReviewAudience && (
+                    <Text
+                      variant='small'
+                      styles={{ root: { color: '#605e5c', fontStyle: 'italic', marginTop: '4px' } }}
+                    >
+                      Only Legal Admin can change the review audience
+                    </Text>
+                  )}
+                </FormValue>
+              </FormItem>
 
-              <Separator />
-
-              <FormContainer labelWidth='200px'>
-                {/* Assign Attorney */}
-                <FormItem fieldName='attorney'>
-                  <FormLabel infoText='Select an attorney to assign to this request'>
-                    Assign Attorney
-                  </FormLabel>
-                  <FormValue>
-                    <SPUserField
-                      name='attorney'
-                      placeholder='Search for attorney to assign (optional)'
-                      allowMultiple={false}
-                      showPhoto
-                      showEmail
-                      showJobTitle
-                    />
-                  </FormValue>
-                </FormItem>
-
-                {/* Attorney Assign Notes */}
-                <FormItem fieldName='attorneyAssignNotes'>
-                  <FormLabel infoText='Add any notes or instructions for the assigned attorney'>
-                    Assignment Notes
-                  </FormLabel>
-                  <FormValue>
-                    <SPTextField
-                      name='attorneyAssignNotes'
-                      placeholder='Add any notes or instructions'
-                      mode={SPTextFieldMode.MultiLine}
-                      rows={4}
-                      maxLength={2000}
-                      showCharacterCount
-                      stylingMode='outlined'
-                      spellCheck
-                    />
-                  </FormValue>
-                </FormItem>
-              </FormContainer>
-            </Stack>
-          </Card>
-
-          {/* Action Buttons */}
-          <Card id='action-buttons-card' className='action-buttons-card'>
-            <Stack tokens={{ childrenGap: 16 }} styles={{ root: { padding: '24px' } }}>
-              <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
-                <Icon
-                  iconName='Lightbulb'
-                  styles={{ root: { fontSize: '20px', color: '#0078d4' } }}
-                />
-                <Text variant='xLarge' styles={{ root: { fontWeight: 600 } }}>
-                  Actions
-                </Text>
-              </Stack>
-
-              <Separator />
-
-              <Text variant='medium' styles={{ root: { marginBottom: '12px', color: '#605e5c' } }}>
-                {attorneyValue && attorneyValue.id
-                  ? 'Attorney selected - Submit to proceed with review'
-                  : 'No attorney selected - Submit to committee for assignment'}
-              </Text>
-
-              <Stack horizontal tokens={{ childrenGap: 12 }} wrap>
-                {/* Conditional buttons based on attorney selection */}
-                {attorneyValue && attorneyValue.id ? (
-                  <PrimaryButton
-                    text='Submit'
-                    iconProps={{ iconName: 'Send' }}
-                    onClick={handleSubmit(handleSubmitWithAttorney)}
+              {/* Assign Attorney using GroupUsersPicker */}
+              <FormItem fieldName='attorney'>
+                <FormLabel infoText='Select an attorney from the LW - Attorneys group to assign to this request'>
+                  Assign Attorney
+                </FormLabel>
+                <FormValue>
+                  <GroupUsersPicker
+                    name='attorney'
+                    control={control as any}
+                    groupName='LW - Attorneys'
+                    maxUserCount={1}
+                    placeholder='Search for attorney to assign...'
                     disabled={isLoading}
-                    styles={{
-                      root: {
-                        minWidth: '160px',
-                        height: '44px',
-                        borderRadius: '4px',
-                      },
-                    }}
-                    ariaLabel='Submit with assigned attorney'
+                    showClearButton
+                    ensureUser
                   />
-                ) : (
-                  <PrimaryButton
-                    text='Submit to Assign Attorney'
-                    iconProps={{ iconName: 'ContactCardSettings' }}
-                    onClick={handleSubmitToCommittee}
+                </FormValue>
+              </FormItem>
+
+              {/* Attorney Assign Notes */}
+              <FormItem fieldName='attorneyAssignNotes'>
+                <FormLabel infoText='Add any notes or instructions for the assigned attorney'>
+                  Assignment Notes
+                </FormLabel>
+                <FormValue>
+                  <SPTextField
+                    name='attorneyAssignNotes'
+                    control={control as any}
+                    placeholder='Add any notes or instructions'
+                    mode={SPTextFieldMode.MultiLine}
+                    rows={4}
+                    maxLength={2000}
+                    showCharacterCount
+                    stylingMode='outlined'
+                    spellCheck
                     disabled={isLoading}
-                    styles={{
-                      root: {
-                        minWidth: '200px',
-                        height: '44px',
-                        borderRadius: '4px',
-                      },
-                    }}
-                    ariaLabel='Submit to committee for attorney assignment'
                   />
-                )}
+                </FormValue>
+              </FormItem>
+            </FormContainer>
 
-                <DefaultButton
-                  text='Save Notes'
-                  iconProps={{ iconName: 'Save' }}
-                  onClick={handleSaveNotes}
-                  disabled={isLoading}
-                  styles={{
-                    root: {
-                      minWidth: '140px',
-                      height: '44px',
-                      borderRadius: '4px',
-                    },
-                  }}
-                  ariaLabel='Save assignment notes'
-                />
-
-                <DefaultButton
-                  text='Cancel'
-                  iconProps={{ iconName: 'Cancel' }}
-                  onClick={() => window.history.back()}
-                  disabled={isLoading}
-                  styles={{
-                    root: {
-                      minWidth: '120px',
-                      height: '44px',
-                      borderRadius: '4px',
-                    },
-                  }}
-                  ariaLabel='Cancel and return'
-                />
-              </Stack>
-            </Stack>
-          </Card>
-        </Stack>
-        </Stack>
-      </div>
+            {/* Guidance text */}
+            <Text variant='small' styles={{ root: { color: '#605e5c', fontStyle: 'italic' } }}>
+              {selectedAttorney
+                ? 'Attorney selected. Use the action buttons below to proceed.'
+                : 'Select an attorney above, or use "Submit to Assign Attorney" below to send to committee.'}
+            </Text>
+          </Stack>
+        </Content>
+      </Card>
     </FormProvider>
   );
 };

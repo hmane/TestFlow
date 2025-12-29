@@ -1,14 +1,14 @@
 /**
  * StatusProgressBar Component
  *
- * Renders a visual progress bar showing workflow status
- * - Displays progress percentage with colored fill
- * - Shows status name as centered overlay text
- * - Color-coded based on target date (green/yellow/red/blue/gray)
+ * Renders a full-width colored container showing workflow status
+ * - Full background color based on urgency (green/yellow/red/blue/gray)
+ * - Status name centered with white text
+ * - No progress bar fill - just solid color background
  */
 
 import * as React from 'react';
-import { Text } from '@fluentui/react';
+import { Text } from '@fluentui/react/lib/Text';
 import type { IStatusProgressBarProps } from '../types';
 import { getStatusDisplayName } from '../utils/progressCalculator';
 import styles from './RequestStatusProgress.module.scss';
@@ -18,7 +18,6 @@ import styles from './RequestStatusProgress.module.scss';
  */
 export const StatusProgressBar: React.FC<IStatusProgressBarProps> = React.memo(({
   status,
-  progress,
   color,
 }) => {
   // Get color class name
@@ -26,31 +25,13 @@ export const StatusProgressBar: React.FC<IStatusProgressBarProps> = React.memo((
 
   return (
     <div
-      className={`${styles.progressBarContainer} ${colorClass}`}
-      role="progressbar"
-      aria-valuenow={Math.round(progress)}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-label={`Workflow progress: ${getStatusDisplayName(status)}, ${Math.round(progress)}% complete`}
+      className={`${styles.statusContainer} ${colorClass}`}
+      role="status"
+      aria-label={`Status: ${getStatusDisplayName(status)}`}
     >
-      {/* Progress bar background */}
-      <div className={styles.progressBarTrack}>
-        {/* Progress bar fill */}
-        <div
-          className={`${styles.progressBarFill} ${colorClass}`}
-          style={{ width: `${progress}%` }}
-        >
-          {/* Optional gradient overlay for visual depth */}
-          <div className={styles.progressBarGradient} />
-        </div>
-      </div>
-
-      {/* Status label overlay (centered) */}
-      <div className={styles.statusLabelContainer}>
-        <Text className={styles.statusLabel}>
-          {getStatusDisplayName(status)}
-        </Text>
-      </div>
+      <Text className={styles.statusLabel}>
+        {getStatusDisplayName(status)}
+      </Text>
     </div>
   );
 });

@@ -91,7 +91,8 @@
   }
 
   // Accessibility focus states
-  *:focus-visible {
+  // NOTE: Exclude DevExtreme components (dx-*) which have their own focus styling
+  *:focus-visible:not([class*='dx-']) {
     outline: 2px solid #0078d4;
     outline-offset: 2px;
   }

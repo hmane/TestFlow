@@ -100,8 +100,9 @@ export enum UCITS {
 
 /**
  * Separate Account Strategies options
+ * SharePoint field name: SeparateAcctStrategies (32 char limit)
  */
-export enum SeparateAccountStrategies {
+export enum SeparateAcctStrategies {
   AllSeparateAccountStrategies = 'All Separate Account Strategies',
   Equity = 'Equity',
   FixedIncome = 'Fixed Income',
@@ -110,8 +111,9 @@ export enum SeparateAccountStrategies {
 
 /**
  * Separate Account Strategies Includes options
+ * SharePoint field name: SeparateAcctStrategiesIncl (32 char limit)
  */
-export enum SeparateAccountStrategiesIncludes {
+export enum SeparateAcctStrategiesIncl {
   ClientRelatedDataOnly = 'Client-related data only',
   RepresentativeAccount = 'Representative account',
   CompositeData = 'Composite data',
@@ -155,8 +157,8 @@ additionalParty?: IPrincipal[];
   audience?: Audience[];
   usFunds?: USFunds[];
   ucits?: UCITS[];
-  separateAccountStrategies?: SeparateAccountStrategies[];
-  separateAccountStrategiesIncludes?: SeparateAccountStrategiesIncludes[];
+  separateAcctStrategies?: SeparateAcctStrategies[];
+  separateAcctStrategiesIncl?: SeparateAcctStrategiesIncl[];
 
   // Approvals - Communications
   requiresCommunicationsApproval: boolean;
@@ -274,6 +276,10 @@ communicationsApprover?: IPrincipal;
   /** Total business hours spent by submitter across all stages */
   totalSubmitterHours?: number;
 
+  // Admin Override Audit Trail
+  /** Multi-line notes field tracking all admin override actions with timestamps */
+  adminOverrideNotes?: string;
+
   // Documents
   documents?: IRequestDocument[];
 }
@@ -344,8 +350,8 @@ export interface IRequestListItem {
   Audience?: string[];
   USFunds?: string[];
   UCITS?: string[];
-  SeparateAccountStrategies?: string[];
-  SeparateAccountStrategiesIncludes?: string[];
+  SeparateAcctStrategies?: string[];
+  SeparateAcctStrategiesIncl?: string[];
 
   // Approvals (flattened)
   RequiresCommunicationsApproval: boolean;

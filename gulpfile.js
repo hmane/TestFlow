@@ -42,6 +42,7 @@ build.configureWebpack.mergeConfig({
       '@services': path.resolve(__dirname, 'lib/services'),
       '@extensions': path.resolve(__dirname, 'lib/extensions'),
       '@sp': path.resolve(__dirname, 'lib/sp'),
+      '@utils': path.resolve(__dirname, 'lib/utils'),
     };
 
     // Enhanced module resolution
@@ -64,6 +65,19 @@ build.configureWebpack.mergeConfig({
         /node_modules\/@pnp/,
         /node_modules\/spfx-toolkit\/lib\/utilities\/context\/pnpImports/
       ],
+      sideEffects: false,
+    });
+
+    // DevExtreme optimization: use individual component imports for tree-shaking
+    // This rule helps webpack understand that DevExtreme React component modules are side-effect free
+    generatedConfiguration.module.rules.push({
+      test: /node_modules[\\/]devextreme-react[\\/].*.js$/,
+      sideEffects: false,
+    });
+
+    // DevExtreme core: only keep what's imported
+    generatedConfiguration.module.rules.push({
+      test: /node_modules[\\/]devextreme[\\/](?!dist[\\/]css).*.js$/,
       sideEffects: false,
     });
 

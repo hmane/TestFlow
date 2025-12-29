@@ -1,17 +1,23 @@
 /**
  * RequestDocuments Component
  *
- * Displays the attachments section for a legal request
- * - Uses DocumentUpload component in Attachment mode (Review/Supplemental)
- * - Smart collapse based on status and role
- * - Read-only logic based on workflow state
- * - Enhanced header showing document counts when collapsed
+ * Displays the attachments section for a legal request.
+ * Uses spfx-toolkit Card with Header/Content for consistent styling.
+ *
+ * Features:
+ * - Collapsible card with document count in header
+ * - Uses DocumentUpload component for file management
+ * - Read-only logic based on workflow state and user permissions
+ * - Placed directly above action buttons in the layout
  */
 
-import { Icon, IconButton, Separator, Stack, Text } from '@fluentui/react';
+import { Icon } from '@fluentui/react/lib/Icon';
+import { Stack } from '@fluentui/react/lib/Stack';
+import { Text } from '@fluentui/react/lib/Text';
 import * as React from 'react';
-import { SPContext } from 'spfx-toolkit';
-import { Card } from 'spfx-toolkit/lib/components/Card';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
+import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
+import { useFormContext } from 'spfx-toolkit/lib/components/spForm/context';
 
 import { Lists } from '@sp/Lists';
 
@@ -19,20 +25,23 @@ import { DocumentUpload } from '../../../../components/DocumentUpload';
 import { useRequestFormContext } from '../../../../contexts/RequestFormContext';
 import { usePermissions } from '../../../../hooks/usePermissions';
 import { useDocumentsStore } from '../../../../stores/documentsStore';
+import { useRequestStore } from '../../../../stores/requestStore';
 import {
   ComplianceReviewStatus,
   LegalReviewStatus,
   RequestStatus,
 } from '../../../../types/workflowTypes';
+import './RequestDocuments.scss';
 
 /**
  * RequestDocuments Component Props
  */
 export interface IRequestDocumentsProps {
   itemId?: number;
-  defaultCollapsed?: boolean;
   siteUrl?: string;
   documentLibraryTitle?: string;
+  /** Whether card is expanded by default */
+  defaultExpanded?: boolean;
 }
 
 /**
@@ -40,57 +49,89 @@ export interface IRequestDocumentsProps {
  */
 export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
   itemId,
-  defaultCollapsed,
   siteUrl,
   documentLibraryTitle = Lists.RequestDocuments.Title,
+  defaultExpanded = true,
 }) => {
   const { status } = useRequestFormContext();
-  const { isSubmitter, isAttorney, isComplianceUser, isAdmin } = usePermissions();
+  const { isSubmitter, isLegalAdmin, isAttorney, isComplianceUser, isAdmin } = usePermissions();
+  const { currentRequest } = useRequestStore();
+
+  // Check if current user is the owner (creator/submitter of this specific request)
+  const isOwner = React.useMemo((): boolean => {
+    if (!currentRequest) return false;
+    const currentUserId = SPContext.currentUser?.id?.toString() ?? '';
+    return (
+      currentRequest.submittedBy?.id === currentUserId ||
+      currentRequest.author?.id === currentUserId
+    );
+  }, [currentRequest]);
 
   // Get documents from store
-  const { documents, getPendingCounts } = useDocumentsStore();
-  // State for collapsible section
-  const [isCollapsed, setIsCollapsed] = React.useState(defaultCollapsed || false);
+  const { documents, stagedFiles } = useDocumentsStore();
 
-  // Get Legal and Compliance review statuses from form context
-  // TODO: Add these to RequestFormContext or read from currentRequest
+  // Get form context for error state - may be undefined in view mode
+  const formContext = useFormContext();
+
+  // Check if there's an attachments validation error
+  const hasAttachmentsError = React.useMemo(() => {
+    if (!formContext?.control) {
+      return false;
+    }
+    return false;
+  }, [formContext?.control]);
+
+  // Get Legal and Compliance review statuses
   const legalReviewStatus: LegalReviewStatus | undefined = React.useMemo(() => {
-    // This will come from form context once integrated
     return undefined;
   }, []);
 
   const complianceReviewStatus: ComplianceReviewStatus | undefined = React.useMemo(() => {
-    // This will come from form context once integrated
     return undefined;
   }, []);
 
   /**
    * Determine if attachments should be read-only
+   *
+   * Permissions for attachments:
+   * - Admin: can edit anytime (except Completed/Cancelled)
+   * - Legal Admin, Attorney, Compliance: can add/update anytime before Closeout
+   * - Owner (creator/submitter): can edit in Draft or when waiting on submitter
    */
   const isReadOnly = React.useMemo(() => {
-    // Admins can always edit
+    // Completed and Cancelled are always read-only for everyone
+    if (status === RequestStatus.Completed || status === RequestStatus.Cancelled) {
+      return true;
+    }
+
+    // Admin can always edit (except Completed/Cancelled above)
     if (isAdmin) {
       return false;
     }
 
-    // Draft mode: Always editable for everyone (new or saved drafts)
+    // Draft is editable by owner (creator) or anyone with general access
     if (!status || status === RequestStatus.Draft) {
+      // Owner can always edit their own draft
+      if (isOwner) {
+        return false;
+      }
+      // Others with submitter role can also edit drafts they have access to
       return false;
     }
 
-    // Attorneys can edit during legal review
-    if (isAttorney && status === RequestStatus.InReview) {
+    // Closeout and beyond - only admin can edit (handled above)
+    if (status === RequestStatus.Closeout) {
+      return true;
+    }
+
+    // Legal Admin, Attorney, Compliance can edit anytime before Closeout
+    // (Legal Intake, Assign Attorney, In Review statuses)
+    if (isLegalAdmin || isAttorney || isComplianceUser) {
       return false;
     }
 
-    // Compliance users can edit during compliance review
-    if (isComplianceUser && status === RequestStatus.InReview) {
-      return false;
-    }
-
-    // Submitters can edit when waiting on them
-    if (isSubmitter) {
-      // Editable when either Legal or Compliance is waiting on submitter
+    // Owner (creator/submitter of this request) can edit when waiting on submitter
+    if (isOwner || isSubmitter) {
       if (
         legalReviewStatus === LegalReviewStatus.WaitingOnSubmitter ||
         complianceReviewStatus === ComplianceReviewStatus.WaitingOnSubmitter
@@ -99,70 +140,31 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
       }
     }
 
-    // Default: read-only
     return true;
   }, [
     isAdmin,
+    isLegalAdmin,
     isAttorney,
     isComplianceUser,
     isSubmitter,
+    isOwner,
     status,
     legalReviewStatus,
     complianceReviewStatus,
   ]);
 
-  // Update collapsed state when defaultCollapsed prop changes
-  React.useEffect(() => {
-    if (defaultCollapsed !== undefined) {
-      setIsCollapsed(defaultCollapsed);
-    } else if (status === RequestStatus.Completed || status === RequestStatus.Cancelled) {
-      setIsCollapsed(true);
-    } else {
-      setIsCollapsed(false);
-    }
-  }, [defaultCollapsed, status]);
-
   /**
-   * Calculate document counts for collapsed header
+   * Calculate total document count (existing + staged)
    */
-  const documentCounts = React.useMemo(() => {
-    const reviewCounts = getPendingCounts('Review' as any);
-    const supplementalCounts = getPendingCounts('Supplemental' as any);
+  const totalDocumentCount = React.useMemo(() => {
+    const reviewExisting = documents.get('Review' as any)?.length || 0;
+    const supplementalExisting = documents.get('Supplemental' as any)?.length || 0;
 
-    const reviewTotal = reviewCounts.newCount + (documents.get('Review' as any)?.length || 0);
-    const supplementalTotal =
-      supplementalCounts.newCount + (documents.get('Supplemental' as any)?.length || 0);
-    const total = reviewTotal + supplementalTotal;
+    const reviewStaged = stagedFiles.filter(f => f.documentType === 'Review').length;
+    const supplementalStaged = stagedFiles.filter(f => f.documentType === 'Supplemental').length;
 
-    return {
-      total,
-      review: reviewTotal,
-      supplemental: supplementalTotal,
-    };
-  }, [documents, getPendingCounts]);
-
-  /**
-   * Build collapsed header summary
-   */
-  const collapsedSummary = React.useMemo(() => {
-    if (documentCounts.total === 0) {
-      return 'No documents uploaded';
-    }
-
-    const parts: string[] = [];
-
-    if (documentCounts.review > 0) {
-      parts.push(`${documentCounts.review} Review`);
-    }
-
-    if (documentCounts.supplemental > 0) {
-      parts.push(`${documentCounts.supplemental} Supplemental`);
-    }
-
-    return `${documentCounts.total} document${documentCounts.total === 1 ? '' : 's'} • ${parts.join(
-      ', '
-    )}`;
-  }, [documentCounts]);
+    return reviewExisting + supplementalExisting + reviewStaged + supplementalStaged;
+  }, [documents, stagedFiles]);
 
   /**
    * Handle files change
@@ -182,98 +184,72 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
   );
 
   return (
-    <Stack
-      tokens={{ childrenGap: 24 }}
-      styles={{
-        root: {
-          padding: '24px',
-          width: '100%',
-        },
-      }}
+    <Card
+      id='attachments-card'
+      className='request-documents-card'
+      allowExpand={true}
+      defaultExpanded={defaultExpanded}
     >
-      <Card id='attachments-card' className='attachments-card'>
-        <Stack tokens={{ childrenGap: 16 }} styles={{ root: { padding: '24px' } }}>
-          {/* Header */}
-          <Stack
-            horizontal
-            verticalAlign='center'
-            horizontalAlign='space-between'
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            styles={{ root: { cursor: 'pointer' } }}
-          >
-            <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
-              <Icon iconName='Attach' styles={{ root: { fontSize: '20px', color: '#0078d4' } }} />
-              <Stack tokens={{ childrenGap: 4 }}>
-                <Text variant='xLarge' styles={{ root: { fontWeight: 600 } }}>
-                  Attachments
-                </Text>
-                {isCollapsed && (
-                  <Text variant='small' styles={{ root: { color: '#605e5c' } }}>
-                    {collapsedSummary}
-                  </Text>
-                )}
-              </Stack>
-            </Stack>
-            <IconButton
-              iconProps={{ iconName: isCollapsed ? 'ChevronDown' : 'ChevronUp' }}
-              title={isCollapsed ? 'Expand' : 'Collapse'}
-            />
-          </Stack>
-
-          {!isCollapsed && (
-            <>
-              <Separator />
-              <DocumentUpload
-                itemId={itemId}
-                isReadOnly={isReadOnly}
-                required={false}
-                siteUrl={siteUrl || SPContext.webAbsoluteUrl}
-                documentLibraryTitle={documentLibraryTitle}
-                maxFiles={50}
-                maxFileSize={250 * 1024 * 1024} // 250MB
-                allowedExtensions={[
-                  'pdf',
-                  'doc',
-                  'docx',
-                  'xls',
-                  'xlsx',
-                  'ppt',
-                  'pptx',
-                  'jpg',
-                  'jpeg',
-                  'png',
-                  'gif',
-                  'bmp',
-                  'txt',
-                  'rtf',
-                  'csv',
-                  'zip',
-                  'msg',
-                  'eml',
-                ]}
-                onFilesChange={handleFilesChange}
-                onError={handleError}
-              />
-
-              {/* Read-only indicator (only show when truly read-only and not in Draft) */}
-              {isReadOnly && status && status !== RequestStatus.Draft && (
-                <Text
-                  variant='small'
-                  styles={{
-                    root: {
-                      color: '#605e5c',
-                      fontStyle: 'italic',
-                      marginTop: '8px',
-                    },
-                  }}
-                >
-                  Documents are currently read-only
-                </Text>
-              )}
-            </>
+      <Header size='regular'>
+        <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
+          <Icon iconName='Attach' styles={{ root: { fontSize: '20px', color: '#0078d4' } }} />
+          <Text variant='large' styles={{ root: { fontWeight: 600 } }}>
+            Attachments
+          </Text>
+          {totalDocumentCount > 0 && (
+            <span className='document-count-badge'>
+              {totalDocumentCount}
+            </span>
+          )}
+          {totalDocumentCount === 0 && (
+            <Text variant='small' styles={{ root: { color: '#a19f9d', fontStyle: 'italic' } }}>
+              No documents attached
+            </Text>
+          )}
+          {isReadOnly && status && status !== RequestStatus.Draft && (
+            <Text variant='small' styles={{ root: { color: '#605e5c', fontStyle: 'italic', marginLeft: '8px' } }}>
+              (Read-only)
+            </Text>
           )}
         </Stack>
-      </Card>
-    </Stack>
+      </Header>
+
+      <Content padding='comfortable'>
+        <DocumentUpload
+          itemId={itemId}
+          isReadOnly={isReadOnly}
+          required={false}
+          hasError={hasAttachmentsError}
+          siteUrl={siteUrl || SPContext.webAbsoluteUrl}
+          documentLibraryTitle={documentLibraryTitle}
+          maxFiles={50}
+          maxFileSize={250 * 1024 * 1024}
+          allowedExtensions={[
+            'pdf',
+            'doc',
+            'docx',
+            'xls',
+            'xlsx',
+            'ppt',
+            'pptx',
+            'jpg',
+            'jpeg',
+            'png',
+            'gif',
+            'bmp',
+            'txt',
+            'rtf',
+            'csv',
+            'zip',
+            'msg',
+            'eml',
+          ]}
+          onFilesChange={handleFilesChange}
+          onError={handleError}
+        />
+      </Content>
+    </Card>
   );
 };
+
+export default RequestDocuments;

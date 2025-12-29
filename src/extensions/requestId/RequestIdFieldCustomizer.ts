@@ -7,7 +7,7 @@ import {
   type IFieldCustomizerCellEventParameters
 } from '@microsoft/sp-listview-extensibility';
 
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
 
 import * as strings from 'RequestIdFieldCustomizerStrings';
@@ -16,6 +16,7 @@ import type { IRequestListItemData } from './types';
 import type { IPrincipal } from '../../types';
 import { RequestStatus, ReviewAudience } from '../../types/workflowTypes';
 import { RequestType } from '../../types/requestTypes';
+import { Lists } from '@sp/Lists';
 
 /**
  * If your field customizer uses the ClientSideComponentProperties JSON input,
@@ -50,8 +51,9 @@ export default class RequestIdFieldCustomizer
       const listItem = event.listItem;
       const fieldValue = event.fieldValue;
 
-      // Get list title from properties or context
-      const listTitle = this.properties.listTitle || this.context.pageContext.list?.title || 'Requests';
+      // Get list ID from context
+      const listGuid = this.context.pageContext.list?.id;
+      const listId = listGuid ? `{${listGuid.toString()}}` : '';
 
       // Extract list item data
       const itemData: IRequestListItemData = {
@@ -69,23 +71,19 @@ export default class RequestIdFieldCustomizer
         modifiedBy: this.extractPrincipal(listItem, 'Editor'),
       };
 
-      // Build edit form URL
+      // Build edit form URL using web URL and Requests list URL
       const webUrl = this.context.pageContext.web.absoluteUrl;
       const itemId = itemData.id;
 
-      // SharePoint OOB edit form URL
-      const editFormUrl = `${webUrl}/Lists/${listTitle}/EditForm.aspx?ID=${itemId}`;
-
-      // Alternative: If using custom form, adjust URL accordingly
-      // const editFormUrl = `${webUrl}/SitePages/EditRequest.aspx?itemId=${itemId}`;
+      // SharePoint edit form URL using the Requests list
+      const editFormUrl = `${webUrl}${Lists.Requests.Url}/EditForm.aspx?ID=${itemId}`;
 
       // Render RequestIdHoverCard component
       const hoverCard = React.createElement(RequestIdHoverCard, {
         requestId: itemData.requestId,
         itemData,
         editFormUrl,
-        webUrl,
-        listTitle,
+        listId,
       });
 
       ReactDOM.render(hoverCard, event.domElement);

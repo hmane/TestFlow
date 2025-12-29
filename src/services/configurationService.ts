@@ -7,9 +7,9 @@
  * @module services/configurationService
  */
 
-import { SPContext } from 'spfx-toolkit';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
-import { IWorkingHoursConfig, parseWorkingHoursConfig, DEFAULT_WORKING_HOURS } from '../utils/businessHoursCalculator';
+import { IWorkingHoursConfig, parseWorkingHoursConfig, DEFAULT_WORKING_HOURS } from '@utils/businessHoursCalculator';
 
 /**
  * Configuration cache entry
