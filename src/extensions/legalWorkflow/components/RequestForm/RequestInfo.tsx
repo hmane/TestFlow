@@ -96,6 +96,18 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
     reset,
   } = formMethods;
 
+  // Ref to track debug timeout for cleanup
+  const debugTimeoutRef = React.useRef<number | undefined>(undefined);
+
+  // Cleanup debug timeout on unmount
+  React.useEffect(() => {
+    return () => {
+      if (debugTimeoutRef.current) {
+        window.clearTimeout(debugTimeoutRef.current);
+      }
+    };
+  }, []);
+
   React.useEffect(() => {
     if (!currentRequest) {
       return;
@@ -118,15 +130,22 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
 
     if (process.env.NODE_ENV !== 'production') {
       // Verify the form was reset by reading values back
-      setTimeout(() => {
+      // Clear any pending debug timeout
+      if (debugTimeoutRef.current) {
+        window.clearTimeout(debugTimeoutRef.current);
+      }
+      debugTimeoutRef.current = window.setTimeout(() => {
         const currentFormValues = watch();
         SPContext.logger.info('RequestInfo: Form values after reset', {
           approvals: currentFormValues.approvals,
           requiresCommunicationsApproval: currentFormValues.requiresCommunicationsApproval,
         });
+        debugTimeoutRef.current = undefined;
       }, 100);
     }
-  }, [currentRequest, reset, watch]);
+    // Note: 'watch' intentionally excluded from deps - it's stable but returns new objects
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentRequest, reset]);
 
   // Watch all form values for revalidation on change
   const watchedValues = watch();

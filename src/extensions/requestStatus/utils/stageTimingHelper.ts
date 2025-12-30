@@ -3,13 +3,14 @@
  *
  * Calculates timing information for the current workflow stage:
  * - Date entered current stage
- * - Days in current stage
+ * - Days in current stage (business days only)
  * - Days remaining until target date
  * - Overdue status
  */
 
 // App imports using path aliases
 import { RequestStatus } from '@appTypes/workflowTypes';
+import { calculateBusinessHours } from '@utils/businessHoursCalculator';
 import type { IStatusListItemData, IStageTimingInfo } from '../types';
 
 /**
@@ -65,7 +66,7 @@ function getStageStartDate(status: RequestStatus, itemData: IStatusListItemData)
     case RequestStatus.InReview:
       return itemData.submittedForReviewOn || itemData.legalReviewAssignedOn;
 
-    case RequestStatus.Closeout:
+    case RequestStatus.Closeout: {
       // Closeout starts when reviews are completed
       // Use the later of legal or compliance completion dates
       const legalCompleted = itemData.legalReviewCompletedOn;
@@ -75,6 +76,7 @@ function getStageStartDate(status: RequestStatus, itemData: IStatusListItemData)
         return legalCompleted > complianceCompleted ? legalCompleted : complianceCompleted;
       }
       return legalCompleted || complianceCompleted;
+    }
 
     case RequestStatus.Completed:
       return itemData.closeoutOn;
@@ -91,22 +93,20 @@ function getStageStartDate(status: RequestStatus, itemData: IStatusListItemData)
 }
 
 /**
- * Calculate days since a given date
+ * Calculate business days since a given date
+ * Uses 8-hour business days (8 AM - 5 PM, Mon-Fri PST)
  * @param date - Start date
- * @returns Number of days since the date
+ * @returns Number of business days since the date
  */
 export function calculateDaysSince(date: Date | string | number): number {
   const now = new Date();
   const start = typeof date === 'string' || typeof date === 'number' ? new Date(date) : date;
 
-  // Normalize times to start of day for accurate day count
-  now.setHours(0, 0, 0, 0);
-  start.setHours(0, 0, 0, 0);
+  // Calculate business hours and convert to business days (8-hour day)
+  const businessHours = calculateBusinessHours(start, now);
+  const businessDays = Math.floor(businessHours / 8);
 
-  const diffTime = now.getTime() - start.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-  return Math.max(0, diffDays);
+  return Math.max(0, businessDays);
 }
 
 /**

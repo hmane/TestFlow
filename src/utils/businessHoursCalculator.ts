@@ -99,8 +99,13 @@ export function calculateBusinessHours(
   let currentDate = convertToPST(startDate);
   const endDatePST = convertToPST(endDate);
 
+  // Safety limit: Maximum 365 days to prevent infinite loops
+  const MAX_ITERATIONS = 365;
+  let iterations = 0;
+
   // Iterate through each day
-  while (currentDate < endDatePST) {
+  while (currentDate < endDatePST && iterations < MAX_ITERATIONS) {
+    iterations++;
     // Get day of week (JavaScript: 0=Sun, 1=Mon, ..., 6=Sat)
     // Convert to ISO (1=Mon, 2=Tue, ..., 7=Sun) for comparison
     const dayOfWeek = currentDate.getDay();

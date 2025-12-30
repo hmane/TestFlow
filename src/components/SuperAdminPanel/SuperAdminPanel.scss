@@ -403,6 +403,29 @@
       color: var(--sap-danger-primary);
     }
   }
+
+  &--highlight {
+    background: var(--sap-accent-light);
+    border-color: var(--sap-accent-tertiary);
+    border-width: 2px;
+
+    &:hover {
+      border-color: var(--sap-accent-primary);
+      box-shadow: var(--sap-shadow-lg);
+    }
+
+    .super-admin-panel__section-icon {
+      color: var(--sap-accent-primary);
+    }
+
+    .super-admin-panel__section-header h3 {
+      color: var(--sap-accent-primary);
+    }
+
+    .super-admin-panel__section-desc {
+      color: var(--sap-text-primary);
+    }
+  }
 }
 
 .super-admin-panel__section-header {

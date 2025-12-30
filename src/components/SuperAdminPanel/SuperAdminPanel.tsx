@@ -391,8 +391,8 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
   const isComplianceRequired = currentReviewAudience === ReviewAudience.Compliance || currentReviewAudience === ReviewAudience.Both;
 
   // Determine which sections to show based on current status
-  // Status override is always available for non-terminal statuses
-  const showStatusOverride = !isTerminalStatus;
+  // Status override is always available (including terminal statuses for reopening)
+  const showStatusOverride = true;
   // Attorney override available during intake, assignment, and review phases
   const showAttorneyOverride = [
     RequestStatus.LegalIntake,
@@ -501,15 +501,17 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
           {/* Override Sections */}
           <div className="super-admin-panel__sections">
 
-            {/* Status Override - available for non-terminal statuses */}
+            {/* Status Override - available for all statuses including completed/cancelled */}
             {showStatusOverride && (
-              <div className="super-admin-panel__section">
+              <div className={`super-admin-panel__section ${isTerminalStatus ? 'super-admin-panel__section--highlight' : ''}`}>
                 <div className="super-admin-panel__section-header">
                   <Icon iconName="StatusCircleSync" className="super-admin-panel__section-icon" />
-                  <h3>Override Status</h3>
+                  <h3>{isTerminalStatus ? 'Change Request Status' : 'Override Status'}</h3>
                 </div>
                 <p className="super-admin-panel__section-desc">
-                  Force the request to any workflow status, bypassing normal transition rules.
+                  {isTerminalStatus
+                    ? `This request is ${currentStatus.toLowerCase()}. Select a new status to reopen or move it to a different workflow stage.`
+                    : 'Force the request to any workflow status, bypassing normal transition rules.'}
                 </p>
                 <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="end">
                   <Dropdown
@@ -702,30 +704,6 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
               </div>
             )}
 
-            {/* Reopen Request - only for terminal statuses */}
-            {isTerminalStatus && (
-              <div className="super-admin-panel__section super-admin-panel__section--danger">
-                <div className="super-admin-panel__section-header">
-                  <Icon iconName="Refresh" className="super-admin-panel__section-icon" />
-                  <h3>Reopen Request</h3>
-                </div>
-                <p className="super-admin-panel__section-desc">
-                  Reopen this {currentStatus.toLowerCase()} request. This will set the status back to the previous workflow stage.
-                </p>
-                <PrimaryButton
-                  text={`Reopen ${currentStatus} Request`}
-                  iconProps={{ iconName: 'Undo' }}
-                  onClick={() => showConfirmation(
-                    'reopenRequest',
-                    'Confirm Reopen Request',
-                    `Reopen this ${currentStatus.toLowerCase()} request? It will be restored to an active workflow state.`,
-                    {}
-                  )}
-                  disabled={isProcessing}
-                  className="super-admin-panel__action-btn super-admin-panel__action-btn--danger"
-                />
-              </div>
-            )}
           </div>
 
           {/* Processing Overlay */}

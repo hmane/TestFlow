@@ -84,6 +84,7 @@ class RequestCache {
   private cache: Map<string, ICachedRequest<unknown>> = new Map();
   private options: Required<IRequestCacheOptions>;
   private cleanupInterval: number | null = null;
+  private static instance: RequestCache | null = null;
 
   constructor(options: IRequestCacheOptions = {}) {
     this.options = {
@@ -93,6 +94,26 @@ class RequestCache {
 
     // Start cleanup interval
     this.startCleanup();
+  }
+
+  /**
+   * Get singleton instance to prevent multiple instances during hot-reload
+   */
+  static getInstance(options: IRequestCacheOptions = {}): RequestCache {
+    if (!RequestCache.instance) {
+      RequestCache.instance = new RequestCache(options);
+    }
+    return RequestCache.instance;
+  }
+
+  /**
+   * Reset singleton instance (for testing purposes)
+   */
+  static resetInstance(): void {
+    if (RequestCache.instance) {
+      RequestCache.instance.dispose();
+      RequestCache.instance = null;
+    }
   }
 
   /**
@@ -288,8 +309,9 @@ class RequestCache {
 /**
  * Global request cache instance
  * Use this for all SharePoint/Graph API calls
+ * Uses singleton pattern to prevent multiple intervals during hot-reload
  */
-export const requestCache = new RequestCache({
+export const requestCache = RequestCache.getInstance({
   ttlMs: 5000, // 5 second TTL for in-flight requests
   enableLogging: true,
 });

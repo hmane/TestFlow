@@ -234,6 +234,29 @@
       user-select: text;
       cursor: text;
     }
+
+    // Disabled state - hide input/add comment controls, show read-only view
+    &--disabled {
+      // Hide the comment input area (Quill editor and submit button)
+      .ql-container,
+      .ql-toolbar,
+      .ql-editor,
+      [class*='commentInput'],
+      [class*='CommentInput'],
+      [class*='addComment'],
+      [class*='AddComment'],
+      [class*='submitButton'],
+      [class*='SubmitButton'],
+      textarea,
+      button[type='submit'] {
+        display: none !important;
+      }
+
+      // Style the comments as read-only
+      .ms-ListItem {
+        opacity: 0.9;
+      }
+    }
   }
 
   // Placeholder for unknown states

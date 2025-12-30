@@ -25,10 +25,10 @@ import './PriorSubmissionPicker.scss';
 
 export interface IPriorSubmission {
   id: number;
-  requestId: string;
-  title: string;
+  requestId: string; // Title field (Request ID like CRR-25-1)
+  requestTitle: string; // RequestTitle field
   purpose?: string;
-  submissionItemTitle?: string;
+  submissionItem?: string; // Text field, not lookup
   created: string;
   createdBy?: string;
   department?: string;
@@ -97,15 +97,18 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
       setIsLoading(true);
 
       try {
-        // Build filter for search
-        let filter = `(substringof('${searchText}',Title) or ` +
-          `substringof('${searchText}',RequestID) or ` +
-          `substringof('${searchText}',Purpose) or ` +
-          `substringof('${searchText}',SubmissionItem/Title))`;
+        // Escape single quotes in search text for OData filter
+        const escapedSearch = searchText.replace(/'/g, "''");
+
+        // Build filter for search on Text fields only (Note fields like Purpose cannot be filtered)
+        // Title = Request ID (CRR-25-1), RequestTitle = actual title, SubmissionItem = text field
+        let filter = `(substringof('${escapedSearch}',Title) or ` +
+          `substringof('${escapedSearch}',RequestTitle) or ` +
+          `substringof('${escapedSearch}',SubmissionItem))`;
 
         // Add department filter if available
         if (currentUserDepartment) {
-          filter += ` and Department eq '${currentUserDepartment}'`;
+          filter += ` and Department eq '${currentUserDepartment.replace(/'/g, "''")}'`;
         }
 
         // Only get completed requests
@@ -115,25 +118,25 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
           .getByTitle('Requests')
           .items.select(
             'Id',
-            'Title',
-            'RequestID',
+            'Title', // Request ID (CRR-25-1)
+            'RequestTitle', // Actual title
             'Purpose',
-            'SubmissionItem/Title',
+            'SubmissionItem', // Text field
             'Created',
             'Author/Title',
             'Department'
           )
-          .expand('SubmissionItem', 'Author')
+          .expand('Author')
           .filter(filter)
           .orderBy('Created', false)
           .top(20)();
 
         const submissions: IPriorSubmission[] = items.map((item: any) => ({
           id: item.Id,
-          requestId: item.RequestID || item.Title,
-          title: item.Title,
+          requestId: item.Title, // Title field IS the Request ID
+          requestTitle: item.RequestTitle || '',
           purpose: item.Purpose,
-          submissionItemTitle: item.SubmissionItem?.Title,
+          submissionItem: item.SubmissionItem,
           created: item.Created,
           createdBy: item.Author?.Title,
           department: item.Department,
@@ -217,24 +220,24 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
           .getByTitle('Requests')
           .items.select(
             'Id',
-            'Title',
-            'RequestID',
+            'Title', // Request ID
+            'RequestTitle',
             'Purpose',
-            'SubmissionItem/Title',
+            'SubmissionItem', // Text field
             'Created',
             'Author/Title',
             'Department'
           )
-          .expand('SubmissionItem', 'Author')
+          .expand('Author')
           .filter(filter)
           .orderBy('Created', false)();
 
         const fetchedSubmissions: IPriorSubmission[] = items.map((item: any) => ({
           id: item.Id,
-          requestId: item.RequestID || item.Title,
-          title: item.Title,
+          requestId: item.Title, // Title IS the Request ID
+          requestTitle: item.RequestTitle || '',
           purpose: item.Purpose,
-          submissionItemTitle: item.SubmissionItem?.Title,
+          submissionItem: item.SubmissionItem,
           created: item.Created,
           createdBy: item.Author?.Title,
           department: item.Department,
@@ -260,23 +263,25 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
   }, [value]);
 
   /**
-   * Handle selection
+   * Handle selection from DevExtreme onItemClick event
    */
   const handleSelect = React.useCallback(
-    (selectedItem: any): void => {
-      if (!selectedItem) return;
-
-      const submission = selectedItem as IPriorSubmission;
+    (e: { itemData?: IPriorSubmission }): void => {
+      // DevExtreme passes event object with itemData property
+      const submission = e?.itemData;
+      if (!submission) return;
 
       // Check if already selected
       const alreadySelected = value.some(v => v.id === submission.id);
       if (alreadySelected) {
         SPContext.logger.info('Request already selected', { id: submission.id });
+        setSearchValue('');
+        setDataSource([]);
         return;
       }
 
-      // Add to selected
-      const newValue = [...value, { id: submission.id, title: submission.title }];
+      // Add to selected - store requestId (Title field) for display
+      const newValue = [...value, { id: submission.id, title: submission.requestId }];
       onChange(newValue);
 
       // Clear search
@@ -321,32 +326,74 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
 
   /**
    * Custom item template for dropdown
+   * Using inline styles because DevExtreme renders the dropdown in a portal
+   * outside our component's DOM, so scoped CSS classes won't apply
    */
   const renderItem = (item: IPriorSubmission): JSX.Element => {
     return (
-      <div className="prior-submission-item">
-        <Stack tokens={{ childrenGap: 4 }}>
-          <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
-            <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
-              <Icon iconName="Document" styles={{ root: { color: '#0078d4', fontSize: 16 } }} />
-              <Text styles={{ root: { fontWeight: 600, color: '#0078d4' } }}>
-                {item.requestId}
-              </Text>
-            </Stack>
-            <Text variant="small" styles={{ root: { color: '#605e5c' } }}>
-              {formatDate(item.created)}
-            </Text>
-          </Stack>
-          <Text styles={{ root: { fontWeight: 500 } }}>{item.title}</Text>
-          {item.submissionItemTitle && (
-            <Stack horizontal tokens={{ childrenGap: 4 }} verticalAlign="center">
-              <Icon iconName="Tag" styles={{ root: { fontSize: 12, color: '#605e5c' } }} />
-              <Text variant="small" styles={{ root: { color: '#605e5c' } }}>
-                {item.submissionItemTitle}
-              </Text>
-            </Stack>
-          )}
-        </Stack>
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '4px',
+          padding: '10px 12px',
+          cursor: 'pointer',
+          backgroundColor: '#ffffff',
+          borderBottom: '1px solid #f3f2f1',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '8px',
+          }}
+        >
+          <span
+            style={{
+              fontWeight: 600,
+              color: '#0078d4',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            <Icon iconName="DocumentSet" styles={{ root: { fontSize: 14, color: '#0078d4' } }} />
+            {item.requestId}
+          </span>
+          <span style={{ fontSize: '11px', color: '#a19f9d', flexShrink: 0 }}>
+            {formatDate(item.created)}
+          </span>
+        </div>
+        {item.requestTitle && (
+          <div
+            style={{
+              fontSize: '13px',
+              color: '#323130',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {item.requestTitle}
+          </div>
+        )}
+        {item.submissionItem && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '11px',
+              color: '#605e5c',
+            }}
+          >
+            <Icon iconName="Tag" styles={{ root: { fontSize: 11, color: '#605e5c' } }} />
+            <span>{item.submissionItem}</span>
+          </div>
+        )}
       </div>
     );
   };
@@ -359,24 +406,31 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
           value={searchValue}
           onValueChanged={(e: any) => setSearchValue(e.value || '')}
           dataSource={dataSource}
-          displayExpr="title"
+          valueExpr="id"
+          displayExpr="requestTitle"
           placeholder={placeholder}
           disabled={disabled}
-          searchEnabled={true}
-          minSearchLength={2}
-          searchTimeout={300}
+          searchEnabled={false}
+          minSearchLength={0}
+          deferRendering={false}
           showClearButton={true}
           onItemClick={handleSelect}
           onFocusOut={handleFocusOut}
           itemRender={renderItem}
+          opened={dataSource.length > 0 && searchValue.length >= 2}
           noDataText={
             isLoading
-              ? ''  // Empty string when loading (we'll show spinner below)
+              ? 'Searching...'
               : searchValue.length < 2
               ? 'Type at least 2 characters to search'
               : 'No prior submissions found'
           }
           stylingMode="outlined"
+          dropDownOptions={{
+            maxHeight: 350,
+            width: 'auto',
+            minWidth: 400,
+          }}
         />
 
         {/* Loading Spinner */}
@@ -455,16 +509,16 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
                           },
                         }}
                       >
-                        {request.title}
+                        {request.requestTitle}
                       </Text>
-                      {request.submissionItemTitle && (
+                      {request.submissionItem && (
                         <Stack horizontal tokens={{ childrenGap: 4 }} verticalAlign="center">
                           <Icon
                             iconName="Tag"
                             styles={{ root: { fontSize: 12, color: '#605e5c' } }}
                           />
                           <Text variant="small" styles={{ root: { color: '#605e5c' } }}>
-                            {request.submissionItemTitle}
+                            {request.submissionItem}
                           </Text>
                         </Stack>
                       )}

@@ -2,10 +2,16 @@ import * as React from 'react';
 import styles from './ReportDashboard.module.scss';
 import type { IReportDashboardProps, IUserGroups, ISearchConfig, ISearchResult, ProgressBarColor } from './IReportDashboardProps';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
-import { CommandBarButton } from '@fluentui/react/lib/Button';
+import { CommandBarButton, PrimaryButton } from '@fluentui/react/lib/Button';
 import { Icon } from '@fluentui/react/lib/Icon';
 import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
 import { getUserGroupMembership } from '@services/userGroupsService';
+import {
+  extractRequestIdFromPath,
+  buildDocumentSearchCAML,
+  extractRequestIdsFromDocuments,
+  type IDocumentRow,
+} from '../utils/searchHelpers';
 
 // Constants
 const RECENT_SEARCHES_KEY = 'lrs_recent_searches';
@@ -291,7 +297,34 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
   }, [showResults]);
 
   /**
+   * Search documents by filename and title, return associated request IDs
+   * Uses recursive query to search all subfolders
+   */
+  const searchDocuments = async (query: string): Promise<string[]> => {
+    try {
+      // Build CAML query using utility function
+      const camlQuery = buildDocumentSearchCAML(query);
+
+      // Use renderListDataAsStream to get FileRef with CAML query
+      const response = await SPContext.sp.web.lists
+        .getByTitle('RequestDocuments')
+        .renderListDataAsStream({
+          ViewXml: camlQuery,
+          RenderOptions: 2, // ListData only
+        });
+
+      // Extract unique request IDs from documents using utility function
+      const rows = (response.Row || []) as IDocumentRow[];
+      return extractRequestIdsFromDocuments(rows, extractRequestIdFromPath);
+    } catch (error: unknown) {
+      SPContext.logger.warn('Document search failed', error);
+      return [];
+    }
+  };
+
+  /**
    * Perform search with debounce
+   * Searches both request fields and document names
    */
   const performSearch = React.useCallback(async (query: string): Promise<void> => {
     if (!query.trim()) {
@@ -304,7 +337,20 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
     setShowResults(true);
 
     try {
-      const filter = `substringof('${query}', Title) or substringof('${query}', RequestTitle)`;
+      // Search documents in parallel with request search
+      const documentRequestIdsPromise = searchDocuments(query);
+
+      // Build filter for request search
+      let filter = `substringof('${query}', Title) or substringof('${query}', RequestTitle)`;
+
+      // Get request IDs from document search
+      const documentRequestIds = await documentRequestIdsPromise;
+
+      // Add document request IDs to filter if found
+      if (documentRequestIds.length > 0) {
+        const docIdFilters = documentRequestIds.map(id => `Title eq '${id}'`).join(' or ');
+        filter = `(${filter}) or (${docIdFilters})`;
+      }
 
       const items = await SPContext.sp.web.lists
         .getByTitle('Requests')
@@ -464,10 +510,9 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
     <div className={`${styles.requestToolbar} ${hasTeamsContext ? styles.teams : ''}`}>
       {/* Left: Navigation Buttons */}
       <div className={styles.toolbarLeft}>
-        <CommandBarButton
+        <PrimaryButton
           iconProps={{ iconName: 'Add' }}
           text="New Request"
-          className={styles.primaryButton}
           onClick={() => navigateTo(DASHBOARD_URLS.NEW_REQUEST)}
         />
 
@@ -518,7 +563,7 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
             ref={searchInputRef}
             type="text"
             className={styles.searchInput}
-            placeholder="Search requests... (Ctrl+K)"
+            placeholder="Search by request ID, title, or document name... (Ctrl+K)"
             value={searchQuery}
             onChange={handleSearchChange}
             onFocus={() => {
@@ -528,7 +573,7 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
                 setShowResults(true);
               }
             }}
-            aria-label="Search requests"
+            aria-label="Search requests by ID, title, or document name"
           />
           {searchQuery && (
             <button

@@ -18,7 +18,6 @@ import * as React from 'react';
 // Fluent UI - tree-shaken imports
 import { DefaultButton, IconButton, PrimaryButton } from '@fluentui/react/lib/Button';
 import { Icon } from '@fluentui/react/lib/Icon';
-import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
 import { TooltipHost } from '@fluentui/react/lib/Tooltip';
@@ -41,13 +40,6 @@ import { RequestSummary } from '../RequestSummary';
 import { RequestTypeSelector } from '../RequestTypeSelector';
 import { WorkflowFormWrapper } from '../WorkflowFormWrapper';
 import './RequestContainer.scss';
-
-// Lazy load ListItemComments to prevent PnP controls CSS from being bundled when not used
-const ListItemComments = React.lazy(() =>
-  import('@pnp/spfx-controls-react/lib/controls/listItemComments').then((module) => ({
-    default: module.ListItemComments,
-  }))
-);
 
 // Lazy load workflow stage forms - these are only loaded when needed
 const LegalIntakeForm = React.lazy(
@@ -232,6 +224,7 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
 
   /**
    * Determine if we should show comments panel
+   * Comments are hidden for Draft status only
    */
   const shouldShowComments = React.useMemo((): boolean => {
     if (!itemId) return false;
@@ -254,6 +247,18 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
   // Ref for comments area to enable auto-scroll on mobile
   const commentsAreaRef = React.useRef<HTMLDivElement>(null);
 
+  // Ref to track and cleanup setTimeout calls to prevent memory leaks
+  const scrollTimeoutRef = React.useRef<number | undefined>(undefined);
+
+  // Cleanup timeout on unmount to prevent memory leaks
+  React.useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        window.clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, []);
+
   /**
    * Handle comments toggle with auto-scroll on mobile
    */
@@ -263,11 +268,16 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
 
       // Auto-scroll to comments on mobile when opening
       if (newState && window.innerWidth <= 1200) {
-        setTimeout(() => {
+        // Clear any pending scroll timeout
+        if (scrollTimeoutRef.current) {
+          window.clearTimeout(scrollTimeoutRef.current);
+        }
+        scrollTimeoutRef.current = window.setTimeout(() => {
           commentsAreaRef.current?.scrollIntoView({
             behavior: 'smooth',
             block: 'start'
           });
+          scrollTimeoutRef.current = undefined;
         }, 100); // Small delay to allow render
       }
 
@@ -280,8 +290,13 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
    */
   const handleEditRequestInfo = React.useCallback((): void => {
     setIsEditingRequestInfo(true);
-    setTimeout(() => {
+    // Clear any pending scroll timeout
+    if (scrollTimeoutRef.current) {
+      window.clearTimeout(scrollTimeoutRef.current);
+    }
+    scrollTimeoutRef.current = window.setTimeout(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      scrollTimeoutRef.current = undefined;
     }, 100);
   }, []);
 
@@ -299,8 +314,13 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
     (requestType: RequestType): void => {
       setIsTypeLocked(true);
       setShowTypeSelector(false);
-      setTimeout(() => {
+      // Clear any pending scroll timeout
+      if (scrollTimeoutRef.current) {
+        window.clearTimeout(scrollTimeoutRef.current);
+      }
+      scrollTimeoutRef.current = window.setTimeout(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        scrollTimeoutRef.current = undefined;
       }, 100);
       if (onRequestTypeSelected) {
         onRequestTypeSelected(requestType);
@@ -423,22 +443,16 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
           </Text>
         </div>
 
-        {/* Warning about special characters */}
-        <div className='request-container__comments-warning'>
-          <Icon iconName='Warning' />
-          <span>Avoid using backslash (\) and double quotes (&quot;) in comments</span>
-        </div>
-
         <div className='request-container__comments-content'>
-          <React.Suspense fallback={<Spinner size={SpinnerSize.small} label='Loading comments...' />}>
-            <ListItemComments
-              listId={listId}
-              itemId={String(itemId)}
-              serviceScope={SPContext.context.context.serviceScope as any}
-              numberCommentsPerPage={10}
-              label='Request Comments'
-            />
-          </React.Suspense>
+          <div style={{ padding: '16px', color: '#605e5c', textAlign: 'center' }}>
+            <Icon iconName='Comment' style={{ fontSize: '24px', marginBottom: '8px', display: 'block' }} />
+            <Text variant='medium' style={{ display: 'block', marginBottom: '8px' }}>
+              Use SharePoint Comments
+            </Text>
+            <Text variant='small' style={{ color: '#8a8886' }}>
+              Click the item menu (⋮) → Comments
+            </Text>
+          </div>
         </div>
       </div>
     );
@@ -551,26 +565,24 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
             <RequestDocuments itemId={itemId} />
           </ErrorBoundary>
 
-          {/* Action buttons at the bottom */}
-          {status !== RequestStatus.Completed && status !== RequestStatus.Cancelled && (
-            <ErrorBoundary
-              enableRetry={true}
-              maxRetries={2}
-              onError={handleFormError('Request Actions')}
-              userFriendlyMessages={{
-                title: 'Unable to load Actions',
-                description: 'An error occurred while loading the action buttons. Please try again.',
-                retryButtonText: 'Retry',
-                detailsButtonText: 'Show Details',
-                closeButtonText: 'Close',
-                recoveringText: 'Recovering...',
-                dismissButtonText: 'Dismiss',
-                maxRetriesReached: 'Maximum retry attempts reached. Please refresh the page.',
-              }}
-            >
-              <RequestActions />
-            </ErrorBoundary>
-          )}
+          {/* Action buttons at the bottom - always show for Close button */}
+          <ErrorBoundary
+            enableRetry={true}
+            maxRetries={2}
+            onError={handleFormError('Request Actions')}
+            userFriendlyMessages={{
+              title: 'Unable to load Actions',
+              description: 'An error occurred while loading the action buttons. Please try again.',
+              retryButtonText: 'Retry',
+              detailsButtonText: 'Show Details',
+              closeButtonText: 'Close',
+              recoveringText: 'Recovering...',
+              dismissButtonText: 'Dismiss',
+              maxRetriesReached: 'Maximum retry attempts reached. Please refresh the page.',
+            }}
+          >
+            <RequestActions />
+          </ErrorBoundary>
         </Stack>
       </WorkflowFormWrapper>
     );

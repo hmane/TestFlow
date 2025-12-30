@@ -1,6 +1,17 @@
 /**
  * PriorSubmissionPicker Component Styles
+ * Styled to match SharePoint's modern lookup picker and dashboard search
  */
+
+// SharePoint Theme Colors (matching dashboard)
+$sp-primary: #0078d4;
+$sp-primary-dark: #106ebe;
+$sp-gray-10: #faf9f8;
+$sp-gray-20: #f3f2f1;
+$sp-gray-30: #edebe9;
+$sp-gray-90: #323130;
+$sp-gray-130: #605e5c;
+$sp-gray-160: #a19f9d;
 
 .prior-submission-picker {
   width: 100%;
@@ -9,79 +20,116 @@
 
   .search-container {
     width: 100%;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     position: relative;
 
     .loading-container,
     .no-results-container {
-      margin-top: 12px;
+      margin-top: 8px;
       padding: 12px 16px;
-      background-color: #f3f2f1;
-      border: 1px solid #edebe9;
+      background-color: #ffffff;
+      border: 1px solid $sp-gray-30;
       border-radius: 4px;
-      animation: fadeIn 0.2s ease;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
     }
 
     .no-results-container {
       background-color: #fff4ce;
-      border-color: #ffb900;
-    }
-
-    @keyframes fadeIn {
-      from {
-        opacity: 0;
-        transform: translateY(-4px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+      border-color: #f2c811;
+      box-shadow: none;
     }
   }
 
-  // Dropdown item styling
+  // Dropdown item styling - matches dashboard resultItem
   .prior-submission-item {
-    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 12px;
     cursor: pointer;
-    transition: background-color 0.2s ease;
-    border-bottom: 1px solid #edebe9;
+    background-color: #ffffff;
+    border-bottom: 1px solid $sp-gray-20;
+    transition: background-color 0.1s ease;
 
     &:hover {
-      background-color: #f3f2f1;
+      background-color: $sp-gray-20;
     }
 
     &:last-child {
       border-bottom: none;
     }
 
-    .ms-Stack {
-      width: 100%;
+    &__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
     }
 
-    .ms-Text {
+    &__id {
+      font-weight: 600;
+      color: $sp-primary;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+
+      &::before {
+        content: '';
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 2048 2048'%3E%3Cpath fill='%230078d4' d='M1792 549v1499H256V0h987l549 549zm-512-37h293l-293-293v293zm384 128h-512V128H384v1792h1280V640z'/%3E%3C/svg%3E");
+        background-size: contain;
+        background-repeat: no-repeat;
+        flex-shrink: 0;
+      }
+    }
+
+    &__date {
+      font-size: 11px;
+      color: $sp-gray-160;
+      flex-shrink: 0;
+    }
+
+    &__title {
+      font-size: 13px;
+      color: $sp-gray-90;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      max-width: 100%;
+    }
+
+    &__tag {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: $sp-gray-130;
+
+      i {
+        font-size: 11px;
+      }
     }
   }
 
-  // Selected requests section
+  // Selected requests section - SharePoint card style
   .selected-requests {
-    margin-top: 16px;
+    margin-top: 12px;
     padding: 0;
 
     .selected-request-card {
       background-color: #ffffff;
-      border: 1px solid #d2d0ce;
+      border: 1px solid $sp-gray-30;
       border-radius: 4px;
       padding: 12px 16px;
-      transition: all 0.2s ease;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+      transition: all 0.15s ease;
+      box-shadow: 0 1.6px 3.6px 0 rgba(0, 0, 0, 0.08);
 
       &:hover {
-        border-color: #0078d4;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        background-color: $sp-gray-10;
+        border-color: $sp-gray-130;
+        box-shadow: 0 3.2px 7.2px 0 rgba(0, 0, 0, 0.12);
       }
 
       .ms-Stack {
@@ -90,13 +138,14 @@
 
       .ms-Link {
         font-weight: 600;
-        color: #0078d4;
+        color: $sp-primary;
         text-decoration: none;
         cursor: pointer;
+        font-size: 13px;
 
         &:hover {
           text-decoration: underline;
-          color: #106ebe;
+          color: $sp-primary-dark;
         }
 
         &:active {
@@ -109,11 +158,18 @@
         text-overflow: ellipsis;
         white-space: nowrap;
         max-width: 100%;
+        font-size: 13px;
       }
 
       .ms-IconButton {
-        color: #605e5c;
-        transition: all 0.2s ease;
+        width: 28px;
+        height: 28px;
+        color: $sp-gray-130;
+        transition: all 0.1s ease;
+
+        i {
+          font-size: 12px;
+        }
 
         &:hover {
           color: #d13438;
@@ -121,40 +177,106 @@
         }
 
         &:active {
-          color: #a4262c;
+          color: #750b1c;
         }
       }
     }
   }
 }
 
-// DevExtreme autocomplete overrides
+// DevExtreme autocomplete overrides - SharePoint style
 .dx-autocomplete {
   .dx-texteditor-input {
     font-size: 14px;
-    padding: 8px 12px;
+    padding: 0 32px 0 10px;
+    height: 32px;
+    font-family: 'Segoe UI', 'Segoe UI Web (West European)', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+  }
+
+  .dx-texteditor-container {
+    border: 1px solid $sp-gray-30;
+    border-radius: 4px;
+    background-color: $sp-gray-20;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+  }
+
+  &.dx-state-focused {
+    .dx-texteditor-container {
+      border-color: $sp-primary;
+      background-color: #ffffff;
+    }
   }
 
   .dx-texteditor-buttons-container {
-    padding-right: 8px;
+    padding-right: 4px;
+  }
+
+  // Make the clear button smaller
+  .dx-clear-button-area {
+    width: 24px;
+    min-width: 24px;
+
+    .dx-icon {
+      font-size: 12px;
+      color: $sp-gray-130;
+    }
+  }
+
+  .dx-placeholder {
+    font-size: 13px;
+    color: $sp-gray-130;
   }
 }
 
-// DevExtreme dropdown list overrides - SCOPED to this component only
-.prior-submission-picker {
+// DevExtreme dropdown list overrides - matches dashboard search dropdown
+.dx-overlay-wrapper {
+  .dx-popup-content {
+    padding: 0 !important;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .dx-scrollable-content {
+    padding: 0 !important;
+  }
+
   .dx-list {
+    border: 1px solid $sp-gray-30;
+    border-radius: 4px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    background-color: #ffffff;
+    overflow: hidden;
+
     .dx-list-item {
       padding: 0 !important;
       border-bottom: none !important;
+      background-color: #ffffff;
 
-      &:hover {
+      &:hover,
+      &.dx-state-hover {
         background-color: transparent !important;
+      }
+
+      &.dx-state-focused {
+        background-color: #deecf9 !important;
+      }
+
+      &.dx-state-active {
+        background-color: #c7e0f4 !important;
       }
     }
 
     .dx-list-item-content {
       padding: 0 !important;
     }
+  }
+
+  // Empty/loading state styling
+  .dx-empty-message {
+    padding: 16px !important;
+    font-size: 13px;
+    color: $sp-gray-130;
+    text-align: center;
   }
 }
 
@@ -167,6 +289,7 @@
       .ms-Stack {
         flex-direction: column;
         align-items: flex-start !important;
+        gap: 6px !important;
 
         > .ms-Stack {
           width: 100%;
@@ -175,12 +298,7 @@
     }
 
     .prior-submission-item {
-      padding: 10px 12px;
-
-      .ms-Stack-inner {
-        flex-direction: column;
-        align-items: flex-start !important;
-      }
+      padding: 8px 10px;
     }
   }
 }
@@ -192,7 +310,7 @@
   }
 
   .dx-loadpanel-message {
-    font-size: 14px;
-    color: #323130;
+    font-size: 13px;
+    color: $sp-gray-90;
   }
 }

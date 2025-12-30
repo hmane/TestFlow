@@ -57,6 +57,12 @@
 .searchWrapper {
   position: relative;
   width: 280px;
+  transition: width 0.3s ease;
+
+  // Expand on focus-within (when input is focused)
+  &:focus-within {
+    width: 450px;
+  }
 }
 
 .searchInput {
@@ -137,12 +143,13 @@
   top: 100%;
   left: 0;
   right: 0;
+  min-width: 450px; // Ensure dropdown is at least as wide as expanded input
   margin-top: 4px;
   background-color: #ffffff;
   border: 1px solid #edebe9;
   border-radius: 4px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-  max-height: 360px;
+  max-height: 400px;
   overflow-y: auto;
   overflow-x: hidden;
   z-index: 1000000; // High z-index to ensure it's above SharePoint chrome

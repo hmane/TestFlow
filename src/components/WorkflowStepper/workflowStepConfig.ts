@@ -400,7 +400,7 @@ function createUserElement(userLogin: string | undefined, userName: string | und
       displayName: userName,
       size: 24,
       displayMode: 'avatarAndName',
-      showLivePersona: true,
+      showLivePersona: false, // Disabled due to PnP LivePersona memory leak
       showSecondaryText: false,
     })
   );

@@ -490,7 +490,7 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
                         email={approval.approver?.email || ''}
                         size={24}
                         displayMode='avatarAndName'
-                        showLivePersona
+                        showLivePersona={false}  // Disabled due to PnP LivePersona memory leak
                       />
                     </div>
                     {/* Approval Attachments with DocumentLink */}
