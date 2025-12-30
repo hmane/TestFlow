@@ -162,6 +162,13 @@
     gap: 6px;
   }
 
+  // Additional parties container with UserPersona
+  .summary-additional-parties {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 16px;
+  }
+
   // Link styling for prior submissions
   .summary-link {
     color: #0078d4;
@@ -176,7 +183,7 @@
   // Approvals list container
   .summary-approvals-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 12px;
   }
 
@@ -237,6 +244,31 @@
       color: #8a8886;
     }
 
+    &__notes {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 8px;
+      background-color: #fff;
+      border-radius: 4px;
+      border: 1px solid #e1dfdd;
+      margin-bottom: 8px;
+    }
+
+    &__notes-icon {
+      font-size: 12px;
+      color: #8a8886;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    &__notes-text {
+      font-size: 12px;
+      color: #605e5c;
+      line-height: 1.4;
+      font-style: italic;
+    }
+
     &__attachment {
       display: flex;
       flex-direction: column;
@@ -245,43 +277,45 @@
       border-top: 1px solid #edebe9;
       margin-top: 4px;
 
-      // DocumentLink component styling - ensure each link is on its own line
-      > * {
+      // DocumentLink component from spfx-toolkit - exact class structure
+      .document-link-container {
         display: block;
         width: 100%;
-        overflow: hidden;
-        text-overflow: ellipsis;
       }
 
-      .document-link-container,
-      .document-link-wrapper {
+      .ms-HoverCard-host {
         display: block;
         width: 100%;
-        max-width: 100%;
       }
 
-      // Target the link inside DocumentLink component
-      a {
+      a.document-link {
         display: inline-flex;
-        align-items: center;
+        align-items: flex-start;
         gap: 6px;
-        max-width: 100%;
+        width: 100%;
         font-size: 12px;
         color: #0078d4;
         text-decoration: none;
-        overflow: hidden;
 
         &:hover {
           text-decoration: underline;
         }
+      }
 
-        // Truncate long filenames
-        span,
-        .document-link-text {
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
+      .document-link-inline {
+        display: inline-flex;
+        align-items: flex-start;
+        gap: 6px;
+        width: 100%;
+      }
+
+      // The actual text element - prevent word breaking, allow natural wrap
+      .document-link-text {
+        flex: 1;
+        white-space: normal;
+        word-break: normal;
+        overflow-wrap: break-word;
+        line-height: 1.4;
       }
 
       // File icon styling
@@ -289,6 +323,7 @@
       .ms-Icon {
         flex-shrink: 0;
         font-size: 14px;
+        margin-top: 1px;
       }
     }
 

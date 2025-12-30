@@ -100,11 +100,13 @@ function mapApprovalsToSharePointFields(
     const origApproverValue = origCommApproval?.approver && origCommApproval.approver.id ? origCommApproval.approver : null;
     updater.set('CommunicationsApprover', approverValue, origApproverValue);
     updater.set('CommunicationsApprovalDate', commApproval.approvalDate, origCommApproval?.approvalDate);
+    updater.set('CommunicationsApprovalNotes', commApproval.notes, origCommApproval?.notes);
   } else if (origCommApproval) {
     // Approval was removed - clear the fields
     const origApproverValue = origCommApproval.approver && origCommApproval.approver.id ? origCommApproval.approver : null;
     updater.set('CommunicationsApprover', null, origApproverValue);
     updater.set('CommunicationsApprovalDate', null, origCommApproval.approvalDate);
+    updater.set('CommunicationsApprovalNotes', null, origCommApproval.notes);
   }
 
   // Map Portfolio Manager approval
@@ -118,9 +120,11 @@ function mapApprovalsToSharePointFields(
     const origApproverValue = origPmApproval?.approver && origPmApproval.approver.id ? origPmApproval.approver : null;
     updater.set('PortfolioManager', approverValue, origApproverValue);
     updater.set('PortfolioManagerApprovalDate', pmApproval.approvalDate, origPmApproval?.approvalDate);
+    updater.set('PortfolioMgrApprovalNotes', pmApproval.notes, origPmApproval?.notes);
   } else if (origPmApproval) {
     updater.set('PortfolioManager', null, origPmApproval.approver);
     updater.set('PortfolioManagerApprovalDate', null, origPmApproval.approvalDate);
+    updater.set('PortfolioMgrApprovalNotes', null, origPmApproval.notes);
   }
 
   // Map Research Analyst approval
@@ -134,9 +138,11 @@ function mapApprovalsToSharePointFields(
     const origApproverValue = origRaApproval?.approver && origRaApproval.approver.id ? origRaApproval.approver : null;
     updater.set('ResearchAnalyst', approverValue, origApproverValue);
     updater.set('ResearchAnalystApprovalDate', raApproval.approvalDate, origRaApproval?.approvalDate);
+    updater.set('ResearchAnalystApprovalNotes', raApproval.notes, origRaApproval?.notes);
   } else if (origRaApproval) {
     updater.set('ResearchAnalyst', null, origRaApproval.approver);
     updater.set('ResearchAnalystApprovalDate', null, origRaApproval.approvalDate);
+    updater.set('ResearchAnalystApprovalNotes', null, origRaApproval.notes);
   }
 
   // Map Subject Matter Expert approval
@@ -150,9 +156,11 @@ function mapApprovalsToSharePointFields(
     const origApproverValue = origSmeApproval?.approver && origSmeApproval.approver.id ? origSmeApproval.approver : null;
     updater.set('SubjectMatterExpert', approverValue, origApproverValue);
     updater.set('SMEApprovalDate', smeApproval.approvalDate, origSmeApproval?.approvalDate);
+    updater.set('SMEApprovalNotes', smeApproval.notes, origSmeApproval?.notes);
   } else if (origSmeApproval) {
     updater.set('SubjectMatterExpert', null, origSmeApproval.approver);
     updater.set('SMEApprovalDate', null, origSmeApproval.approvalDate);
+    updater.set('SMEApprovalNotes', null, origSmeApproval.notes);
   }
 
   // Map Performance approval
@@ -166,9 +174,11 @@ function mapApprovalsToSharePointFields(
     const origApproverValue = origPerfApproval?.approver && origPerfApproval.approver.id ? origPerfApproval.approver : null;
     updater.set('PerformanceApprover', approverValue, origApproverValue);
     updater.set('PerformanceApprovalDate', perfApproval.approvalDate, origPerfApproval?.approvalDate);
+    updater.set('PerformanceApprovalNotes', perfApproval.notes, origPerfApproval?.notes);
   } else if (origPerfApproval) {
     updater.set('PerformanceApprover', null, origPerfApproval.approver);
     updater.set('PerformanceApprovalDate', null, origPerfApproval.approvalDate);
+    updater.set('PerformanceApprovalNotes', null, origPerfApproval.notes);
   }
 
   // Map Other approval
@@ -182,6 +192,7 @@ function mapApprovalsToSharePointFields(
     const origApproverValue = origOtherApproval?.approver && origOtherApproval.approver.id ? origOtherApproval.approver : null;
     updater.set('OtherApproval', approverValue, origApproverValue);
     updater.set('OtherApprovalDate', otherApproval.approvalDate, origOtherApproval?.approvalDate);
+    updater.set('OtherApprovalNotes', otherApproval.notes, origOtherApproval?.notes);
     // Other approval has a custom title field
     const otherTyped = otherApproval as any;
     const origOtherTyped = origOtherApproval as any;
@@ -189,6 +200,7 @@ function mapApprovalsToSharePointFields(
   } else if (origOtherApproval) {
     updater.set('OtherApproval', null, origOtherApproval.approver);
     updater.set('OtherApprovalDate', null, origOtherApproval.approvalDate);
+    updater.set('OtherApprovalNotes', null, origOtherApproval.notes);
     const origOtherTyped = origOtherApproval as any;
     updater.set('OtherApprovalTitle', null, origOtherTyped?.approvalTitle);
   }
@@ -350,9 +362,14 @@ export function buildRequestUpdatePayload(
     return filterEmptyUpdates(updates, request, originalRequest);
   } else {
     // New request - include all fields
-    // Helper to convert empty arrays to null for lookup fields
-    const priorSubmissionsIds = request.priorSubmissions?.map(ps => ps.id).filter(id => id !== undefined) || [];
-    const additionalPartyIds = request.additionalParty?.map(p => p.id).filter(id => id !== undefined) || [];
+    // Helper to extract numeric IDs for multi-lookup/multi-user fields
+    // SharePoint expects array of numbers, not strings or objects
+    const priorSubmissionsIds = request.priorSubmissions
+      ?.map(ps => typeof ps.id === 'string' ? parseInt(ps.id, 10) : ps.id)
+      .filter((id): id is number => id !== undefined && !isNaN(id)) || [];
+    const additionalPartyIds = request.additionalParty
+      ?.map(p => typeof p.id === 'string' ? parseInt(p.id, 10) : p.id)
+      .filter((id): id is number => id !== undefined && !isNaN(id)) || [];
 
     // Build payload with proper null/undefined handling
     const payload: Record<string, any> = {
@@ -373,6 +390,7 @@ export function buildRequestUpdatePayload(
     const approvalFields = tempUpdater.getUpdates();
 
     // Merge approval fields into payload
+    // SPUpdater outputs user fields with 'Id' suffix (e.g., PortfolioManagerId: 40)
     for (const key in approvalFields) {
       if (Object.prototype.hasOwnProperty.call(approvalFields, key)) {
         payload[key] = approvalFields[key];
@@ -396,14 +414,14 @@ export function buildRequestUpdatePayload(
       payload[RequestsFields.Department] = request.department;
     }
 
-    // Multi-choice field - use SharePoint format with results array
+    // Multi-choice fields - PnPjs v3 items.add() expects plain arrays
     if (request.distributionMethod && request.distributionMethod.length > 0) {
-      payload[RequestsFields.DistributionMethod] = { results: request.distributionMethod };
+      payload[RequestsFields.DistributionMethod] = request.distributionMethod;
     }
 
-    // Lookup fields - only add if there are actual IDs
+    // Multi-lookup fields - needs 'Id' suffix with array of numeric IDs
     if (priorSubmissionsIds.length > 0) {
-      payload[RequestsFields.PriorSubmissions + 'Id'] = { results: priorSubmissionsIds };
+      payload[RequestsFields.PriorSubmissions + 'Id'] = priorSubmissionsIds;
     }
 
     if (request.priorSubmissionNotes) {
@@ -414,9 +432,9 @@ export function buildRequestUpdatePayload(
       payload[RequestsFields.DateOfFirstUse] = request.dateOfFirstUse.toISOString();
     }
 
-    // User lookup field - only add if there are actual IDs
+    // Multi-user field - needs 'Id' suffix with array of numeric IDs
     if (additionalPartyIds.length > 0) {
-      payload[RequestsFields.AdditionalParty + 'Id'] = { results: additionalPartyIds };
+      payload[RequestsFields.AdditionalParty + 'Id'] = additionalPartyIds;
     }
 
     if (request.trackingId) {
@@ -435,24 +453,24 @@ export function buildRequestUpdatePayload(
       payload[RequestsFields.AttorneyAssignNotes] = request.attorneyAssignNotes;
     }
 
-    // FINRA Audience & Product Fields
+    // FINRA Audience & Product Fields - multi-choice fields use plain arrays
     if (request.finraAudienceCategory && request.finraAudienceCategory.length > 0) {
-      payload[RequestsFields.FINRAAudienceCategory] = { results: request.finraAudienceCategory };
+      payload[RequestsFields.FINRAAudienceCategory] = request.finraAudienceCategory;
     }
     if (request.audience && request.audience.length > 0) {
-      payload[RequestsFields.Audience] = { results: request.audience };
+      payload[RequestsFields.Audience] = request.audience;
     }
     if (request.usFunds && request.usFunds.length > 0) {
-      payload[RequestsFields.USFunds] = { results: request.usFunds };
+      payload[RequestsFields.USFunds] = request.usFunds;
     }
     if (request.ucits && request.ucits.length > 0) {
-      payload[RequestsFields.UCITS] = { results: request.ucits };
+      payload[RequestsFields.UCITS] = request.ucits;
     }
     if (request.separateAcctStrategies && request.separateAcctStrategies.length > 0) {
-      payload[RequestsFields.SeparateAcctStrategies] = { results: request.separateAcctStrategies };
+      payload[RequestsFields.SeparateAcctStrategies] = request.separateAcctStrategies;
     }
     if (request.separateAcctStrategiesIncl && request.separateAcctStrategiesIncl.length > 0) {
-      payload[RequestsFields.SeparateAcctStrategiesIncl] = { results: request.separateAcctStrategiesIncl };
+      payload[RequestsFields.SeparateAcctStrategiesIncl] = request.separateAcctStrategiesIncl;
     }
 
     return payload;
@@ -491,6 +509,153 @@ export function getChangedFields(
 ): string[] {
   const payload = buildRequestUpdatePayload(currentData, originalData);
   return Object.keys(payload);
+}
+
+/**
+ * Build a partial update payload for direct field updates
+ *
+ * This is used when updating specific fields without full change detection.
+ * Maps domain model property names to SharePoint field names.
+ *
+ * @param data - Partial request data with fields to update
+ * @returns SharePoint update payload
+ */
+function buildPartialUpdatePayload(data: Partial<ILegalRequest>): Record<string, any> {
+  const payload: Record<string, any> = {};
+
+  // Helper to merge updater results into payload (ES5 compatible)
+  const mergeUpdates = (updates: Record<string, any>): void => {
+    for (const key in updates) {
+      if (Object.prototype.hasOwnProperty.call(updates, key)) {
+        payload[key] = updates[key];
+      }
+    }
+  };
+
+  // Map domain properties to SharePoint field names
+  // Only include fields that are explicitly provided (not undefined)
+
+  if (data.reviewAudience !== undefined) {
+    payload[RequestsFields.ReviewAudience] = data.reviewAudience;
+  }
+
+  if (data.attorney !== undefined) {
+    // User field - use SPUpdater pattern for proper formatting
+    const updater = createSPUpdater();
+    const attorneyValue = data.attorney && data.attorney.id ? data.attorney : null;
+    updater.set(RequestsFields.Attorney, attorneyValue, null);
+    mergeUpdates(updater.getUpdates());
+  }
+
+  if (data.attorneyAssignNotes !== undefined) {
+    payload[RequestsFields.AttorneyAssignNotes] = data.attorneyAssignNotes;
+  }
+
+  if (data.status !== undefined) {
+    payload[RequestsFields.Status] = data.status;
+  }
+
+  if (data.legalReviewStatus !== undefined) {
+    payload[RequestsFields.LegalReviewStatus] = data.legalReviewStatus;
+  }
+
+  if (data.legalReviewOutcome !== undefined) {
+    payload[RequestsFields.LegalReviewOutcome] = data.legalReviewOutcome;
+  }
+
+  if (data.legalReviewNotes !== undefined) {
+    payload[RequestsFields.LegalReviewNotes] = data.legalReviewNotes;
+  }
+
+  if (data.legalStatusUpdatedOn !== undefined) {
+    payload[RequestsFields.LegalStatusUpdatedOn] = data.legalStatusUpdatedOn;
+  }
+
+  if (data.legalStatusUpdatedBy !== undefined) {
+    const updater = createSPUpdater();
+    updater.set(RequestsFields.LegalStatusUpdatedBy, data.legalStatusUpdatedBy, null);
+    mergeUpdates(updater.getUpdates());
+  }
+
+  if (data.legalReviewCompletedOn !== undefined) {
+    payload[RequestsFields.LegalReviewCompletedOn] = data.legalReviewCompletedOn;
+  }
+
+  if (data.legalReviewCompletedBy !== undefined) {
+    const updater = createSPUpdater();
+    updater.set(RequestsFields.LegalReviewCompletedBy, data.legalReviewCompletedBy, null);
+    mergeUpdates(updater.getUpdates());
+  }
+
+  if (data.complianceReviewStatus !== undefined) {
+    payload[RequestsFields.ComplianceReviewStatus] = data.complianceReviewStatus;
+  }
+
+  if (data.complianceReviewOutcome !== undefined) {
+    payload[RequestsFields.ComplianceReviewOutcome] = data.complianceReviewOutcome;
+  }
+
+  if (data.complianceReviewNotes !== undefined) {
+    payload[RequestsFields.ComplianceReviewNotes] = data.complianceReviewNotes;
+  }
+
+  if (data.isForesideReviewRequired !== undefined) {
+    payload[RequestsFields.IsForesideReviewRequired] = data.isForesideReviewRequired;
+  }
+
+  if (data.isRetailUse !== undefined) {
+    payload[RequestsFields.IsRetailUse] = data.isRetailUse;
+  }
+
+  if (data.complianceStatusUpdatedOn !== undefined) {
+    payload[RequestsFields.ComplianceStatusUpdatedOn] = data.complianceStatusUpdatedOn;
+  }
+
+  if (data.complianceStatusUpdatedBy !== undefined) {
+    const updater = createSPUpdater();
+    updater.set(RequestsFields.ComplianceStatusUpdatedBy, data.complianceStatusUpdatedBy, null);
+    mergeUpdates(updater.getUpdates());
+  }
+
+  if (data.complianceReviewCompletedOn !== undefined) {
+    payload[RequestsFields.ComplianceReviewCompletedOn] = data.complianceReviewCompletedOn;
+  }
+
+  if (data.complianceReviewCompletedBy !== undefined) {
+    const updater = createSPUpdater();
+    updater.set(RequestsFields.ComplianceReviewCompletedBy, data.complianceReviewCompletedBy, null);
+    mergeUpdates(updater.getUpdates());
+  }
+
+  if (data.trackingId !== undefined) {
+    payload[RequestsFields.TrackingId] = data.trackingId;
+  }
+
+  if (data.closeoutOn !== undefined) {
+    payload[RequestsFields.CloseoutOn] = data.closeoutOn;
+  }
+
+  if (data.closeoutBy !== undefined) {
+    const updater = createSPUpdater();
+    updater.set(RequestsFields.CloseoutBy, data.closeoutBy, null);
+    mergeUpdates(updater.getUpdates());
+  }
+
+  // Time tracking fields
+  if (data.legalIntakeLegalAdminHours !== undefined) {
+    payload[RequestsFields.LegalIntakeLegalAdminHours] = data.legalIntakeLegalAdminHours;
+  }
+  if (data.legalReviewAttorneyHours !== undefined) {
+    payload[RequestsFields.LegalReviewAttorneyHours] = data.legalReviewAttorneyHours;
+  }
+  if (data.complianceReviewReviewerHours !== undefined) {
+    payload[RequestsFields.ComplianceReviewReviewerHours] = data.complianceReviewReviewerHours;
+  }
+  if (data.closeoutReviewerHours !== undefined) {
+    payload[RequestsFields.CloseoutReviewerHours] = data.closeoutReviewerHours;
+  }
+
+  return payload;
 }
 
 /**
@@ -535,7 +700,12 @@ async function getNextSequenceNumber(prefix: string, year: number): Promise<numb
       .top(1)();
 
     if (items.length > 0) {
-      return (items[0].Sequence as number) + 1;
+      // Ensure we get a number - SharePoint may return string for Number fields
+      const lastSequence = Number(items[0].Sequence);
+      if (!isNaN(lastSequence)) {
+        return lastSequence + 1;
+      }
+      SPContext.logger.warn('RequestSaveService: Invalid sequence value, starting at 1', { sequence: items[0].Sequence });
     }
 
     return 1;
@@ -775,8 +945,16 @@ export async function saveRequest(
         return { saved: false };
       }
     } else {
-      // Without originalData: partial update without change detection
-      payload = buildRequestUpdatePayload(data as ILegalRequest);
+      // Without originalData: build a direct partial update payload
+      // This is used for stage-specific updates (Legal Intake, Reviews, etc.)
+      // where we only have a few fields to update
+      payload = buildPartialUpdatePayload(data);
+
+      // Check if there's anything to save
+      if (Object.keys(payload).length === 0) {
+        SPContext.logger.info('RequestSaveService: No fields to update', { itemId });
+        return { saved: false };
+      }
     }
 
     SPContext.logger.info('RequestSaveService: Saving changes', {

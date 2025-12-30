@@ -28,7 +28,6 @@ import {
   FormContainer,
   FormItem,
   FormLabel,
-  FormValue,
   FormProvider,
   useScrollToError,
 } from 'spfx-toolkit/lib/components/spForm';
@@ -42,8 +41,8 @@ import {
 
 // App imports using path aliases
 import { WorkflowCardHeader, type ReviewOutcome as HeaderReviewOutcome } from '@components/WorkflowCardHeader';
-import { useRequestStore } from '@stores/requestStore';
-import { submitComplianceReview, saveComplianceReviewProgress } from '@services/workflowActionService';
+import { useRequestStore, useRequestActions } from '@stores/requestStore';
+import { saveComplianceReviewProgress } from '@services/workflowActionService';
 import { ComplianceReviewStatus, ReviewOutcome } from '@appTypes/index';
 import { calculateBusinessHours } from '@utils/businessHoursCalculator';
 
@@ -133,6 +132,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
   defaultCollapsed = false,
 }) => {
   const { currentRequest, isLoading, itemId } = useRequestStore();
+  const { submitComplianceReview: submitComplianceReviewAction, loadRequest } = useRequestActions();
   const [showSuccess, setShowSuccess] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | undefined>(undefined);
   const [isSaving, setIsSaving] = React.useState<boolean>(false);
@@ -200,21 +200,23 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
         notes: data.complianceReviewNotes ? 'provided' : 'none',
       });
 
-      // Use dedicated workflow action for submit
-      const result = await submitComplianceReview(itemId, {
-        outcome: data.complianceReviewOutcome,
-        notes: data.complianceReviewNotes || '',
+      // Use store action to submit - this updates the store automatically
+      await submitComplianceReviewAction(
+        data.complianceReviewOutcome,
+        data.complianceReviewNotes || '',
+        {
+          isForesideReviewRequired: data.isForesideReviewRequired,
+          isRetailUse: data.isRetailUse,
+        }
+      );
+
+      // Reset form with cleared notes for append-only field
+      reset({
+        complianceReviewStatus: ComplianceReviewStatus.Completed,
+        complianceReviewOutcome: data.complianceReviewOutcome,
+        complianceReviewNotes: undefined, // Clear for append-only
         isForesideReviewRequired: data.isForesideReviewRequired,
         isRetailUse: data.isRetailUse,
-      });
-
-      // Reset form with server data - clear notes for append-only
-      reset({
-        complianceReviewStatus: result.updatedRequest.complianceReview?.status || ComplianceReviewStatus.NotStarted,
-        complianceReviewOutcome: result.updatedRequest.complianceReview?.outcome,
-        complianceReviewNotes: undefined, // Clear for append-only
-        isForesideReviewRequired: result.updatedRequest.complianceReview?.isForesideReviewRequired || false,
-        isRetailUse: result.updatedRequest.complianceReview?.isRetailUse || false,
       });
 
       // Increment key to force NoteHistory refresh
@@ -253,20 +255,23 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
       });
 
       // Use dedicated workflow action for save progress
-      const result = await saveComplianceReviewProgress(itemId, {
+      await saveComplianceReviewProgress(itemId, {
         outcome: formData.complianceReviewOutcome,
         notes: formData.complianceReviewNotes,
         isForesideReviewRequired: formData.isForesideReviewRequired,
         isRetailUse: formData.isRetailUse,
       });
 
-      // Reset form with server data - clear notes for append-only
+      // Reload request to update store with server data
+      await loadRequest(itemId);
+
+      // Reset form notes for append-only field
       reset({
-        complianceReviewStatus: result.updatedRequest.complianceReview?.status || ComplianceReviewStatus.NotStarted,
-        complianceReviewOutcome: result.updatedRequest.complianceReview?.outcome,
+        complianceReviewStatus: ComplianceReviewStatus.InProgress,
+        complianceReviewOutcome: formData.complianceReviewOutcome,
         complianceReviewNotes: undefined, // Clear for append-only
-        isForesideReviewRequired: result.updatedRequest.complianceReview?.isForesideReviewRequired || false,
-        isRetailUse: result.updatedRequest.complianceReview?.isRetailUse || false,
+        isForesideReviewRequired: formData.isForesideReviewRequired,
+        isRetailUse: formData.isRetailUse,
       });
 
       // Increment key to force NoteHistory refresh
@@ -282,7 +287,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
     } finally {
       setIsSaving(false);
     }
-  }, [itemId, getValues, reset]);
+  }, [itemId, getValues, reset, loadRequest]);
 
   if (!currentRequest) {
     return null;
@@ -339,41 +344,37 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
 
         <Content padding='comfortable'>
           <Stack tokens={{ childrenGap: 16 }}>
-            {/* Compliance-specific fields */}
-            <FormContainer labelWidth='200px'>
-              <FormItem fieldName='isForesideReviewRequired'>
-                <FormLabel>Foreside Review Required</FormLabel>
-                <FormValue>
-                  <Text>{currentRequest.complianceReview?.isForesideReviewRequired ? 'Yes' : 'No'}</Text>
-                </FormValue>
-              </FormItem>
-
-              <FormItem fieldName='isRetailUse'>
-                <FormLabel>Retail Use</FormLabel>
-                <FormValue>
-                  <Text>{currentRequest.complianceReview?.isRetailUse ? 'Yes' : 'No'}</Text>
-                </FormValue>
-              </FormItem>
-            </FormContainer>
-
             {/* Show note history read-only */}
             <FormContainer labelWidth='200px'>
               <FormItem fieldName='reviewNotes'>
                 <FormLabel>Review Notes</FormLabel>
-                <FormValue>
-                  <SPTextField
-                    key={`compliance-review-notes-readonly-${historyRefreshKey}`}
-                    name='complianceReviewNotes'
-                    mode={SPTextFieldMode.MultiLine}
-                    rows={2}
-                    readOnly
-                    disabled
-                    appendOnly
-                    itemId={itemId}
-                    listNameOrId='Requests'
-                    fieldInternalName='ComplianceReviewNotes'
-                  />
-                </FormValue>
+                <SPTextField
+                  key={`compliance-review-notes-readonly-${historyRefreshKey}`}
+                  name='complianceReviewNotes'
+                  mode={SPTextFieldMode.MultiLine}
+                  rows={2}
+                  readOnly
+                  disabled
+                  appendOnly
+                  itemId={itemId}
+                  listNameOrId='Requests'
+                  fieldInternalName='ComplianceReviewNotes'
+                />
+              </FormItem>
+            </FormContainer>
+
+            <Separator />
+
+            {/* Compliance-specific fields - After Review Notes */}
+            <FormContainer labelWidth='200px'>
+              <FormItem fieldName='isForesideReviewRequired'>
+                <FormLabel>Foreside Review Required</FormLabel>
+                <Text>{currentRequest.complianceReview?.isForesideReviewRequired ? 'Yes' : 'No'}</Text>
+              </FormItem>
+
+              <FormItem fieldName='isRetailUse'>
+                <FormLabel>Retail Use</FormLabel>
+                <Text>{currentRequest.complianceReview?.isRetailUse ? 'Yes' : 'No'}</Text>
               </FormItem>
             </FormContainer>
           </Stack>
@@ -440,54 +441,17 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
           ) : (
             <form onSubmit={handleSubmit(onSubmit)}>
               <Stack tokens={{ childrenGap: 20 }}>
-                {/* Compliance-specific fields */}
-                <FormContainer labelWidth='200px'>
-                  <FormItem fieldName='isForesideReviewRequired'>
-                    <FormLabel infoText='Indicate if Foreside review is required for this request'>
-                      Foreside Review Required
-                    </FormLabel>
-                    <FormValue>
-                      <SPBooleanField
-                        name='isForesideReviewRequired'
-                        displayType={SPBooleanDisplayType.Toggle}
-                        checkedText='Yes'
-                        uncheckedText='No'
-                        showText
-                      />
-                    </FormValue>
-                  </FormItem>
-
-                  <FormItem fieldName='isRetailUse'>
-                    <FormLabel infoText='Indicate if this will be used for retail purposes'>
-                      Retail Use
-                    </FormLabel>
-                    <FormValue>
-                      <SPBooleanField
-                        name='isRetailUse'
-                        displayType={SPBooleanDisplayType.Toggle}
-                        checkedText='Yes'
-                        uncheckedText='No'
-                        showText
-                      />
-                    </FormValue>
-                  </FormItem>
-                </FormContainer>
-
-                <Separator />
-
                 {/* Review Outcome Selection */}
                 <FormContainer labelWidth='200px'>
                   <FormItem fieldName='complianceReviewOutcome'>
                     <FormLabel isRequired infoText='Select your review decision'>
                       Review Outcome
                     </FormLabel>
-                    <FormValue>
-                      <SPChoiceField
-                        name='complianceReviewOutcome'
-                        choices={REVIEW_OUTCOME_CHOICES}
-                        placeholder='Select an outcome...'
-                      />
-                    </FormValue>
+                    <SPChoiceField
+                      name='complianceReviewOutcome'
+                      choices={REVIEW_OUTCOME_CHOICES}
+                      placeholder='Select an outcome...'
+                    />
                   </FormItem>
                 </FormContainer>
 
@@ -497,23 +461,52 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                     <FormLabel infoText='Detailed compliance review notes, comments, and recommendations'>
                       Review Notes
                     </FormLabel>
-                    <FormValue>
-                      <SPTextField
-                        key={`compliance-review-notes-${historyRefreshKey}`}
-                        name='complianceReviewNotes'
-                        placeholder='Provide detailed compliance review notes, comments, and recommendations'
-                        mode={SPTextFieldMode.MultiLine}
-                        rows={4}
-                        maxLength={4000}
-                        showCharacterCount
-                        stylingMode='outlined'
-                        spellCheck
-                        appendOnly
-                        itemId={itemId}
-                        listNameOrId='Requests'
-                        fieldInternalName='ComplianceReviewNotes'
-                      />
-                    </FormValue>
+                    <SPTextField
+                      key={`compliance-review-notes-${historyRefreshKey}`}
+                      name='complianceReviewNotes'
+                      placeholder='Provide detailed compliance review notes, comments, and recommendations'
+                      mode={SPTextFieldMode.MultiLine}
+                      rows={4}
+                      maxLength={4000}
+                      showCharacterCount
+                      stylingMode='outlined'
+                      spellCheck
+                      appendOnly
+                      itemId={itemId}
+                      listNameOrId='Requests'
+                      fieldInternalName='ComplianceReviewNotes'
+                    />
+                  </FormItem>
+                </FormContainer>
+
+                <Separator />
+
+                {/* Compliance-specific fields - After Review Notes */}
+                <FormContainer labelWidth='200px'>
+                  <FormItem fieldName='isForesideReviewRequired'>
+                    <FormLabel infoText='Indicate if Foreside review is required for this request'>
+                      Foreside Review Required
+                    </FormLabel>
+                    <SPBooleanField
+                      name='isForesideReviewRequired'
+                      displayType={SPBooleanDisplayType.Toggle}
+                      checkedText='Yes'
+                      uncheckedText='No'
+                      showText
+                    />
+                  </FormItem>
+
+                  <FormItem fieldName='isRetailUse'>
+                    <FormLabel infoText='Indicate if this will be used for retail purposes'>
+                      Retail Use
+                    </FormLabel>
+                    <SPBooleanField
+                      name='isRetailUse'
+                      displayType={SPBooleanDisplayType.Toggle}
+                      checkedText='Yes'
+                      uncheckedText='No'
+                      showText
+                    />
                   </FormItem>
                 </FormContainer>
 

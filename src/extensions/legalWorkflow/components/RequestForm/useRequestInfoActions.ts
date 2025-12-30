@@ -288,7 +288,8 @@ export const useRequestInfoActions = ({
       showSuccessNotification?.('Draft saved successfully!');
       SPContext.logger.success('RequestInfo: Draft saved', { itemId: savedItemId });
 
-      // If this was a new request (no itemId before), redirect to edit mode
+      // If this was a new request (no itemId before), redirect to edit mode immediately
+      // This prevents the user from refreshing and seeing the new form again
       if (!itemId && savedItemId) {
         SPContext.logger.info('RequestInfo: Redirecting to edit mode', { itemId: savedItemId });
 
@@ -296,10 +297,13 @@ export const useRequestInfoActions = ({
         const webUrl = SPContext.webAbsoluteUrl;
         const editUrl = `${webUrl}${Lists.Requests.Url}/EditForm.aspx?ID=${savedItemId}`;
 
-        // Redirect after a short delay to show success message
+        // Use replace() to prevent going back to new form with browser back button
+        // Use minimal delay (100ms) just to allow success notification to show briefly
         setTimeout(() => {
-          window.location.href = editUrl;
-        }, 1000);
+          window.location.replace(editUrl);
+        }, 100);
+
+        return; // Exit early since we're redirecting
       }
     } catch (error: unknown) {
       SPContext.logger.error('RequestInfo: Save failed', error);
@@ -338,13 +342,31 @@ export const useRequestInfoActions = ({
 
       showSuccessNotification?.('Request submitted successfully!');
       SPContext.logger.success('RequestInfo: Request submitted successfully');
+
+      // If this was a new request (no itemId before), redirect to edit mode immediately
+      // This ensures user sees the submitted request, not a blank new form on refresh
+      if (!itemId && submittedItemId) {
+        SPContext.logger.info('RequestInfo: Redirecting to edit mode after submit', { itemId: submittedItemId });
+
+        // Build the edit form URL
+        const webUrl = SPContext.webAbsoluteUrl;
+        const editUrl = `${webUrl}${Lists.Requests.Url}/EditForm.aspx?ID=${submittedItemId}`;
+
+        // Use replace() to prevent going back to new form with browser back button
+        // Use minimal delay (100ms) just to allow success notification to show briefly
+        setTimeout(() => {
+          window.location.replace(editUrl);
+        }, 100);
+
+        return; // Exit early since we're redirecting
+      }
     } catch (error: unknown) {
       SPContext.logger.error('RequestInfo: Submission failed', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to submit request';
       showErrorNotification?.(errorMessage);
       throw error;
     }
-  }, [submitRequest, renamePendingFiles, deletePendingFiles, showSuccessNotification, showErrorNotification]);
+  }, [itemId, submitRequest, renamePendingFiles, deletePendingFiles, showSuccessNotification, showErrorNotification]);
 
 
   const validateSubmission = React.useCallback(

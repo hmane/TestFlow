@@ -354,10 +354,18 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
               <div className='summary-grid summary-grid--3col'>
                 <CompactField
                   label='FINRA Audience'
-                  value={currentRequest.finraAudienceCategory}
+                  value={Array.isArray(currentRequest.finraAudienceCategory)
+                    ? currentRequest.finraAudienceCategory.join(', ')
+                    : currentRequest.finraAudienceCategory}
                   icon='Group'
                 />
-                <CompactField label='Audience' value={currentRequest.audience} icon='People' />
+                <CompactField
+                  label='Audience'
+                  value={Array.isArray(currentRequest.audience)
+                    ? currentRequest.audience.join(', ')
+                    : currentRequest.audience}
+                  icon='People'
+                />
                 {currentRequest.usFunds && currentRequest.usFunds.length > 0 && (
                   <CompactField
                     label='US Funds'
@@ -453,12 +461,16 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
           {currentRequest.additionalParty && currentRequest.additionalParty.length > 0 && (
             <div className='summary-section'>
               <SectionHeader title='Additional Parties' icon='People' />
-              <div className='summary-badges'>
+              <div className='summary-additional-parties'>
                 {currentRequest.additionalParty.map((person, idx) => (
-                  <Badge
+                  <UserPersona
                     key={idx}
-                    text={person.title || person.email || 'Unknown'}
-                    variant='default'
+                    userIdentifier={person.id || person.email || ''}
+                    displayName={person.title || 'Unknown'}
+                    email={person.email || ''}
+                    size={28}
+                    displayMode='avatarAndName'
+                    showLivePersona={false}
                   />
                 ))}
               </div>
@@ -493,6 +505,13 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
                         showLivePersona={false}  // Disabled due to PnP LivePersona memory leak
                       />
                     </div>
+                    {/* Approval Notes */}
+                    {approval.notes && (
+                      <div className='summary-approval-card__notes'>
+                        <Icon iconName='EditNote' className='summary-approval-card__notes-icon' />
+                        <span className='summary-approval-card__notes-text'>{approval.notes}</span>
+                      </div>
+                    )}
                     {/* Approval Attachments with DocumentLink */}
                     {approval.existingFiles && approval.existingFiles.length > 0 ? (
                       <div className='summary-approval-card__attachment'>

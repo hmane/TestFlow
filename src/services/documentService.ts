@@ -188,6 +188,7 @@ export async function checkDuplicateFiles(
 
 /**
  * Upload single file with progress callback
+ * @param skipFolderCreation - Set to true if folder was already created (used by batchUploadFiles)
  */
 export async function uploadFile(
   libraryTitle: string,
@@ -196,7 +197,8 @@ export async function uploadFile(
   onProgress?: (progress: number) => void,
   conflictResolution: ConflictResolution = ConflictResolution.Skip,
   documentType?: DocumentType,
-  requestItemId?: number
+  requestItemId?: number,
+  skipFolderCreation: boolean = false
 ): Promise<IUploadResult> {
   try {
     SPContext.logger.info('Uploading file', {
@@ -204,12 +206,15 @@ export async function uploadFile(
       folderPath,
       fileName: file.name,
       size: file.size,
+      skipFolderCreation,
     });
 
     const sp = SPContext.sp;
 
-    // Ensure folder exists
-    await ensureFolderExists(libraryTitle, folderPath);
+    // Ensure folder exists (skip if already created by batch)
+    if (!skipFolderCreation) {
+      await ensureFolderExists(libraryTitle, folderPath);
+    }
 
     // Get library root
     const library = sp.web.lists.getByTitle(libraryTitle);
@@ -311,6 +316,24 @@ export async function batchUploadFiles(
     errors: [],
   };
 
+  // Pre-create all unique folders before uploading files
+  // This prevents duplicate folder creation calls when multiple files go to same folder
+  const uniqueFolderPaths = new Set<string>();
+  for (const { documentType } of files) {
+    uniqueFolderPaths.add(getDocumentFolderPath(itemId, documentType));
+  }
+
+  // Create all folders upfront
+  for (const folderPath of Array.from(uniqueFolderPaths)) {
+    try {
+      await ensureFolderExists(libraryTitle, folderPath);
+      SPContext.logger.info('Folder ensured for batch upload', { folderPath });
+    } catch (folderError) {
+      SPContext.logger.error('Failed to create folder for batch upload', folderError, { folderPath });
+      // Continue - individual uploads will fail if folder really doesn't exist
+    }
+  }
+
   for (const { file, documentType } of files) {
     const fileId = `upload-${Date.now()}-${file.name}`;
     const folderPath = getDocumentFolderPath(itemId, documentType);
@@ -330,7 +353,8 @@ export async function batchUploadFiles(
           (progress) => onFileProgress(fileId, progress, 'uploading' as FileOperationStatus),
           ConflictResolution.Overwrite,
           documentType,
-          itemId
+          itemId,
+          true // skipFolderCreation - folders already created above
         );
 
         if (uploadResult.success) {

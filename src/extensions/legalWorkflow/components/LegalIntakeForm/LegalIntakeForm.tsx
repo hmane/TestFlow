@@ -442,24 +442,22 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
                     <FormLabel infoText='Add any notes or instructions for the assigned attorney'>
                       Assignment Notes
                     </FormLabel>
-                    <FormValue>
-                      <SPTextField
-                        name='attorneyAssignNotes'
-                        control={control as any}
-                        placeholder='Add any notes or instructions'
-                        mode={SPTextFieldMode.MultiLine}
-                        rows={4}
-                        maxLength={2000}
-                        showCharacterCount
-                        stylingMode='outlined'
-                        spellCheck
-                        disabled={isLoading}
-                        appendOnly
-                        itemId={currentRequest.id}
-                        listNameOrId='Requests'
-                        fieldInternalName='AttorneyAssignNotes'
-                      />
-                    </FormValue>
+                    <SPTextField
+                      name='attorneyAssignNotes'
+                      control={control as any}
+                      placeholder='Add any notes or instructions'
+                      mode={SPTextFieldMode.MultiLine}
+                      rows={4}
+                      maxLength={2000}
+                      showCharacterCount
+                      stylingMode='outlined'
+                      spellCheck
+                      disabled={isLoading}
+                      appendOnly
+                      itemId={currentRequest.id}
+                      listNameOrId='Requests'
+                      fieldInternalName='AttorneyAssignNotes'
+                    />
                   </FormItem>
                 </FormContainer>
 
@@ -612,19 +610,17 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
 
               <FormItem>
                 <FormLabel>Assignment Notes</FormLabel>
-                <FormValue>
-                  <SPTextField
-                    value={assignmentNotes || ''}
-                    mode={SPTextFieldMode.MultiLine}
-                    rows={3}
-                    appendOnly
-                    itemId={currentRequest.id}
-                    listNameOrId='Requests'
-                    fieldInternalName='AttorneyAssignNotes'
-                    readOnly={true}
-                    stylingMode='outlined'
-                  />
-                </FormValue>
+                <SPTextField
+                  value={assignmentNotes || ''}
+                  mode={SPTextFieldMode.MultiLine}
+                  rows={3}
+                  appendOnly
+                  itemId={currentRequest.id}
+                  listNameOrId='Requests'
+                  fieldInternalName='AttorneyAssignNotes'
+                  readOnly={true}
+                  stylingMode='outlined'
+                />
               </FormItem>
             </FormContainer>
           </Stack>
@@ -749,20 +745,18 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
                 <FormLabel infoText='Add any notes or instructions for the assigned attorney'>
                   Assignment Notes
                 </FormLabel>
-                <FormValue>
-                  <SPTextField
-                    name='attorneyAssignNotes'
-                    control={control as any}
-                    placeholder='Add any notes or instructions'
-                    mode={SPTextFieldMode.MultiLine}
-                    rows={4}
-                    maxLength={2000}
-                    showCharacterCount
-                    stylingMode='outlined'
-                    spellCheck
-                    disabled={isLoading}
-                  />
-                </FormValue>
+                <SPTextField
+                  name='attorneyAssignNotes'
+                  control={control as any}
+                  placeholder='Add any notes or instructions'
+                  mode={SPTextFieldMode.MultiLine}
+                  rows={4}
+                  maxLength={2000}
+                  showCharacterCount
+                  stylingMode='outlined'
+                  spellCheck
+                  disabled={isLoading}
+                />
               </FormItem>
             </FormContainer>
 

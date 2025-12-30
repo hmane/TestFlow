@@ -110,6 +110,14 @@ const QUERY1_FIELDS = [
   RequestsFields.OtherApproval,
   RequestsFields.OtherApprovalTitle,
 
+  // Approval fields - notes
+  RequestsFields.CommunicationsApprovalNotes,
+  RequestsFields.PortfolioMgrApprovalNotes,
+  RequestsFields.ResearchAnalystApprovalNotes,
+  RequestsFields.SMEApprovalNotes,
+  RequestsFields.PerformanceApprovalNotes,
+  RequestsFields.OtherApprovalNotes,
+
   // Lookups
   RequestsFields.PriorSubmissions,
   RequestsFields.AdditionalParty,
@@ -268,13 +276,14 @@ function buildApprovalsArrayFromFields(extractor: ReturnType<typeof createSPExtr
   if (requiresCommApproval) {
     const commApprover = extractor.user(RequestsFields.CommunicationsApprover);
     const commDate = extractor.date(RequestsFields.CommunicationsApprovalDate);
+    const commNotes = extractor.string(RequestsFields.CommunicationsApprovalNotes);
     // Add approval to array if boolean is true (even if approver is empty - draft mode)
     approvals.push({
       type: ApprovalType.Communications,
       approver: commApprover || { id: '', email: '', title: '' },
       approvalDate: commDate,
       documentId: '', // Documents are loaded separately
-      notes: '',
+      notes: commNotes || '',
     } as any);
   }
 
@@ -283,13 +292,14 @@ function buildApprovalsArrayFromFields(extractor: ReturnType<typeof createSPExtr
   if (hasPortfolioMgrApproval) {
     const pmApprover = extractor.user(RequestsFields.PortfolioManager);
     const pmDate = extractor.date(RequestsFields.PortfolioManagerApprovalDate);
+    const pmNotes = extractor.string(RequestsFields.PortfolioMgrApprovalNotes);
 
     approvals.push({
       type: ApprovalType.PortfolioManager,
       approver: pmApprover || { id: '', email: '', title: '' },
       approvalDate: pmDate,
       documentId: '',
-      notes: '',
+      notes: pmNotes || '',
     } as any);
   }
 
@@ -298,13 +308,14 @@ function buildApprovalsArrayFromFields(extractor: ReturnType<typeof createSPExtr
   if (hasResearchAnalystApproval) {
     const raApprover = extractor.user(RequestsFields.ResearchAnalyst);
     const raDate = extractor.date(RequestsFields.ResearchAnalystApprovalDate);
+    const raNotes = extractor.string(RequestsFields.ResearchAnalystApprovalNotes);
 
     approvals.push({
       type: ApprovalType.ResearchAnalyst,
       approver: raApprover || { id: '', email: '', title: '' },
       approvalDate: raDate,
       documentId: '',
-      notes: '',
+      notes: raNotes || '',
     } as any);
   }
 
@@ -313,13 +324,14 @@ function buildApprovalsArrayFromFields(extractor: ReturnType<typeof createSPExtr
   if (hasSMEApproval) {
     const smeApprover = extractor.user(RequestsFields.SubjectMatterExpert);
     const smeDate = extractor.date(RequestsFields.SMEApprovalDate);
+    const smeNotes = extractor.string(RequestsFields.SMEApprovalNotes);
 
     approvals.push({
       type: ApprovalType.SubjectMatterExpert,
       approver: smeApprover || { id: '', email: '', title: '' },
       approvalDate: smeDate,
       documentId: '',
-      notes: '',
+      notes: smeNotes || '',
     } as any);
   }
 
@@ -328,13 +340,14 @@ function buildApprovalsArrayFromFields(extractor: ReturnType<typeof createSPExtr
   if (hasPerformanceApproval) {
     const perfApprover = extractor.user(RequestsFields.PerformanceApprover);
     const perfDate = extractor.date(RequestsFields.PerformanceApprovalDate);
+    const perfNotes = extractor.string(RequestsFields.PerformanceApprovalNotes);
 
     approvals.push({
       type: ApprovalType.Performance,
       approver: perfApprover || { id: '', email: '', title: '' },
       approvalDate: perfDate,
       documentId: '',
-      notes: '',
+      notes: perfNotes || '',
     } as any);
   }
 
@@ -344,13 +357,14 @@ function buildApprovalsArrayFromFields(extractor: ReturnType<typeof createSPExtr
     const otherApprover = extractor.user(RequestsFields.OtherApproval);
     const otherDate = extractor.date(RequestsFields.OtherApprovalDate);
     const otherTitle = extractor.string(RequestsFields.OtherApprovalTitle);
+    const otherNotes = extractor.string(RequestsFields.OtherApprovalNotes);
 
     approvals.push({
       type: ApprovalType.Other,
       approver: otherApprover || { id: '', email: '', title: '' },
       approvalDate: otherDate,
       documentId: '',
-      notes: '',
+      notes: otherNotes || '',
       approvalTitle: otherTitle || '',
     } as any);
   }

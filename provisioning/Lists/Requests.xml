@@ -103,26 +103,32 @@
         </CHOICES>
       </Field>
 
-      <!-- Approvals (18) -->
+      <!-- Approvals (24 - 18 original + 6 notes fields) -->
       <Field Type="Boolean" Name="RequiresCommunicationsApproval" DisplayName="Requires Communications Approval" Group="Approvals" ID="{8D5CBDB8-930F-4A35-9CF0-63C7BC3AC94A}"><Default>0</Default></Field>
       <Field Type="DateTime" Name="CommunicationsApprovalDate" DisplayName="Communications Approval Date" Format="DateOnly" Group="Approvals" ID="{63D2BA75-0AB7-4DB9-BAA9-FF4915EF881C}" />
       <Field Type="User" Name="CommunicationsApprover" DisplayName="Communications Approver" UserSelectionMode="PeopleOnly" Group="Approvals" ID="{248D6D64-6FCA-4468-AA0C-6CF516F4659F}" />
+      <Field Type="Note" Name="CommunicationsApprovalNotes" DisplayName="Communications Approval Notes" RichText="FALSE" NumLines="4" Group="Approvals" ID="{A1B2C3D4-1111-4A5B-8C9D-E0F1A2B3C4D5}" />
       <Field Type="Boolean" Name="HasPortfolioManagerApproval" DisplayName="Has Portfolio Manager Approval" Group="Approvals" ID="{67DB139A-A921-4815-BC6F-D2F38072B003}"><Default>0</Default></Field>
       <Field Type="DateTime" Name="PortfolioManagerApprovalDate" DisplayName="Portfolio Manager Approval Date" Format="DateOnly" Group="Approvals" ID="{C09106FE-454B-45E5-BBC4-9C7B405CA6FF}" />
       <Field Type="User" Name="PortfolioManager" DisplayName="Portfolio Manager" UserSelectionMode="PeopleOnly" Group="Approvals" ID="{AD6E5CED-F541-4FD0-AE91-A684EF91AB96}" />
+      <Field Type="Note" Name="PortfolioMgrApprovalNotes" DisplayName="Portfolio Manager Approval Notes" RichText="FALSE" NumLines="4" Group="Approvals" ID="{B2C3D4E5-2222-4B6C-9D0E-F1A2B3C4D5E6}" />
       <Field Type="Boolean" Name="HasResearchAnalystApproval" DisplayName="Has Research Analyst Approval" Group="Approvals" ID="{86D55528-F7E3-4B76-8B9C-7E869869287F}"><Default>0</Default></Field>
       <Field Type="DateTime" Name="ResearchAnalystApprovalDate" DisplayName="Research Analyst Approval Date" Format="DateOnly" Group="Approvals" ID="{110E6227-55B6-4496-80E6-1241430D27B4}" />
       <Field Type="User" Name="ResearchAnalyst" DisplayName="Research Analyst" UserSelectionMode="PeopleOnly" Group="Approvals" ID="{288531A6-9962-43C2-81E0-FF4C777B5A81}" />
+      <Field Type="Note" Name="ResearchAnalystApprovalNotes" DisplayName="Research Analyst Approval Notes" RichText="FALSE" NumLines="4" Group="Approvals" ID="{C3D4E5F6-3333-4C7D-AE1F-A2B3C4D5E6F7}" />
       <Field Type="Boolean" Name="HasSMEApproval" DisplayName="Has SME Approval" Group="Approvals" ID="{199065E8-AD25-4B11-A299-23AD5D6449D1}"><Default>0</Default></Field>
       <Field Type="DateTime" Name="SMEApprovalDate" DisplayName="SME Approval Date" Format="DateOnly" Group="Approvals" ID="{A6D957C6-1FD1-430D-AAEB-C41F3AF2B223}" />
       <Field Type="User" Name="SubjectMatterExpert" DisplayName="Subject Matter Expert" UserSelectionMode="PeopleOnly" Group="Approvals" ID="{E336295D-5396-44E0-999C-FC53E0A2CB85}" />
+      <Field Type="Note" Name="SMEApprovalNotes" DisplayName="SME Approval Notes" RichText="FALSE" NumLines="4" Group="Approvals" ID="{D4E5F6A7-4444-4D8E-BF2A-B3C4D5E6F7A8}" />
       <Field Type="Boolean" Name="HasPerformanceApproval" DisplayName="Has Performance Approval" Group="Approvals" ID="{6AAAC392-E5F8-41C8-BDD2-F2F3AF5A6764}"><Default>0</Default></Field>
       <Field Type="DateTime" Name="PerformanceApprovalDate" DisplayName="Performance Approval Date" Format="DateOnly" Group="Approvals" ID="{3310ECB8-5E6F-441B-A832-F560C02C7DA3}" />
       <Field Type="User" Name="PerformanceApprover" DisplayName="Performance Approver" UserSelectionMode="PeopleOnly" Group="Approvals" ID="{281B596A-3B26-4E52-85A0-BBB6C75BCEB8}" />
+      <Field Type="Note" Name="PerformanceApprovalNotes" DisplayName="Performance Approval Notes" RichText="FALSE" NumLines="4" Group="Approvals" ID="{E5F6A7B8-5555-4E9F-CA3B-C4D5E6F7A8B9}" />
       <Field Type="Boolean" Name="HasOtherApproval" DisplayName="Has Other Approval" Group="Approvals" ID="{820CCE8D-806D-4075-8B27-90D166A81EB5}"><Default>0</Default></Field>
       <Field Type="Text" Name="OtherApprovalTitle" DisplayName="Other Approval Title" MaxLength="100" Group="Approvals" ID="{94E173B4-12E9-4591-83A3-6FE601170947}" />
       <Field Type="DateTime" Name="OtherApprovalDate" DisplayName="Other Approval Date" Format="DateOnly" Group="Approvals" ID="{CD646BA1-7CE5-4F59-BCDA-71F61C1EA399}" />
       <Field Type="User" Name="OtherApproval" DisplayName="Other Approval" UserSelectionMode="PeopleOnly" Group="Approvals" ID="{40050195-F493-4EE9-B855-DCFF44573B56}" />
+      <Field Type="Note" Name="OtherApprovalNotes" DisplayName="Other Approval Notes" RichText="FALSE" NumLines="4" Group="Approvals" ID="{F6A7B8C9-6666-4FA0-DB4C-D5E6F7A8B9CA}" />
 
       <!-- Legal Intake (2) -->
       <Field Type="User" Name="Attorney" DisplayName="Attorney" UserSelectionMode="PeopleOnly" Group="Legal Intake" ID="{9A262A7D-F053-4B9A-A5DB-D902ECE30058}" />

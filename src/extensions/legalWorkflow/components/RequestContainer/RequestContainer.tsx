@@ -22,6 +22,9 @@ import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
 import { TooltipHost } from '@fluentui/react/lib/Tooltip';
 
+// PnP Controls - SharePoint Comments
+import { ListItemComments } from '@pnp/spfx-controls-react/lib/controls/listItemComments';
+
 // spfx-toolkit - tree-shaken imports
 import { ErrorBoundary } from 'spfx-toolkit/lib/components/ErrorBoundary';
 import { LazyManageAccessComponent } from 'spfx-toolkit/lib/components/lazy';
@@ -430,29 +433,64 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
   };
 
   /**
-   * Render comments panel
+   * Render comments panel using PnP ListItemComments control
    */
   const renderCommentsPanel = (): React.ReactElement => {
     if (!itemId) return <div />;
 
+    // Get serviceScope from SPFx context for ListItemComments
+    const spfxContext = SPContext.spfxContext as { serviceScope?: import('@microsoft/sp-core-library').ServiceScope };
+    const serviceScope = spfxContext?.serviceScope;
+
+    if (!serviceScope) {
+      // Fallback if serviceScope is not available
+      return (
+        <div className='request-container__comments-panel'>
+          <div className='request-container__comments-header'>
+            <Text variant='large' styles={{ root: { fontWeight: 600 } }}>
+              Comments
+            </Text>
+          </div>
+          <div className='request-container__comments-content'>
+            <div style={{ padding: '16px', color: '#605e5c', textAlign: 'center' }}>
+              <Icon iconName='Comment' style={{ fontSize: '24px', marginBottom: '8px', display: 'block' }} />
+              <Text variant='small' style={{ color: '#8a8886' }}>
+                Comments are not available
+              </Text>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className='request-container__comments-panel'>
         <div className='request-container__comments-header'>
-          <Text variant='large' styles={{ root: { fontWeight: 600 } }}>
-            Comments
+          <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
+            <Icon iconName='Comment' styles={{ root: { fontSize: '18px', color: '#0078d4' } }} />
+            <Text variant='large' styles={{ root: { fontWeight: 600 } }}>
+              Comments
+            </Text>
+          </Stack>
+        </div>
+
+        {/* Warning banner for special characters */}
+        <div className='request-container__comments-warning'>
+          <Icon iconName='Warning' styles={{ root: { fontSize: '14px', color: '#797673' } }} />
+          <Text variant='small' styles={{ root: { color: '#605e5c' } }}>
+            Avoid special characters: &lt; &gt; &amp; &quot; &#39; * : ? / \ |
           </Text>
         </div>
 
         <div className='request-container__comments-content'>
-          <div style={{ padding: '16px', color: '#605e5c', textAlign: 'center' }}>
-            <Icon iconName='Comment' style={{ fontSize: '24px', marginBottom: '8px', display: 'block' }} />
-            <Text variant='medium' style={{ display: 'block', marginBottom: '8px' }}>
-              Use SharePoint Comments
-            </Text>
-            <Text variant='small' style={{ color: '#8a8886' }}>
-              Click the item menu (⋮) → Comments
-            </Text>
-          </div>
+          <ListItemComments
+            listId={listId}
+            itemId={String(itemId)}
+            serviceScope={serviceScope}
+            webUrl={SPContext.webAbsoluteUrl}
+            numberCommentsPerPage={10}
+            label=''
+          />
         </div>
       </div>
     );

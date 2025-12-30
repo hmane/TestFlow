@@ -20,7 +20,6 @@ import {
   FormContainer,
   FormItem,
   FormLabel,
-  FormValue,
   FormProvider,
 } from 'spfx-toolkit/lib/components/spForm';
 import {
@@ -179,27 +178,25 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
                 >
                   Tracking ID
                 </FormLabel>
-                <FormValue>
-                  {readOnly ? (
-                    <span>{currentRequest.trackingId || '—'}</span>
-                  ) : (
-                    <Controller
-                      name='trackingId'
-                      control={control}
-                      render={({ field }) => (
-                        <SPTextField
-                          {...field}
-                          name='trackingId'
-                          placeholder='Enter tracking ID'
-                          mode={SPTextFieldMode.SingleLine}
-                          maxLength={50}
-                          showCharacterCount
-                          stylingMode='outlined'
-                        />
-                      )}
-                    />
-                  )}
-                </FormValue>
+                {readOnly ? (
+                  <span>{currentRequest.trackingId || '—'}</span>
+                ) : (
+                  <Controller
+                    name='trackingId'
+                    control={control}
+                    render={({ field }) => (
+                      <SPTextField
+                        {...field}
+                        name='trackingId'
+                        placeholder='Enter tracking ID'
+                        mode={SPTextFieldMode.SingleLine}
+                        maxLength={50}
+                        showCharacterCount
+                        stylingMode='outlined'
+                      />
+                    )}
+                  />
+                )}
               </FormItem>
             </FormContainer>
 
@@ -210,22 +207,20 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
                   <FormLabel infoText='Add any final notes or comments about this request'>
                     Closeout Notes
                   </FormLabel>
-                  <FormValue>
-                    <SPTextField
-                      name='closeoutNotes'
-                      placeholder='Add any final notes or comments'
-                      mode={SPTextFieldMode.MultiLine}
-                      rows={3}
-                      maxLength={2000}
-                      showCharacterCount
-                      stylingMode='outlined'
-                      spellCheck
-                      appendOnly
-                      itemId={itemId}
-                      listNameOrId='Requests'
-                      fieldInternalName='CloseoutNotes'
-                    />
-                  </FormValue>
+                  <SPTextField
+                    name='closeoutNotes'
+                    placeholder='Add any final notes or comments'
+                    mode={SPTextFieldMode.MultiLine}
+                    rows={3}
+                    maxLength={2000}
+                    showCharacterCount
+                    stylingMode='outlined'
+                    spellCheck
+                    appendOnly
+                    itemId={itemId}
+                    listNameOrId='Requests'
+                    fieldInternalName='CloseoutNotes'
+                  />
                 </FormItem>
               </FormContainer>
             )}

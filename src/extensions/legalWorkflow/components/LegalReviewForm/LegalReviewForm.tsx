@@ -29,7 +29,6 @@ import {
   FormContainer,
   FormItem,
   FormLabel,
-  FormValue,
   FormProvider,
   useScrollToError,
 } from 'spfx-toolkit/lib/components/spForm';
@@ -37,8 +36,8 @@ import { SPTextField, SPTextFieldMode, SPChoiceField } from 'spfx-toolkit/lib/co
 
 // App imports using path aliases
 import { WorkflowCardHeader, type ReviewOutcome as HeaderReviewOutcome } from '@components/WorkflowCardHeader';
-import { useRequestStore } from '@stores/requestStore';
-import { submitLegalReview, saveLegalReviewProgress } from '@services/workflowActionService';
+import { useRequestStore, useRequestActions } from '@stores/requestStore';
+import { saveLegalReviewProgress } from '@services/workflowActionService';
 import { LegalReviewStatus, ReviewOutcome } from '@appTypes/index';
 import { calculateBusinessHours } from '@utils/businessHoursCalculator';
 
@@ -125,6 +124,7 @@ interface ILegalReviewFormProps {
  */
 export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollapsed = false }) => {
   const { currentRequest, isLoading, itemId } = useRequestStore();
+  const { submitLegalReview: submitLegalReviewAction, loadRequest } = useRequestActions();
   const [showSuccess, setShowSuccess] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | undefined>(undefined);
   const [isSaving, setIsSaving] = React.useState<boolean>(false);
@@ -181,18 +181,16 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
           notes: data.legalReviewNotes ? 'provided' : 'none',
         });
 
-        // Use dedicated workflow action for submit
-        const result = await submitLegalReview(itemId, {
-          outcome: data.legalReviewOutcome,
-          notes: data.legalReviewNotes || '',
-        });
+        // Use store action to submit - this updates the store automatically
+        await submitLegalReviewAction(
+          data.legalReviewOutcome,
+          data.legalReviewNotes || ''
+        );
 
-        // Store is updated by parent component via loadRequest
-        // Reset form with server data - clear notes for append-only field
+        // Reset form with cleared notes for append-only field
         reset({
-          legalReviewStatus:
-            result.updatedRequest.legalReview?.status || LegalReviewStatus.NotStarted,
-          legalReviewOutcome: result.updatedRequest.legalReview?.outcome,
+          legalReviewStatus: LegalReviewStatus.Completed,
+          legalReviewOutcome: data.legalReviewOutcome,
           legalReviewNotes: undefined, // Clear for append-only
         });
 
@@ -233,16 +231,18 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
       });
 
       // Use dedicated workflow action for save progress
-      const result = await saveLegalReviewProgress(itemId, {
+      await saveLegalReviewProgress(itemId, {
         outcome: formData.legalReviewOutcome,
         notes: formData.legalReviewNotes,
       });
 
-      // Reset form with server data - clear notes for append-only
+      // Reload request to update store with server data
+      await loadRequest(itemId);
+
+      // Reset form notes for append-only field
       reset({
-        legalReviewStatus:
-          result.updatedRequest.legalReview?.status || LegalReviewStatus.NotStarted,
-        legalReviewOutcome: result.updatedRequest.legalReview?.outcome,
+        legalReviewStatus: LegalReviewStatus.InProgress,
+        legalReviewOutcome: formData.legalReviewOutcome,
         legalReviewNotes: undefined, // Clear for append-only
       });
 
@@ -326,20 +326,18 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
             <FormContainer labelWidth='150px'>
               <FormItem fieldName='reviewNotes'>
                 <FormLabel>Review Notes</FormLabel>
-                <FormValue>
-                  <SPTextField
-                    key={`legal-review-notes-readonly-${historyRefreshKey}`}
-                    name='legalReviewNotes'
-                    mode={SPTextFieldMode.MultiLine}
-                    rows={2}
-                    readOnly
-                    disabled
-                    appendOnly
-                    itemId={itemId}
-                    listNameOrId='Requests'
-                    fieldInternalName='LegalReviewNotes'
-                  />
-                </FormValue>
+                <SPTextField
+                  key={`legal-review-notes-readonly-${historyRefreshKey}`}
+                  name='legalReviewNotes'
+                  mode={SPTextFieldMode.MultiLine}
+                  rows={2}
+                  readOnly
+                  disabled
+                  appendOnly
+                  itemId={itemId}
+                  listNameOrId='Requests'
+                  fieldInternalName='LegalReviewNotes'
+                />
               </FormItem>
             </FormContainer>
           </Stack>
@@ -415,13 +413,11 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
                     <FormLabel isRequired infoText='Select your review decision'>
                       Review Outcome
                     </FormLabel>
-                    <FormValue>
-                      <SPChoiceField
-                        name='legalReviewOutcome'
-                        choices={REVIEW_OUTCOME_CHOICES}
-                        placeholder='Select an outcome...'
-                      />
-                    </FormValue>
+                    <SPChoiceField
+                      name='legalReviewOutcome'
+                      choices={REVIEW_OUTCOME_CHOICES}
+                      placeholder='Select an outcome...'
+                    />
                   </FormItem>
                 </FormContainer>
 
@@ -431,23 +427,21 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
                     <FormLabel infoText='Detailed review notes, comments, and recommendations'>
                       Review Notes
                     </FormLabel>
-                    <FormValue>
-                      <SPTextField
-                        key={`legal-review-notes-${historyRefreshKey}`}
-                        name='legalReviewNotes'
-                        placeholder='Provide detailed review notes, comments, and recommendations'
-                        mode={SPTextFieldMode.MultiLine}
-                        rows={4}
-                        maxLength={4000}
-                        showCharacterCount
-                        stylingMode='outlined'
-                        spellCheck
-                        appendOnly
-                        itemId={itemId}
-                        listNameOrId='Requests'
-                        fieldInternalName='LegalReviewNotes'
-                      />
-                    </FormValue>
+                    <SPTextField
+                      key={`legal-review-notes-${historyRefreshKey}`}
+                      name='legalReviewNotes'
+                      placeholder='Provide detailed review notes, comments, and recommendations'
+                      mode={SPTextFieldMode.MultiLine}
+                      rows={4}
+                      maxLength={4000}
+                      showCharacterCount
+                      stylingMode='outlined'
+                      spellCheck
+                      appendOnly
+                      itemId={itemId}
+                      listNameOrId='Requests'
+                      fieldInternalName='LegalReviewNotes'
+                    />
                   </FormItem>
                 </FormContainer>
 
