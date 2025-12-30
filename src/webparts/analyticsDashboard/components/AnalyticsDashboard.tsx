@@ -154,11 +154,16 @@ const AnalyticsDashboard: React.FC<IAnalyticsDashboardProps> = (props) => {
 
       try {
         // Check user access first
+        console.log('AnalyticsDashboard: Starting access check...');
         const access = await checkUserAccess();
+        console.log('AnalyticsDashboard: Access result:', access);
         setUserAccess(access);
 
         if (!access.hasAccess && !isMockMode) {
-          setError('You do not have permission to view this dashboard. Access is restricted to Admin and Legal Admin users.');
+          console.error('AnalyticsDashboard: Access denied', access);
+          // Include debug info to help troubleshoot
+          const debugInfo = `isAdmin: ${access.isAdmin}, isLegalAdmin: ${access.isLegalAdmin}`;
+          setError(`You do not have permission to view this dashboard. Access is restricted to Admin and Legal Admin users. Debug: ${debugInfo}. Check browser console (F12) for group details.`);
           setIsLoading(false);
           return;
         }

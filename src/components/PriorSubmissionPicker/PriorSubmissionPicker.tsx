@@ -430,6 +430,7 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
             maxHeight: 350,
             width: 'auto',
             minWidth: 400,
+            wrapperAttr: { class: 'prior-submission-dropdown' },
           }}
         />
 

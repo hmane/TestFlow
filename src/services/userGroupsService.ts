@@ -86,21 +86,41 @@ export async function getCurrentUserGroupTitles(): Promise<string[]> {
   // Create the load promise
   pendingGroupsPromise = (async (): Promise<string[]> => {
     try {
-      SPContext.logger.info('UserGroupsService: Loading current user groups');
+      console.log('UserGroupsService: Loading current user groups...');
 
-      // Use spPessimistic for browser-level HTTP caching
-      const groups = await SPContext.spPessimistic.web.currentUser.groups();
+      // Check if SPContext is properly initialized
+      if (!SPContext.sp || !SPContext.sp.web) {
+        console.error('UserGroupsService: SPContext not initialized. Ensure SPContext.smart() was called in webpart onInit().');
+        return [];
+      }
+
+      // Try spPessimistic first, fall back to sp if not available
+      let groups: { Title: string }[];
+      try {
+        console.log('UserGroupsService: Trying spPessimistic...');
+        if (!SPContext.spPessimistic || !SPContext.spPessimistic.web) {
+          throw new Error('spPessimistic not available');
+        }
+        groups = await SPContext.spPessimistic.web.currentUser.groups();
+        console.log('UserGroupsService: spPessimistic succeeded, groups:', groups);
+      } catch (pessimisticError) {
+        console.warn('UserGroupsService: spPessimistic failed, trying sp...', pessimisticError);
+        groups = await SPContext.sp.web.currentUser.groups();
+        console.log('UserGroupsService: sp succeeded, groups:', groups);
+      }
+
       const titles = groups.map((g: { Title: string }) => g.Title);
+      console.log('UserGroupsService: Group titles:', titles);
 
       // Update cache
       cachedGroupTitles = titles;
       cacheTimestamp = Date.now();
 
-      SPContext.logger.success('UserGroupsService: Loaded groups', { count: titles.length });
       return titles;
     } catch (error: unknown) {
-      SPContext.logger.error('UserGroupsService: Failed to load groups', error);
-      throw error;
+      console.error('UserGroupsService: Failed to load groups:', error);
+      // Return empty array instead of throwing - this allows the site admin check to still work
+      return [];
     } finally {
       pendingGroupsPromise = null;
     }
@@ -140,13 +160,58 @@ export async function checkDashboardAccess(): Promise<IUserAccess> {
   try {
     const groupTitles = await getCurrentUserGroupTitles();
 
+    // Log group titles for debugging - use console.log for visibility
+    console.log('=== Dashboard Access Check ===');
+    console.log('User groups found:', groupTitles);
+    console.log('Looking for Admin:', LW_GROUPS.ADMIN);
+    console.log('Looking for Legal Admin:', LW_GROUPS.LEGAL_ADMIN);
+
+    SPContext.logger.info('UserGroupsService: Checking dashboard access', {
+      userGroups: groupTitles,
+      expectedAdmin: LW_GROUPS.ADMIN,
+      expectedLegalAdmin: LW_GROUPS.LEGAL_ADMIN,
+    });
+
     const isAdmin = groupTitles.includes(LW_GROUPS.ADMIN);
     const isLegalAdmin = groupTitles.includes(LW_GROUPS.LEGAL_ADMIN);
 
-    return {
+    console.log('isAdmin check result:', isAdmin);
+    console.log('isLegalAdmin check result:', isLegalAdmin);
+
+    // Also check if user is a Site Collection Admin (has full control)
+    let isSiteAdmin = false;
+    try {
+      // Try spPessimistic first, fall back to sp
+      let currentUser: { IsSiteAdmin?: boolean };
+      try {
+        currentUser = await SPContext.spPessimistic.web.currentUser();
+      } catch {
+        currentUser = await SPContext.sp.web.currentUser();
+      }
+      isSiteAdmin = currentUser.IsSiteAdmin === true;
+      SPContext.logger.info('UserGroupsService: Site admin check', { isSiteAdmin });
+    } catch (siteAdminError) {
+      SPContext.logger.warn('UserGroupsService: Failed to check site admin status', siteAdminError);
+      console.error('Failed to check site admin status:', siteAdminError);
+    }
+
+    const hasAccess = isAdmin || isLegalAdmin || isSiteAdmin;
+
+    console.log('isSiteAdmin check result:', isSiteAdmin);
+    console.log('Final hasAccess:', hasAccess);
+    console.log('=== End Access Check ===');
+
+    SPContext.logger.info('UserGroupsService: Access check result', {
       isAdmin,
       isLegalAdmin,
-      hasAccess: isAdmin || isLegalAdmin,
+      isSiteAdmin,
+      hasAccess,
+    });
+
+    return {
+      isAdmin: isAdmin || isSiteAdmin,
+      isLegalAdmin,
+      hasAccess,
     };
   } catch (error: unknown) {
     SPContext.logger.error('UserGroupsService: Failed to check dashboard access', error);

@@ -346,6 +346,7 @@ const AdditionalApprovalItem: React.FC<IAdditionalApprovalItemProps> = ({
             displayFormat='MM/dd/yyyy'
             maxDate={TODAY}
             showClearButton
+            calendarButtonPosition='before'
             disabled={disabled}
           />
         </FormItem>
@@ -759,6 +760,7 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
                   displayFormat='MM/dd/yyyy'
                   maxDate={TODAY}
                   showClearButton
+                  calendarButtonPosition='before'
                   disabled={disabled}
                 />
               </FormItem>

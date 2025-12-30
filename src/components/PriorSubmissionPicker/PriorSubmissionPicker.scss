@@ -229,11 +229,13 @@ $sp-gray-160: #a19f9d;
 }
 
 // DevExtreme dropdown list overrides - matches dashboard search dropdown
-.dx-overlay-wrapper {
+// Using highly specific selectors to override spfx-toolkit form styles
+.prior-submission-dropdown.dx-overlay-wrapper,
+.dx-overlay-wrapper.prior-submission-dropdown {
   .dx-popup-content {
     padding: 0 !important;
-    border-radius: 4px;
-    overflow: hidden;
+    border-radius: 4px !important;
+    overflow: hidden !important;
   }
 
   .dx-scrollable-content {
@@ -241,20 +243,20 @@ $sp-gray-160: #a19f9d;
   }
 
   .dx-list {
-    border: 1px solid $sp-gray-30;
-    border-radius: 4px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-    background-color: #ffffff;
-    overflow: hidden;
+    border: 1px solid $sp-gray-30 !important;
+    border-radius: 4px !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2) !important;
+    background-color: #ffffff !important;
+    overflow: hidden !important;
 
     .dx-list-item {
       padding: 0 !important;
       border-bottom: none !important;
-      background-color: #ffffff;
+      background-color: #ffffff !important;
 
       &:hover,
       &.dx-state-hover {
-        background-color: transparent !important;
+        background-color: $sp-gray-20 !important;
       }
 
       &.dx-state-focused {
@@ -274,9 +276,16 @@ $sp-gray-160: #a19f9d;
   // Empty/loading state styling
   .dx-empty-message {
     padding: 16px !important;
-    font-size: 13px;
-    color: $sp-gray-130;
-    text-align: center;
+    font-size: 13px !important;
+    color: $sp-gray-130 !important;
+    text-align: center !important;
+  }
+}
+
+// Fallback for generic overlay wrapper (in case class doesn't apply to wrapper)
+.dx-overlay-wrapper {
+  .dx-popup-content {
+    padding: 0 !important;
   }
 }
 

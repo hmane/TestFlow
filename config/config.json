@@ -49,6 +49,14 @@
           "manifest": "./src/webparts/reportDashboard/ReportDashboardWebPart.manifest.json"
         }
       ]
+    },
+    "analytics-dashboard-web-part": {
+      "components": [
+        {
+          "entrypoint": "./lib/webparts/analyticsDashboard/AnalyticsDashboardWebPart.js",
+          "manifest": "./src/webparts/analyticsDashboard/AnalyticsDashboardWebPart.manifest.json"
+        }
+      ]
     }
   },
   "externals": {},
@@ -59,6 +67,7 @@
     "RequestIdFieldCustomizerStrings": "lib/extensions/requestId/loc/{locale}.js",
     "RequestStatusFieldCustomizerStrings": "lib/extensions/requestStatus/loc/{locale}.js",
     "TurnAroundDateFieldCustomizerStrings": "lib/extensions/turnAroundDate/loc/{locale}.js",
-    "ReportDashboardWebPartStrings": "lib/webparts/reportDashboard/loc/{locale}.js"
+    "ReportDashboardWebPartStrings": "lib/webparts/reportDashboard/loc/{locale}.js",
+    "AnalyticsDashboardWebPartStrings": "lib/webparts/analyticsDashboard/loc/{locale}.js"
   }
 }

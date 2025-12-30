@@ -208,7 +208,7 @@ $shadow-md: 0 3.2px 7.2px 0 rgba(0, 0, 0, 0.132), 0 0.6px 1.8px 0 rgba(0, 0, 0, 
 // Main Grid
 .mainGrid {
   display: grid;
-  grid-template-columns: 60% 40%;
+  grid-template-columns: 1fr 1fr;
   gap: $spacing-lg;
 
   @media (max-width: 1200px) {
@@ -221,6 +221,8 @@ $shadow-md: 0 3.2px 7.2px 0 rgba(0, 0, 0, 0.132), 0 0.6px 1.8px 0 rgba(0, 0, 0, 
   display: flex;
   flex-direction: column;
   gap: $spacing-lg;
+  min-width: 0; // Prevents flex/grid children from overflowing
+  overflow: hidden;
 }
 
 // Chart Card
@@ -229,6 +231,7 @@ $shadow-md: 0 3.2px 7.2px 0 rgba(0, 0, 0, 0.132), 0 0.6px 1.8px 0 rgba(0, 0, 0, 
   border-radius: $border-radius-lg;
   box-shadow: $shadow-sm;
   overflow: hidden;
+  min-width: 0; // Prevents overflow in grid/flex contexts
 }
 
 .sectionHeader {
@@ -258,11 +261,13 @@ $shadow-md: 0 3.2px 7.2px 0 rgba(0, 0, 0, 0.132), 0 0.6px 1.8px 0 rgba(0, 0, 0, 
 .chartContainer {
   padding: $spacing-lg;
   min-height: 300px;
+  overflow: hidden;
 }
 
 .chartContainerSmall {
   padding: $spacing-md;
   min-height: 250px;
+  overflow: hidden;
 }
 
 // Table Card
@@ -271,11 +276,13 @@ $shadow-md: 0 3.2px 7.2px 0 rgba(0, 0, 0, 0.132), 0 0.6px 1.8px 0 rgba(0, 0, 0, 
   border-radius: $border-radius-lg;
   box-shadow: $shadow-sm;
   overflow: hidden;
+  min-width: 0; // Prevents overflow in grid/flex contexts
 }
 
 .tableContainer {
   padding: $spacing-sm;
   max-height: 400px;
+  overflow-x: auto;
   overflow-y: auto;
 }
 

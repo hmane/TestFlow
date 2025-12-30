@@ -247,7 +247,23 @@ export const generateMockData = (dateRange: DateRangeOption): IDashboardData => 
  * Uses centralized userGroupsService with caching and deduplication
  */
 export const checkUserAccess = async (): Promise<IUserAccess> => {
-  return checkDashboardAccess();
+  try {
+    SPContext.logger.info('AnalyticsDataService: Checking user access...');
+    const access = await checkDashboardAccess();
+    SPContext.logger.info('AnalyticsDataService: Access check complete', access);
+    return access;
+  } catch (error: unknown) {
+    // Log the actual error for debugging
+    SPContext.logger.error('AnalyticsDataService: Access check failed', error);
+    console.error('Dashboard access check failed:', error);
+
+    // Return access denied on error
+    return {
+      isAdmin: false,
+      isLegalAdmin: false,
+      hasAccess: false,
+    };
+  }
 };
 
 /**

@@ -267,13 +267,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
                     isValid={!fieldState.error}
                   />
                 )}
-                {fieldState.error && (
-                  <div className='sp-field-meta-row'>
-                    <span className='sp-field-error' role='alert'>
-                      <span className='sp-field-error-text'>{fieldState.error.message}</span>
-                    </span>
-                  </div>
-                )}
+                {/* Error display removed - FormItem handles it via fieldName='submissionItem' */}
               </Stack>
             )}
           />
@@ -307,6 +301,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
             dateTimeFormat={SPDateTimeFormat.DateOnly}
             displayFormat='MM/dd/yyyy'
             showClearButton
+            calendarButtonPosition='before'
             minDate={new Date()}
             disabled={!hasSubmissionItemSelection}
             rules={{
@@ -425,6 +420,7 @@ export const DistributionAudienceSection: React.FC<DistributionAudienceSectionPr
             dateTimeFormat={SPDateTimeFormat.DateOnly}
             displayFormat='MM/dd/yyyy'
             showClearButton
+            calendarButtonPosition='before'
             rules={{
               required: isVisible ? 'Date of first use is required' : false,
             }}

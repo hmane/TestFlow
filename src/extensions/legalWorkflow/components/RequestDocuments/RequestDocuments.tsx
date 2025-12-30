@@ -22,6 +22,7 @@ import { Text } from '@fluentui/react/lib/Text';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
 import { useFormContext } from 'spfx-toolkit/lib/components/spForm/context';
+import { useFormState } from 'react-hook-form';
 
 // App imports using path aliases
 import { Lists } from '@sp/Lists';
@@ -75,16 +76,26 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
   // Get documents from store
   const { documents, stagedFiles } = useDocumentsStore();
 
-  // Get form context for error state - may be undefined in view mode
+  // Get form context for control access - may be undefined in view mode
   const formContext = useFormContext();
+  const control = formContext?.control;
+
+  // Use react-hook-form's useFormState to subscribe to form state changes
+  // This ensures the component re-renders when errors change
+  // Note: We always call useFormState but with a disabled flag when no control
+  const formState = useFormState({
+    control: control as any,
+    disabled: !control,
+  });
 
   // Check if there's an attachments validation error
+  // The error is set on 'attachments' path via Zod superRefine in requestSchema.ts
   const hasAttachmentsError = React.useMemo(() => {
-    if (!formContext?.control) {
+    if (!control || !formState.isSubmitted) {
       return false;
     }
-    return false;
-  }, [formContext?.control]);
+    return !!(formState.errors as any)?.attachments;
+  }, [control, formState.isSubmitted, formState.errors]);
 
   // Get Legal and Compliance review statuses
   const legalReviewStatus: LegalReviewStatus | undefined = React.useMemo(() => {
