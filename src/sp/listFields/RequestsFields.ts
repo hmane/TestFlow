@@ -103,6 +103,8 @@ export const RequestsFields = {
   TotalReviewerHours: 'TotalReviewerHours',
   TotalSubmitterHours: 'TotalSubmitterHours',
   // Admin Override Audit Trail
-  AdminOverrideNotes: 'AdminOverrideNotes'
+  AdminOverrideNotes: 'AdminOverrideNotes',
+  // Closeout
+  CloseoutNotes: 'CloseoutNotes'
 } as const;
 

@@ -28,6 +28,11 @@ import { RequestsFields } from '@sp/listFields/RequestsFields';
 import { manageRequestPermissions } from './azureFunctionService';
 import { loadRequestById } from './requestLoadService';
 import { generateCorrelationId } from '../utils/correlationId';
+import {
+  calculateAndUpdateStageTime,
+  pauseTimeTracking,
+  resumeTimeTracking,
+} from './timeTrackingService';
 
 import type { ILegalRequest } from '@appTypes/requestTypes';
 import { RequestStatus, ReviewOutcome, LegalReviewStatus, ComplianceReviewStatus, ReviewAudience } from '@appTypes/workflowTypes';
@@ -581,7 +586,30 @@ export async function submitLegalReview(
   const currentUser = getCurrentUserPrincipal();
   const now = new Date();
 
-  // Build update payload - ONLY legal review fields
+  // Calculate time tracking for Legal Review stage completion
+  // This calculates business hours spent by the attorney since last handoff
+  let timeTrackingUpdates: Partial<ILegalRequest> = {};
+  try {
+    timeTrackingUpdates = await calculateAndUpdateStageTime(
+      currentRequest,
+      'LegalReview',
+      'Submitter' // Review is complete, ownership conceptually transfers
+    );
+    SPContext.logger.info('WorkflowActionService: Time tracking calculated for legal review', {
+      correlationId,
+      itemId,
+      timeTrackingUpdates,
+    });
+  } catch (timeError) {
+    // Log but don't fail - time tracking is secondary to the review submission
+    SPContext.logger.warn('WorkflowActionService: Time tracking calculation failed for legal review', {
+      correlationId,
+      itemId,
+      error: timeError instanceof Error ? timeError.message : String(timeError),
+    });
+  }
+
+  // Build update payload - legal review fields + time tracking
   const updater = createSPUpdater();
   updater.set(RequestsFields.LegalReviewOutcome, payload.outcome);
   updater.set(RequestsFields.LegalReviewNotes, payload.notes);
@@ -590,6 +618,20 @@ export async function submitLegalReview(
   updater.set(RequestsFields.LegalStatusUpdatedOn, now.toISOString());
   updater.set(RequestsFields.LegalReviewCompletedBy, currentUser);
   updater.set(RequestsFields.LegalReviewCompletedOn, now.toISOString());
+
+  // Add time tracking fields to update
+  if (timeTrackingUpdates.legalReviewAttorneyHours !== undefined) {
+    updater.set(RequestsFields.LegalReviewAttorneyHours, timeTrackingUpdates.legalReviewAttorneyHours);
+  }
+  if (timeTrackingUpdates.legalReviewSubmitterHours !== undefined) {
+    updater.set(RequestsFields.LegalReviewSubmitterHours, timeTrackingUpdates.legalReviewSubmitterHours);
+  }
+  if (timeTrackingUpdates.totalReviewerHours !== undefined) {
+    updater.set(RequestsFields.TotalReviewerHours, timeTrackingUpdates.totalReviewerHours);
+  }
+  if (timeTrackingUpdates.totalSubmitterHours !== undefined) {
+    updater.set(RequestsFields.TotalSubmitterHours, timeTrackingUpdates.totalSubmitterHours);
+  }
 
   // Check if all reviews will be complete after this submission
   // and auto-progress to Closeout if so
@@ -632,6 +674,10 @@ export async function submitLegalReview(
     requestId: updatedRequest.requestId,
     outcome: payload.outcome,
     progressedToCloseout: shouldProgressToCloseout,
+    timeTracked: {
+      attorneyHours: timeTrackingUpdates.legalReviewAttorneyHours,
+      totalReviewerHours: timeTrackingUpdates.totalReviewerHours,
+    },
   });
 
   return {
@@ -685,7 +731,30 @@ export async function submitComplianceReview(
   const currentUser = getCurrentUserPrincipal();
   const now = new Date();
 
-  // Build update payload - ONLY compliance review fields
+  // Calculate time tracking for Compliance Review stage completion
+  // This calculates business hours spent by the compliance reviewer since last handoff
+  let timeTrackingUpdates: Partial<ILegalRequest> = {};
+  try {
+    timeTrackingUpdates = await calculateAndUpdateStageTime(
+      currentRequest,
+      'ComplianceReview',
+      'Submitter' // Review is complete, ownership conceptually transfers
+    );
+    SPContext.logger.info('WorkflowActionService: Time tracking calculated for compliance review', {
+      correlationId,
+      itemId,
+      timeTrackingUpdates,
+    });
+  } catch (timeError) {
+    // Log but don't fail - time tracking is secondary to the review submission
+    SPContext.logger.warn('WorkflowActionService: Time tracking calculation failed for compliance review', {
+      correlationId,
+      itemId,
+      error: timeError instanceof Error ? timeError.message : String(timeError),
+    });
+  }
+
+  // Build update payload - compliance review fields + time tracking
   const updater = createSPUpdater();
   updater.set(RequestsFields.ComplianceReviewOutcome, payload.outcome);
   updater.set(RequestsFields.ComplianceReviewNotes, payload.notes);
@@ -694,6 +763,20 @@ export async function submitComplianceReview(
   updater.set(RequestsFields.ComplianceStatusUpdatedOn, now.toISOString());
   updater.set(RequestsFields.ComplianceReviewCompletedBy, currentUser);
   updater.set(RequestsFields.ComplianceReviewCompletedOn, now.toISOString());
+
+  // Add time tracking fields to update
+  if (timeTrackingUpdates.complianceReviewReviewerHours !== undefined) {
+    updater.set(RequestsFields.ComplianceReviewReviewerHours, timeTrackingUpdates.complianceReviewReviewerHours);
+  }
+  if (timeTrackingUpdates.complianceReviewSubmitterHours !== undefined) {
+    updater.set(RequestsFields.ComplianceReviewSubmitterHours, timeTrackingUpdates.complianceReviewSubmitterHours);
+  }
+  if (timeTrackingUpdates.totalReviewerHours !== undefined) {
+    updater.set(RequestsFields.TotalReviewerHours, timeTrackingUpdates.totalReviewerHours);
+  }
+  if (timeTrackingUpdates.totalSubmitterHours !== undefined) {
+    updater.set(RequestsFields.TotalSubmitterHours, timeTrackingUpdates.totalSubmitterHours);
+  }
 
   // Optional flags
   if (payload.isForesideReviewRequired !== undefined) {
@@ -744,6 +827,10 @@ export async function submitComplianceReview(
     requestId: updatedRequest.requestId,
     outcome: payload.outcome,
     progressedToCloseout: shouldProgressToCloseout,
+    timeTracked: {
+      reviewerHours: timeTrackingUpdates.complianceReviewReviewerHours,
+      totalReviewerHours: timeTrackingUpdates.totalReviewerHours,
+    },
   });
 
   return {
@@ -783,10 +870,36 @@ export async function closeoutRequest(
     trackingId: payload?.trackingId,
   });
 
+  // Load current request for time tracking
+  const currentRequest = await loadRequestById(itemId);
+
   const currentUser = getCurrentUserPrincipal();
   const now = new Date();
 
-  // Build update payload - ONLY closeout fields
+  // Calculate time tracking for Closeout stage completion
+  // This calculates business hours spent on closeout since reviews completed
+  let timeTrackingUpdates: Partial<ILegalRequest> = {};
+  try {
+    timeTrackingUpdates = await calculateAndUpdateStageTime(
+      currentRequest,
+      'Closeout',
+      'Submitter' // Closeout is complete
+    );
+    SPContext.logger.info('WorkflowActionService: Time tracking calculated for closeout', {
+      correlationId,
+      itemId,
+      timeTrackingUpdates,
+    });
+  } catch (timeError) {
+    // Log but don't fail - time tracking is secondary
+    SPContext.logger.warn('WorkflowActionService: Time tracking calculation failed for closeout', {
+      correlationId,
+      itemId,
+      error: timeError instanceof Error ? timeError.message : String(timeError),
+    });
+  }
+
+  // Build update payload - closeout fields + time tracking
   const updater = createSPUpdater();
   updater.set(RequestsFields.Status, RequestStatus.Completed);
   updater.set(RequestsFields.CloseoutBy, currentUser);
@@ -794,6 +907,20 @@ export async function closeoutRequest(
 
   if (payload?.trackingId) {
     updater.set(RequestsFields.TrackingId, payload.trackingId);
+  }
+
+  // Add time tracking fields to update
+  if (timeTrackingUpdates.closeoutReviewerHours !== undefined) {
+    updater.set(RequestsFields.CloseoutReviewerHours, timeTrackingUpdates.closeoutReviewerHours);
+  }
+  if (timeTrackingUpdates.closeoutSubmitterHours !== undefined) {
+    updater.set(RequestsFields.CloseoutSubmitterHours, timeTrackingUpdates.closeoutSubmitterHours);
+  }
+  if (timeTrackingUpdates.totalReviewerHours !== undefined) {
+    updater.set(RequestsFields.TotalReviewerHours, timeTrackingUpdates.totalReviewerHours);
+  }
+  if (timeTrackingUpdates.totalSubmitterHours !== undefined) {
+    updater.set(RequestsFields.TotalSubmitterHours, timeTrackingUpdates.totalSubmitterHours);
   }
 
   const updatePayload = updater.getUpdates();
@@ -816,6 +943,10 @@ export async function closeoutRequest(
     correlationId,
     itemId,
     requestId: updatedRequest.requestId,
+    timeTracked: {
+      closeoutReviewerHours: timeTrackingUpdates.closeoutReviewerHours,
+      totalReviewerHours: timeTrackingUpdates.totalReviewerHours,
+    },
   });
 
   return {
@@ -933,16 +1064,63 @@ export async function holdRequest(
     reason: payload.reason,
   });
 
+  // Load current request for time tracking
+  const currentRequest = await loadRequestById(itemId);
+
   const currentUser = getCurrentUserPrincipal();
   const now = new Date();
 
-  // Build update payload - ONLY hold fields
+  // Pause time tracking - finalize hours up to this moment
+  let timeTrackingUpdates: Partial<ILegalRequest> = {};
+  try {
+    timeTrackingUpdates = await pauseTimeTracking(currentRequest);
+    SPContext.logger.info('WorkflowActionService: Time tracking paused for hold', {
+      correlationId,
+      itemId,
+      timeTrackingUpdates,
+    });
+  } catch (timeError) {
+    // Log but don't fail - time tracking is secondary
+    SPContext.logger.warn('WorkflowActionService: Time tracking pause failed for hold', {
+      correlationId,
+      itemId,
+      error: timeError instanceof Error ? timeError.message : String(timeError),
+    });
+  }
+
+  // Build update payload - hold fields + time tracking
   const updater = createSPUpdater();
   updater.set(RequestsFields.Status, RequestStatus.OnHold);
   updater.set(RequestsFields.PreviousStatus, currentStatus);
   updater.set(RequestsFields.OnHoldReason, payload.reason);
   updater.set(RequestsFields.OnHoldBy, currentUser);
   updater.set(RequestsFields.OnHoldSince, now.toISOString());
+
+  // Add time tracking fields if updated
+  if (timeTrackingUpdates.legalReviewAttorneyHours !== undefined) {
+    updater.set(RequestsFields.LegalReviewAttorneyHours, timeTrackingUpdates.legalReviewAttorneyHours);
+  }
+  if (timeTrackingUpdates.legalReviewSubmitterHours !== undefined) {
+    updater.set(RequestsFields.LegalReviewSubmitterHours, timeTrackingUpdates.legalReviewSubmitterHours);
+  }
+  if (timeTrackingUpdates.complianceReviewReviewerHours !== undefined) {
+    updater.set(RequestsFields.ComplianceReviewReviewerHours, timeTrackingUpdates.complianceReviewReviewerHours);
+  }
+  if (timeTrackingUpdates.complianceReviewSubmitterHours !== undefined) {
+    updater.set(RequestsFields.ComplianceReviewSubmitterHours, timeTrackingUpdates.complianceReviewSubmitterHours);
+  }
+  if (timeTrackingUpdates.closeoutReviewerHours !== undefined) {
+    updater.set(RequestsFields.CloseoutReviewerHours, timeTrackingUpdates.closeoutReviewerHours);
+  }
+  if (timeTrackingUpdates.closeoutSubmitterHours !== undefined) {
+    updater.set(RequestsFields.CloseoutSubmitterHours, timeTrackingUpdates.closeoutSubmitterHours);
+  }
+  if (timeTrackingUpdates.totalReviewerHours !== undefined) {
+    updater.set(RequestsFields.TotalReviewerHours, timeTrackingUpdates.totalReviewerHours);
+  }
+  if (timeTrackingUpdates.totalSubmitterHours !== undefined) {
+    updater.set(RequestsFields.TotalSubmitterHours, timeTrackingUpdates.totalSubmitterHours);
+  }
 
   const updatePayload = updater.getUpdates();
   const fieldsUpdated = Object.keys(updatePayload);
@@ -957,6 +1135,10 @@ export async function holdRequest(
     correlationId,
     itemId,
     requestId: updatedRequest.requestId,
+    timeTracked: {
+      totalReviewerHours: timeTrackingUpdates.totalReviewerHours,
+      totalSubmitterHours: timeTrackingUpdates.totalSubmitterHours,
+    },
   });
 
   return {
@@ -997,7 +1179,30 @@ export async function resumeRequest(
     previousStatus,
   });
 
-  // Build update payload - ONLY resume fields
+  // Load current request for time tracking
+  const currentRequest = await loadRequestById(itemId);
+
+  // Resume time tracking - this resets the handoff timestamp to now
+  // so that future calculations start from the resume point
+  try {
+    await resumeTimeTracking(currentRequest, previousStatus);
+    SPContext.logger.info('WorkflowActionService: Time tracking resumed', {
+      correlationId,
+      itemId,
+      previousStatus,
+    });
+  } catch (timeError) {
+    // Log but don't fail - time tracking is secondary
+    SPContext.logger.warn('WorkflowActionService: Time tracking resume failed', {
+      correlationId,
+      itemId,
+      error: timeError instanceof Error ? timeError.message : String(timeError),
+    });
+  }
+
+  // Build update payload - resume fields
+  // Note: Time tracking resumes automatically when status fields are updated
+  // The status timestamp updates will be used as the new handoff reference point
   const updater = createSPUpdater();
   updater.set(RequestsFields.Status, previousStatus);
   updater.set(RequestsFields.PreviousStatus, RequestStatus.OnHold);

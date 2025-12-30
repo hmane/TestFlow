@@ -8,7 +8,7 @@ export const Lists = {
   },
   RequestDocuments: {
     Title: 'RequestDocuments',
-    Url: '/Lists/RequestDocuments',
+    Url: '/RequestDocuments',  // Document library, not in /Lists/
   },
   RequestIds: {
     Title: 'RequestIds',

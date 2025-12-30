@@ -9,17 +9,19 @@
  */
 
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
+import { Groups } from '@sp/Groups';
 
 /**
  * SharePoint group names used in the Legal Workflow application
+ * Re-exported from centralized sp/Groups for backward compatibility
  */
 export const LW_GROUPS = {
-  SUBMITTERS: 'LW - Submitters',
-  LEGAL_ADMIN: 'LW - Legal Admin',
-  ATTORNEY_ASSIGNER: 'LW - Attorney Assigner',
-  ATTORNEYS: 'LW - Attorneys',
-  COMPLIANCE: 'LW - Compliance Users',
-  ADMIN: 'LW - Admin',
+  SUBMITTERS: Groups.LwSubmitters.Title,
+  LEGAL_ADMIN: Groups.LwLegalAdmin.Title,
+  ATTORNEY_ASSIGNER: Groups.LwAttorneyAssigner.Title,
+  ATTORNEYS: Groups.LwAttorneys.Title,
+  COMPLIANCE: Groups.LwComplianceUsers.Title,
+  ADMIN: Groups.LwAdmin.Title,
 } as const;
 
 /**
