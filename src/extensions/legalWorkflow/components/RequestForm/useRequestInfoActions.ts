@@ -46,6 +46,7 @@ interface IRequestInfoActionsResult {
   handlePutOnHold: (reason: string) => Promise<void>;
   validationErrors: IValidationError[];
   setValidationErrors: React.Dispatch<React.SetStateAction<IValidationError[]>>;
+  revalidateErrors: (formValues: Partial<ILegalRequest>) => void;
 }
 
 const normalizeLookupValue = (value: unknown): SPLookup | undefined => {
@@ -179,6 +180,9 @@ export const useRequestInfoActions = ({
   showErrorNotification,
 }: IRequestInfoActionsOptions): IRequestInfoActionsResult => {
   const [validationErrors, setValidationErrors] = React.useState<IValidationError[]>([]);
+
+  // Track which schema was used for the last validation (save vs submit)
+  const lastValidationSchemaRef = React.useRef<'save' | 'submit' | null>(null);
 
   // Get document operations and state from store
   const {
@@ -374,9 +378,13 @@ export const useRequestInfoActions = ({
       data: Partial<ILegalRequest>,
       schema: typeof submitRequestSchema | typeof saveRequestSchema,
       setFormErrors: UseFormSetError<ILegalRequest>,
-      clearFormErrors: () => void
+      clearFormErrors: () => void,
+      schemaType: 'save' | 'submit'
     ): { valid: boolean; normalized?: Partial<ILegalRequest> } => {
       const normalized = normalizeRequestValues(data);
+
+      // Track which schema was used for revalidation later
+      lastValidationSchemaRef.current = schemaType;
 
       // Debug: Log isRushRequest and rushRationale values
       SPContext.logger.info('Validation: Rush request check', {
@@ -422,6 +430,7 @@ export const useRequestInfoActions = ({
         // Clear any previous errors on successful validation
         clearFormErrors();
         setValidationErrors([]);
+        lastValidationSchemaRef.current = null;
         return { valid: true, normalized: validation.data as Partial<ILegalRequest> };
       }
 
@@ -457,7 +466,7 @@ export const useRequestInfoActions = ({
         clearErrors();
         SPContext.logger.info('RequestInfo: Validating for submission', { itemId });
 
-        const { valid, normalized } = validateSubmission(data, submitRequestSchema, setError, clearErrors);
+        const { valid, normalized } = validateSubmission(data, submitRequestSchema, setError, clearErrors, 'submit');
 
         if (!valid || !normalized) {
           SPContext.logger.warn('RequestInfo: Submission validation failed', { itemId });
@@ -482,7 +491,7 @@ export const useRequestInfoActions = ({
 
       const formValues = watch();
 
-      const { valid, normalized } = validateSubmission(formValues, saveRequestSchema, setError, clearErrors);
+      const { valid, normalized } = validateSubmission(formValues, saveRequestSchema, setError, clearErrors, 'save');
 
       if (!valid || !normalized) {
         SPContext.logger.warn('RequestInfo: Draft validation failed');
@@ -509,7 +518,7 @@ export const useRequestInfoActions = ({
 
       const formValues = watch();
 
-      const { valid, normalized } = validateSubmission(formValues, submitRequestSchema, setError, clearErrors);
+      const { valid, normalized } = validateSubmission(formValues, submitRequestSchema, setError, clearErrors, 'submit');
 
       if (!valid || !normalized) {
         SPContext.logger.warn('RequestInfo: Submission validation failed (direct)', { itemId });
@@ -576,6 +585,55 @@ export const useRequestInfoActions = ({
     [itemId, putRequestOnHold, showSuccessNotification, showErrorNotification]
   );
 
+  /**
+   * Revalidate errors using the same schema that was originally used.
+   * This is called when form values change after initial validation to keep
+   * the error summary container in sync with the actual form state.
+   * Only removes fixed errors from the container, doesn't hide the entire container.
+   */
+  const revalidateErrors = React.useCallback(
+    (formValues: Partial<ILegalRequest>): void => {
+      // If there are no current validation errors or no schema was used, nothing to revalidate
+      if (validationErrors.length === 0 || !lastValidationSchemaRef.current) {
+        return;
+      }
+
+      const normalized = normalizeRequestValues(formValues);
+
+      // Inject document availability for approval validation
+      if (normalized.approvals && Array.isArray(normalized.approvals)) {
+        normalized.approvals = normalized.approvals.map((approval: any) => {
+          const hasDoc = hasDocumentsForApprovalType(approval.type as ApprovalType);
+          return {
+            ...approval,
+            _hasDocumentInStore: hasDoc,
+          };
+        });
+      }
+
+      // Inject attachments availability
+      (normalized as any)._hasAttachments = hasAttachments();
+
+      // Use the same schema that was originally used for validation
+      const schema = lastValidationSchemaRef.current === 'submit' ? submitRequestSchema : saveRequestSchema;
+      const validation = schema.safeParse(normalized);
+
+      if (validation.success) {
+        // All errors fixed, clear validation errors and reset schema ref
+        setValidationErrors([]);
+        lastValidationSchemaRef.current = null;
+      } else {
+        // Update with current errors only (removes fixed errors from the container)
+        const currentErrors: IValidationError[] = validation.error.issues.map(issue => ({
+          field: issue.path.length > 0 ? issue.path.join('.') : 'form',
+          message: issue.message,
+        }));
+        setValidationErrors(currentErrors);
+      }
+    },
+    [validationErrors.length, hasDocumentsForApprovalType, hasAttachments, setValidationErrors]
+  );
+
   return {
     onSubmit,
     handleSubmitDirect,
@@ -585,6 +643,7 @@ export const useRequestInfoActions = ({
     handlePutOnHold,
     validationErrors,
     setValidationErrors,
+    revalidateErrors,
   };
 };
 

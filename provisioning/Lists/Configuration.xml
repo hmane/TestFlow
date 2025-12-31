@@ -142,6 +142,13 @@
       <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
       <pnp:DataValue FieldName="Category">Search</pnp:DataValue>
     </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">allowedFileExtensions</pnp:DataValue>
+      <pnp:DataValue FieldName="ConfigValue">.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif,.zip</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Comma-separated list of allowed file extensions for document uploads (include the dot). Example: .pdf,.docx,.xlsx</pnp:DataValue>
+      <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Category">FileUpload</pnp:DataValue>
+    </pnp:DataRow>
   </pnp:DataRows>
 
 

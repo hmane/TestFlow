@@ -4,6 +4,9 @@
  * Simple card for entering closeout information (Tracking ID and Final Notes).
  * Used when request status is "Closeout".
  *
+ * When a review outcome is "Approved with Comments", displays the review comments
+ * and requires the user to acknowledge them before completing closeout.
+ *
  * Note: Request Summary and Review Results are shown in separate cards.
  * The Complete Closeout action is handled by RequestActions component.
  */
@@ -13,6 +16,11 @@ import { useForm, Controller } from 'react-hook-form';
 
 // Fluent UI - tree-shaken imports
 import { Stack } from '@fluentui/react/lib/Stack';
+import { Checkbox } from '@fluentui/react/lib/Checkbox';
+import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
+import { Text } from '@fluentui/react/lib/Text';
+import { Icon } from '@fluentui/react/lib/Icon';
+import { Separator } from '@fluentui/react/lib/Separator';
 
 // spfx-toolkit - tree-shaken imports
 import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
@@ -31,7 +39,7 @@ import {
 import { WorkflowCardHeader } from '@components/WorkflowCardHeader';
 import { useRequestStore } from '@stores/requestStore';
 import { useCloseoutStore } from '@stores/closeoutStore';
-import { ReviewAudience } from '@appTypes/index';
+import { ReviewAudience, ReviewOutcome } from '@appTypes/index';
 
 /**
  * CloseoutForm props
@@ -54,6 +62,19 @@ interface ICloseoutFormData {
 }
 
 /**
+ * Review comments info for acknowledgment
+ */
+interface IReviewCommentsInfo {
+  hasCommentsToAcknowledge: boolean;
+  legalHasComments: boolean;
+  legalNotes?: string;
+  legalCompletedBy?: string;
+  complianceHasComments: boolean;
+  complianceNotes?: string;
+  complianceCompletedBy?: string;
+}
+
+/**
  * CloseoutForm Component
  */
 export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
@@ -61,7 +82,7 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
   readOnly = false,
 }) => {
   const { currentRequest, itemId } = useRequestStore();
-  const { setCloseoutValues } = useCloseoutStore();
+  const { setCloseoutValues, commentsAcknowledged, setCommentsAcknowledged } = useCloseoutStore();
 
   // React Hook Form setup
   const { control, watch } = useForm<ICloseoutFormData>({
@@ -81,12 +102,31 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
     setCloseoutValues({
       trackingId: trackingIdValue,
       closeoutNotes: closeoutNotesValue,
+      commentsAcknowledged,
     });
-  }, [trackingIdValue, closeoutNotesValue, setCloseoutValues]);
+  }, [trackingIdValue, closeoutNotesValue, commentsAcknowledged, setCloseoutValues]);
 
   if (!currentRequest) {
     return null;
   }
+
+  // Determine if there are "Approved with Comments" outcomes that need acknowledgment
+  const getReviewCommentsInfo = (): IReviewCommentsInfo => {
+    const legalHasComments = currentRequest.legalReviewOutcome === ReviewOutcome.ApprovedWithComments;
+    const complianceHasComments = currentRequest.complianceReviewOutcome === ReviewOutcome.ApprovedWithComments;
+
+    return {
+      hasCommentsToAcknowledge: legalHasComments || complianceHasComments,
+      legalHasComments,
+      legalNotes: legalHasComments ? currentRequest.legalReviewNotes : undefined,
+      legalCompletedBy: legalHasComments ? currentRequest.legalReviewCompletedBy?.title : undefined,
+      complianceHasComments,
+      complianceNotes: complianceHasComments ? currentRequest.complianceReviewNotes : undefined,
+      complianceCompletedBy: complianceHasComments ? currentRequest.complianceReviewCompletedBy?.title : undefined,
+    };
+  };
+
+  const reviewCommentsInfo = getReviewCommentsInfo();
 
   // Determine if tracking ID is required based on compliance review flags
   const isTrackingIdRequired =
@@ -199,6 +239,166 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
                 )}
               </FormItem>
             </FormContainer>
+
+            {/* Review Comments Acknowledgment Section - show only if there are "Approved with Comments" reviews */}
+            {reviewCommentsInfo.hasCommentsToAcknowledge && !readOnly && (
+              <>
+                <Separator />
+                <Stack tokens={{ childrenGap: 16 }}>
+                  <MessageBar
+                    messageBarType={MessageBarType.warning}
+                    isMultiline
+                    styles={{
+                      root: { marginBottom: 8 },
+                      icon: { color: '#d83b01' },
+                    }}
+                  >
+                    <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
+                      <Icon iconName="Warning" styles={{ root: { marginRight: 8 } }} />
+                      Review Comments Require Acknowledgment
+                    </Text>
+                    <Text block styles={{ root: { marginTop: 8 } }}>
+                      One or more reviews were approved with comments. Please review the comments below
+                      and confirm that you have addressed or acknowledged them before completing closeout.
+                    </Text>
+                  </MessageBar>
+
+                  {/* Legal Review Comments */}
+                  {reviewCommentsInfo.legalHasComments && reviewCommentsInfo.legalNotes && (
+                    <Stack
+                      styles={{
+                        root: {
+                          backgroundColor: '#f3f2f1',
+                          padding: 16,
+                          borderRadius: 4,
+                          borderLeft: '4px solid #0078d4',
+                        },
+                      }}
+                    >
+                      <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
+                        <Text variant="mediumPlus" styles={{ root: { fontWeight: 600, color: '#0078d4' } }}>
+                          <Icon iconName="Scale" styles={{ root: { marginRight: 8 } }} />
+                          Legal Review Comments
+                        </Text>
+                        {reviewCommentsInfo.legalCompletedBy && (
+                          <Text variant="small" styles={{ root: { color: '#605e5c' } }}>
+                            by {reviewCommentsInfo.legalCompletedBy}
+                          </Text>
+                        )}
+                      </Stack>
+                      <Text
+                        block
+                        styles={{
+                          root: {
+                            marginTop: 12,
+                            whiteSpace: 'pre-wrap',
+                            lineHeight: '1.5',
+                          },
+                        }}
+                      >
+                        {reviewCommentsInfo.legalNotes}
+                      </Text>
+                    </Stack>
+                  )}
+
+                  {/* Compliance Review Comments */}
+                  {reviewCommentsInfo.complianceHasComments && reviewCommentsInfo.complianceNotes && (
+                    <Stack
+                      styles={{
+                        root: {
+                          backgroundColor: '#f3f2f1',
+                          padding: 16,
+                          borderRadius: 4,
+                          borderLeft: '4px solid #107c10',
+                        },
+                      }}
+                    >
+                      <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
+                        <Text variant="mediumPlus" styles={{ root: { fontWeight: 600, color: '#107c10' } }}>
+                          <Icon iconName="Shield" styles={{ root: { marginRight: 8 } }} />
+                          Compliance Review Comments
+                        </Text>
+                        {reviewCommentsInfo.complianceCompletedBy && (
+                          <Text variant="small" styles={{ root: { color: '#605e5c' } }}>
+                            by {reviewCommentsInfo.complianceCompletedBy}
+                          </Text>
+                        )}
+                      </Stack>
+                      <Text
+                        block
+                        styles={{
+                          root: {
+                            marginTop: 12,
+                            whiteSpace: 'pre-wrap',
+                            lineHeight: '1.5',
+                          },
+                        }}
+                      >
+                        {reviewCommentsInfo.complianceNotes}
+                      </Text>
+                    </Stack>
+                  )}
+
+                  {/* Acknowledgment Checkbox */}
+                  <Stack
+                    styles={{
+                      root: {
+                        backgroundColor: commentsAcknowledged ? '#dff6dd' : '#fff4ce',
+                        padding: 16,
+                        borderRadius: 4,
+                        border: commentsAcknowledged ? '1px solid #107c10' : '1px solid #d83b01',
+                      },
+                    }}
+                  >
+                    <Checkbox
+                      label="I have reviewed and addressed the comments above, or acknowledge that I have read and understand them."
+                      checked={commentsAcknowledged}
+                      onChange={(_, checked) => setCommentsAcknowledged(checked ?? false)}
+                      styles={{
+                        root: { fontWeight: 500 },
+                        checkbox: {
+                          borderColor: commentsAcknowledged ? '#107c10' : '#d83b01',
+                        },
+                        checkmark: {
+                          color: '#107c10',
+                        },
+                      }}
+                      ariaLabel="Acknowledge review comments"
+                    />
+                  </Stack>
+                </Stack>
+              </>
+            )}
+
+            {/* Show acknowledgment status in read-only mode if comments were acknowledged */}
+            {readOnly && currentRequest.commentsAcknowledged && (
+              <>
+                <Separator />
+                <Stack
+                  horizontal
+                  verticalAlign="center"
+                  tokens={{ childrenGap: 8 }}
+                  styles={{
+                    root: {
+                      backgroundColor: '#dff6dd',
+                      padding: 12,
+                      borderRadius: 4,
+                      border: '1px solid #107c10',
+                    },
+                  }}
+                >
+                  <Icon iconName="CheckMark" styles={{ root: { color: '#107c10', fontSize: 16 } }} />
+                  <Text styles={{ root: { color: '#107c10', fontWeight: 500 } }}>
+                    Review comments were acknowledged
+                    {currentRequest.commentsAcknowledgedOn && (
+                      <> on {currentRequest.commentsAcknowledgedOn instanceof Date
+                        ? currentRequest.commentsAcknowledgedOn.toLocaleDateString()
+                        : new Date(currentRequest.commentsAcknowledgedOn).toLocaleDateString()}</>
+                    )}
+                  </Text>
+                </Stack>
+              </>
+            )}
 
             {/* Final Notes - only show in edit mode (field may be added later) */}
             {!readOnly && (

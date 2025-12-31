@@ -11,6 +11,7 @@ export enum RequestStatus {
   AssignAttorney = 'Assign Attorney',
   InReview = 'In Review',
   Closeout = 'Closeout',
+  AwaitingForesideDocuments = 'Awaiting Foreside Documents',
   Completed = 'Completed',
   Cancelled = 'Cancelled',
   OnHold = 'On Hold',

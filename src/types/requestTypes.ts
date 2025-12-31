@@ -227,6 +227,20 @@ communicationsApprover?: IPrincipal;
   closeoutNotes?: string;
   closeoutBy?: IPrincipal;
   closeoutOn?: Date;
+  /** Whether review comments have been acknowledged by the submitter at closeout */
+  commentsAcknowledged?: boolean;
+  /** When review comments were acknowledged */
+  commentsAcknowledgedOn?: Date;
+
+  // Foreside Documents
+  /** User who completed the Foreside document upload phase */
+  foresideCompletedBy?: IPrincipal;
+  /** When the Foreside document upload phase was completed */
+  foresideCompletedOn?: Date;
+  /** Notes about Foreside document uploads */
+  foresideNotes?: string;
+  /** When the request entered Awaiting Foreside Documents status */
+  awaitingForesideSince?: Date;
 
   // Cancellation
   cancelledBy?: IPrincipal;
@@ -402,6 +416,12 @@ export interface IRequestListItem {
   // Closeout
   TrackingId?: string;
   CloseoutNotes?: string;
+
+  // Foreside Documents
+  ForesideCompletedById?: number;
+  ForesideCompletedOn?: string;
+  ForesideNotes?: string;
+  AwaitingForesideSince?: string;
 
   // System tracking
   SubmittedById?: number;

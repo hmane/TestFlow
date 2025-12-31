@@ -18,6 +18,8 @@ import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 export interface ICloseoutValues {
   trackingId?: string;
   closeoutNotes?: string;
+  /** Whether review comments have been acknowledged (required if outcome was Approved with Comments) */
+  commentsAcknowledged?: boolean;
 }
 
 /**
@@ -27,6 +29,8 @@ export interface ICloseoutState {
   // Form values
   trackingId?: string;
   closeoutNotes?: string;
+  /** Whether review comments have been acknowledged */
+  commentsAcknowledged: boolean;
 
   // Dirty tracking
   isDirty: boolean;
@@ -34,6 +38,7 @@ export interface ICloseoutState {
   // Actions
   setTrackingId: (trackingId: string | undefined) => void;
   setCloseoutNotes: (notes: string | undefined) => void;
+  setCommentsAcknowledged: (acknowledged: boolean) => void;
   setCloseoutValues: (values: ICloseoutValues) => void;
   reset: () => void;
   getFormData: () => ICloseoutValues;
@@ -45,6 +50,7 @@ export interface ICloseoutState {
 const initialState = {
   trackingId: undefined,
   closeoutNotes: undefined,
+  commentsAcknowledged: false,
   isDirty: false,
 };
 
@@ -71,17 +77,27 @@ export const useCloseoutStore = create<ICloseoutState>()(
         });
       },
 
+      setCommentsAcknowledged: (acknowledged) => {
+        set({
+          commentsAcknowledged: acknowledged,
+          isDirty: true,
+        });
+        SPContext.logger.info('Closeout: Comments acknowledged updated', { acknowledged });
+      },
+
       setCloseoutValues: (values) => {
         const currentState = get();
         // Only update if values have changed to prevent unnecessary re-renders
         const hasChanges =
           currentState.trackingId !== values.trackingId ||
-          currentState.closeoutNotes !== values.closeoutNotes;
+          currentState.closeoutNotes !== values.closeoutNotes ||
+          currentState.commentsAcknowledged !== values.commentsAcknowledged;
 
         if (hasChanges) {
           set({
             trackingId: values.trackingId,
             closeoutNotes: values.closeoutNotes,
+            commentsAcknowledged: values.commentsAcknowledged ?? false,
             isDirty: true,
           });
         }
@@ -97,6 +113,7 @@ export const useCloseoutStore = create<ICloseoutState>()(
         return {
           trackingId: state.trackingId,
           closeoutNotes: state.closeoutNotes,
+          commentsAcknowledged: state.commentsAcknowledged,
         };
       },
     }),
@@ -129,18 +146,26 @@ export const useCloseoutDirty = (): boolean =>
   useCloseoutStore(state => state.isDirty);
 
 /**
+ * Selector for comments acknowledged state
+ */
+export const useCommentsAcknowledged = (): boolean =>
+  useCloseoutStore(state => state.commentsAcknowledged);
+
+/**
  * Selector for closeout store actions only (stable reference)
  * Use this when you only need actions without subscribing to state changes
  */
 export const useCloseoutActions = (): {
   setTrackingId: (trackingId: string | undefined) => void;
   setCloseoutNotes: (notes: string | undefined) => void;
+  setCommentsAcknowledged: (acknowledged: boolean) => void;
   setCloseoutValues: (values: ICloseoutValues) => void;
   reset: () => void;
 } =>
   useCloseoutStore(state => ({
     setTrackingId: state.setTrackingId,
     setCloseoutNotes: state.setCloseoutNotes,
+    setCommentsAcknowledged: state.setCommentsAcknowledged,
     setCloseoutValues: state.setCloseoutValues,
     reset: state.reset,
   }));

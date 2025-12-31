@@ -346,53 +346,32 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
   );
 };
 
-interface DistributionAudienceSectionProps {
+interface DistributionSectionProps {
   errors: FieldErrors<ILegalRequest>;
   requestType?: RequestType;
 }
 
-export const DistributionAudienceSection: React.FC<DistributionAudienceSectionProps> = ({
+export const DistributionSection: React.FC<DistributionSectionProps> = ({
   errors,
   requestType,
 }) => {
-  // Always call hooks first
   const requestListIdentifier = Lists.Requests.Title;
   const distributionChoices = React.useMemo(() => DISTRIBUTION_METHOD_CHOICES, []);
 
   // Determine if section should be visible
   const isVisible = requestType === RequestType.Communication;
 
-  // Always render all fields to maintain consistent hook count
   return (
     <>
       <div style={{ display: isVisible ? 'block' : 'none' }}>
         <Separator />
         <SectionHeader
-          icon='Megaphone'
-          title='Distribution & Audience'
+          icon='Send'
+          title='Distribution'
           description='Specify how and where this communication will be distributed'
         />
       </div>
       <FormContainer labelWidth='200px' style={{ display: isVisible ? 'block' : 'none' }}>
-        <FormItem fieldName='reviewAudience'>
-          <FormLabel isRequired={isVisible}>Review Audience</FormLabel>
-          <SPChoiceField
-            name='reviewAudience'
-            placeholder='Select review audience'
-            displayType={SPChoiceDisplayType.Dropdown}
-            choices={REVIEW_AUDIENCE_CHOICES}
-            dataSource={{
-              type: 'list',
-              listNameOrId: requestListIdentifier,
-              fieldInternalName: 'ReviewAudience',
-            }}
-            showClearButton
-            rules={{
-              required: isVisible ? 'Review audience is required' : false,
-            }}
-          />
-        </FormItem>
-
         <FormItem fieldName='distributionMethod'>
           <FormLabel isRequired={isVisible}>Distribution Method</FormLabel>
           <SPChoiceField
@@ -423,6 +402,54 @@ export const DistributionAudienceSection: React.FC<DistributionAudienceSectionPr
             calendarButtonPosition='before'
             rules={{
               required: isVisible ? 'Date of first use is required' : false,
+            }}
+          />
+        </FormItem>
+      </FormContainer>
+    </>
+  );
+};
+
+interface ReviewAudienceSectionProps {
+  errors: FieldErrors<ILegalRequest>;
+  requestType?: RequestType;
+}
+
+export const ReviewAudienceSection: React.FC<ReviewAudienceSectionProps> = ({
+  errors,
+  requestType,
+}) => {
+  const requestListIdentifier = Lists.Requests.Title;
+
+  // Determine if section should be visible
+  const isVisible = requestType === RequestType.Communication;
+
+  return (
+    <>
+      <div style={{ display: isVisible ? 'block' : 'none' }}>
+        <Separator />
+        <SectionHeader
+          icon='Megaphone'
+          title='Review Audience'
+          description='Specify which teams should review this communication'
+        />
+      </div>
+      <FormContainer labelWidth='200px' style={{ display: isVisible ? 'block' : 'none' }}>
+        <FormItem fieldName='reviewAudience'>
+          <FormLabel isRequired={isVisible}>Review Audience</FormLabel>
+          <SPChoiceField
+            name='reviewAudience'
+            placeholder='Select review audience'
+            displayType={SPChoiceDisplayType.Dropdown}
+            choices={REVIEW_AUDIENCE_CHOICES}
+            dataSource={{
+              type: 'list',
+              listNameOrId: requestListIdentifier,
+              fieldInternalName: 'ReviewAudience',
+            }}
+            showClearButton
+            rules={{
+              required: isVisible ? 'Review audience is required' : false,
             }}
           />
         </FormItem>

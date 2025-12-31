@@ -9,6 +9,16 @@ import { useRequestStore } from '@stores/index';
 import type { IPrincipal } from '@appTypes/index';
 
 /**
+ * Closeout options for workflow action
+ */
+export interface ICloseoutOptions {
+  /** Optional tracking ID */
+  trackingId?: string;
+  /** Whether review comments have been acknowledged (required if outcome was Approved with Comments) */
+  commentsAcknowledged?: boolean;
+}
+
+/**
  * Workflow actions result
  */
 export interface IWorkflowActionsResult {
@@ -25,7 +35,7 @@ export interface IWorkflowActionsResult {
   ) => Promise<void>;
 
   // Closeout
-  closeoutRequest: (trackingId?: string) => Promise<void>;
+  closeoutRequest: (options?: ICloseoutOptions) => Promise<void>;
 
   // State changes
   cancelRequest: (reason: string) => Promise<void>;
@@ -172,7 +182,7 @@ export function useWorkflowActions(itemId?: number): IWorkflowActionsResult {
    * Close out request
    */
   const closeoutRequest = React.useCallback(
-    async (trackingId?: string): Promise<void> => {
+    async (options?: ICloseoutOptions): Promise<void> => {
       if (!itemId) {
         throw new Error('Cannot closeout request - no request ID');
       }
@@ -181,9 +191,10 @@ export function useWorkflowActions(itemId?: number): IWorkflowActionsResult {
       setError(undefined);
 
       try {
-        await store.closeoutRequest(trackingId);
+        await store.closeoutRequest(options);
         SPContext.logger.success('Request closed out', {
-          trackingId,
+          trackingId: options?.trackingId,
+          commentsAcknowledged: options?.commentsAcknowledged,
           requestId: itemId,
         });
       } catch (err: unknown) {

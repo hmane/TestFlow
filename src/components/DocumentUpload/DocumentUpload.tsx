@@ -23,6 +23,11 @@ import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
 
 import { Lists } from '@sp/Lists';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
+import {
+  getFileUploadConfig,
+  DEFAULT_ALLOWED_EXTENSIONS,
+  type IFileUploadConfig,
+} from '@services/configurationService';
 
 import { useDocumentsStore, type IDocument, type IStagedDocument } from '@stores/documentsStore';
 import { DocumentType } from '@appTypes/documentTypes';
@@ -43,22 +48,6 @@ const DEFAULT_MAX_FILES = 50;
 const DEFAULT_MAX_FILE_SIZE = 250 * 1024 * 1024; // 250MB
 const DEFAULT_LIBRARY_TITLE = Lists.RequestDocuments.Title;
 
-const ALLOWED_EXTENSIONS = [
-  '.pdf',
-  '.doc',
-  '.docx',
-  '.xls',
-  '.xlsx',
-  '.ppt',
-  '.pptx',
-  '.txt',
-  '.jpg',
-  '.jpeg',
-  '.png',
-  '.gif',
-  '.zip',
-];
-
 /**
  * DocumentUpload Component
  */
@@ -67,8 +56,8 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
   documentType,
   isReadOnly = false,
   maxFiles = DEFAULT_MAX_FILES,
-  maxFileSize = DEFAULT_MAX_FILE_SIZE,
-  allowedExtensions = ALLOWED_EXTENSIONS,
+  maxFileSize: maxFileSizeProp,
+  allowedExtensions: allowedExtensionsProp,
   required = false,
   label,
   description,
@@ -80,6 +69,41 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
 }) => {
   // Determine mode
   const mode: UploadMode = documentType ? UploadMode.Approval : UploadMode.Attachment;
+
+  // File upload configuration from SharePoint (loaded once)
+  const [fileUploadConfig, setFileUploadConfig] = React.useState<IFileUploadConfig | undefined>(undefined);
+
+  // Load file upload configuration on mount
+  React.useEffect(() => {
+    let isMounted = true;
+
+    const loadConfig = async (): Promise<void> => {
+      try {
+        const config = await getFileUploadConfig();
+        if (isMounted) {
+          setFileUploadConfig(config);
+        }
+      } catch (error) {
+        SPContext.logger.error('Failed to load file upload config, using defaults', error);
+        if (isMounted) {
+          setFileUploadConfig({
+            allowedExtensions: DEFAULT_ALLOWED_EXTENSIONS,
+            maxFileSizeMB: 250,
+          });
+        }
+      }
+    };
+
+    void loadConfig();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Use prop values if provided, otherwise use config values (with fallback to defaults)
+  const allowedExtensions = allowedExtensionsProp ?? fileUploadConfig?.allowedExtensions ?? DEFAULT_ALLOWED_EXTENSIONS;
+  const maxFileSize = maxFileSizeProp ?? (fileUploadConfig ? fileUploadConfig.maxFileSizeMB * 1024 * 1024 : DEFAULT_MAX_FILE_SIZE);
 
   // Store state
   const {

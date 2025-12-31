@@ -35,9 +35,15 @@ import {
 import { SPTextField, SPTextFieldMode, SPChoiceField } from 'spfx-toolkit/lib/components/spFields';
 
 // App imports using path aliases
-import { WorkflowCardHeader, type ReviewOutcome as HeaderReviewOutcome } from '@components/WorkflowCardHeader';
+import {
+  WorkflowCardHeader,
+  type ReviewOutcome as HeaderReviewOutcome,
+} from '@components/WorkflowCardHeader';
 import { useRequestStore, useRequestActions } from '@stores/requestStore';
-import { saveLegalReviewProgress } from '@services/workflowActionService';
+import {
+  saveLegalReviewProgress,
+  resubmitForLegalReview,
+} from '@services/workflowActionService';
 import { LegalReviewStatus, ReviewOutcome } from '@appTypes/index';
 import { calculateBusinessHours } from '@utils/businessHoursCalculator';
 
@@ -130,6 +136,8 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
   const [isSaving, setIsSaving] = React.useState<boolean>(false);
   // Key to force NoteHistory refresh after save
   const [historyRefreshKey, setHistoryRefreshKey] = React.useState<number>(0);
+  // State for resubmit action
+  const [isResubmitting, setIsResubmitting] = React.useState<boolean>(false);
 
   // React Hook Form setup
   const { control, handleSubmit, watch, reset, formState, getValues } =
@@ -262,6 +270,65 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
     }
   }, [itemId, getValues, reset]);
 
+  /**
+   * Handle resubmit for review (submitter action)
+   *
+   * Called when the submitter has addressed the reviewer's comments and is ready
+   * for the attorney to review again. This is part of the "Respond To Comments And Resubmit"
+   * workflow where:
+   * 1. Attorney sets outcome to "Respond To Comments And Resubmit"
+   * 2. Review status changes to "Waiting On Submitter"
+   * 3. Submitter addresses comments, updates request/documents/approvals
+   * 4. Submitter clicks "Resubmit for Review" (this handler)
+   * 5. Review status changes to "Waiting On Attorney"
+   * 6. Attorney reviews again and can repeat or set final outcome
+   */
+  const handleResubmitForReview = React.useCallback(async (): Promise<void> => {
+    if (!itemId) return;
+
+    try {
+      setIsResubmitting(true);
+      setError(undefined);
+
+      const formData = getValues();
+
+      SPContext.logger.info('LegalReviewForm: Resubmitting for review', {
+        itemId,
+        notes: formData.legalReviewNotes ? 'provided' : 'none',
+      });
+
+      // Use dedicated resubmit action - changes status from WaitingOnSubmitter to WaitingOnAttorney
+      // and calculates time tracking for submitter's work
+      await resubmitForLegalReview(itemId, {
+        notes: formData.legalReviewNotes,
+      });
+
+      // Reload request to update store with server data
+      await loadRequest(itemId);
+
+      // Reset form notes for append-only field
+      reset({
+        legalReviewStatus: LegalReviewStatus.WaitingOnAttorney,
+        legalReviewOutcome: ReviewOutcome.RespondToCommentsAndResubmit, // Outcome stays the same
+        legalReviewNotes: undefined, // Clear for append-only
+      });
+
+      // Increment key to force NoteHistory refresh
+      setHistoryRefreshKey((prev) => prev + 1);
+
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 5000);
+      SPContext.logger.success('LegalReviewForm: Request resubmitted for review');
+    } catch (resubmitError: unknown) {
+      const errorMessage =
+        resubmitError instanceof Error ? resubmitError.message : 'Failed to resubmit for review';
+      setError(errorMessage);
+      SPContext.logger.error('LegalReviewForm: Resubmit failed', resubmitError);
+    } finally {
+      setIsResubmitting(false);
+    }
+  }, [itemId, getValues, reset, loadRequest]);
+
   if (!currentRequest) {
     return null;
   }
@@ -364,6 +431,21 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
               : undefined
           }
           durationMinutes={durationMinutes}
+          // Pass waiting status for resubmit workflow display
+          // Shows "Waiting on Submitter" or "Waiting on Attorney" badge with timestamp
+          waitingStatus={
+            reviewStatus === LegalReviewStatus.WaitingOnSubmitter
+              ? 'waiting-on-submitter'
+              : reviewStatus === LegalReviewStatus.WaitingOnAttorney
+                ? 'waiting-on-reviewer'
+                : undefined
+          }
+          waitingSince={
+            (reviewStatus === LegalReviewStatus.WaitingOnSubmitter ||
+              reviewStatus === LegalReviewStatus.WaitingOnAttorney)
+              ? currentRequest.legalStatusUpdatedOn
+              : undefined
+          }
         />
       </Header>
 
@@ -396,14 +478,197 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
             </MessageBar>
           )}
 
-          {/* Waiting on submitter message */}
+          {/* Waiting on submitter - show resubmit UI for submitter */}
           {reviewStatus === LegalReviewStatus.WaitingOnSubmitter ? (
-            <MessageBar messageBarType={MessageBarType.info} isMultiline={false}>
-              <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
-                <Icon iconName='UserFollowed' />
-                <Text>Waiting for submitter to provide additional information.</Text>
+            <Stack tokens={{ childrenGap: 16 }}>
+              {/* Warning banner explaining what needs to be done */}
+              <MessageBar
+                messageBarType={MessageBarType.warning}
+                isMultiline
+                styles={{
+                  root: { borderRadius: '4px' },
+                  icon: { color: '#d83b01' },
+                }}
+              >
+                <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
+                  <Icon iconName="Warning" styles={{ root: { marginRight: 8 } }} />
+                  Action Required: Respond to Attorney Comments
+                </Text>
+                <Text block styles={{ root: { marginTop: 8 } }}>
+                  The attorney has requested changes or additional information. Please review the comments below,
+                  address the issues by updating the request or adding documents/approvals as needed,
+                  then click &quot;Resubmit for Review&quot; when ready.
+                </Text>
+              </MessageBar>
+
+              {/* Show attorney's review comments if available */}
+              {currentRequest.legalReview?.reviewNotes && (
+                <Stack
+                  styles={{
+                    root: {
+                      backgroundColor: '#f3f2f1',
+                      padding: 16,
+                      borderRadius: 4,
+                      borderLeft: '4px solid #0078d4',
+                    },
+                  }}
+                >
+                  <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
+                    <Text variant="mediumPlus" styles={{ root: { fontWeight: 600, color: '#0078d4' } }}>
+                      <Icon iconName="Scale" styles={{ root: { marginRight: 8 } }} />
+                      Attorney Comments
+                    </Text>
+                    {currentRequest.attorney?.title && (
+                      <Text variant="small" styles={{ root: { color: '#605e5c' } }}>
+                        by {currentRequest.attorney.title}
+                      </Text>
+                    )}
+                  </Stack>
+                  <Text
+                    block
+                    styles={{
+                      root: {
+                        marginTop: 12,
+                        whiteSpace: 'pre-wrap',
+                        lineHeight: '1.5',
+                      },
+                    }}
+                  >
+                    {currentRequest.legalReview.reviewNotes}
+                  </Text>
+                </Stack>
+              )}
+
+              {/* Response notes field - submitter can add notes when resubmitting */}
+              <FormContainer labelWidth='150px'>
+                <FormItem fieldName='legalReviewNotes'>
+                  <FormLabel infoText='Add notes explaining what changes you made to address the comments'>
+                    Response Notes
+                  </FormLabel>
+                  <SPTextField
+                    key={`legal-review-notes-resubmit-${historyRefreshKey}`}
+                    name='legalReviewNotes'
+                    placeholder='Describe the changes made to address the reviewer comments'
+                    mode={SPTextFieldMode.MultiLine}
+                    rows={3}
+                    maxLength={4000}
+                    showCharacterCount
+                    stylingMode='outlined'
+                    spellCheck
+                    appendOnly
+                    itemId={itemId}
+                    listNameOrId='Requests'
+                    fieldInternalName='LegalReviewNotes'
+                  />
+                </FormItem>
+              </FormContainer>
+
+              <Separator />
+
+              {/* Resubmit button */}
+              <Stack horizontal tokens={{ childrenGap: 12 }} horizontalAlign='start'>
+                <PrimaryButton
+                  text={isResubmitting ? 'Resubmitting...' : 'Resubmit for Review'}
+                  iconProps={{ iconName: isResubmitting ? undefined : 'Send' }}
+                  onClick={handleResubmitForReview}
+                  disabled={isLoading || isSaving || isResubmitting}
+                  styles={{
+                    root: { minWidth: '180px', height: '40px', borderRadius: '4px' },
+                  }}
+                >
+                  {isResubmitting && (
+                    <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />
+                  )}
+                </PrimaryButton>
               </Stack>
-            </MessageBar>
+            </Stack>
+          ) : reviewStatus === LegalReviewStatus.WaitingOnAttorney ? (
+            // Waiting on Attorney - show message to reviewers that submitter has resubmitted
+            <Stack tokens={{ childrenGap: 16 }}>
+              <MessageBar
+                messageBarType={MessageBarType.info}
+                isMultiline={false}
+                styles={{ root: { borderRadius: '4px' } }}
+              >
+                <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
+                  <Icon iconName='AwayStatus' />
+                  <Text>
+                    The submitter has resubmitted for review. Please review the changes and provide your decision.
+                  </Text>
+                </Stack>
+              </MessageBar>
+
+              {/* Standard review form for attorney */}
+              <form onSubmit={handleSubmit(onSubmit)}>
+                <Stack tokens={{ childrenGap: 20 }}>
+                  {/* Review Outcome Selection */}
+                  <FormContainer labelWidth='150px'>
+                    <FormItem fieldName='legalReviewOutcome'>
+                      <FormLabel isRequired infoText='Select your review decision'>
+                        Review Outcome
+                      </FormLabel>
+                      <SPChoiceField
+                        name='legalReviewOutcome'
+                        choices={REVIEW_OUTCOME_CHOICES}
+                        placeholder='Select an outcome...'
+                      />
+                    </FormItem>
+                  </FormContainer>
+
+                  {/* Review Notes */}
+                  <FormContainer labelWidth='150px'>
+                    <FormItem fieldName='legalReviewNotes'>
+                      <FormLabel infoText='Detailed review notes, comments, and recommendations'>
+                        Review Notes
+                      </FormLabel>
+                      <SPTextField
+                        key={`legal-review-notes-waiting-${historyRefreshKey}`}
+                        name='legalReviewNotes'
+                        placeholder='Provide detailed review notes, comments, and recommendations'
+                        mode={SPTextFieldMode.MultiLine}
+                        rows={4}
+                        maxLength={4000}
+                        showCharacterCount
+                        stylingMode='outlined'
+                        spellCheck
+                        appendOnly
+                        itemId={itemId}
+                        listNameOrId='Requests'
+                        fieldInternalName='LegalReviewNotes'
+                      />
+                    </FormItem>
+                  </FormContainer>
+
+                  <Separator />
+
+                  {/* Action Buttons */}
+                  <Stack horizontal tokens={{ childrenGap: 12 }} horizontalAlign='start'>
+                    <PrimaryButton
+                      type='submit'
+                      text='Submit Review'
+                      iconProps={{ iconName: 'Send' }}
+                      disabled={isLoading || isSaving || !selectedOutcome}
+                      styles={{
+                        root: { minWidth: '140px', height: '40px', borderRadius: '4px' },
+                      }}
+                    />
+                    <DefaultButton
+                      text={isSaving ? 'Saving...' : 'Save'}
+                      iconProps={{ iconName: isSaving ? undefined : 'Save' }}
+                      onClick={handleSaveProgress}
+                      disabled={isLoading || isSaving}
+                      styles={{
+                        root: { minWidth: '100px', height: '40px', borderRadius: '4px' },
+                      }}
+                    >
+                      {isSaving && (
+                        <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />
+                      )}
+                    </DefaultButton>
+                  </Stack>
+                </Stack>
+              </form>
+            </Stack>
           ) : (
             <form onSubmit={handleSubmit(onSubmit)}>
               <Stack tokens={{ childrenGap: 20 }}>

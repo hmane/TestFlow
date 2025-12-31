@@ -16,12 +16,13 @@ A comprehensive guide for using the Legal Review System (LRS) to submit, track, 
 8. [Review Process](#review-process)
 9. [Responding to Review Feedback](#responding-to-review-feedback)
 10. [Closeout and Completion](#closeout-and-completion)
-11. [Document Management](#document-management)
-12. [Approvals](#approvals)
-13. [Comments and Communication](#comments-and-communication)
-14. [Admin Features](#admin-features)
-15. [Frequently Asked Questions](#frequently-asked-questions)
-16. [Troubleshooting](#troubleshooting)
+11. [Awaiting Foreside Documents](#awaiting-foreside-documents)
+12. [Document Management](#document-management)
+13. [Approvals](#approvals)
+14. [Comments and Communication](#comments-and-communication)
+15. [Admin Features](#admin-features)
+16. [Frequently Asked Questions](#frequently-asked-questions)
+17. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -42,12 +43,14 @@ The Legal Review System (LRS) is a SharePoint-based application that streamlines
 ### Workflow Overview
 
 ```
-┌─────────┐    ┌──────────────┐    ┌──────────────┐    ┌───────────┐    ┌──────────┐    ┌───────────┐
-│  Draft  │ -> │ Legal Intake │ -> │Assign Attorney│ -> │ In Review │ -> │ Closeout │ -> │ Completed │
-└─────────┘    └──────────────┘    └──────────────┘    └───────────┘    └──────────┘    └───────────┘
-                                          │                                   │
-                                          └───────────────────────────────────┘
-                                              (Direct assignment bypasses)
+┌─────────┐    ┌──────────────┐    ┌──────────────┐    ┌───────────┐    ┌──────────┐    ┌──────────────────────────┐    ┌───────────┐
+│  Draft  │ -> │ Legal Intake │ -> │Assign Attorney│ -> │ In Review │ -> │ Closeout │ -> │ Awaiting Foreside Docs*  │ -> │ Completed │
+└─────────┘    └──────────────┘    └──────────────┘    └───────────┘    └──────────┘    └──────────────────────────┘    └───────────┘
+                                          │                                   │                      │
+                                          └───────────────────────────────────┘                      │
+                                              (Direct assignment bypasses)                           │
+                                                                                                     │
+                                                            * Only if "Foreside Review Required" = Yes
 ```
 
 ---
@@ -224,6 +227,7 @@ If this is a revised submission or references previous work:
 | **Assign Attorney** | Sent to committee for attorney assignment | Attorney Assigner |
 | **In Review** | Active review by attorney/compliance | Attorney, Compliance |
 | **Closeout** | Reviews complete, awaiting final steps | Submitter |
+| **Awaiting Foreside Documents** | Waiting for Foreside letter upload (when Foreside Review Required) | Submitter, Admin |
 | **Completed** | Request fully processed | Read-only |
 | **Cancelled** | Request was cancelled | Read-only |
 | **On Hold** | Request temporarily paused | Depends on prior status |
@@ -273,6 +277,14 @@ Approved    Approved With    Not Approved ────────────�
 │       Closeout        │  │      Completed        │              │ Completed │
 │ (tracking ID if req)  │  │   (auto-complete)     │              │(auto)     │
 └───────────────────────┘  └───────────────────────┘              └───────────┘
+           │
+           ├─────────────────────────────────────────────────┐
+           │                                                 │
+           ▼ (Foreside Required = Yes)                      ▼ (Foreside Required = No)
+    ┌─────────────────────────────┐                   ┌───────────┐
+    │ Awaiting Foreside Documents │                   │ Completed │
+    │  (upload Foreside letters)  │                   └───────────┘
+    └─────────────────────────────┘
            │
            ▼
     ┌───────────┐
@@ -403,14 +415,27 @@ When ready to complete your review:
 1. Select **Legal Review Outcome**:
    - **Approved**: Materials approved as-is
    - **Approved With Comments**: Approved with notes for submitter
-   - **Respond to Comments and Resubmit**: Changes required
+   - **Respond to Comments and Resubmit**: Changes required from submitter
    - **Not Approved**: Cannot be approved
 
 2. Add **Review Notes** explaining your decision
 
 3. Click **Submit Legal Review**
 
-> **Note**: If you select "Respond to Comments and Resubmit", the submitter will be notified to make changes.
+#### Using "Respond to Comments and Resubmit"
+
+When you select "Respond to Comments and Resubmit":
+
+1. The review status changes to **Waiting On Submitter**
+2. The submitter receives a notification with your comments
+3. The review card header displays "Waiting on Submitter since [date]"
+4. The submitter addresses your comments and uploads revised materials
+5. When the submitter clicks **Resubmit for Review**, the status changes to **Waiting On Attorney**
+6. You receive a notification that materials have been resubmitted
+7. The review card header displays "Waiting on Attorney since [date]"
+8. You can then conduct another review and select a final outcome
+
+> **Note**: You can have multiple rounds of "Respond to Comments and Resubmit" until you're satisfied with the materials. The outcome field remains disabled for the submitter throughout this process.
 
 ### For Compliance Users (Compliance Review)
 
@@ -429,9 +454,26 @@ Before submitting your review, set these flags if applicable:
 
 1. Review all materials
 2. Set compliance flags
-3. Select **Compliance Review Outcome**
+3. Select **Compliance Review Outcome**:
+   - **Approved**: Materials approved as-is
+   - **Approved With Comments**: Approved with notes for submitter
+   - **Respond to Comments and Resubmit**: Changes required from submitter
+   - **Not Approved**: Cannot be approved
 4. Add **Review Notes**
 5. Click **Submit Compliance Review**
+
+#### Using "Respond to Comments and Resubmit" (Compliance)
+
+When you select "Respond to Comments and Resubmit":
+
+1. The review status changes to **Waiting On Submitter**
+2. The submitter receives a notification with your comments
+3. The review card header displays "Waiting on Submitter since [date]"
+4. The submitter addresses your comments and uploads revised materials
+5. When the submitter clicks **Resubmit for Review**, the status changes to **Waiting On Compliance**
+6. You receive a notification that materials have been resubmitted
+7. The review card header displays "Waiting on Compliance since [date]"
+8. You can then conduct another review and select a final outcome
 
 ### Review Status Indicators
 
@@ -439,7 +481,9 @@ Before submitting your review, set these flags if applicable:
 |--------|---------|
 | **Not Started** | Review not yet begun |
 | **In Progress** | Reviewer is actively reviewing |
-| **Waiting on Submitter** | Awaiting submitter response |
+| **Waiting on Submitter** | Awaiting submitter response to comments |
+| **Waiting on Attorney** | Attorney reviewing resubmitted materials |
+| **Waiting on Compliance** | Compliance reviewing resubmitted materials |
 | **Completed** | Review finished |
 
 ---
@@ -452,24 +496,41 @@ When a reviewer requests changes ("Respond to Comments and Resubmit"):
 
 - Email notification about required changes
 - Review comments visible in the request
+- The review card header shows "Waiting on Submitter since [date]"
 
 ### How to Respond
 
 1. Open your request
-2. Read the reviewer's comments carefully
-3. Make requested changes to your materials
-4. Upload revised documents:
-   - Remove old versions (optional)
-   - Upload new versions with clear naming
-5. Add a response comment explaining your changes
-6. Click **Submit Response**
+2. Navigate to the review card (Legal Review or Compliance Review)
+3. Read the reviewer's comments in the **Review Notes** field
+4. Address the comments by making changes to your materials
+5. Upload revised documents in the review card's document section
+6. Add optional response notes explaining your changes
+7. Click the **Resubmit for Review** button inside the review card
+
+### What Happens After Resubmitting
+
+1. The review status changes from "Waiting On Submitter" to "Waiting On Attorney" (or "Waiting On Compliance")
+2. The reviewer receives a notification that you've resubmitted
+3. The review card header updates to show "Waiting on [Reviewer] since [date]"
+4. The reviewer will conduct another review cycle
+5. This process may repeat until the reviewer submits a final outcome
+
+### Understanding the Review Card UI
+
+When in "Waiting On Submitter" status:
+- The **Review Outcome** field shows "Respond To Comments And Resubmit" (disabled - you cannot change this)
+- The reviewer's **Review Notes** are visible for you to read
+- A **Response Notes** field is available for your comments
+- The **Resubmit for Review** button is active
 
 ### Tips for Effective Responses
 
-- Clearly indicate what changes were made
+- Clearly indicate what changes were made in your response notes
 - If you disagree with feedback, explain your reasoning
-- Upload a comparison document if helpful
+- Upload a comparison document if helpful (redlined version)
 - Respond promptly to avoid delays
+- Use clear file naming for revised documents (e.g., "Brochure_v2_revised.pdf")
 
 ---
 
@@ -495,11 +556,52 @@ Enter the Tracking ID assigned by Compliance/Foreside.
 2. Enter Tracking ID if required
 3. Review the final summary
 4. Click **Complete Request**
-5. Status changes to **Completed**
+5. Status changes to:
+   - **Awaiting Foreside Documents** if "Foreside Review Required" = Yes
+   - **Completed** if "Foreside Review Required" = No
 
 ### Automatic Completion
 
 If any review outcome is **Not Approved**, the request automatically moves to **Completed** status (bypassing Closeout) since the materials cannot be used.
+
+---
+
+## Awaiting Foreside Documents
+
+This section applies when **Foreside Review Required** was set to "Yes" during Compliance review. After completing Closeout, the request enters the **Awaiting Foreside Documents** status.
+
+### Understanding This Status
+
+- **Purpose**: Upload Foreside letter documents received from Foreside for audit and compliance purposes
+- **Timeline**: Foreside documents may take weeks or months to receive
+- **Who Can Act**: Submitter (request creator) or Admin
+- **Note**: This request does NOT appear in "Open Requests" views since the review work is complete
+
+### What You Cannot Do
+
+During Awaiting Foreside Documents status:
+- **Cancel** action is not available
+- **Hold** action is not available
+- No time tracking occurs (the waiting period is not counted)
+
+### Uploading Foreside Documents
+
+1. Open your request in Awaiting Foreside Documents status
+2. Navigate to the **Foreside Documents** section
+3. Upload one or more Foreside letter documents
+4. Add optional notes about the documents
+5. At least one document must be uploaded before completing
+
+### Completing the Request
+
+1. Ensure at least one Foreside document is uploaded
+2. Add any final notes (optional)
+3. Click **Complete Request**
+4. Status changes to **Completed**
+
+### Foreside Documents View
+
+All requests awaiting Foreside documents can be found in the **Awaiting Foreside Documents** dashboard view, sorted by the date they entered this status.
 
 ---
 
@@ -686,7 +788,16 @@ A: Upload the new version. You can optionally delete the old version or keep bot
 A: It's waiting for attorney assignment. Contact Legal Admin if it's been more than one business day.
 
 **Q: What does "Waiting on Submitter" mean?**
-A: A reviewer has requested changes. Check the comments and upload revised materials.
+A: A reviewer has selected "Respond To Comments And Resubmit" as the outcome. Open the review card, read their comments, make the requested changes, upload revised documents, and click "Resubmit for Review".
+
+**Q: What does "Waiting on Attorney" or "Waiting on Compliance" mean?**
+A: You've resubmitted materials after addressing reviewer comments. The reviewer is now re-evaluating your revised materials.
+
+**Q: How many times can a reviewer request changes?**
+A: There's no limit. The back-and-forth continues until the reviewer submits a final outcome (Approved, Approved With Comments, or Not Approved).
+
+**Q: Why can't I change the Review Outcome field?**
+A: When in "Waiting On Submitter" status, the outcome field is locked to "Respond To Comments And Resubmit". Only the reviewer can change this by submitting their final review.
 
 **Q: Why was my request marked Not Approved?**
 A: The materials didn't meet legal/compliance requirements. Review the comments for specific feedback.
@@ -785,6 +896,7 @@ A: The materials didn't meet legal/compliance requirements. Review the comments 
 | Date | Version | Changes |
 |------|---------|---------|
 | 2025-12-28 | 1.0 | Initial user guide created |
+| 2025-12-31 | 1.1 | Added "Respond To Comments And Resubmit" workflow documentation |
 
 ---
 

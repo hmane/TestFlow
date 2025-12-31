@@ -153,7 +153,7 @@ interface IRequestState {
     notes: string,
     flags?: { isForesideReviewRequired?: boolean; isRetailUse?: boolean }
   ) => Promise<void>;
-  closeoutRequest: (trackingId?: string) => Promise<void>;
+  closeoutRequest: (options?: { trackingId?: string; commentsAcknowledged?: boolean }) => Promise<void>;
   cancelRequest: (reason: string) => Promise<void>;
   holdRequest: (reason: string) => Promise<void>;
   resumeRequest: () => Promise<void>;
@@ -778,15 +778,16 @@ export const useRequestStore = create<IRequestState>()(
       /**
        * Close out request
        * Uses dedicated workflow action - only updates closeout fields
+       * @param options - Closeout options including tracking ID and comments acknowledgment
        */
-      closeoutRequest: async (trackingId?: string): Promise<void> => {
+      closeoutRequest: async (options?: { trackingId?: string; commentsAcknowledged?: boolean }): Promise<void> => {
         const state = get();
 
         if (!state.itemId) {
           throw new Error('Cannot close out - no item ID');
         }
 
-        const result = await closeoutRequestAction(state.itemId, { trackingId });
+        const result = await closeoutRequestAction(state.itemId, options);
 
         set({
           currentRequest: result.updatedRequest,
@@ -796,7 +797,8 @@ export const useRequestStore = create<IRequestState>()(
 
         SPContext.logger.info('Request closed out', {
           itemId: state.itemId,
-          trackingId,
+          trackingId: options?.trackingId,
+          commentsAcknowledged: options?.commentsAcknowledged,
           fieldsUpdated: result.fieldsUpdated,
         });
       },
@@ -1501,7 +1503,7 @@ export const useRequestActions = (): {
   sendToCommittee: (notes?: string) => Promise<void>;
   submitLegalReview: (outcome: string, notes: string) => Promise<void>;
   submitComplianceReview: (outcome: string, notes: string, flags?: { isForesideReviewRequired?: boolean; isRetailUse?: boolean }) => Promise<void>;
-  closeoutRequest: (trackingId?: string) => Promise<void>;
+  closeoutRequest: (options?: { trackingId?: string; commentsAcknowledged?: boolean }) => Promise<void>;
   cancelRequest: (reason: string) => Promise<void>;
   holdRequest: (reason: string) => Promise<void>;
   resumeRequest: () => Promise<void>;

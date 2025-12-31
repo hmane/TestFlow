@@ -313,6 +313,32 @@ $transitionNormal: 200ms ease-out;
 .rts__preview-content {
   padding: $space-md;
   min-height: 120px;
+
+  // Override spfx-toolkit WorkflowStepper pending step colors
+  // Changes from dark gray to SharePoint-aligned light blue
+  [data-step-status='pending'] > div {
+    background: linear-gradient(135deg, $themeLighter 0%, $themeLight 100%) !important;
+    color: $neutralPrimary !important;
+    box-shadow: 0 2px 10px rgba(0, 120, 212, 0.12) !important;
+    transition: none !important; // Prevent color flash on click
+  }
+
+  // Hover state for pending steps
+  [data-step-status='pending']:hover > div {
+    background: linear-gradient(135deg, darken($themeLighter, 3%) 0%, darken($themeLight, 5%) 100%) !important;
+  }
+
+  // Active/clicking state - keep same colors to prevent flash
+  [data-step-status='pending']:active > div {
+    background: linear-gradient(135deg, $themeLighter 0%, $themeLight 100%) !important;
+    color: $neutralPrimary !important;
+  }
+
+  // Selected pending step (when clicked for preview)
+  [data-step-status='pending'][aria-current='step'] > div {
+    background: linear-gradient(135deg, $themePrimary 0%, $themeDark 100%) !important;
+    color: $white !important;
+  }
 }
 
 .rts__workflow-stepper-content {

@@ -340,6 +340,55 @@ A request is "rush" if `targetReturnDate < (requestedDate + submissionItem.turnA
 - **Both**: Both reviews required
 - Legal Admin can override this during Legal Intake
 
+### Review Outcomes
+
+Review outcomes determine how the workflow progresses:
+
+- **Approved**: Review complete, moves to next stage
+- **Approved With Comments**: Review complete but submitter must acknowledge comments at Closeout
+- **Respond To Comments And Resubmit**: Reviewer requests changes (triggers resubmit workflow)
+- **Not Approved**: Request rejected, moves directly to Completed (bypasses Closeout)
+
+### Respond To Comments And Resubmit Workflow
+
+This workflow enables back-and-forth communication between reviewers and submitters:
+
+1. **Reviewer requests changes**: Sets outcome to "Respond To Comments And Resubmit"
+   - Review status changes from "In Progress" → "Waiting On Submitter"
+   - `LegalStatusUpdatedOn` / `ComplianceStatusUpdatedOn` timestamp updated
+   - Time tracking calculated for reviewer's work up to this point
+
+2. **Submitter addresses comments**:
+   - Sees warning banner in review card explaining action needed
+   - Reviews the reviewer's comments (displayed prominently)
+   - Updates request info, documents, or approvals as needed
+   - Adds response notes explaining changes made
+   - Clicks "Resubmit for Review" button
+
+3. **Submitter resubmits**:
+   - Review status changes from "Waiting On Submitter" → "Waiting On Attorney/Compliance"
+   - Outcome remains "Respond To Comments And Resubmit" (unchanged)
+   - Time tracking calculated for submitter's work
+   - Status updated timestamp reflects handoff time
+
+4. **Reviewer receives resubmission**:
+   - Sees message indicating submitter has resubmitted
+   - Can review changes and either:
+     - Select final outcome (Approved, Approved With Comments, Not Approved)
+     - Request more changes (repeat cycle from step 1)
+
+**Key implementation details**:
+- Review status enum values: `NotRequired`, `NotStarted`, `InProgress`, `WaitingOnSubmitter`, `WaitingOnAttorney`/`WaitingOnCompliance`, `Completed`
+- Outcome field stays as "Respond To Comments And Resubmit" until reviewer sets final decision
+- Time tracking uses `calculateAndUpdateStageTime()` at each handoff
+- Header shows "Waiting on Submitter" or "Waiting on Reviewer" with timestamp
+
+**Service functions** (in `workflowActionService.ts`):
+- `resubmitForLegalReview(itemId, payload)` - Submitter resubmits for legal
+- `resubmitForComplianceReview(itemId, payload)` - Submitter resubmits for compliance
+- `requestLegalReviewChanges(itemId, notes)` - Attorney requests changes
+- `requestComplianceReviewChanges(itemId, notes, flags)` - Compliance requests changes
+
 ### Tracking ID Requirement
 
 Required at Closeout IF:

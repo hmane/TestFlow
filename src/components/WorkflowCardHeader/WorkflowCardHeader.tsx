@@ -37,6 +37,14 @@ export interface IPersonRef {
 }
 
 /**
+ * Waiting status types for resubmit workflow
+ * Used when review is in "Respond To Comments And Resubmit" workflow
+ */
+export type WaitingStatus =
+  | 'waiting-on-submitter'
+  | 'waiting-on-reviewer';
+
+/**
  * WorkflowCardHeader props
  */
 export interface IWorkflowCardHeaderProps {
@@ -58,6 +66,17 @@ export interface IWorkflowCardHeaderProps {
   durationMinutes?: number;
   /** Tracking ID (for closeout) */
   trackingId?: string;
+  /**
+   * Waiting status for resubmit workflow
+   * When set, shows "Waiting on Submitter" or "Waiting on Reviewer" badge
+   * instead of "In Progress"
+   */
+  waitingStatus?: WaitingStatus;
+  /**
+   * Date since which we're waiting (typically the status updated timestamp)
+   * Shown as "since [date]" when waitingStatus is set
+   */
+  waitingSince?: Date;
   /** Optional action buttons to render at the end of the header */
   actions?: React.ReactNode;
   /** Custom class name */
@@ -164,10 +183,13 @@ export const WorkflowCardHeader: React.FC<IWorkflowCardHeaderProps> = ({
   attorney,
   durationMinutes,
   trackingId,
+  waitingStatus,
+  waitingSince,
   actions,
   className,
 }) => {
   const isCompleted = status === 'completed';
+  const isWaiting = !!waitingStatus;
 
   // Build duration tooltip content
   const durationTooltip = React.useMemo(() => {
@@ -182,8 +204,20 @@ export const WorkflowCardHeader: React.FC<IWorkflowCardHeaderProps> = ({
 
   // Render the status icon
   const renderStatusIcon = (): React.ReactElement => {
-    const iconName = isCompleted ? 'CompletedSolid' : 'ProgressRingDots';
-    const iconClass = isCompleted ? 'workflow-header__icon--completed' : 'workflow-header__icon--progress';
+    let iconName: string;
+    let iconClass: string;
+
+    if (isCompleted) {
+      iconName = 'CompletedSolid';
+      iconClass = 'workflow-header__icon--completed';
+    } else if (isWaiting) {
+      // Use a clock/waiting icon for waiting states
+      iconName = 'AwayStatus';
+      iconClass = 'workflow-header__icon--waiting';
+    } else {
+      iconName = 'ProgressRingDots';
+      iconClass = 'workflow-header__icon--progress';
+    }
 
     return (
       <div className={`workflow-header__icon ${iconClass}`}>
@@ -193,11 +227,28 @@ export const WorkflowCardHeader: React.FC<IWorkflowCardHeaderProps> = ({
   };
 
   // Render the status badge
+  // Shows "Completed", "In Progress", "Waiting on Submitter", or "Waiting on Reviewer"
   const renderStatusBadge = (): React.ReactElement => {
-    const badgeClass = isCompleted ? 'workflow-header__badge--completed' : 'workflow-header__badge--progress';
+    let badgeClass: string;
+    let badgeText: string;
+
+    if (isCompleted) {
+      badgeClass = 'workflow-header__badge--completed';
+      badgeText = 'Completed';
+    } else if (waitingStatus === 'waiting-on-submitter') {
+      badgeClass = 'workflow-header__badge--waiting-submitter';
+      badgeText = 'Waiting on Submitter';
+    } else if (waitingStatus === 'waiting-on-reviewer') {
+      badgeClass = 'workflow-header__badge--waiting-reviewer';
+      badgeText = 'Waiting on Reviewer';
+    } else {
+      badgeClass = 'workflow-header__badge--progress';
+      badgeText = 'In Progress';
+    }
+
     return (
       <span className={`workflow-header__badge ${badgeClass}`}>
-        {isCompleted ? 'Completed' : 'In Progress'}
+        {badgeText}
       </span>
     );
   };
@@ -285,6 +336,27 @@ export const WorkflowCardHeader: React.FC<IWorkflowCardHeaderProps> = ({
           </span>
         );
       }
+    } else if (isWaiting) {
+      // Waiting status: show who we're waiting on and since when
+      if (attorney?.title) {
+        parts.push(
+          <span key="attorney" className='workflow-header__context-item'>
+            <Icon iconName="Contact" className='workflow-header__context-icon' />
+            <span className='workflow-header__context-value'>{attorney.title}</span>
+          </span>
+        );
+      }
+
+      // Show "since" date from waitingSince prop (status updated timestamp)
+      if (waitingSince) {
+        parts.push(
+          <span key="waitingSince" className='workflow-header__context-item'>
+            {attorney?.title && <span className='workflow-header__context-sep'>·</span>}
+            <span className='workflow-header__context-label'>since</span>
+            <span className='workflow-header__context-date'>{formatDate(waitingSince)}</span>
+          </span>
+        );
+      }
     } else {
       // In progress: show attorney and start date
       if (attorney?.title) {
@@ -361,7 +433,18 @@ export const WorkflowCardHeader: React.FC<IWorkflowCardHeaderProps> = ({
     return badge;
   };
 
-  const containerClass = isCompleted ? 'workflow-header--completed' : 'workflow-header--progress';
+  // Determine container class based on status
+  // Waiting states get special styling to draw attention
+  let containerClass: string;
+  if (isCompleted) {
+    containerClass = 'workflow-header--completed';
+  } else if (waitingStatus === 'waiting-on-submitter') {
+    containerClass = 'workflow-header--waiting-submitter';
+  } else if (waitingStatus === 'waiting-on-reviewer') {
+    containerClass = 'workflow-header--waiting-reviewer';
+  } else {
+    containerClass = 'workflow-header--progress';
+  }
 
   return (
     <div className={`workflow-header ${containerClass} ${className || ''}`}>

@@ -20,6 +20,16 @@ $color-completed-primary: #107c10;
 $color-completed-secondary: #0e6b0e;
 $color-completed-border: rgba(16, 124, 16, 0.15);
 
+// Waiting on Submitter theme (Orange/Warning - action needed from submitter)
+$color-waiting-submitter-primary: #d83b01;
+$color-waiting-submitter-secondary: #c43501;
+$color-waiting-submitter-border: rgba(216, 59, 1, 0.15);
+
+// Waiting on Reviewer theme (Yellow/Amber - waiting for reviewer)
+$color-waiting-reviewer-primary: #8a6d3b;
+$color-waiting-reviewer-secondary: #6d5530;
+$color-waiting-reviewer-border: rgba(138, 109, 59, 0.15);
+
 // Neutral colors
 $color-text-primary: #323130;
 $color-text-secondary: #605e5c;
@@ -43,6 +53,15 @@ $transition-medium: 250ms cubic-bezier(0.4, 0, 0.2, 1);
   &--completed {
     // No visual container styling
     // Let the Card handle all container appearance
+  }
+
+  // Waiting states get subtle background to draw attention
+  &--waiting-submitter {
+    background: rgba($color-waiting-submitter-primary, 0.03);
+  }
+
+  &--waiting-reviewer {
+    background: rgba($color-waiting-reviewer-primary, 0.03);
   }
 }
 
@@ -83,6 +102,16 @@ $transition-medium: 250ms cubic-bezier(0.4, 0, 0.2, 1);
 
     .ms-Icon {
       font-size: 18px;
+    }
+  }
+
+  // Waiting states use a clock/status icon
+  &--waiting {
+    color: $color-waiting-submitter-primary;
+
+    .ms-Icon {
+      font-size: 18px;
+      animation: workflow-header-pulse 2s ease-in-out infinite;
     }
   }
 
@@ -140,6 +169,18 @@ $transition-medium: 250ms cubic-bezier(0.4, 0, 0.2, 1);
   &--completed {
     background: rgba($color-completed-primary, 0.1);
     color: $color-completed-primary;
+  }
+
+  // Waiting on Submitter badge - orange/warning to indicate action needed
+  &--waiting-submitter {
+    background: rgba($color-waiting-submitter-primary, 0.12);
+    color: $color-waiting-submitter-primary;
+  }
+
+  // Waiting on Reviewer badge - amber to indicate pending review
+  &--waiting-reviewer {
+    background: rgba($color-waiting-reviewer-primary, 0.12);
+    color: $color-waiting-reviewer-primary;
   }
 }
 

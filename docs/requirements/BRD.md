@@ -83,9 +83,11 @@ Legal Workflows is designed to **automate and streamline the legal/compliance re
 ## 5. Business Process Flow
 
 ```
-Draft → Legal Intake → Assign Attorney → In Review → Closeout → Completed
+Draft → Legal Intake → Assign Attorney → In Review → Closeout → [Awaiting Foreside Documents] → Completed
                     ↘ (Direct Assignment) → In Review
 Special Actions: Cancel | Hold | Resume | Reassign Attorney
+
+Note: Awaiting Foreside Documents step only applies when Is Foreside Review Required = Yes
 ```
 
 - **Draft:** Created by Submitter
@@ -93,6 +95,7 @@ Special Actions: Cancel | Hold | Resume | Reassign Attorney
 - **Assign Attorney:** Committee assigns attorney
 - **In Review:** Attorney/Compliance perform reviews
 - **Closeout:** Submitter provides tracking ID (if required) and closes request
+- **Awaiting Foreside Documents:** (Conditional) Submitter uploads Foreside letters/documents for audit purposes
 - **Completed:** Workflow finished (approved or rejected)
 
 ---
@@ -130,17 +133,35 @@ Special Actions: Cancel | Hold | Resume | Reassign Attorney
   - The system supports direct assignment or committee consensus workflows.
 - **Review:**
   - Assigned Attorneys and Compliance Users receive notifications and perform reviews within specified turnaround times.
-  - Reviewers can approve, reject, or request additional information.
+  - Reviewers can approve, reject, request changes (Respond To Comments And Resubmit), or mark as Not Approved.
   - Review status is tracked per reviewer and aggregated for overall request status.
+- **Respond To Comments And Resubmit Workflow:**
+  - When a reviewer selects "Respond To Comments And Resubmit" as the outcome, the review status changes to "Waiting On Submitter"
+  - The submitter is notified and can view the reviewer's comments
+  - The submitter addresses the comments, uploads revised documents, and clicks "Resubmit for Review"
+  - The review status changes to "Waiting On Attorney" (or "Waiting On Compliance")
+  - The reviewer is notified and can conduct another review cycle
+  - This back-and-forth continues until the reviewer submits a final outcome (Approved, Approved With Comments, or Not Approved)
+  - Time tracking captures hours spent in each waiting state for reporting purposes
 - **Rejection & Revisions:**
-  - If rejected, the Submitter is notified with comments and required changes.
-  - Submitter may revise and resubmit new request, restarting the review cycle.
+  - If rejected (Not Approved), the Submitter is notified with comments.
+  - Request moves directly to Completed status (bypassing Closeout).
 - **Approval:**
   - Once all required approvals are received, the request moves to Closeout.
 - **Closeout:**
   - Submitter provides any required tracking IDs or final documentation.
-  - Legal Admin verifies completeness and marks the request as Completed.
+  - Legal Admin verifies completeness.
+  - If Is Foreside Review Required = Yes, request moves to "Awaiting Foreside Documents".
+  - If Is Foreside Review Required = No, request moves directly to Completed.
   - All approvals, comments, and attachments are archived for audit purposes.
+- **Awaiting Foreside Documents:**
+  - This step only occurs when Is Foreside Review Required = Yes during compliance review.
+  - Submitter or Admin uploads Foreside letter documents (may take weeks or months to receive).
+  - At least one Foreside document must be uploaded before completing.
+  - No time tracking is performed for this phase.
+  - Request does not appear in "Open Requests" views.
+  - Cancel and Hold actions are not available in this status.
+  - Once documents are uploaded, submitter or admin completes the request.
 
 ### 6.4 Notifications & Communication
 
@@ -296,6 +317,12 @@ Special Actions: Cancel | Hold | Resume | Reassign Attorney
 | **Attorney Assigner** | Committee responsible for assigning attorneys to requests.                               |
 | **Compliance User**   | Regulatory reviewers involved in the approval process.                                   |
 | **Closeout**          | Final stage where tracking IDs and final documentation are added before completion.      |
+| **Awaiting Foreside Documents** | Conditional status after Closeout for uploading Foreside letter documents when Foreside Review Required = Yes. |
+| **Foreside Documents** | Letters or documents received from Foreside that need to be uploaded for audit and compliance purposes. |
 | **SLA**               | Service Level Agreement – target turnaround times for requests.                          |
 | **Audit Trail**       | Record of all actions and changes made to a request for compliance purposes.             |
 | **Dashboard**         | Visual interface showing metrics and statuses relevant to user roles.                    |
+| **Respond To Comments And Resubmit** | Review outcome that initiates a back-and-forth workflow between reviewer and submitter. |
+| **Waiting On Submitter** | Review status indicating the submitter needs to address reviewer comments and resubmit. |
+| **Waiting On Attorney** | Review status indicating the attorney is reviewing resubmitted materials.              |
+| **Waiting On Compliance** | Review status indicating compliance is reviewing resubmitted materials.              |

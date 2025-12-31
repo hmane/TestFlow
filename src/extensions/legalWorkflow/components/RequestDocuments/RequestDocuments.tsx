@@ -21,7 +21,6 @@ import { Text } from '@fluentui/react/lib/Text';
 // spfx-toolkit - tree-shaken imports
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
-import { useFormContext } from 'spfx-toolkit/lib/components/spForm/context';
 
 // App imports using path aliases
 import { Lists } from '@sp/Lists';
@@ -58,7 +57,7 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
   documentLibraryTitle = Lists.RequestDocuments.Title,
   defaultExpanded = true,
 }) => {
-  const { status } = useRequestFormContext();
+  const { status, validationErrors } = useRequestFormContext();
   const { isSubmitter, isLegalAdmin, isAttorney, isComplianceUser, isAdmin } = usePermissions();
   const { currentRequest } = useRequestStore();
 
@@ -75,23 +74,12 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
   // Get documents from store
   const { documents, stagedFiles } = useDocumentsStore();
 
-  // Get form context - may be undefined in view mode
-  const formContext = useFormContext();
-
   // Check if there's an attachments validation error
   // The error is set on 'attachments' path via Zod superRefine in requestSchema.ts
-  // We access formContext.formState directly instead of useFormState hook
-  // because useFormState requires a valid control and throws when control is null
+  // We check validationErrors from RequestFormContext which is kept in sync with form state
   const hasAttachmentsError = React.useMemo(() => {
-    if (!formContext) {
-      return false;
-    }
-    const formState = formContext.formState;
-    if (!formState?.isSubmitted) {
-      return false;
-    }
-    return !!(formState.errors as any)?.attachments;
-  }, [formContext]);
+    return validationErrors.some(error => error.field === 'attachments');
+  }, [validationErrors]);
 
   // Get Legal and Compliance review statuses
   const legalReviewStatus: LegalReviewStatus | undefined = React.useMemo(() => {

@@ -36,12 +36,13 @@ import { useWorkflowPermissions } from '@hooks/useWorkflowPermissions';
 import { useRequestStore } from '@stores/requestStore';
 import { useLegalIntakeStore } from '@stores/legalIntakeStore';
 import { useCloseoutStore } from '@stores/closeoutStore';
-import { RequestStatus } from '@appTypes/workflowTypes';
+import { RequestStatus, ReviewOutcome } from '@appTypes/workflowTypes';
 import {
   assignAttorneySchema,
   committeeAssignAttorneySchema,
   sendToCommitteeSchema,
 } from '@schemas/workflowSchema';
+import type { IValidationError } from '@contexts/RequestFormContext';
 
 // Lazy load SuperAdminPanel - only used by admins and shown on button click
 const SuperAdminPanel = React.lazy(
@@ -249,9 +250,17 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
     });
   }, [validationErrors, getFieldOrder]);
 
-  // Auto-focus and scroll to error container when errors appear
+  // Track previous error count to detect when errors first appear vs when they're updated
+  const prevErrorCountRef = React.useRef(0);
+
+  // Auto-focus and scroll to error container only when errors FIRST appear (from 0 to some)
+  // Don't focus when errors are being removed (user is fixing them)
   React.useEffect(() => {
-    if (validationErrors && validationErrors.length > 0 && errorContainerRef.current) {
+    const currentCount = validationErrors?.length ?? 0;
+    const prevCount = prevErrorCountRef.current;
+
+    // Only focus/scroll when errors first appear (transition from 0 to > 0)
+    if (prevCount === 0 && currentCount > 0 && errorContainerRef.current) {
       // Small delay to ensure DOM is updated
       setTimeout(() => {
         if (errorContainerRef.current) {
@@ -266,6 +275,9 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
         }
       }, 100);
     }
+
+    // Update the ref for next comparison
+    prevErrorCountRef.current = currentCount;
   }, [validationErrors]);
 
   /**
@@ -696,21 +708,51 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
   }, [legalIntakeStore, storeAssignAttorney, status, setValidationErrors]);
 
   /**
+   * Check if review has "Approved with Comments" outcome that requires acknowledgment
+   */
+  const hasApprovedWithComments = React.useMemo((): boolean => {
+    if (!currentRequest) return false;
+    return (
+      currentRequest.legalReviewOutcome === ReviewOutcome.ApprovedWithComments ||
+      currentRequest.complianceReviewOutcome === ReviewOutcome.ApprovedWithComments
+    );
+  }, [currentRequest]);
+
+  /**
    * Handle Closeout Submit
    */
   const handleCloseoutClick = React.useCallback(async (): Promise<void> => {
     try {
       setActiveAction('closeout');
 
-      // Get tracking ID from closeout store
-      const { trackingId } = closeoutStore.getFormData();
+      // Get tracking ID and commentsAcknowledged from closeout store
+      const { trackingId, commentsAcknowledged } = closeoutStore.getFormData();
+
+      // Validate: if there are "Approved with Comments" outcomes, commentsAcknowledged must be true
+      if (hasApprovedWithComments && !commentsAcknowledged) {
+        const validationError: IValidationError = {
+          field: 'commentsAcknowledged',
+          message: 'You must acknowledge the review comments before completing closeout.',
+        };
+        setValidationErrors([validationError]);
+        SPContext.logger.warn('RequestActions: Closeout validation failed - comments not acknowledged');
+        setActiveAction(undefined);
+        return;
+      }
+
+      // Clear any previous validation errors
+      setValidationErrors([]);
 
       SPContext.logger.info('RequestActions: Submitting closeout', {
         trackingId: trackingId || 'none',
+        commentsAcknowledged: commentsAcknowledged || false,
       });
 
-      // Call closeout with tracking ID
-      const result = await workflowCloseout(trackingId);
+      // Call closeout with tracking ID and commentsAcknowledged (only if there were comments)
+      const result = await workflowCloseout({
+        trackingId,
+        commentsAcknowledged: hasApprovedWithComments ? commentsAcknowledged : undefined,
+      });
       if (result.allowed) {
         SPContext.logger.success('RequestActions: Closeout submitted successfully');
         // Reset the closeout store after successful action
@@ -723,7 +765,7 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
     } finally {
       setActiveAction(undefined);
     }
-  }, [workflowCloseout, closeoutStore]);
+  }, [workflowCloseout, closeoutStore, hasApprovedWithComments, setValidationErrors]);
 
   /**
    * Handle reason dialog confirmation

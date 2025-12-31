@@ -35,9 +35,10 @@ import './RequestInfo.scss';
 import {
   AdditionalPartiesSection,
   BasicInfoSection,
-  DistributionAudienceSection,
+  DistributionSection,
   PriorSubmissionsSection,
   ProductAudienceSection,
+  ReviewAudienceSection,
 } from './RequestInfoSections';
 import { useRequestInfoActions } from './useRequestInfoActions';
 
@@ -147,6 +148,29 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentRequest, reset]);
 
+  const readFormValues = React.useCallback(() => watch(), [watch]);
+
+  const {
+    onSubmit,
+    handleSubmitDirect,
+    handleSaveDraft,
+    handleClose,
+    handleCancelRequest,
+    handlePutOnHold,
+    validationErrors: actionValidationErrors,
+    setValidationErrors: setActionValidationErrors,
+    revalidateErrors,
+  } = useRequestInfoActions({
+    itemId,
+    watch: readFormValues,
+    updateMultipleFields,
+    saveAsDraft,
+    setError,
+    clearErrors,
+    showSuccessNotification,
+    showErrorNotification,
+  });
+
   // Watch all form values for revalidation on change
   const watchedValues = watch();
   const previousValuesRef = React.useRef<Partial<ILegalRequest>>({});
@@ -231,32 +255,14 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
           clearErrors(fieldName);
         }
       });
+
+      // Also update actionValidationErrors to keep error container in sync
+      // This ensures the error summary updates immediately when fields are fixed
+      revalidateErrors(watchedValues);
     }
 
     previousValuesRef.current = watchedValues;
-  }, [watchedValues, setError, clearErrors]);
-
-  const readFormValues = React.useCallback(() => watch(), [watch]);
-
-  const {
-    onSubmit,
-    handleSubmitDirect,
-    handleSaveDraft,
-    handleClose,
-    handleCancelRequest,
-    handlePutOnHold,
-    validationErrors: actionValidationErrors,
-    setValidationErrors: setActionValidationErrors,
-  } = useRequestInfoActions({
-    itemId,
-    watch: readFormValues,
-    updateMultipleFields,
-    saveAsDraft,
-    setError,
-    clearErrors,
-    showSuccessNotification,
-    showErrorNotification,
-  });
+  }, [watchedValues, setError, clearErrors, revalidateErrors]);
 
   const shouldRenderChildren = renderApprovalsAndActions || !!children;
 
@@ -586,11 +592,15 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
                     hasSubmissionItemSelection={hasSubmissionItemSelection}
                     calculatedIsRush={calculatedIsRush}
                   />
+                  <DistributionSection
+                    errors={errors}
+                    requestType={requestType}
+                  />
                   <ProductAudienceSection
                     errors={errors}
                     requestType={requestType}
                   />
-                  <DistributionAudienceSection
+                  <ReviewAudienceSection
                     errors={errors}
                     requestType={requestType}
                   />

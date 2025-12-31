@@ -576,7 +576,7 @@ The system supports six distinct user roles, each with specific permissions and 
 
 | Req ID | Requirement |
 | :---- | :---- |
-| REQ-053 | The system shall support the following statuses: Draft, Legal Intake, Assign Attorney, In Review, Closeout, Completed, Cancelled, On Hold |
+| REQ-053 | The system shall support the following statuses: Draft, Legal Intake, Assign Attorney, In Review, Closeout, Awaiting Foreside Documents, Completed, Cancelled, On Hold |
 | REQ-054 | The system shall display current status prominently on the request form |
 | REQ-055 | The system shall enforce valid status transitions based on workflow rules |
 | REQ-056 | The system shall prevent invalid status changes |
@@ -642,17 +642,22 @@ The system supports six distinct user roles, each with specific permissions and 
 | REQ-094 | The system shall display all assigned requests in attorney's personal queue |
 | REQ-095 | The system shall allow attorneys to access full request details and documents |
 | REQ-096 | The system shall provide structured Legal Review form with required fields |
-| REQ-097 | The system shall capture Legal Review Status (choice: In Progress, Completed) |
-| REQ-098 | The system shall capture Legal Review Outcome (choice: Approved, Approved with Comments, Not Approved) |
+| REQ-097 | The system shall capture Legal Review Status (choice: Not Started, In Progress, Waiting On Submitter, Waiting On Attorney, Completed) |
+| REQ-098 | The system shall capture Legal Review Outcome (choice: Approved, Approved with Comments, Respond To Comments And Resubmit, Not Approved) |
 | REQ-099 | The system shall require Legal Review Outcome before completing review |
 | REQ-100 | The system shall capture Legal Review Notes (multi-line text) |
-| REQ-101 | The system shall require Legal Review Notes if outcome is "Approved with Comments" or "Not Approved" |
+| REQ-101 | The system shall require Legal Review Notes if outcome is "Approved with Comments", "Respond To Comments And Resubmit", or "Not Approved" |
 | REQ-102 | The system shall capture Legal Review Completion Date automatically |
 | REQ-103 | The system shall capture Legal Reviewer name automatically |
 | REQ-104 | The system shall allow attorneys to upload additional documents during review |
 | REQ-105 | The system shall transition request based on Review Audience and outcomes (see Business Rules) |
 | REQ-106 | The system shall send notifications to submitter when legal review is complete |
 | REQ-107 | The system shall prevent non-assigned attorneys from editing the review |
+| REQ-107a | The system shall change Legal Review Status to "Waiting On Submitter" when outcome is "Respond To Comments And Resubmit" |
+| REQ-107b | The system shall change Legal Review Status to "Waiting On Attorney" when submitter resubmits for legal review |
+| REQ-107c | The system shall track time spent in each review status for time tracking purposes |
+| REQ-107d | The system shall display "Waiting on Submitter since [date]" indicator when status is Waiting On Submitter |
+| REQ-107e | The system shall display "Waiting on Attorney since [date]" indicator when status is Waiting On Attorney |
 
 ### 5.5 Compliance Review Process
 
@@ -661,11 +666,11 @@ The system supports six distinct user roles, each with specific permissions and 
 | REQ-108 | The system shall route requests to compliance queue when Review Audience includes Compliance |
 | REQ-109 | The system shall display all compliance-pending requests in compliance user queue |
 | REQ-110 | The system shall provide structured Compliance Review form with required fields |
-| REQ-111 | The system shall capture Compliance Review Status (choice: In Progress, Completed) |
-| REQ-112 | The system shall capture Compliance Review Outcome (choice: Approved, Approved with Comments, Not Approved) |
+| REQ-111 | The system shall capture Compliance Review Status (choice: Not Started, In Progress, Waiting On Submitter, Waiting On Compliance, Completed) |
+| REQ-112 | The system shall capture Compliance Review Outcome (choice: Approved, Approved with Comments, Respond To Comments And Resubmit, Not Approved) |
 | REQ-113 | The system shall require Compliance Review Outcome before completing review |
 | REQ-114 | The system shall capture Compliance Review Notes (multi-line text) |
-| REQ-115 | The system shall require Compliance Review Notes if outcome is "Approved with Comments" or "Not Approved" |
+| REQ-115 | The system shall require Compliance Review Notes if outcome is "Approved with Comments", "Respond To Comments And Resubmit", or "Not Approved" |
 | REQ-116 | The system shall capture Compliance Review Completion Date automatically |
 | REQ-117 | The system shall capture Compliance Reviewer name automatically |
 | REQ-118 | The system shall capture Is Foreside Review Required flag (Yes/No) |
@@ -674,6 +679,11 @@ The system supports six distinct user roles, each with specific permissions and 
 | REQ-121 | The system shall transition request based on Review Audience and outcomes (see Business Rules) |
 | REQ-122 | The system shall send notifications to submitter when compliance review is complete |
 | REQ-123 | The system shall prevent unauthorized users from editing compliance review |
+| REQ-123a | The system shall change Compliance Review Status to "Waiting On Submitter" when outcome is "Respond To Comments And Resubmit" |
+| REQ-123b | The system shall change Compliance Review Status to "Waiting On Compliance" when submitter resubmits for compliance review |
+| REQ-123c | The system shall track time spent in each compliance review status for time tracking purposes |
+| REQ-123d | The system shall display "Waiting on Submitter since [date]" indicator when status is Waiting On Submitter |
+| REQ-123e | The system shall display "Waiting on Compliance since [date]" indicator when status is Waiting On Compliance |
 
 ### 5.6 Closeout Process
 
@@ -689,10 +699,27 @@ The system supports six distinct user roles, each with specific permissions and 
 | REQ-131 | The system shall allow users to add final closeout notes |
 | REQ-132 | The system shall capture Closeout Completion Date automatically |
 | REQ-133 | The system shall capture Closeout Completed By automatically |
-| REQ-134 | The system shall transition request to Completed status upon successful closeout submission |
+| REQ-134 | The system shall transition request to Awaiting Foreside Documents status if Is Foreside Review Required = Yes |
+| REQ-134a | The system shall transition request to Completed status upon closeout submission if Is Foreside Review Required = No |
 | REQ-135 | The system shall send notification to submitter when request is completed |
 | REQ-136 | The system shall send notification to all reviewers when request is completed |
 | REQ-137 | The system shall lock request for editing once Completed status is reached |
+
+### 5.6a Awaiting Foreside Documents Process
+
+| Req ID | Requirement |
+| :---- | :---- |
+| REQ-200 | The system shall display Awaiting Foreside Documents form to submitter and admin when request is in this status |
+| REQ-201 | The system shall allow submitter or admin to upload Foreside letter documents |
+| REQ-202 | The system shall require at least one Foreside document to be uploaded before completing |
+| REQ-203 | The system shall allow submitter or admin to add Foreside notes |
+| REQ-204 | The system shall capture Foreside Completed By automatically |
+| REQ-205 | The system shall capture Foreside Completed On automatically |
+| REQ-206 | The system shall capture Awaiting Foreside Since timestamp when entering this status |
+| REQ-207 | The system shall NOT track time for the Awaiting Foreside Documents phase |
+| REQ-208 | The system shall NOT show Cancel or Hold actions when in Awaiting Foreside Documents status |
+| REQ-209 | The system shall NOT include Awaiting Foreside Documents requests in Open Requests views |
+| REQ-210 | The system shall transition request to Completed status when Foreside documents are submitted |
 
 ### 5.7 Comments and Collaboration
 
@@ -1110,6 +1137,24 @@ The system supports six distinct user roles, each with specific permissions and 
 | REQ-352 | The system shall handle sequential reviews (Legal first, then Compliance) if Review Audience \= Both |
 | REQ-353 | The system shall handle parallel reviews if business process supports it (future enhancement) |
 
+### 11.5a Respond To Comments And Resubmit Workflow
+
+| Req ID | Requirement |
+| :---- | :---- |
+| REQ-353a | When reviewer selects "Respond To Comments And Resubmit" outcome, the system shall set review status to "Waiting On Submitter" |
+| REQ-353b | The system shall record the status change timestamp in the appropriate StatusUpdatedOn field (LegalStatusUpdatedOn or ComplianceStatusUpdatedOn) |
+| REQ-353c | The system shall send notification to the submitter when status changes to "Waiting On Submitter" |
+| REQ-353d | When in "Waiting On Submitter" status, the submitter shall be able to view reviewer comments and add response notes |
+| REQ-353e | When in "Waiting On Submitter" status, the submitter shall be able to upload revised documents |
+| REQ-353f | The system shall provide a "Resubmit for Review" button to the submitter when status is "Waiting On Submitter" |
+| REQ-353g | When submitter clicks "Resubmit for Review", the system shall change review status to "Waiting On Attorney" (for legal) or "Waiting On Compliance" (for compliance) |
+| REQ-353h | The system shall calculate and update time tracking hours at each status transition (Waiting On Submitter → Waiting On Reviewer) |
+| REQ-353i | The system shall send notification to the reviewer when submitter resubmits for review |
+| REQ-353j | The system shall keep the Review Outcome field as "Respond To Comments And Resubmit" (disabled) until reviewer submits final outcome |
+| REQ-353k | When in "Waiting On Attorney" or "Waiting On Compliance" status, the reviewer shall be able to submit a final review outcome |
+| REQ-353l | The system shall display visual indicators showing "Waiting on Submitter since [date]" or "Waiting on [Reviewer] since [date]" in the review card header |
+| REQ-353m | The system shall allow multiple rounds of "Respond To Comments And Resubmit" cycles until reviewer submits final outcome |
+
 ### 11.6 Tracking ID Requirement
 
 | Req ID | Requirement |
@@ -1128,7 +1173,8 @@ The system supports six distinct user roles, each with specific permissions and 
 | REQ-360 | The system shall enforce: Legal Intake → Assign Attorney (if committee) OR In Review (if direct) |
 | REQ-361 | The system shall enforce: Assign Attorney → In Review |
 | REQ-362 | The system shall enforce: In Review → Closeout (if approved) OR Completed (if not approved) |
-| REQ-363 | The system shall enforce: Closeout → Completed |
+| REQ-363 | The system shall enforce: Closeout → Awaiting Foreside Documents (if Foreside Review Required) OR Completed (if not required) |
+| REQ-363a | The system shall enforce: Awaiting Foreside Documents → Completed |
 | REQ-364 | The system shall allow transition to Cancelled from any status (by authorized users) |
 | REQ-365 | The system shall allow transition to On Hold from any status (by authorized users) |
 | REQ-366 | The system shall allow transition from On Hold back to previous status (by authorized users) |

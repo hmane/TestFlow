@@ -163,6 +163,14 @@ const QUERY2_FIELDS = [
   RequestsFields.TrackingId,
   RequestsFields.CloseoutBy,
   RequestsFields.CloseoutOn,
+  RequestsFields.CommentsAcknowledged,
+  RequestsFields.CommentsAcknowledgedOn,
+
+  // Foreside Documents
+  RequestsFields.ForesideCompletedBy,
+  RequestsFields.ForesideCompletedOn,
+  RequestsFields.ForesideNotes,
+  RequestsFields.AwaitingForesideSince,
 
   // Cancellation
   RequestsFields.CancelledBy,
@@ -490,6 +498,14 @@ export function mapRequestListItemToRequest(item: any): ILegalRequest {
     trackingId: extractor.string(RequestsFields.TrackingId),
     closeoutBy: extractor.user(RequestsFields.CloseoutBy),
     closeoutOn: extractor.date(RequestsFields.CloseoutOn),
+    commentsAcknowledged: extractor.boolean(RequestsFields.CommentsAcknowledged, false),
+    commentsAcknowledgedOn: extractor.date(RequestsFields.CommentsAcknowledgedOn),
+
+    // Foreside Documents
+    foresideCompletedBy: extractor.user(RequestsFields.ForesideCompletedBy),
+    foresideCompletedOn: extractor.date(RequestsFields.ForesideCompletedOn),
+    foresideNotes: extractor.string(RequestsFields.ForesideNotes),
+    awaitingForesideSince: extractor.date(RequestsFields.AwaitingForesideSince),
 
     // Cancellation
     cancelledBy: extractor.user(RequestsFields.CancelledBy),

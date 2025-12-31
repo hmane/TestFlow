@@ -234,6 +234,120 @@ export async function getWorkingHoursConfig(): Promise<IWorkingHoursConfig> {
 }
 
 /**
+ * Default allowed file extensions for document uploads
+ */
+export const DEFAULT_ALLOWED_EXTENSIONS = [
+  '.pdf',
+  '.doc',
+  '.docx',
+  '.xls',
+  '.xlsx',
+  '.ppt',
+  '.pptx',
+  '.txt',
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.gif',
+  '.zip',
+];
+
+/**
+ * File upload configuration interface
+ */
+export interface IFileUploadConfig {
+  allowedExtensions: string[];
+  maxFileSizeMB: number;
+}
+
+/**
+ * File upload configuration cache
+ */
+let fileUploadConfigCache: { config: IFileUploadConfig; timestamp: number } | undefined;
+
+/**
+ * Updates the file upload config cache with a new entry
+ * This helper function exists to satisfy ESLint's require-atomic-updates rule
+ */
+function updateFileUploadConfigCache(config: IFileUploadConfig): void {
+  fileUploadConfigCache = { config, timestamp: Date.now() };
+}
+
+/**
+ * Gets the file upload configuration from SharePoint
+ *
+ * @returns File upload configuration with allowed extensions and max file size
+ *
+ * @remarks
+ * This function loads the file upload configuration from SharePoint:
+ * - allowedFileExtensions: comma-separated list of allowed extensions (e.g., ".pdf,.docx,.xlsx")
+ * - maxFileSizeMB: maximum file size in megabytes (default: 250)
+ *
+ * The configuration is cached for 5 minutes to reduce SharePoint calls.
+ *
+ * @example
+ * ```typescript
+ * const config = await getFileUploadConfig();
+ * console.log(config.allowedExtensions); // [".pdf", ".docx", ".xlsx", ...]
+ * console.log(config.maxFileSizeMB); // 250
+ * ```
+ */
+export async function getFileUploadConfig(): Promise<IFileUploadConfig> {
+  const checkTime = Date.now();
+
+  // Check cache first
+  if (fileUploadConfigCache && checkTime - fileUploadConfigCache.timestamp < CACHE_TTL) {
+    SPContext.logger.info('File upload configuration retrieved from cache', {
+      config: fileUploadConfigCache.config,
+    });
+    return fileUploadConfigCache.config;
+  }
+
+  // Load from SharePoint
+  try {
+    SPContext.logger.info('Loading file upload configuration from SharePoint');
+
+    const [extensionsStr, maxFileSizeStr] = await Promise.all([
+      getConfigValue('allowedFileExtensions', DEFAULT_ALLOWED_EXTENSIONS.join(',')),
+      getConfigValue('maxFileSizeMB', '250'),
+    ]);
+
+    // Parse extensions (comma-separated, trim whitespace)
+    const allowedExtensions = extensionsStr
+      .split(',')
+      .map(ext => ext.trim().toLowerCase())
+      .filter(ext => ext.length > 0);
+
+    // Parse max file size
+    const maxFileSizeMB = parseInt(maxFileSizeStr, 10) || 250;
+
+    const config: IFileUploadConfig = {
+      allowedExtensions: allowedExtensions.length > 0 ? allowedExtensions : DEFAULT_ALLOWED_EXTENSIONS,
+      maxFileSizeMB,
+    };
+
+    // Update cache with fresh timestamp after async operation completes
+    updateFileUploadConfigCache(config);
+
+    SPContext.logger.info('File upload configuration loaded', { config });
+
+    return config;
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    SPContext.logger.error('Failed to load file upload configuration, using defaults', error, {
+      error: message,
+      defaultExtensions: DEFAULT_ALLOWED_EXTENSIONS,
+    });
+
+    // Return defaults on error
+    return {
+      allowedExtensions: DEFAULT_ALLOWED_EXTENSIONS,
+      maxFileSizeMB: 250,
+    };
+  }
+}
+
+/**
  * Clears the configuration cache
  *
  * @remarks
@@ -253,6 +367,7 @@ export async function getWorkingHoursConfig(): Promise<IWorkingHoursConfig> {
 export function clearConfigurationCache(): void {
   configCache.clear();
   workingHoursCache = undefined;
+  fileUploadConfigCache = undefined;
   SPContext.logger.info('Configuration cache cleared');
 }
 

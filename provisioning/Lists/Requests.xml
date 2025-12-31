@@ -164,13 +164,21 @@
       <Field Type="DateTime" Name="ComplianceReviewCompletedOn" DisplayName="Compliance Review Completed On" Format="DateTime" Group="Compliance Review" ID="{E4E44AF9-7D3F-4CF9-A143-493B24F6111C}" />
       <Field Type="User" Name="ComplianceReviewCompletedBy" DisplayName="Compliance Review Completed By" UserSelectionMode="PeopleOnly" Group="Compliance Review" ID="{3664A608-D0F2-40DC-8502-76401D30DB82}" />
 
-      <!-- Closeout (2) -->
+      <!-- Closeout (4) -->
       <Field Type="Text" Name="TrackingId" DisplayName="Tracking Id" MaxLength="50" Group="Closeout" ID="{E4FD4892-C8BA-4B97-98AA-4EA4833C359C}" />
       <Field Type="Note" Name="CloseoutNotes" DisplayName="Closeout Notes" RichText="FALSE" AppendOnly="TRUE" NumLines="6" Group="Closeout" ID="{7B8C3D4E-5F6A-4B9C-8D1E-2F3A4B5C6D7E}" />
+      <Field Type="Boolean" Name="CommentsAcknowledged" DisplayName="Comments Acknowledged" Group="Closeout" ID="{8C9D4E5F-6A7B-4C8D-9E0F-1A2B3C4D5E6F}"><Default>0</Default></Field>
+      <Field Type="DateTime" Name="CommentsAcknowledgedOn" DisplayName="Comments Acknowledged On" Format="DateTime" Group="Closeout" ID="{9D0E5F6A-7B8C-4D9E-0F1A-2B3C4D5E6F7A}" />
+
+      <!-- Foreside Documents (4) - tracks Foreside letter upload stage -->
+      <Field Type="User" Name="ForesideCompletedBy" DisplayName="Foreside Completed By" UserSelectionMode="PeopleOnly" Group="Foreside Documents" ID="{A0B1C2D3-7777-4E5F-9A1B-2C3D4E5F6A7B}" />
+      <Field Type="DateTime" Name="ForesideCompletedOn" DisplayName="Foreside Completed On" Format="DateTime" Group="Foreside Documents" ID="{B1C2D3E4-8888-4F6A-0B2C-3D4E5F6A7B8C}" />
+      <Field Type="Note" Name="ForesideNotes" DisplayName="Foreside Notes" RichText="FALSE" AppendOnly="TRUE" NumLines="6" Group="Foreside Documents" ID="{C2D3E4F5-9999-4A7B-1C3D-4E5F6A7B8C9D}" />
+      <Field Type="DateTime" Name="AwaitingForesideSince" DisplayName="Awaiting Foreside Since" Format="DateTime" Group="Foreside Documents" ID="{D3E4F5A6-AAAA-4B8C-2D4E-5F6A7B8C9D0E}" />
 
       <!-- System Tracking (18) -->
       <Field Type="Choice" Name="Status" DisplayName="Status" Required="TRUE" Group="System Tracking" ID="{9E390E5D-9D57-472F-B470-EDE7F1D5EB89}" ClientSideComponentId="e55dcdea-8fa3-4708-9fbe-35c866026289">
-        <CHOICES><CHOICE>Draft</CHOICE><CHOICE>Legal Intake</CHOICE><CHOICE>Assign Attorney</CHOICE><CHOICE>In Review</CHOICE><CHOICE>Closeout</CHOICE><CHOICE>Completed</CHOICE><CHOICE>Cancelled</CHOICE><CHOICE>On Hold</CHOICE></CHOICES>
+        <CHOICES><CHOICE>Draft</CHOICE><CHOICE>Legal Intake</CHOICE><CHOICE>Assign Attorney</CHOICE><CHOICE>In Review</CHOICE><CHOICE>Closeout</CHOICE><CHOICE>Awaiting Foreside Documents</CHOICE><CHOICE>Completed</CHOICE><CHOICE>Cancelled</CHOICE><CHOICE>On Hold</CHOICE></CHOICES>
         <Default>Draft</Default>
       </Field>
       <Field Type="User" Name="SubmittedBy" DisplayName="Submitted By" UserSelectionMode="PeopleOnly" Group="System Tracking" ID="{DDA3A20E-6CBC-46E8-8AB2-5AAB744A46D8}" />
@@ -212,15 +220,18 @@
       <!-- HOME DASHBOARD VIEWS (Submitters & Admins) -->
       <!-- ============================================ -->
 
-      <!-- My Open Requests - Requests created by current user that are not completed/cancelled -->
+      <!-- My Open Requests - Requests created by current user that are not completed/cancelled/awaiting foreside -->
       <pnp:View Name="MyOpenRequests" DisplayName="My Open Requests" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
         <pnp:Query>
           <Where>
             <And>
               <Eq><FieldRef Name="Author" /><Value Type="Integer"><UserID/></Value></Eq>
               <And>
-                <Neq><FieldRef Name="Status" /><Value Type="Choice">Completed</Value></Neq>
-                <Neq><FieldRef Name="Status" /><Value Type="Choice">Cancelled</Value></Neq>
+                <And>
+                  <Neq><FieldRef Name="Status" /><Value Type="Choice">Completed</Value></Neq>
+                  <Neq><FieldRef Name="Status" /><Value Type="Choice">Cancelled</Value></Neq>
+                </And>
+                <Neq><FieldRef Name="Status" /><Value Type="Choice">Awaiting Foreside Documents</Value></Neq>
               </And>
             </And>
           </Where>
@@ -257,13 +268,16 @@
         </pnp:ViewFields>
       </pnp:View>
 
-      <!-- All Open Requests - For Admins to see all open requests -->
+      <!-- All Open Requests - For Admins to see all open requests (excludes completed/cancelled/awaiting foreside) -->
       <pnp:View Name="AllOpenRequests" DisplayName="All Open Requests" DefaultView="false" RowLimit="100" Paged="true" TabularView="false">
         <pnp:Query>
           <Where>
             <And>
-              <Neq><FieldRef Name="Status" /><Value Type="Choice">Completed</Value></Neq>
-              <Neq><FieldRef Name="Status" /><Value Type="Choice">Cancelled</Value></Neq>
+              <And>
+                <Neq><FieldRef Name="Status" /><Value Type="Choice">Completed</Value></Neq>
+                <Neq><FieldRef Name="Status" /><Value Type="Choice">Cancelled</Value></Neq>
+              </And>
+              <Neq><FieldRef Name="Status" /><Value Type="Choice">Awaiting Foreside Documents</Value></Neq>
             </And>
           </Where>
           <OrderBy><FieldRef Name="Created" Ascending="FALSE" /></OrderBy>
@@ -515,6 +529,28 @@
       </pnp:View>
 
       <!-- ============================================ -->
+      <!-- FORESIDE DOCUMENTS VIEWS -->
+      <!-- ============================================ -->
+
+      <!-- Requests Awaiting Foreside Documents -->
+      <pnp:View Name="AwaitingForesideDocuments" DisplayName="Awaiting Foreside Documents" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
+        <pnp:Query>
+          <Where>
+            <Eq><FieldRef Name="Status" /><Value Type="Choice">Awaiting Foreside Documents</Value></Eq>
+          </Where>
+          <OrderBy><FieldRef Name="AwaitingForesideSince" Ascending="TRUE" /></OrderBy>
+        </pnp:Query>
+        <pnp:ViewFields>
+          <FieldRef Name="Title" />
+          <FieldRef Name="RequestTitle" />
+          <FieldRef Name="SubmittedBy" />
+          <FieldRef Name="CloseoutOn" />
+          <FieldRef Name="AwaitingForesideSince" />
+          <FieldRef Name="TrackingId" />
+        </pnp:ViewFields>
+      </pnp:View>
+
+      <!-- ============================================ -->
       <!-- GENERAL VIEWS -->
       <!-- ============================================ -->
 
@@ -559,8 +595,11 @@
             <And>
               <Eq><FieldRef Name="IsRushRequest" /><Value Type="Boolean">1</Value></Eq>
               <And>
-                <Neq><FieldRef Name="Status" /><Value Type="Choice">Completed</Value></Neq>
-                <Neq><FieldRef Name="Status" /><Value Type="Choice">Cancelled</Value></Neq>
+                <And>
+                  <Neq><FieldRef Name="Status" /><Value Type="Choice">Completed</Value></Neq>
+                  <Neq><FieldRef Name="Status" /><Value Type="Choice">Cancelled</Value></Neq>
+                </And>
+                <Neq><FieldRef Name="Status" /><Value Type="Choice">Awaiting Foreside Documents</Value></Neq>
               </And>
             </And>
           </Where>

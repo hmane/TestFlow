@@ -541,7 +541,9 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
           <RequestSummary onEditClick={handleEditRequestInfo} />
 
           {/* Stage-specific forms */}
-          {status === RequestStatus.LegalIntake && (
+          {/* Legal Intake form shows for both LegalIntake and AssignAttorney status */}
+          {/* AssignAttorney is a sub-state where Legal Admin/Attorney Assigner group assigns the attorney */}
+          {(status === RequestStatus.LegalIntake || status === RequestStatus.AssignAttorney) && (
             <LazyFormWrapper formName="Legal Intake Form" fallbackMessage="Loading Legal Intake Form...">
               <LegalIntakeForm />
             </LazyFormWrapper>

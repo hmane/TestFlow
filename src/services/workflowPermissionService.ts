@@ -51,9 +51,13 @@ const VALID_STATUS_TRANSITIONS: Record<RequestStatus, RequestStatus[]> = {
     RequestStatus.Cancelled,
   ],
   [RequestStatus.Closeout]: [
+    RequestStatus.AwaitingForesideDocuments, // If Foreside Review Required
     RequestStatus.Completed,
     RequestStatus.OnHold,
     RequestStatus.Cancelled,
+  ],
+  [RequestStatus.AwaitingForesideDocuments]: [
+    RequestStatus.Completed, // Only transition is to Completed
   ],
   [RequestStatus.Completed]: [], // Terminal state - no transitions allowed
   [RequestStatus.Cancelled]: [], // Terminal state - no transitions allowed
@@ -341,6 +345,41 @@ export function canCloseoutRequest(context: IActionContext): IPermissionCheckRes
     return {
       allowed: false,
       reason: 'Only Legal Admin or Admin can closeout requests',
+    };
+  }
+
+  return { allowed: true };
+}
+
+/**
+ * Check if user can complete Foreside documents phase
+ * Who can perform: Submitter (owner), Admin
+ * Valid from status: Awaiting Foreside Documents
+ */
+export function canCompleteForesideDocuments(context: IActionContext): IPermissionCheckResult {
+  const { request, permissions, currentUserId } = context;
+
+  // Check status
+  if (request.status !== RequestStatus.AwaitingForesideDocuments) {
+    return {
+      allowed: false,
+      reason: `Can only complete Foreside documents when in Awaiting Foreside Documents status (current: ${request.status})`,
+    };
+  }
+
+  // Admin can always complete
+  if (permissions.isAdmin) {
+    return { allowed: true };
+  }
+
+  // Must be owner (submitter)
+  const isOwner = request.submittedBy?.id === currentUserId ||
+                  request.author?.id === currentUserId;
+
+  if (!isOwner) {
+    return {
+      allowed: false,
+      reason: 'Only the request submitter or Admin can complete Foreside documents',
     };
   }
 
@@ -648,6 +687,7 @@ export interface IAvailableActions {
   canSubmitLegalReview: boolean;
   canSubmitComplianceReview: boolean;
   canCloseout: boolean;
+  canCompleteForesideDocuments: boolean;
   canCancel: boolean;
   canHold: boolean;
   canResume: boolean;
@@ -668,6 +708,7 @@ export function getAvailableActions(context: IActionContext): IAvailableActions 
     canSubmitLegalReview: canSubmitLegalReview(context).allowed,
     canSubmitComplianceReview: canSubmitComplianceReview(context).allowed,
     canCloseout: canCloseoutRequest(context).allowed,
+    canCompleteForesideDocuments: canCompleteForesideDocuments(context).allowed,
     canCancel: canCancelRequest(context).allowed,
     canHold: canHoldRequest(context).allowed,
     canResume: canResumeRequest(context).allowed,

@@ -58,7 +58,7 @@ export interface IWorkflowPermissionsResult {
     isForesideReviewRequired: boolean,
     isRetailUse: boolean
   ) => Promise<IPermissionCheckResult>;
-  closeoutRequest: (trackingId?: string) => Promise<IPermissionCheckResult>;
+  closeoutRequest: (options?: { trackingId?: string; commentsAcknowledged?: boolean }) => Promise<IPermissionCheckResult>;
   cancelRequest: (reason: string) => Promise<IPermissionCheckResult>;
   holdRequest: (reason: string) => Promise<IPermissionCheckResult>;
   resumeRequest: () => Promise<IPermissionCheckResult>;
@@ -123,6 +123,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
         canSubmitLegalReview: false,
         canSubmitComplianceReview: false,
         canCloseout: false,
+        canCompleteForesideDocuments: false,
         canCancel: false,
         canHold: false,
         canResume: false,
@@ -141,6 +142,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
         canSubmitLegalReview: false,
         canSubmitComplianceReview: false,
         canCloseout: false,
+        canCompleteForesideDocuments: false,
         canCancel: false,
         canHold: false,
         canResume: false,
@@ -469,7 +471,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
    * Closeout request
    */
   const closeoutRequest = React.useCallback(
-    async (trackingId?: string): Promise<IPermissionCheckResult> => {
+    async (options?: { trackingId?: string; commentsAcknowledged?: boolean }): Promise<IPermissionCheckResult> => {
       if (!actionContext || !itemId) {
         return { allowed: false, reason: 'Request not loaded' };
       }
@@ -486,7 +488,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
       // Validate with schema
       const complianceReview = actionContext.request.complianceReview;
       const validation = closeoutRequestSchema.safeParse({
-        trackingId,
+        trackingId: options?.trackingId,
         currentStatus: actionContext.request.status,
         complianceReviewed: complianceReview?.status === 'Completed',
         isForesideReviewRequired: complianceReview?.isForesideReviewRequired ?? false,
@@ -503,9 +505,10 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
       setError(undefined);
 
       try {
-        await store.closeoutRequest(trackingId);
+        await store.closeoutRequest(options);
         SPContext.logger.success('Request closed out', {
-          trackingId,
+          trackingId: options?.trackingId,
+          commentsAcknowledged: options?.commentsAcknowledged,
           requestId: itemId,
         });
         return { allowed: true };

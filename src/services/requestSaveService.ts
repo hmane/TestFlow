@@ -641,6 +641,14 @@ function buildPartialUpdatePayload(data: Partial<ILegalRequest>): Record<string,
     mergeUpdates(updater.getUpdates());
   }
 
+  // Comments acknowledged (for closeout when review outcome is "Approved with Comments")
+  if (data.commentsAcknowledged !== undefined) {
+    payload[RequestsFields.CommentsAcknowledged] = data.commentsAcknowledged;
+  }
+  if (data.commentsAcknowledgedOn !== undefined) {
+    payload[RequestsFields.CommentsAcknowledgedOn] = data.commentsAcknowledgedOn;
+  }
+
   // Time tracking fields
   if (data.legalIntakeLegalAdminHours !== undefined) {
     payload[RequestsFields.LegalIntakeLegalAdminHours] = data.legalIntakeLegalAdminHours;
@@ -1220,21 +1228,32 @@ export async function submitComplianceReview(
 }
 
 /**
+ * Closeout options
+ */
+export interface ICloseoutOptions {
+  /** Optional tracking ID */
+  trackingId?: string;
+  /** Whether review comments have been acknowledged (required if outcome was Approved with Comments) */
+  commentsAcknowledged?: boolean;
+}
+
+/**
  * Close out request (hybrid with permission management)
  *
  * @param itemId - Request item ID
- * @param trackingId - Optional tracking ID
+ * @param options - Closeout options including tracking ID and comments acknowledgment
  * @returns Promise resolving when closeout completes
  */
 export async function closeoutRequest(
   itemId: number,
-  trackingId?: string
+  options?: ICloseoutOptions
 ): Promise<void> {
   try {
-    SPContext.logger.info('RequestSaveService: Closing out request', { itemId, trackingId });
+    const { trackingId, commentsAcknowledged } = options || {};
+    SPContext.logger.info('RequestSaveService: Closing out request', { itemId, trackingId, commentsAcknowledged });
 
-    // 1. Update SharePoint
-    await saveRequest(itemId, {
+    // Build update payload
+    const updateData: Partial<ILegalRequest> = {
       status: RequestStatus.Completed,
       trackingId,
       closeoutOn: new Date(),
@@ -1243,7 +1262,16 @@ export async function closeoutRequest(
         email: SPContext.currentUser.email,
         title: SPContext.currentUser.title,
       },
-    });
+    };
+
+    // Add comments acknowledged fields if provided
+    if (commentsAcknowledged) {
+      updateData.commentsAcknowledged = true;
+      updateData.commentsAcknowledgedOn = new Date();
+    }
+
+    // 1. Update SharePoint
+    await saveRequest(itemId, updateData);
 
     // 2. Manage permissions (restore original permissions or set to read-only)
     await manageRequestPermissions(itemId, RequestStatus.Completed);

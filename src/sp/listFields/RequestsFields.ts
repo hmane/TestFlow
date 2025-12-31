@@ -111,6 +111,13 @@ export const RequestsFields = {
   // Admin Override Audit Trail
   AdminOverrideNotes: 'AdminOverrideNotes',
   // Closeout
-  CloseoutNotes: 'CloseoutNotes'
+  CloseoutNotes: 'CloseoutNotes',
+  CommentsAcknowledged: 'CommentsAcknowledged',
+  CommentsAcknowledgedOn: 'CommentsAcknowledgedOn',
+  // Foreside Documents
+  ForesideCompletedBy: 'ForesideCompletedBy',
+  ForesideCompletedOn: 'ForesideCompletedOn',
+  ForesideNotes: 'ForesideNotes',
+  AwaitingForesideSince: 'AwaitingForesideSince'
 } as const;
 
