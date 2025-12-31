@@ -1,3 +1,26 @@
+/**
+ * Request Status Field Customizer
+ *
+ * SPFx Field Customizer that renders a custom progress bar with hover card
+ * in the Status column of the Requests list view.
+ *
+ * Features:
+ * - Visual progress bar showing workflow stage completion
+ * - Color-coded status indicators (blue=active, green=complete, red=cancelled, yellow=on hold)
+ * - Hover card with detailed status information including:
+ *   - Current workflow stage
+ *   - Review progress (Legal/Compliance)
+ *   - Time in current stage
+ *   - Key dates and assignees
+ *
+ * SharePoint Integration:
+ * - Extracts data from list item fields (Status, ReviewAudience, dates, principals)
+ * - Uses SPContext for logging and SharePoint operations
+ * - Renders React component into the list cell DOM element
+ *
+ * @module extensions/requestStatus
+ */
+
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 
@@ -23,39 +46,89 @@ import {
 } from '../../types/workflowTypes';
 
 /**
- * If your field customizer uses the ClientSideComponentProperties JSON input,
- * it will be deserialized into the BaseExtension.properties object.
- * You can define an interface to describe it.
+ * Properties for the Request Status Field Customizer
+ *
+ * These properties are configured in the manifest.json and passed to the customizer
+ * at runtime. They allow customization of the field customizer behavior.
  */
 export interface IRequestStatusFieldCustomizerProperties {
-  // List title for dynamic loading
+  /**
+   * SharePoint list title to load additional data from.
+   * Defaults to 'Requests' if not specified.
+   */
   listTitle?: string;
 }
 
+/** Log source identifier for SPFx logging */
 const LOG_SOURCE: string = 'RequestStatusFieldCustomizer';
 
+/**
+ * Request Status Field Customizer Class
+ *
+ * Extends BaseFieldCustomizer to render a custom progress bar component
+ * in the Status column of SharePoint list views.
+ *
+ * Lifecycle:
+ * 1. onInit() - Initialize SPContext and log activation
+ * 2. onRenderCell() - Extract item data and render React component for each cell
+ * 3. onDisposeCell() - Clean up React component when cell is removed from DOM
+ */
 export default class RequestStatusFieldCustomizer
   extends BaseFieldCustomizer<IRequestStatusFieldCustomizerProperties> {
 
+  /**
+   * Initialize the field customizer
+   *
+   * Called once when the customizer is first loaded. Sets up SPContext
+   * for SharePoint operations and logging.
+   *
+   * @returns Promise that resolves when initialization is complete
+   */
   public async onInit(): Promise<void> {
-    // Initialize SPContext for SharePoint operations
+    // Call base class initialization first
     await super.onInit();
+
+    // Initialize SPContext for SharePoint operations (PnPjs, logging)
+    // This must be done before any SharePoint API calls
     await SPContext.smart(this.context, 'RequestStatusFieldCustomizer');
 
+    // Log activation for debugging
     Log.info(LOG_SOURCE, 'Activated RequestStatusFieldCustomizer with properties:');
     Log.info(LOG_SOURCE, JSON.stringify(this.properties, undefined, 2));
     Log.info(LOG_SOURCE, `The following string should be equal: "RequestStatusFieldCustomizer" and "${strings.Title}"`);
 
+    SPContext.logger.info('RequestStatusFieldCustomizer initialized', {
+      listTitle: this.properties.listTitle,
+      webUrl: this.context.pageContext.web.absoluteUrl,
+    });
+
     return Promise.resolve();
   }
 
+  /**
+   * Render the custom status progress bar in a list cell
+   *
+   * Called for each visible cell in the Status column. Extracts all required
+   * data from the list item and renders a React component that shows:
+   * - Progress bar with color-coded stages
+   * - Hover card with detailed status information
+   *
+   * SharePoint Field Extraction:
+   * - Status: Current workflow status (Draft, Legal Intake, In Review, etc.)
+   * - ReviewAudience: Which reviews are required (Legal, Compliance, Both)
+   * - Dates: Created, SubmittedOn, CompletedOn, etc.
+   * - Principals: CreatedBy, SubmittedBy, Attorney, etc.
+   * - Review data: LegalReviewStatus, ComplianceReviewStatus, outcomes
+   *
+   * @param event - Contains the list item data and DOM element to render into
+   */
   public onRenderCell(event: IFieldCustomizerCellEventParameters): void {
     try {
-      // Extract data from list item
+      // Extract data from the SharePoint list item
       const listItem = event.listItem;
       const status = event.fieldValue as RequestStatus;
 
-      // Get list title from properties or context
+      // Get list title from properties or context (used for building URLs)
       const listTitle = this.properties.listTitle || this.context.pageContext.list?.title || 'Requests';
       const webUrl = this.context.pageContext.web.absoluteUrl;
 
@@ -138,47 +211,77 @@ export default class RequestStatusFieldCustomizer
     }
   }
 
+  /**
+   * Clean up React component when cell is removed from DOM
+   *
+   * Called by SharePoint when the list cell is being disposed (e.g., when scrolling
+   * the list view). Unmounts the React component to prevent memory leaks.
+   *
+   * @param event - Contains the DOM element to clean up
+   */
   public onDisposeCell(event: IFieldCustomizerCellEventParameters): void {
-    // This method should be used to free any resources that were allocated during rendering.
-    // For example, if your onRenderCell() called ReactDOM.render(), then you should
-    // call ReactDOM.unmountComponentAtNode() here.
+    // Unmount the React component to free resources and prevent memory leaks
     ReactDOM.unmountComponentAtNode(event.domElement);
     super.onDisposeCell(event);
   }
 
   /**
-   * Extract principal (user) data from list item
+   * Extract principal (user) data from a SharePoint list item lookup field
+   *
+   * SharePoint stores user/person fields as lookup values with various formats
+   * depending on the field configuration. This method handles the different formats
+   * and normalizes them to our IPrincipal interface.
+   *
+   * Field Format Handling:
+   * - lookupId/lookupValue: Standard lookup field format
+   * - id/Id: Alternative ID formats
+   * - email/Email: User email address
+   * - loginName/LoginName/sip: User login identifier
+   *
+   * @param listItem - SharePoint list item object with getValueByName method
+   * @param fieldName - Name of the person/user field to extract
+   * @returns IPrincipal object with user data, or undefined if field is empty/invalid
    */
-  private extractPrincipal(listItem: any, fieldName: string): IPrincipal | undefined {
+  private extractPrincipal(listItem: { getValueByName: (name: string) => unknown }, fieldName: string): IPrincipal | undefined {
     try {
-      const lookupValue = listItem.getValueByName(fieldName);
+      const lookupValue = listItem.getValueByName(fieldName) as Record<string, unknown> | null;
       if (!lookupValue) {
         return undefined;
       }
 
-      // Handle lookup field format
+      // Handle various lookup field formats from SharePoint
+      // Different field types and configurations return data in different shapes
       return {
         id: String(lookupValue.lookupId || lookupValue.id || lookupValue.Id || 0),
-        title: lookupValue.lookupValue || lookupValue.title || lookupValue.Title || 'Unknown',
-        email: lookupValue.email || lookupValue.Email || '',
-        loginName: lookupValue.loginName || lookupValue.LoginName || lookupValue.sip || '',
+        title: String(lookupValue.lookupValue || lookupValue.title || lookupValue.Title || 'Unknown'),
+        email: String(lookupValue.email || lookupValue.Email || ''),
+        loginName: String(lookupValue.loginName || lookupValue.LoginName || lookupValue.sip || ''),
       };
-    } catch (error: unknown) {
-      SPContext.logger.warn(`Failed to extract principal for field ${fieldName}`, error);
+    } catch (extractError: unknown) {
+      // Log warning but don't fail - missing principal data is not critical
+      SPContext.logger.warn(`Failed to extract principal for field ${fieldName}`, extractError);
       return undefined;
     }
   }
 
   /**
-   * Parse date value safely
+   * Parse date value safely from SharePoint field
+   *
+   * SharePoint returns dates in various formats (ISO string, Date object, etc.).
+   * This method handles the conversion safely and returns undefined for invalid dates.
+   *
+   * @param value - Date value from SharePoint (string, Date, or undefined)
+   * @returns Parsed Date object, or undefined if value is invalid/empty
    */
-  private parseDate(value: any): Date | undefined {
+  private parseDate(value: unknown): Date | undefined {
     if (!value) return undefined;
 
     try {
-      const date = new Date(value);
+      const date = new Date(value as string | number);
+      // Check for invalid date (NaN)
       return isNaN(date.getTime()) ? undefined : date;
-    } catch (error: unknown) {
+    } catch {
+      // Silently return undefined for unparseable dates
       return undefined;
     }
   }

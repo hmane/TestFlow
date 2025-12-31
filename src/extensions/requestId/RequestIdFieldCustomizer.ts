@@ -1,3 +1,26 @@
+/**
+ * Request ID Field Customizer
+ *
+ * SPFx Field Customizer that renders a clickable Request ID link with a hover card
+ * in the Title/RequestId column of the Requests list view.
+ *
+ * Features:
+ * - Clickable link that opens the request edit form
+ * - Hover card showing request summary:
+ *   - Request title and status
+ *   - Request type and review audience
+ *   - Target return date
+ *   - Created/Modified info
+ * - Compact card preview on quick hover
+ *
+ * SharePoint Integration:
+ * - Extracts data from list item fields (Title, Status, RequestType, etc.)
+ * - Builds edit form URL for navigation
+ * - Uses SPContext for logging
+ *
+ * @module extensions/requestId
+ */
+
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 
@@ -19,22 +42,40 @@ import { RequestType } from '../../types/requestTypes';
 import { Lists } from '@sp/Lists';
 
 /**
- * If your field customizer uses the ClientSideComponentProperties JSON input,
- * it will be deserialized into the BaseExtension.properties object.
- * You can define an interface to describe it.
+ * Properties for the Request ID Field Customizer
+ *
+ * Configured in manifest.json and passed at runtime.
  */
 export interface IRequestIdFieldCustomizerProperties {
-  // List title for dynamic loading
+  /**
+   * SharePoint list title for data operations.
+   * Defaults to 'Requests' if not specified.
+   */
   listTitle?: string;
 }
 
+/** Log source identifier for SPFx logging */
 const LOG_SOURCE: string = 'RequestIdFieldCustomizer';
 
+/**
+ * Request ID Field Customizer Class
+ *
+ * Renders a clickable Request ID with hover card in SharePoint list views.
+ *
+ * Lifecycle:
+ * 1. onInit() - Initialize SPContext
+ * 2. onRenderCell() - Extract item data and render hover card component
+ * 3. onDisposeCell() - Clean up React component
+ */
 export default class RequestIdFieldCustomizer
   extends BaseFieldCustomizer<IRequestIdFieldCustomizerProperties> {
 
+  /**
+   * Initialize the field customizer
+   *
+   * Sets up SPContext for SharePoint operations and logging.
+   */
   public async onInit(): Promise<void> {
-    // Initialize SPContext for SharePoint operations
     await super.onInit();
     await SPContext.smart(this.context, 'RequestIdFieldCustomizer');
 
@@ -42,20 +83,33 @@ export default class RequestIdFieldCustomizer
     Log.info(LOG_SOURCE, JSON.stringify(this.properties, undefined, 2));
     Log.info(LOG_SOURCE, `The following string should be equal: "RequestIdFieldCustomizer" and "${strings.Title}"`);
 
+    SPContext.logger.info('RequestIdFieldCustomizer initialized', {
+      listTitle: this.properties.listTitle,
+      webUrl: this.context.pageContext.web.absoluteUrl,
+    });
+
     return Promise.resolve();
   }
 
+  /**
+   * Render the Request ID hover card in a list cell
+   *
+   * Extracts request data from the list item and renders a React component
+   * that shows a clickable link with a hover card containing request details.
+   *
+   * @param event - Contains the list item data and DOM element
+   */
   public onRenderCell(event: IFieldCustomizerCellEventParameters): void {
     try {
-      // Extract data from list item
+      // Extract data from the SharePoint list item
       const listItem = event.listItem;
       const fieldValue = event.fieldValue;
 
-      // Get list ID from context (without curly braces to match form customizer format)
+      // Get list ID from context (used for form navigation)
       const listGuid = this.context.pageContext.list?.id;
       const listId = listGuid ? listGuid.toString() : '';
 
-      // Extract list item data
+      // Extract all fields needed for the hover card display
       const itemData: IRequestListItemData = {
         id: listItem.getValueByName('ID') as number,
         requestId: fieldValue as string || listItem.getValueByName('Title') as string,
@@ -71,14 +125,13 @@ export default class RequestIdFieldCustomizer
         modifiedBy: this.extractPrincipal(listItem, 'Editor'),
       };
 
-      // Build edit form URL using web URL and Requests list URL
+      // Build SharePoint edit form URL
+      // Format: {webUrl}/Lists/Requests/EditForm.aspx?ID={itemId}
       const webUrl = this.context.pageContext.web.absoluteUrl;
       const itemId = itemData.id;
-
-      // SharePoint edit form URL using the Requests list
       const editFormUrl = `${webUrl}${Lists.Requests.Url}/EditForm.aspx?ID=${itemId}`;
 
-      // Render RequestIdHoverCard component
+      // Render the RequestIdHoverCard React component
       const hoverCard = React.createElement(RequestIdHoverCard, {
         requestId: itemData.requestId,
         itemData,
@@ -93,62 +146,64 @@ export default class RequestIdFieldCustomizer
         listItemId: event.listItem.getValueByName('ID'),
       });
 
-      // Fallback: render plain text
+      // Fallback: render plain text link
       event.domElement.innerHTML = `<span style="color: #0078d4;">${event.fieldValue || 'N/A'}</span>`;
     }
   }
 
+  /**
+   * Clean up React component when cell is disposed
+   *
+   * Prevents memory leaks by unmounting the React component.
+   */
   public onDisposeCell(event: IFieldCustomizerCellEventParameters): void {
-    // This method should be used to free any resources that were allocated during rendering.
-    // For example, if your onRenderCell() called ReactDOM.render(), then you should
-    // call ReactDOM.unmountComponentAtNode() here.
     ReactDOM.unmountComponentAtNode(event.domElement);
     super.onDisposeCell(event);
   }
 
   /**
-   * Extract principal (user) data from list item
+   * Extract principal (user) data from a SharePoint list item
+   *
+   * Handles various lookup field formats and returns a normalized IPrincipal.
+   * Returns a default "Unknown" principal if extraction fails.
+   *
+   * @param listItem - SharePoint list item
+   * @param fieldName - Name of the person/user field
+   * @returns IPrincipal with user data
    */
-  private extractPrincipal(listItem: any, fieldName: string): IPrincipal {
+  private extractPrincipal(listItem: { getValueByName: (name: string) => unknown }, fieldName: string): IPrincipal {
     try {
-      const lookupValue = listItem.getValueByName(fieldName);
+      const lookupValue = listItem.getValueByName(fieldName) as Record<string, unknown> | null;
       if (!lookupValue) {
-        return {
-          id: '0',
-          title: 'Unknown',
-          email: '',
-          loginName: '',
-        };
+        return { id: '0', title: 'Unknown', email: '', loginName: '' };
       }
 
-      // Handle lookup field format
+      // Normalize various SharePoint lookup field formats
       return {
         id: String(lookupValue.lookupId || lookupValue.id || 0),
-        title: lookupValue.lookupValue || lookupValue.title || 'Unknown',
-        email: lookupValue.email || '',
-        loginName: lookupValue.loginName || lookupValue.sip || '',
+        title: String(lookupValue.lookupValue || lookupValue.title || 'Unknown'),
+        email: String(lookupValue.email || ''),
+        loginName: String(lookupValue.loginName || lookupValue.sip || ''),
       };
-    } catch (error: unknown) {
-      SPContext.logger.warn(`Failed to extract principal for field ${fieldName}`, error);
-      return {
-        id: '0',
-        title: 'Unknown',
-        email: '',
-        loginName: '',
-      };
+    } catch (extractError: unknown) {
+      SPContext.logger.warn(`Failed to extract principal for field ${fieldName}`, extractError);
+      return { id: '0', title: 'Unknown', email: '', loginName: '' };
     }
   }
 
   /**
-   * Parse date value safely
+   * Parse date value safely from SharePoint field
+   *
+   * @param value - Date value from SharePoint
+   * @returns Parsed Date or undefined
    */
-  private parseDate(value: any): Date | undefined {
+  private parseDate(value: unknown): Date | undefined {
     if (!value) return undefined;
 
     try {
-      const date = new Date(value);
+      const date = new Date(value as string | number);
       return isNaN(date.getTime()) ? undefined : date;
-    } catch (error: unknown) {
+    } catch {
       return undefined;
     }
   }
