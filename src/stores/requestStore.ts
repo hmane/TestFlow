@@ -167,6 +167,7 @@ interface IRequestState {
   adminOverrideReviewAudience: (audience: ReviewAudience, reason: string) => Promise<void>;
   adminOverrideLegalReview: (outcome?: string, status?: string, reason?: string) => Promise<void>;
   adminOverrideComplianceReview: (outcome?: string, status?: string, reason?: string) => Promise<void>;
+  adminOverrideComplianceFlags: (isForesideRequired?: boolean, isRetailUse?: boolean, reason?: string) => Promise<void>;
   adminReopenRequest: (reason: string) => Promise<void>;
 
   // Actions - Utility
@@ -1180,6 +1181,63 @@ export const useRequestStore = create<IRequestState>()(
 
         SPContext.logger.success('Admin compliance review override completed', {
           requestId: state.currentRequest.requestId,
+        });
+      },
+
+      /**
+       * Admin override: Modify compliance flags (isForesideRequired, isRetailUse)
+       * These flags affect Tracking ID requirement at Closeout
+       */
+      adminOverrideComplianceFlags: async (
+        isForesideRequired?: boolean,
+        isRetailUse?: boolean,
+        reason?: string
+      ): Promise<void> => {
+        const state = get();
+
+        if (!state.itemId || !state.currentRequest) {
+          throw new Error('No request loaded');
+        }
+
+        SPContext.logger.warn('ADMIN OVERRIDE: Modifying compliance flags', {
+          requestId: state.currentRequest.requestId,
+          previousForesideRequired: state.currentRequest.isForesideReviewRequired,
+          previousRetailUse: state.currentRequest.isRetailUse,
+          newForesideRequired: isForesideRequired,
+          newRetailUse: isRetailUse,
+          reason,
+          adminUser: SPContext.currentUser?.email,
+        });
+
+        // Build admin override audit entry
+        const changes: string[] = [];
+        if (isForesideRequired !== undefined) {
+          changes.push(`Foreside Required: "${state.currentRequest.isForesideReviewRequired ? 'Yes' : 'No'}" → "${isForesideRequired ? 'Yes' : 'No'}"`);
+        }
+        if (isRetailUse !== undefined) {
+          changes.push(`Retail Use: "${state.currentRequest.isRetailUse ? 'Yes' : 'No'}" → "${isRetailUse ? 'Yes' : 'No'}"`);
+        }
+        const adminOverrideNotes = formatAdminAuditEntry(
+          'COMPLIANCE FLAGS OVERRIDE',
+          changes.join(', '),
+          reason || 'No reason provided',
+          state.currentRequest.adminOverrideNotes
+        );
+
+        const updates: Partial<ILegalRequest> = { adminOverrideNotes };
+        if (isForesideRequired !== undefined) {
+          updates.isForesideReviewRequired = isForesideRequired;
+        }
+        if (isRetailUse !== undefined) {
+          updates.isRetailUse = isRetailUse;
+        }
+
+        await get().updateRequest(updates);
+
+        SPContext.logger.success('Admin compliance flags override completed', {
+          requestId: state.currentRequest.requestId,
+          newForesideRequired: isForesideRequired,
+          newRetailUse: isRetailUse,
         });
       },
 

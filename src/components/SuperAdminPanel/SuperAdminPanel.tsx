@@ -22,7 +22,7 @@ import { Stack } from '@fluentui/react/lib/Stack';
 import { Separator } from '@fluentui/react/lib/Separator';
 import { Toggle } from '@fluentui/react/lib/Toggle';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
-import { RequestStatus, ReviewOutcome, ReviewAudience } from '@appTypes/workflowTypes';
+import { RequestStatus, ReviewOutcome, ReviewAudience, LegalReviewStatus, ComplianceReviewStatus } from '@appTypes/workflowTypes';
 import { useRequestStore } from '@stores/index';
 import { usePermissions } from '@hooks/usePermissions';
 import './SuperAdminPanel.scss';
@@ -36,6 +36,7 @@ export type SuperAdminAction =
   | 'overrideReviewAudience'
   | 'overrideLegalReview'
   | 'overrideComplianceReview'
+  | 'overrideComplianceFlags'
   | 'reopenRequest'
   | 'clearField';
 
@@ -60,7 +61,7 @@ interface IConfirmationState {
 }
 
 /**
- * Status options for override
+ * Status options for override - includes ALL workflow statuses
  */
 const STATUS_OPTIONS: IDropdownOption[] = [
   { key: RequestStatus.Draft, text: 'Draft' },
@@ -68,6 +69,7 @@ const STATUS_OPTIONS: IDropdownOption[] = [
   { key: RequestStatus.AssignAttorney, text: 'Assign Attorney' },
   { key: RequestStatus.InReview, text: 'In Review' },
   { key: RequestStatus.Closeout, text: 'Closeout' },
+  { key: RequestStatus.AwaitingForesideDocuments, text: 'Awaiting Foreside Documents' },
   { key: RequestStatus.Completed, text: 'Completed' },
   { key: RequestStatus.Cancelled, text: 'Cancelled' },
   { key: RequestStatus.OnHold, text: 'On Hold' },
@@ -85,14 +87,29 @@ const REVIEW_OUTCOME_OPTIONS: IDropdownOption[] = [
 ];
 
 /**
- * Review status options for clearing
+ * Legal review status options - uses enum values for consistency
  */
-const REVIEW_STATUS_OPTIONS: IDropdownOption[] = [
+const LEGAL_REVIEW_STATUS_OPTIONS: IDropdownOption[] = [
   { key: '', text: '-- Clear Status --' },
-  { key: 'Not Started', text: 'Not Started' },
-  { key: 'In Progress', text: 'In Progress' },
-  { key: 'Waiting on Submitter', text: 'Waiting on Submitter' },
-  { key: 'Completed', text: 'Completed' },
+  { key: LegalReviewStatus.NotRequired, text: 'Not Required' },
+  { key: LegalReviewStatus.NotStarted, text: 'Not Started' },
+  { key: LegalReviewStatus.InProgress, text: 'In Progress' },
+  { key: LegalReviewStatus.WaitingOnSubmitter, text: 'Waiting On Submitter' },
+  { key: LegalReviewStatus.WaitingOnAttorney, text: 'Waiting On Attorney' },
+  { key: LegalReviewStatus.Completed, text: 'Completed' },
+];
+
+/**
+ * Compliance review status options - uses enum values for consistency
+ */
+const COMPLIANCE_REVIEW_STATUS_OPTIONS: IDropdownOption[] = [
+  { key: '', text: '-- Clear Status --' },
+  { key: ComplianceReviewStatus.NotRequired, text: 'Not Required' },
+  { key: ComplianceReviewStatus.NotStarted, text: 'Not Started' },
+  { key: ComplianceReviewStatus.InProgress, text: 'In Progress' },
+  { key: ComplianceReviewStatus.WaitingOnSubmitter, text: 'Waiting On Submitter' },
+  { key: ComplianceReviewStatus.WaitingOnCompliance, text: 'Waiting On Compliance' },
+  { key: ComplianceReviewStatus.Completed, text: 'Completed' },
 ];
 
 /**
@@ -130,6 +147,9 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
   const [selectedComplianceOutcome, setSelectedComplianceOutcome] = React.useState<string | undefined>();
   const [selectedComplianceStatus, setSelectedComplianceStatus] = React.useState<string | undefined>();
   const [clearAttorney, setClearAttorney] = React.useState(false);
+  // Compliance flags
+  const [isForesideRequired, setIsForesideRequired] = React.useState<boolean | undefined>();
+  const [isRetailUse, setIsRetailUse] = React.useState<boolean | undefined>();
 
   // Confirmation dialog
   const [confirmation, setConfirmation] = React.useState<IConfirmationState>({
@@ -161,6 +181,8 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
       setSelectedComplianceOutcome(undefined);
       setSelectedComplianceStatus(undefined);
       setClearAttorney(false);
+      setIsForesideRequired(undefined);
+      setIsRetailUse(undefined);
       setActionReason('');
       setErrorMessage(undefined);
       setSuccessMessage(undefined);
@@ -265,6 +287,27 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
   };
 
   /**
+   * Handle compliance flags override
+   */
+  const handleComplianceFlagsOverride = async (data?: Record<string, unknown>): Promise<void> => {
+    if (!currentRequest?.id) return;
+
+    SPContext.logger.warn('ADMIN OVERRIDE: Compliance flags modified', {
+      requestId: currentRequest.requestId,
+      isForesideRequired: data?.isForesideRequired,
+      isRetailUse: data?.isRetailUse,
+      reason: actionReason,
+      adminUser: SPContext.currentUser?.email,
+    });
+
+    await store.adminOverrideComplianceFlags(
+      data?.isForesideRequired as boolean | undefined,
+      data?.isRetailUse as boolean | undefined,
+      actionReason
+    );
+  };
+
+  /**
    * Handle reopen request
    */
   const handleReopenRequest = async (): Promise<void> => {
@@ -323,6 +366,9 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
           break;
         case 'overrideComplianceReview':
           await handleComplianceReviewOverride(data);
+          break;
+        case 'overrideComplianceFlags':
+          await handleComplianceFlagsOverride(data);
           break;
         case 'reopenRequest':
           await handleReopenRequest();
@@ -479,6 +525,23 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
               <span className="super-admin-panel__status-label">Assigned Attorney</span>
               <span className="super-admin-panel__status-value">{currentAttorney}</span>
             </div>
+            {/* Show review statuses if audience includes them */}
+            {isLegalRequired && (
+              <div className="super-admin-panel__status-item">
+                <span className="super-admin-panel__status-label">Legal Review</span>
+                <span className="super-admin-panel__status-value">
+                  {currentRequest?.legalReviewStatus || 'Not Set'} / {currentLegalOutcome}
+                </span>
+              </div>
+            )}
+            {isComplianceRequired && (
+              <div className="super-admin-panel__status-item">
+                <span className="super-admin-panel__status-label">Compliance Review</span>
+                <span className="super-admin-panel__status-value">
+                  {currentRequest?.complianceReviewStatus || 'Not Set'} / {currentComplianceOutcome}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Reason Field - Required for all actions */}
@@ -633,7 +696,7 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
                     />
                     <Dropdown
                       placeholder="Select status"
-                      options={REVIEW_STATUS_OPTIONS}
+                      options={LEGAL_REVIEW_STATUS_OPTIONS}
                       selectedKey={selectedLegalStatus}
                       onChange={(_, option) => setSelectedLegalStatus(option?.key as string)}
                       className="super-admin-panel__dropdown"
@@ -680,7 +743,7 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
                     />
                     <Dropdown
                       placeholder="Select status"
-                      options={REVIEW_STATUS_OPTIONS}
+                      options={COMPLIANCE_REVIEW_STATUS_OPTIONS}
                       selectedKey={selectedComplianceStatus}
                       onChange={(_, option) => setSelectedComplianceStatus(option?.key as string)}
                       className="super-admin-panel__dropdown"
@@ -698,6 +761,53 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
                       { outcome: selectedComplianceOutcome, status: selectedComplianceStatus }
                     )}
                     disabled={(!selectedComplianceOutcome && !selectedComplianceStatus) || isProcessing}
+                    className="super-admin-panel__action-btn super-admin-panel__action-btn--warning"
+                  />
+                </Stack>
+              </div>
+            )}
+
+            {/* Compliance Flags Override - available during review and closeout when compliance is required */}
+            {showComplianceReviewOverride && (
+              <div className="super-admin-panel__section">
+                <div className="super-admin-panel__section-header">
+                  <Icon iconName="Flag" className="super-admin-panel__section-icon" />
+                  <h3>Override Compliance Flags</h3>
+                </div>
+                <p className="super-admin-panel__section-desc">
+                  Modify compliance review flags that affect Closeout requirements.
+                  Current: Foreside = <strong>{currentRequest?.isForesideReviewRequired ? 'Yes' : 'No'}</strong>,
+                  Retail = <strong>{currentRequest?.isRetailUse ? 'Yes' : 'No'}</strong>
+                </p>
+                <Stack tokens={{ childrenGap: 12 }}>
+                  <Stack horizontal tokens={{ childrenGap: 24 }}>
+                    <Toggle
+                      label="Foreside Review Required"
+                      checked={isForesideRequired ?? currentRequest?.isForesideReviewRequired ?? false}
+                      onChange={(_, checked) => setIsForesideRequired(checked)}
+                      disabled={isProcessing}
+                      onText="Yes"
+                      offText="No"
+                    />
+                    <Toggle
+                      label="Retail Use"
+                      checked={isRetailUse ?? currentRequest?.isRetailUse ?? false}
+                      onChange={(_, checked) => setIsRetailUse(checked)}
+                      disabled={isProcessing}
+                      onText="Yes"
+                      offText="No"
+                    />
+                  </Stack>
+                  <DefaultButton
+                    text="Apply Compliance Flags Override"
+                    iconProps={{ iconName: 'Edit' }}
+                    onClick={() => showConfirmation(
+                      'overrideComplianceFlags',
+                      'Confirm Compliance Flags Override',
+                      `Set flags to: Foreside Required="${isForesideRequired ?? currentRequest?.isForesideReviewRequired ? 'Yes' : 'No'}", Retail Use="${isRetailUse ?? currentRequest?.isRetailUse ? 'Yes' : 'No'}"?`,
+                      { isForesideRequired: isForesideRequired ?? currentRequest?.isForesideReviewRequired, isRetailUse: isRetailUse ?? currentRequest?.isRetailUse }
+                    )}
+                    disabled={(isForesideRequired === undefined && isRetailUse === undefined) || isProcessing}
                     className="super-admin-panel__action-btn super-admin-panel__action-btn--warning"
                   />
                 </Stack>

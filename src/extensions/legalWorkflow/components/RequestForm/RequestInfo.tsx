@@ -23,6 +23,7 @@ import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
 import { saveRequestSchema } from '@schemas/requestSchema';
+import { useDocumentsStore } from '@stores/documentsStore';
 import { useRequestStore } from '@stores/requestStore';
 import { useSubmissionItemsStore } from '@stores/submissionItemsStore';
 import * as React from 'react';
@@ -63,6 +64,10 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
   } = useRequestStore();
   const { items: submissionItems } = useSubmissionItemsStore();
   const { showSuccess: showSuccessNotification, showError: showErrorNotification } = useNotification();
+
+  // Watch documents store for revalidation when documents change
+  // This ensures approval document errors clear when documents are uploaded
+  const { documents, stagedFiles } = useDocumentsStore();
 
   // React Hook Form setup
   const formMethods = useForm<ILegalRequest>({
@@ -263,6 +268,19 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
 
     previousValuesRef.current = watchedValues;
   }, [watchedValues, setError, clearErrors, revalidateErrors]);
+
+  // Revalidate when documents change (for approval document and attachment errors)
+  // This ensures errors clear when user uploads missing documents
+  React.useEffect(() => {
+    // Only revalidate if validation has been triggered before
+    if (!hasBeenValidatedRef.current) {
+      return;
+    }
+    // Trigger revalidation with current form values
+    // The revalidateErrors function checks hasDocumentsForApprovalType and hasAttachments
+    revalidateErrors(watchedValues);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documents, stagedFiles]);
 
   const shouldRenderChildren = renderApprovalsAndActions || !!children;
 

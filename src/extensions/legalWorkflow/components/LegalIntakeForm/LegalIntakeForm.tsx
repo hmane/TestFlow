@@ -17,6 +17,9 @@
 import * as React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 
+// Context imports for validation error syncing
+import { useRequestFormContext } from '@contexts/RequestFormContext';
+
 // Fluent UI - tree-shaken imports
 import { DefaultButton, IconButton, PrimaryButton } from '@fluentui/react/lib/Button';
 import { ChoiceGroup, type IChoiceGroupOption } from '@fluentui/react/lib/ChoiceGroup';
@@ -41,7 +44,6 @@ import { UserPersona } from 'spfx-toolkit/lib/components/UserPersona';
 
 // App imports using path aliases
 import { WorkflowCardHeader } from '@components/WorkflowCardHeader';
-import { IValidationError, RequestFormContext } from '@contexts/RequestFormContext';
 import { usePermissions } from '@hooks/usePermissions';
 import { saveRequest } from '@services/requestSaveService';
 import { useLegalIntakeStore } from '@stores/legalIntakeStore';
@@ -51,15 +53,6 @@ import { RequestStatus, ReviewAudience } from '@appTypes/workflowTypes';
 import { calculateBusinessHours } from '@utils/businessHoursCalculator';
 
 import './LegalIntakeForm.scss';
-
-/**
- * Hook to safely get validation errors from RequestFormContext
- * Returns empty array if context is not available (component used standalone)
- */
-function useSafeValidationErrors(): IValidationError[] {
-  const context = React.useContext(RequestFormContext);
-  return context?.validationErrors || [];
-}
 
 /**
  * Review Audience options for ChoiceGroup
@@ -116,10 +109,6 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
     currentRequest?.status === RequestStatus.AwaitingForesideDocuments;
   const canEditReviewAudience =
     (permissions.isLegalAdmin || permissions.isAdmin) && !isAfterReviewsCompleted;
-
-  // Get validation errors from parent context (RequestFormContext)
-  // These errors come from Zod validation in RequestActions
-  const contextValidationErrors = useSafeValidationErrors();
 
   /**
    * Convert attorney IPrincipal to have numeric ID for GroupUsersPicker compatibility
@@ -188,27 +177,26 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
     }
   }, [isEditMode, currentRequest, reset, normalizeAttorneyForPicker]);
 
+  // Get validation errors from RequestFormContext (set by RequestActions during Zod validation)
+  const { validationErrors: contextValidationErrors } = useRequestFormContext();
+
   // Sync validation errors from RequestFormContext to React Hook Form
-  // This allows field-level errors to be displayed under the form fields
+  // This allows FormItem components to display field-level errors via autoShowErrors
+  // The RequestActions component also shows a summary list with navigation links
   React.useEffect(() => {
-    // Clear previous errors for these fields
+    // Clear previous errors for Legal Intake fields
     clearErrors(['attorney', 'attorneyAssignNotes', 'reviewAudience']);
 
-    // Set errors from context
-    contextValidationErrors.forEach(validationError => {
-      const fieldName = validationError.field as keyof ILegalIntakeFormData;
-      // Only set errors for fields that belong to this form
-      if (
-        fieldName === 'attorney' ||
-        fieldName === 'attorneyAssignNotes' ||
-        fieldName === 'reviewAudience'
-      ) {
-        setFormError(fieldName, {
-          type: 'manual',
-          message: validationError.message,
-        });
-      }
-    });
+    // Sync any errors for Legal Intake fields from context to React Hook Form
+    if (contextValidationErrors && contextValidationErrors.length > 0) {
+      contextValidationErrors.forEach(validationError => {
+        const fieldName = validationError.field as keyof ILegalIntakeFormData;
+        // Only sync errors for fields in this form
+        if (fieldName === 'attorney' || fieldName === 'attorneyAssignNotes' || fieldName === 'reviewAudience') {
+          setFormError(fieldName, { type: 'manual', message: validationError.message });
+        }
+      });
+    }
   }, [contextValidationErrors, setFormError, clearErrors]);
 
   // Watch all fields for sync with store
