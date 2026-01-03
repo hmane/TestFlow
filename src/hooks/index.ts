@@ -39,6 +39,3 @@ export type {
 // Workflow actions
 export { useWorkflowActions } from './useWorkflowActions';
 export type { IWorkflowActionsResult } from './useWorkflowActions';
-
-// Utility hooks
-export { useLocalStorage } from './useLocalStorage';

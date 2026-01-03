@@ -48,9 +48,9 @@ export interface IUserAccess {
 }
 
 // Module-level variables for pending promise deduplication
-let pendingGroupsPromise: Promise<string[]> | null = null;
-let cachedGroupTitles: string[] | null = null;
-let cacheTimestamp: number | null = null;
+let pendingGroupsPromise: Promise<string[]> | undefined = undefined;
+let cachedGroupTitles: string[] | undefined = undefined;
+let cacheTimestamp: number | undefined = undefined;
 
 // Cache duration: 5 minutes (same as PermissionHelper)
 const CACHE_DURATION_MS = 5 * 60 * 1000;
@@ -124,7 +124,7 @@ export async function getCurrentUserGroupTitles(): Promise<string[]> {
       // Return empty array instead of throwing - this allows the site admin check to still work
       return [];
     } finally {
-      pendingGroupsPromise = null;
+      pendingGroupsPromise = undefined;
     }
   })();
 
@@ -247,8 +247,8 @@ export async function isUserInAnyGroup(groupNames: string[]): Promise<boolean> {
  * Use this when you know the user's group membership may have changed.
  */
 export function clearGroupCache(): void {
-  cachedGroupTitles = null;
-  cacheTimestamp = null;
-  pendingGroupsPromise = null;
+  cachedGroupTitles = undefined;
+  cacheTimestamp = undefined;
+  pendingGroupsPromise = undefined;
   SPContext.logger.info('UserGroupsService: Cache cleared');
 }

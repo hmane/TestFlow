@@ -57,6 +57,15 @@ export interface IStagedDocument extends Omit<IStagedFile, 'approvalType' | 'app
 }
 
 /**
+ * Result from file upload completion callback
+ */
+interface IFileUploadCompleteResult {
+  success: boolean;
+  fileName?: string;
+  error?: string;
+}
+
+/**
  * File to rename
  */
 export interface IFileToRename {
@@ -103,7 +112,7 @@ export interface IPendingCounts {
  */
 interface IDocumentsState {
   // RequestDocuments library ID (loaded once, used for file operations)
-  libraryId: string | null;
+  libraryId: string | undefined;
 
   // Document collections keyed by DocumentType
   documents: Map<DocumentType, IDocument[]>;
@@ -124,7 +133,7 @@ interface IDocumentsState {
   error?: string;
 
   // Actions - Load & Initialize
-  loadDocuments: (itemId: number, documentType?: DocumentType, forceReload?: boolean) => Promise<void>;
+  loadDocuments: (itemId: number, forceReload?: boolean) => Promise<void>;
   loadAllDocuments: (itemId: number, forceReload?: boolean) => Promise<void>;
 
   // Actions - File Staging
@@ -169,7 +178,7 @@ interface IDocumentsState {
  * Initial state
  */
 const initialState = {
-  libraryId: null as string | null,
+  libraryId: undefined as string | undefined,
   documents: new Map<DocumentType, IDocument[]>(),
   stagedFiles: [],
   filesToDelete: [],
@@ -183,8 +192,8 @@ const initialState = {
 };
 
 // Track pending load promise to deduplicate concurrent calls
-let pendingLoadPromise: Promise<void> | null = null;
-let lastLoadedItemId: number | null = null;
+let pendingLoadPromise: Promise<void> | undefined = undefined;
+let lastLoadedItemId: number | undefined = undefined;
 
 /**
  * Documents store
@@ -196,12 +205,11 @@ export const useDocumentsStore = create<IDocumentsState>()(
 
       /**
        * Load ALL documents for an item (CAML query loads all recursively)
-       * Note: documentType parameter is kept for backward compatibility but ignored
        *
        * Deduplication: If multiple components call loadDocuments for the same itemId
        * concurrently, only one API call is made and all callers await the same promise.
        */
-      loadDocuments: async (itemId: number, documentType?: DocumentType, forceReload?: boolean): Promise<void> => {
+      loadDocuments: async (itemId: number, forceReload?: boolean): Promise<void> => {
         // If we already have a pending load for this itemId, wait for it (unless force reload)
         if (pendingLoadPromise && lastLoadedItemId === itemId && !forceReload) {
           SPContext.logger.info('Documents load already in progress, waiting...', { itemId });
@@ -263,7 +271,7 @@ export const useDocumentsStore = create<IDocumentsState>()(
             set({ error: errorMessage, isLoading: false });
           } finally {
             // Clear pending promise after completion
-            pendingLoadPromise = null;
+            pendingLoadPromise = undefined;
           }
         })();
 
@@ -275,7 +283,7 @@ export const useDocumentsStore = create<IDocumentsState>()(
        * Both functions now do the same thing since CAML query loads all documents
        */
       loadAllDocuments: async (itemId: number, forceReload?: boolean): Promise<void> => {
-        return get().loadDocuments(itemId, undefined, forceReload);
+        return get().loadDocuments(itemId, forceReload);
       },
 
       /**
@@ -465,7 +473,10 @@ export const useDocumentsStore = create<IDocumentsState>()(
           });
 
           // Import batchUploadFiles dynamically to avoid circular dependency
-          const { batchUploadFiles } = await import('../services/documentService');
+          const { batchUploadFiles } = await import(
+            /* webpackChunkName: "document-service" */
+            '../services/documentService'
+          );
 
           // Prepare files for upload
           const filesForUpload = state.stagedFiles.map(staged => ({
@@ -516,7 +527,7 @@ export const useDocumentsStore = create<IDocumentsState>()(
               }
             },
             // onFileComplete callback
-            (fileId: string, result: any) => {
+            (fileId: string, result: IFileUploadCompleteResult) => {
               SPContext.logger.info('File upload complete', {
                 fileId,
                 success: result.success,
@@ -642,7 +653,10 @@ export const useDocumentsStore = create<IDocumentsState>()(
 
         try {
           // Import batchUploadFiles dynamically
-          const { batchUploadFiles } = await import('../services/documentService');
+          const { batchUploadFiles } = await import(
+            /* webpackChunkName: "document-service" */
+            '../services/documentService'
+          );
 
           // Upload just this one file
           await batchUploadFiles(
@@ -669,7 +683,7 @@ export const useDocumentsStore = create<IDocumentsState>()(
               });
             },
             // onFileComplete callback
-            (completeFileId: string, result: any) => {
+            (completeFileId: string, result: IFileUploadCompleteResult) => {
               set(currentState => {
                 const newProgress = new Map<string, IUploadProgress>();
                 currentState.uploadProgress.forEach((value, key) => {
@@ -770,14 +784,12 @@ export const useDocumentsStore = create<IDocumentsState>()(
         try {
           SPContext.logger.info('Deleting files', { count: state.filesToDelete.length });
 
-          // Track affected document types for reload
-          const affectedTypes = new Set<DocumentType>();
+          // Track affected item IDs for reload
           const itemIds = new Set<number>();
 
           // Delete each file
           for (let i = 0; i < state.filesToDelete.length; i++) {
             const fileToDelete = state.filesToDelete[i];
-            affectedTypes.add(fileToDelete.documentType);
             if (fileToDelete.listItemId) {
               itemIds.add(fileToDelete.listItemId);
             }
@@ -795,12 +807,10 @@ export const useDocumentsStore = create<IDocumentsState>()(
 
           set({ filesToDelete: [] });
 
-          // Reload documents for affected types
+          // Reload documents for affected items
           const reloadPromises: Array<Promise<void>> = [];
           itemIds.forEach((itemId) => {
-            affectedTypes.forEach((docType) => {
-              reloadPromises.push(get().loadDocuments(itemId, docType));
-            });
+            reloadPromises.push(get().loadDocuments(itemId, true));
           });
 
           if (reloadPromises.length > 0) {
@@ -844,14 +854,11 @@ export const useDocumentsStore = create<IDocumentsState>()(
         try {
           SPContext.logger.info('Renaming files', { count: state.filesToRename.length });
 
-          // Capture itemIds and affected types BEFORE processing
+          // Capture itemIds BEFORE processing
           const itemIds = new Set<number>();
-          const affectedTypes = new Set<DocumentType>();
 
           for (let i = 0; i < state.filesToRename.length; i++) {
             const renameInfo = state.filesToRename[i];
-            affectedTypes.add(renameInfo.file.documentType);
-
             // Extract itemId from file URL or metadata
             if (renameInfo.file.listItemId) {
               itemIds.add(renameInfo.file.listItemId);
@@ -889,13 +896,11 @@ export const useDocumentsStore = create<IDocumentsState>()(
           SPContext.logger.info('Waiting for SharePoint to update index...');
           await new Promise(resolve => setTimeout(resolve, 1500));
 
-          // Reload documents for each affected type and itemId combination
+          // Reload documents for each affected itemId
           const reloadPromises: Array<Promise<void>> = [];
           itemIds.forEach((itemId) => {
-            affectedTypes.forEach((docType) => {
-              SPContext.logger.info('Reloading documents', { itemId, docType });
-              reloadPromises.push(get().loadDocuments(itemId, docType));
-            });
+            SPContext.logger.info('Reloading documents', { itemId });
+            reloadPromises.push(get().loadDocuments(itemId, true));
           });
 
           if (reloadPromises.length > 0) {
@@ -926,13 +931,9 @@ export const useDocumentsStore = create<IDocumentsState>()(
 
           // Group files by their new type
           const filesByNewType = new Map<DocumentType, IDocument[]>();
-          const affectedTypes = new Set<DocumentType>();
 
           for (let i = 0; i < state.filesToChangeType.length; i++) {
             const change = state.filesToChangeType[i];
-            affectedTypes.add(change.file.documentType); // Old type
-            affectedTypes.add(change.newType); // New type
-
             const existing = filesByNewType.get(change.newType) || [];
             existing.push(change.file);
             filesByNewType.set(change.newType, existing);
@@ -950,15 +951,8 @@ export const useDocumentsStore = create<IDocumentsState>()(
 
           set({ filesToChangeType: [] });
 
-          // Reload documents for affected types
-          const reloadPromises: Array<Promise<void>> = [];
-          affectedTypes.forEach((docType) => {
-            reloadPromises.push(get().loadDocuments(itemId, docType));
-          });
-
-          if (reloadPromises.length > 0) {
-            await Promise.all(reloadPromises);
-          }
+          // Reload documents for the item
+          await get().loadDocuments(itemId, true);
 
           SPContext.logger.success('Document types changed successfully');
         } catch (error: unknown) {
@@ -1059,8 +1053,8 @@ export const useDocumentsStore = create<IDocumentsState>()(
       reset: (): void => {
         set(initialState);
         // Reset tracking variables
-        pendingLoadPromise = null;
-        lastLoadedItemId = null;
+        pendingLoadPromise = undefined;
+        lastLoadedItemId = undefined;
         SPContext.logger.info('Documents store reset');
       },
     }),
@@ -1076,7 +1070,7 @@ export const useDocumentsStore = create<IDocumentsState>()(
  * Selector for library ID only
  * Use this in components that need the RequestDocuments library ID
  */
-export const useDocumentLibraryId = (): string | null =>
+export const useDocumentLibraryId = (): string | undefined =>
   useDocumentsStore(state => state.libraryId);
 
 /**
@@ -1131,7 +1125,7 @@ export const useUploadProgress = (): Map<string, IUploadProgress> =>
  * Use this when you only need actions without subscribing to state changes
  */
 export const useDocumentsActions = (): {
-  loadDocuments: (itemId: number, documentType?: DocumentType) => Promise<void>;
+  loadDocuments: (itemId: number, forceReload?: boolean) => Promise<void>;
   loadAllDocuments: (itemId: number) => Promise<void>;
   stageFiles: (files: File[], documentType: DocumentType, itemId?: number) => void;
   removeStagedFile: (fileId: string) => void;

@@ -607,7 +607,7 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
                     </div>
                     <div className='summary-approval-card__approver'>
                       <UserPersona
-                        userIdentifier={approval.approver.id || approval.approver?.email || ''}
+                        userIdentifier={approval.approver?.id || approval.approver?.email || ''}
                         displayName={approval.approver?.title || 'Unknown'}
                         email={approval.approver?.email || ''}
                         size={24}

@@ -9,8 +9,6 @@ import {
   calculateAndUpdateStageTime,
   pauseTimeTracking,
   resumeTimeTracking,
-  getStageCurrentOwner,
-  getStageLastHandoffDate,
 } from '../timeTrackingService';
 import type { ILegalRequest, TimeTrackingStage } from '@appTypes/requestTypes';
 import { LegalReviewStatus, ComplianceReviewStatus } from '@appTypes/workflowTypes';
@@ -57,138 +55,8 @@ describe('Time Tracking Service', () => {
     ...overrides,
   } as ILegalRequest);
 
-  describe('getStageCurrentOwner', () => {
-    it('should return undefined for LegalIntake stage (not status-based yet)', () => {
-      const request = createBaseRequest();
-      const owner = getStageCurrentOwner(request, 'LegalIntake');
-      expect(owner).toBeUndefined();
-    });
-
-    it('should return Attorney when legal review is In Progress', () => {
-      const request = createBaseRequest({
-        legalReviewStatus: LegalReviewStatus.InProgress,
-      });
-      const owner = getStageCurrentOwner(request, 'LegalReview');
-      expect(owner).toBe('Attorney');
-    });
-
-    it('should return Attorney when legal review is Waiting On Attorney', () => {
-      const request = createBaseRequest({
-        legalReviewStatus: LegalReviewStatus.WaitingOnAttorney,
-      });
-      const owner = getStageCurrentOwner(request, 'LegalReview');
-      expect(owner).toBe('Attorney');
-    });
-
-    it('should return Submitter when legal review is Waiting On Submitter', () => {
-      const request = createBaseRequest({
-        legalReviewStatus: LegalReviewStatus.WaitingOnSubmitter,
-      });
-      const owner = getStageCurrentOwner(request, 'LegalReview');
-      expect(owner).toBe('Submitter');
-    });
-
-    it('should return undefined when legal review status is unknown', () => {
-      const request = createBaseRequest({
-        legalReviewStatus: LegalReviewStatus.Completed,
-      });
-      const owner = getStageCurrentOwner(request, 'LegalReview');
-      expect(owner).toBeUndefined();
-    });
-
-    it('should return Reviewer when compliance review is In Progress', () => {
-      const request = createBaseRequest({
-        complianceReviewStatus: ComplianceReviewStatus.InProgress,
-      });
-      const owner = getStageCurrentOwner(request, 'ComplianceReview');
-      expect(owner).toBe('Reviewer');
-    });
-
-    it('should return Reviewer when compliance review is Waiting On Compliance', () => {
-      const request = createBaseRequest({
-        complianceReviewStatus: ComplianceReviewStatus.WaitingOnCompliance,
-      });
-      const owner = getStageCurrentOwner(request, 'ComplianceReview');
-      expect(owner).toBe('Reviewer');
-    });
-
-    it('should return Submitter when compliance review is Waiting On Submitter', () => {
-      const request = createBaseRequest({
-        complianceReviewStatus: ComplianceReviewStatus.WaitingOnSubmitter,
-      });
-      const owner = getStageCurrentOwner(request, 'ComplianceReview');
-      expect(owner).toBe('Submitter');
-    });
-
-    it('should return Reviewer for Closeout stage (always reviewer owned)', () => {
-      const request = createBaseRequest();
-      const owner = getStageCurrentOwner(request, 'Closeout');
-      expect(owner).toBe('Reviewer');
-    });
-  });
-
-  describe('getStageLastHandoffDate', () => {
-    it('should return submittedOn for LegalIntake stage', () => {
-      const submittedOn = new Date('2025-01-15T10:00:00Z');
-      const request = createBaseRequest({ submittedOn });
-
-      const date = getStageLastHandoffDate(request, 'LegalIntake');
-      expect(date).toEqual(submittedOn);
-    });
-
-    it('should return legalStatusUpdatedOn for LegalReview stage', () => {
-      const legalStatusUpdatedOn = new Date('2025-01-16T14:30:00Z');
-      const request = createBaseRequest({ legalStatusUpdatedOn });
-
-      const date = getStageLastHandoffDate(request, 'LegalReview');
-      expect(date).toEqual(legalStatusUpdatedOn);
-    });
-
-    it('should return complianceStatusUpdatedOn for ComplianceReview stage', () => {
-      const complianceStatusUpdatedOn = new Date('2025-01-17T09:00:00Z');
-      const request = createBaseRequest({ complianceStatusUpdatedOn });
-
-      const date = getStageLastHandoffDate(request, 'ComplianceReview');
-      expect(date).toEqual(complianceStatusUpdatedOn);
-    });
-
-    it('should return closeoutOn for Closeout stage when available', () => {
-      const closeoutOn = new Date('2025-01-18T11:00:00Z');
-      const request = createBaseRequest({ closeoutOn });
-
-      const date = getStageLastHandoffDate(request, 'Closeout');
-      expect(date).toEqual(closeoutOn);
-    });
-
-    it('should fall back to complianceReviewCompletedOn for Closeout when closeoutOn is not set', () => {
-      const complianceReviewCompletedOn = new Date('2025-01-17T16:00:00Z');
-      const request = createBaseRequest({
-        closeoutOn: undefined,
-        complianceReviewCompletedOn,
-      });
-
-      const date = getStageLastHandoffDate(request, 'Closeout');
-      expect(date).toEqual(complianceReviewCompletedOn);
-    });
-
-    it('should fall back to legalReviewCompletedOn for Closeout when no other dates available', () => {
-      const legalReviewCompletedOn = new Date('2025-01-16T15:00:00Z');
-      const request = createBaseRequest({
-        closeoutOn: undefined,
-        complianceReviewCompletedOn: undefined,
-        legalReviewCompletedOn,
-      });
-
-      const date = getStageLastHandoffDate(request, 'Closeout');
-      expect(date).toEqual(legalReviewCompletedOn);
-    });
-
-    it('should return undefined when no date is available', () => {
-      const request = createBaseRequest();
-      const date = getStageLastHandoffDate(request, 'LegalReview');
-      expect(date).toBeUndefined();
-    });
-  });
+  // Note: getStageCurrentOwner and getStageLastHandoffDate are now private internal functions.
+  // Their behavior is tested indirectly through the public calculateAndUpdateStageTime function.
 
   describe('calculateAndUpdateStageTime', () => {
     it('should return empty updates when no previous handoff exists', async () => {

@@ -11,28 +11,22 @@
  */
 
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
-import type { IPrincipal } from 'spfx-toolkit/lib/types';
 import { createSPUpdater } from 'spfx-toolkit/lib/utilities/listItemHelper';
 
 import { Lists } from '@sp/Lists';
 import { RequestsFields } from '@sp/listFields/RequestsFields';
-import { manageRequestPermissions } from './azureFunctionService';
 import { loadRequestById } from './requestLoadService';
 import { batchUploadFiles, deleteFile, renameFile } from './documentService';
 
 import type { ILegalRequest } from '@appTypes/requestTypes';
-import { RequestStatus, ReviewOutcome } from '@appTypes/workflowTypes';
+import { RequestStatus } from '@appTypes/workflowTypes';
 import { ApprovalType } from '@appTypes/approvalTypes';
 import type { IStagedDocument, IDocument } from '@stores/documentsStore';
-
-// Type aliases for review outcomes
-type LegalReviewOutcome = ReviewOutcome;
-type ComplianceReviewOutcome = ReviewOutcome;
 
 /**
  * Check if a value is considered "empty" (null, undefined, empty string, empty array)
  */
-function isEmptyValue(value: any): boolean {
+function isEmptyValue(value: unknown): boolean {
   return (
     value === null ||
     value === undefined ||
@@ -515,155 +509,119 @@ export function getChangedFields(
  * Build a partial update payload for direct field updates
  *
  * This is used when updating specific fields without full change detection.
- * Maps domain model property names to SharePoint field names.
+ * Uses SPUpdater for consistent field formatting (user fields, dates, etc.)
+ * Only includes fields that are explicitly provided (not undefined).
  *
  * @param data - Partial request data with fields to update
  * @returns SharePoint update payload
  */
 function buildPartialUpdatePayload(data: Partial<ILegalRequest>): Record<string, any> {
-  const payload: Record<string, any> = {};
+  const updater = createSPUpdater();
 
-  // Helper to merge updater results into payload (ES5 compatible)
-  const mergeUpdates = (updates: Record<string, any>): void => {
-    for (const key in updates) {
-      if (Object.prototype.hasOwnProperty.call(updates, key)) {
-        payload[key] = updates[key];
-      }
+  // Helper to conditionally set a field only if it's explicitly provided
+  // By comparing against undefined (not null), we include null values (for clearing fields)
+  // but exclude fields that weren't provided at all
+  const setIfDefined = <T>(field: string, value: T | undefined, original?: T): void => {
+    if (value !== undefined) {
+      updater.set(field, value, original);
     }
   };
 
-  // Map domain properties to SharePoint field names
-  // Only include fields that are explicitly provided (not undefined)
+  // Status and workflow fields
+  setIfDefined(RequestsFields.Status, data.status);
+  setIfDefined(RequestsFields.ReviewAudience, data.reviewAudience);
+  setIfDefined(RequestsFields.PreviousStatus, data.previousStatus);
 
-  if (data.reviewAudience !== undefined) {
-    payload[RequestsFields.ReviewAudience] = data.reviewAudience;
-  }
-
+  // Attorney fields - validate user has id before saving
   if (data.attorney !== undefined) {
-    // User field - use SPUpdater pattern for proper formatting
-    const updater = createSPUpdater();
     const attorneyValue = data.attorney && data.attorney.id ? data.attorney : null;
-    updater.set(RequestsFields.Attorney, attorneyValue, null);
-    mergeUpdates(updater.getUpdates());
+    updater.set(RequestsFields.Attorney, attorneyValue, undefined);
   }
+  setIfDefined(RequestsFields.AttorneyAssignNotes, data.attorneyAssignNotes);
 
-  if (data.attorneyAssignNotes !== undefined) {
-    payload[RequestsFields.AttorneyAssignNotes] = data.attorneyAssignNotes;
-  }
-
-  if (data.status !== undefined) {
-    payload[RequestsFields.Status] = data.status;
-  }
-
-  if (data.legalReviewStatus !== undefined) {
-    payload[RequestsFields.LegalReviewStatus] = data.legalReviewStatus;
-  }
-
-  if (data.legalReviewOutcome !== undefined) {
-    payload[RequestsFields.LegalReviewOutcome] = data.legalReviewOutcome;
-  }
-
-  if (data.legalReviewNotes !== undefined) {
-    payload[RequestsFields.LegalReviewNotes] = data.legalReviewNotes;
-  }
-
-  if (data.legalStatusUpdatedOn !== undefined) {
-    payload[RequestsFields.LegalStatusUpdatedOn] = data.legalStatusUpdatedOn;
-  }
-
+  // Legal Review fields
+  setIfDefined(RequestsFields.LegalReviewStatus, data.legalReviewStatus);
+  setIfDefined(RequestsFields.LegalReviewOutcome, data.legalReviewOutcome);
+  setIfDefined(RequestsFields.LegalReviewNotes, data.legalReviewNotes);
+  setIfDefined(RequestsFields.LegalStatusUpdatedOn, data.legalStatusUpdatedOn);
   if (data.legalStatusUpdatedBy !== undefined) {
-    const updater = createSPUpdater();
-    updater.set(RequestsFields.LegalStatusUpdatedBy, data.legalStatusUpdatedBy, null);
-    mergeUpdates(updater.getUpdates());
+    updater.set(RequestsFields.LegalStatusUpdatedBy, data.legalStatusUpdatedBy, undefined);
   }
-
-  if (data.legalReviewCompletedOn !== undefined) {
-    payload[RequestsFields.LegalReviewCompletedOn] = data.legalReviewCompletedOn;
-  }
-
+  setIfDefined(RequestsFields.LegalReviewCompletedOn, data.legalReviewCompletedOn);
   if (data.legalReviewCompletedBy !== undefined) {
-    const updater = createSPUpdater();
-    updater.set(RequestsFields.LegalReviewCompletedBy, data.legalReviewCompletedBy, null);
-    mergeUpdates(updater.getUpdates());
+    updater.set(RequestsFields.LegalReviewCompletedBy, data.legalReviewCompletedBy, undefined);
   }
 
-  if (data.complianceReviewStatus !== undefined) {
-    payload[RequestsFields.ComplianceReviewStatus] = data.complianceReviewStatus;
-  }
-
-  if (data.complianceReviewOutcome !== undefined) {
-    payload[RequestsFields.ComplianceReviewOutcome] = data.complianceReviewOutcome;
-  }
-
-  if (data.complianceReviewNotes !== undefined) {
-    payload[RequestsFields.ComplianceReviewNotes] = data.complianceReviewNotes;
-  }
-
-  if (data.isForesideReviewRequired !== undefined) {
-    payload[RequestsFields.IsForesideReviewRequired] = data.isForesideReviewRequired;
-  }
-
-  if (data.isRetailUse !== undefined) {
-    payload[RequestsFields.IsRetailUse] = data.isRetailUse;
-  }
-
-  if (data.complianceStatusUpdatedOn !== undefined) {
-    payload[RequestsFields.ComplianceStatusUpdatedOn] = data.complianceStatusUpdatedOn;
-  }
-
+  // Compliance Review fields
+  setIfDefined(RequestsFields.ComplianceReviewStatus, data.complianceReviewStatus);
+  setIfDefined(RequestsFields.ComplianceReviewOutcome, data.complianceReviewOutcome);
+  setIfDefined(RequestsFields.ComplianceReviewNotes, data.complianceReviewNotes);
+  setIfDefined(RequestsFields.IsForesideReviewRequired, data.isForesideReviewRequired);
+  setIfDefined(RequestsFields.IsRetailUse, data.isRetailUse);
+  setIfDefined(RequestsFields.ComplianceStatusUpdatedOn, data.complianceStatusUpdatedOn);
   if (data.complianceStatusUpdatedBy !== undefined) {
-    const updater = createSPUpdater();
-    updater.set(RequestsFields.ComplianceStatusUpdatedBy, data.complianceStatusUpdatedBy, null);
-    mergeUpdates(updater.getUpdates());
+    updater.set(RequestsFields.ComplianceStatusUpdatedBy, data.complianceStatusUpdatedBy, undefined);
   }
-
-  if (data.complianceReviewCompletedOn !== undefined) {
-    payload[RequestsFields.ComplianceReviewCompletedOn] = data.complianceReviewCompletedOn;
-  }
-
+  setIfDefined(RequestsFields.ComplianceReviewCompletedOn, data.complianceReviewCompletedOn);
   if (data.complianceReviewCompletedBy !== undefined) {
-    const updater = createSPUpdater();
-    updater.set(RequestsFields.ComplianceReviewCompletedBy, data.complianceReviewCompletedBy, null);
-    mergeUpdates(updater.getUpdates());
+    updater.set(RequestsFields.ComplianceReviewCompletedBy, data.complianceReviewCompletedBy, undefined);
   }
 
-  if (data.trackingId !== undefined) {
-    payload[RequestsFields.TrackingId] = data.trackingId;
-  }
-
-  if (data.closeoutOn !== undefined) {
-    payload[RequestsFields.CloseoutOn] = data.closeoutOn;
-  }
-
+  // Closeout fields
+  setIfDefined(RequestsFields.TrackingId, data.trackingId);
+  setIfDefined(RequestsFields.CloseoutOn, data.closeoutOn);
   if (data.closeoutBy !== undefined) {
-    const updater = createSPUpdater();
-    updater.set(RequestsFields.CloseoutBy, data.closeoutBy, null);
-    mergeUpdates(updater.getUpdates());
+    updater.set(RequestsFields.CloseoutBy, data.closeoutBy, undefined);
+  }
+  setIfDefined(RequestsFields.CloseoutNotes, data.closeoutNotes);
+  setIfDefined(RequestsFields.CommentsAcknowledged, data.commentsAcknowledged);
+  setIfDefined(RequestsFields.CommentsAcknowledgedOn, data.commentsAcknowledgedOn);
+
+  // Submission tracking fields
+  setIfDefined(RequestsFields.SubmittedOn, data.submittedOn);
+  if (data.submittedBy !== undefined) {
+    updater.set(RequestsFields.SubmittedBy, data.submittedBy, undefined);
+  }
+  setIfDefined(RequestsFields.SubmittedForReviewOn, data.submittedForReviewOn);
+  if (data.submittedForReviewBy !== undefined) {
+    updater.set(RequestsFields.SubmittedForReviewBy, data.submittedForReviewBy, undefined);
   }
 
-  // Comments acknowledged (for closeout when review outcome is "Approved with Comments")
-  if (data.commentsAcknowledged !== undefined) {
-    payload[RequestsFields.CommentsAcknowledged] = data.commentsAcknowledged;
+  // Cancel fields
+  setIfDefined(RequestsFields.CancelReason, data.cancelReason);
+  setIfDefined(RequestsFields.CancelledOn, data.cancelledOn);
+  if (data.cancelledBy !== undefined) {
+    updater.set(RequestsFields.CancelledBy, data.cancelledBy, undefined);
   }
-  if (data.commentsAcknowledgedOn !== undefined) {
-    payload[RequestsFields.CommentsAcknowledgedOn] = data.commentsAcknowledgedOn;
+
+  // On Hold fields
+  setIfDefined(RequestsFields.OnHoldReason, data.onHoldReason);
+  setIfDefined(RequestsFields.OnHoldSince, data.onHoldSince);
+  if (data.onHoldBy !== undefined) {
+    updater.set(RequestsFields.OnHoldBy, data.onHoldBy, undefined);
+  }
+
+  // Foreside Documents fields
+  setIfDefined(RequestsFields.AwaitingForesideSince, data.awaitingForesideSince);
+  setIfDefined(RequestsFields.ForesideNotes, data.foresideNotes);
+  setIfDefined(RequestsFields.ForesideCompletedOn, data.foresideCompletedOn);
+  if (data.foresideCompletedBy !== undefined) {
+    updater.set(RequestsFields.ForesideCompletedBy, data.foresideCompletedBy, undefined);
   }
 
   // Time tracking fields
-  if (data.legalIntakeLegalAdminHours !== undefined) {
-    payload[RequestsFields.LegalIntakeLegalAdminHours] = data.legalIntakeLegalAdminHours;
-  }
-  if (data.legalReviewAttorneyHours !== undefined) {
-    payload[RequestsFields.LegalReviewAttorneyHours] = data.legalReviewAttorneyHours;
-  }
-  if (data.complianceReviewReviewerHours !== undefined) {
-    payload[RequestsFields.ComplianceReviewReviewerHours] = data.complianceReviewReviewerHours;
-  }
-  if (data.closeoutReviewerHours !== undefined) {
-    payload[RequestsFields.CloseoutReviewerHours] = data.closeoutReviewerHours;
-  }
+  setIfDefined(RequestsFields.LegalIntakeLegalAdminHours, data.legalIntakeLegalAdminHours);
+  setIfDefined(RequestsFields.LegalIntakeSubmitterHours, data.legalIntakeSubmitterHours);
+  setIfDefined(RequestsFields.LegalReviewAttorneyHours, data.legalReviewAttorneyHours);
+  setIfDefined(RequestsFields.LegalReviewSubmitterHours, data.legalReviewSubmitterHours);
+  setIfDefined(RequestsFields.ComplianceReviewReviewerHours, data.complianceReviewReviewerHours);
+  setIfDefined(RequestsFields.ComplianceReviewSubmitterHours, data.complianceReviewSubmitterHours);
+  setIfDefined(RequestsFields.CloseoutReviewerHours, data.closeoutReviewerHours);
+  setIfDefined(RequestsFields.CloseoutSubmitterHours, data.closeoutSubmitterHours);
+  setIfDefined(RequestsFields.TotalReviewerHours, data.totalReviewerHours);
+  setIfDefined(RequestsFields.TotalSubmitterHours, data.totalSubmitterHours);
 
-  return payload;
+  return updater.getUpdates();
 }
 
 /**
@@ -1066,332 +1024,21 @@ export async function saveDraft(
   }
 }
 
-/**
- * Submit request for review (hybrid with permission management)
- *
- * Updates status to InReview and calls Azure Function synchronously
- * to set permissions BEFORE user continues.
- *
- * Flow will trigger for notifications (async, no UX impact).
- *
- * @param itemId - Request item ID
- * @param data - Additional data to update
- * @returns Promise resolving when submit completes
- */
-export async function submitForReview(
-  itemId: number,
-  data: Partial<ILegalRequest>
-): Promise<void> {
-  try {
-    SPContext.logger.info('RequestSaveService: Submitting for review', { itemId });
-
-    // 1. Update SharePoint item
-    await saveRequest(itemId, {
-      ...data,
-      status: RequestStatus.InReview,
-      submittedOn: new Date(),
-      submittedBy: {
-        id: SPContext.currentUser.id.toString(),
-        email: SPContext.currentUser.email,
-        title: SPContext.currentUser.title,
-      },
-    });
-
-    // 2. Manage permissions synchronously (CRITICAL - prevents "item not found")
-    await manageRequestPermissions(itemId, RequestStatus.InReview);
-
-    SPContext.logger.success('RequestSaveService: Request submitted successfully', { itemId });
-
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    SPContext.logger.error('RequestSaveService: Failed to submit request', error, { itemId });
-
-    // TODO: Consider rollback logic if permission management fails
-    // Could revert status back to Draft or set error state
-
-    throw new Error(`Failed to submit request: ${errorMessage}`);
-  }
-}
-
-/**
- * Assign attorney to request (hybrid with permission management)
- *
- * @param itemId - Request item ID
- * @param attorney - Attorney to assign
- * @param notes - Optional assignment notes
- * @returns Promise resolving when assignment completes
- */
-export async function assignAttorney(
-  itemId: number,
-  attorney: IPrincipal,
-  notes?: string
-): Promise<void> {
-  try {
-    SPContext.logger.info('RequestSaveService: Assigning attorney', { itemId, attorneyId: attorney.id });
-
-    // 1. Update SharePoint
-    await saveRequest(itemId, {
-      attorney,
-      attorneyAssignNotes: notes,
-    });
-
-    // 2. Manage permissions (attorney now gets access)
-    await manageRequestPermissions(itemId, RequestStatus.InReview);
-
-    SPContext.logger.success('RequestSaveService: Attorney assigned successfully', { itemId });
-
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    SPContext.logger.error('RequestSaveService: Failed to assign attorney', error, { itemId });
-    throw new Error(`Failed to assign attorney: ${errorMessage}`);
-  }
-}
-
-/**
- * Submit legal review
- *
- * @param itemId - Request item ID
- * @param outcome - Review outcome
- * @param notes - Review notes
- * @returns Promise resolving when review submitted
- */
-export async function submitLegalReview(
-  itemId: number,
-  outcome: LegalReviewOutcome,
-  notes: string
-): Promise<void> {
-  try {
-    SPContext.logger.info('RequestSaveService: Submitting legal review', { itemId, outcome });
-
-    await saveRequest(itemId, {
-      legalReviewOutcome: outcome,
-      legalReviewNotes: notes,
-      legalStatusUpdatedOn: new Date(),
-      legalStatusUpdatedBy: {
-        id: SPContext.currentUser.id.toString(),
-        email: SPContext.currentUser.email,
-        title: SPContext.currentUser.title,
-      },
-      legalReviewCompletedOn: new Date(),
-      legalReviewCompletedBy: {
-        id: SPContext.currentUser.id.toString(),
-        email: SPContext.currentUser.email,
-        title: SPContext.currentUser.title,
-      },
-    });
-
-    SPContext.logger.success('RequestSaveService: Legal review submitted', { itemId });
-
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    SPContext.logger.error('RequestSaveService: Failed to submit legal review', error, { itemId });
-    throw new Error(`Failed to submit legal review: ${errorMessage}`);
-  }
-}
-
-/**
- * Submit compliance review
- *
- * @param itemId - Request item ID
- * @param outcome - Review outcome
- * @param notes - Review notes
- * @param flags - Optional flags (foreside review, retail use)
- * @returns Promise resolving when review submitted
- */
-export async function submitComplianceReview(
-  itemId: number,
-  outcome: ComplianceReviewOutcome,
-  notes: string,
-  flags?: { isForesideReviewRequired?: boolean; isRetailUse?: boolean }
-): Promise<void> {
-  try {
-    SPContext.logger.info('RequestSaveService: Submitting compliance review', { itemId, outcome });
-
-    await saveRequest(itemId, {
-      complianceReviewOutcome: outcome,
-      complianceReviewNotes: notes,
-      isForesideReviewRequired: flags?.isForesideReviewRequired,
-      isRetailUse: flags?.isRetailUse,
-      complianceStatusUpdatedOn: new Date(),
-      complianceStatusUpdatedBy: {
-        id: SPContext.currentUser.id.toString(),
-        email: SPContext.currentUser.email,
-        title: SPContext.currentUser.title,
-      },
-      complianceReviewCompletedOn: new Date(),
-      complianceReviewCompletedBy: {
-        id: SPContext.currentUser.id.toString(),
-        email: SPContext.currentUser.email,
-        title: SPContext.currentUser.title,
-      },
-    });
-
-    SPContext.logger.success('RequestSaveService: Compliance review submitted', { itemId });
-
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    SPContext.logger.error('RequestSaveService: Failed to submit compliance review', error, { itemId });
-    throw new Error(`Failed to submit compliance review: ${errorMessage}`);
-  }
-}
-
-/**
- * Closeout options
- */
-export interface ICloseoutOptions {
-  /** Optional tracking ID */
-  trackingId?: string;
-  /** Whether review comments have been acknowledged (required if outcome was Approved with Comments) */
-  commentsAcknowledged?: boolean;
-}
-
-/**
- * Close out request (hybrid with permission management)
- *
- * @param itemId - Request item ID
- * @param options - Closeout options including tracking ID and comments acknowledgment
- * @returns Promise resolving when closeout completes
- */
-export async function closeoutRequest(
-  itemId: number,
-  options?: ICloseoutOptions
-): Promise<void> {
-  try {
-    const { trackingId, commentsAcknowledged } = options || {};
-    SPContext.logger.info('RequestSaveService: Closing out request', { itemId, trackingId, commentsAcknowledged });
-
-    // Build update payload
-    const updateData: Partial<ILegalRequest> = {
-      status: RequestStatus.Completed,
-      trackingId,
-      closeoutOn: new Date(),
-      closeoutBy: {
-        id: SPContext.currentUser.id.toString(),
-        email: SPContext.currentUser.email,
-        title: SPContext.currentUser.title,
-      },
-    };
-
-    // Add comments acknowledged fields if provided
-    if (commentsAcknowledged) {
-      updateData.commentsAcknowledged = true;
-      updateData.commentsAcknowledgedOn = new Date();
-    }
-
-    // 1. Update SharePoint
-    await saveRequest(itemId, updateData);
-
-    // 2. Manage permissions (restore original permissions or set to read-only)
-    await manageRequestPermissions(itemId, RequestStatus.Completed);
-
-    SPContext.logger.success('RequestSaveService: Request closed out successfully', { itemId });
-
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    SPContext.logger.error('RequestSaveService: Failed to close out request', error, { itemId });
-    throw new Error(`Failed to close out request: ${errorMessage}`);
-  }
-}
-
-/**
- * Cancel request (hybrid with permission management)
- *
- * @param itemId - Request item ID
- * @param reason - Cancellation reason
- * @returns Promise resolving when cancellation completes
- */
-export async function cancelRequest(
-  itemId: number,
-  reason: string
-): Promise<void> {
-  try {
-    SPContext.logger.info('RequestSaveService: Cancelling request', { itemId });
-
-    // 1. Update SharePoint
-    await saveRequest(itemId, {
-      status: RequestStatus.Cancelled,
-      cancelReason: reason,
-      cancelledOn: new Date(),
-      cancelledBy: {
-        id: SPContext.currentUser.id.toString(),
-        email: SPContext.currentUser.email,
-        title: SPContext.currentUser.title,
-      },
-    });
-
-    // 2. Manage permissions
-    await manageRequestPermissions(itemId, RequestStatus.Cancelled);
-
-    SPContext.logger.success('RequestSaveService: Request cancelled successfully', { itemId });
-
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    SPContext.logger.error('RequestSaveService: Failed to cancel request', error, { itemId });
-    throw new Error(`Failed to cancel request: ${errorMessage}`);
-  }
-}
-
-/**
- * Put request on hold
- *
- * @param itemId - Request item ID
- * @param reason - Hold reason
- * @returns Promise resolving when hold completes
- */
-export async function holdRequest(
-  itemId: number,
-  reason: string
-): Promise<void> {
-  try {
-    SPContext.logger.info('RequestSaveService: Putting request on hold', { itemId });
-
-    await saveRequest(itemId, {
-      status: RequestStatus.OnHold,
-      onHoldReason: reason,
-      onHoldSince: new Date(),
-      onHoldBy: {
-        id: SPContext.currentUser.id.toString(),
-        email: SPContext.currentUser.email,
-        title: SPContext.currentUser.title,
-      },
-    });
-
-    SPContext.logger.success('RequestSaveService: Request put on hold', { itemId });
-
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    SPContext.logger.error('RequestSaveService: Failed to put request on hold', error, { itemId });
-    throw new Error(`Failed to put request on hold: ${errorMessage}`);
-  }
-}
-
-/**
- * Resume request from hold
- *
- * @param itemId - Request item ID
- * @param previousStatus - Status to resume to
- * @returns Promise resolving when resume completes
- */
-export async function resumeRequest(
-  itemId: number,
-  previousStatus: RequestStatus
-): Promise<void> {
-  try {
-    SPContext.logger.info('RequestSaveService: Resuming request', { itemId, previousStatus });
-
-    await saveRequest(itemId, {
-      status: previousStatus,
-      previousStatus: RequestStatus.OnHold,
-      onHoldReason: undefined,
-      onHoldSince: undefined,
-      onHoldBy: undefined,
-    });
-
-    SPContext.logger.success('RequestSaveService: Request resumed', { itemId });
-
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    SPContext.logger.error('RequestSaveService: Failed to resume request', error, { itemId });
-    throw new Error(`Failed to resume request: ${errorMessage}`);
-  }
-}
+// ============================================
+// LEGACY WORKFLOW FUNCTIONS REMOVED
+// ============================================
+//
+// The following functions have been removed as they are now handled by
+// workflowActionService.ts which includes proper time tracking:
+//
+// - submitForReview() → use workflowActionService.submitRequest()
+// - assignAttorney() → use workflowActionService.assignAttorney()
+// - submitLegalReview() → use workflowActionService.submitLegalReview()
+// - submitComplianceReview() → use workflowActionService.submitComplianceReview()
+// - closeoutRequest() → use workflowActionService.closeoutRequest()
+// - cancelRequest() → use workflowActionService.cancelRequest()
+// - holdRequest() → use workflowActionService.holdRequest()
+// - resumeRequest() → use workflowActionService.resumeRequest()
+//
+// All workflow actions should go through requestStore which routes to
+// workflowActionService for proper time tracking and single-save operations.

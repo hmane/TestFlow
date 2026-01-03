@@ -286,21 +286,3 @@ export async function manageRequestPermissions(
 
   throw finalError;
 }
-
-/**
- * Test Azure Function connectivity
- *
- * Useful for validating configuration during app initialization
- *
- * @returns Promise resolving to true if Azure Function is reachable
- */
-export async function testAzureFunctionConnection(): Promise<boolean> {
-  try {
-    const url = getAzureFunctionUrl();
-    const response = await fetch(url, { method: 'HEAD' });
-    return response.ok || response.status === 404; // 404 is ok, means endpoint exists
-  } catch (error: unknown) {
-    SPContext.logger.warn('AzureFunctionService: Connection test failed', error);
-    return false;
-  }
-}

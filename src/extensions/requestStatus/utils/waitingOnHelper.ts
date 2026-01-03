@@ -17,6 +17,7 @@ import {
 } from '@appTypes/workflowTypes';
 import { AppRole } from '@appTypes/configTypes';
 import type { IStatusListItemData, IWaitingOnInfo } from '../types';
+import type { IPrincipal } from '@appTypes/index';
 
 /**
  * Determine who/what the request is waiting on
@@ -143,8 +144,8 @@ function determineWaitingOnInReview(
   reviewAudience: ReviewAudience,
   legalReviewStatus: LegalReviewStatus | undefined,
   complianceReviewStatus: ComplianceReviewStatus | undefined,
-  assignedAttorney: { id?: string; title?: string; email?: string; loginName?: string } | undefined,
-  submitter: { id?: string; title?: string; email?: string; loginName?: string } | undefined
+  assignedAttorney: IPrincipal | undefined,
+  submitter: IPrincipal | undefined
 ): IWaitingOnInfo {
   // Priority 1: Check if waiting on submitter (either review)
   if (
@@ -156,7 +157,7 @@ function determineWaitingOnInReview(
         type: 'user',
         identifier: submitter.email || submitter.loginName || submitter.id || '',
         displayName: submitter.title || 'Unknown',
-        principal: submitter as any,
+        principal: submitter,
       };
     }
   }
@@ -168,7 +169,7 @@ function determineWaitingOnInReview(
         type: 'user',
         identifier: assignedAttorney.email || assignedAttorney.loginName || assignedAttorney.id || '',
         displayName: assignedAttorney.title || 'Unknown',
-        principal: assignedAttorney as any,
+        principal: assignedAttorney,
       };
     }
 
@@ -181,7 +182,7 @@ function determineWaitingOnInReview(
           type: 'user',
           identifier: assignedAttorney.email || assignedAttorney.loginName || assignedAttorney.id || '',
           displayName: assignedAttorney.title || 'Unknown',
-          principal: assignedAttorney as any,
+          principal: assignedAttorney,
         };
       } else {
         // No attorney assigned yet

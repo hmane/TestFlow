@@ -11,19 +11,6 @@ import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
 import type { IRenderListDataParameters, IRenderListDataAsStreamResult } from '@pnp/sp/lists';
 
 /**
- * Response structure from renderListDataAsStream (alias for PnP type)
- * @deprecated Use IRenderListDataAsStreamResult from @pnp/sp/lists instead
- */
-export interface IRenderListDataResponse {
-  Row: any[];
-  FirstRow: number;
-  LastRow: number;
-  RowLimit: number;
-  FilterLink: string;
-  ForceNoHierarchy: string;
-}
-
-/**
  * Options for renderListData query
  */
 export interface IRenderListDataOptions {
@@ -41,12 +28,9 @@ export interface IRenderListDataOptions {
 
 /**
  * Builds ViewXml for renderListDataAsStream
- *
- * @param fields - Array of field internal names to select
- * @param rowLimit - Maximum number of rows to return (default: 5000)
- * @returns ViewXml string for renderListDataAsStream
+ * @internal
  */
-export function buildViewXml(fields: string[], rowLimit: number = 5000): string {
+function buildViewXml(fields: string[], rowLimit: number = 5000): string {
   const viewFields = fields.map(field => `<FieldRef Name="${field}" />`).join('');
 
   return `<View>
@@ -59,11 +43,9 @@ export function buildViewXml(fields: string[], rowLimit: number = 5000): string 
 
 /**
  * Builds CAML query filter for a specific item ID
- *
- * @param itemId - SharePoint list item ID
- * @returns CAML query string
+ * @internal
  */
-export function buildItemIdQuery(itemId: number): string {
+function buildItemIdQuery(itemId: number): string {
   return `<View>
     <Query>
       <Where>
@@ -79,13 +61,9 @@ export function buildItemIdQuery(itemId: number): string {
 
 /**
  * Builds CAML query with custom filter
- *
- * @param fields - Array of field internal names to select
- * @param filterCaml - CAML filter XML (content inside <Where> tags)
- * @param rowLimit - Maximum number of rows to return
- * @returns Complete View XML with query and fields
+ * @internal
  */
-export function buildQueryWithFilter(
+function buildQueryWithFilter(
   fields: string[],
   filterCaml: string,
   rowLimit: number = 5000
@@ -203,66 +181,6 @@ export async function renderListData<T = any>(
     if (errorMessage.indexOf('403') !== -1 || errorMessage.indexOf('Access denied') !== -1) {
       throw new Error(`Access denied to list '${listTitle}' or item ${itemId || 'N/A'}`);
     }
-
-    throw new Error(`Failed to load data from '${listTitle}': ${errorMessage}`);
-  }
-}
-
-/**
- * Executes renderListDataAsStream query and returns multiple rows
- *
- * @param options - Query options
- * @returns Promise resolving to array of rows
- */
-export async function renderListDataMultiple<T = any>(
-  options: IRenderListDataOptions
-): Promise<T[]> {
-  const { listTitle, fields, filterCaml, rowLimit } = options;
-
-  try {
-    const viewXml = filterCaml
-      ? buildQueryWithFilter(fields, filterCaml, rowLimit || 5000)
-      : buildViewXml(fields, rowLimit || 5000);
-
-    const requestPayload = {
-      parameters: {
-        __metadata: { type: 'SP.RenderListDataParameters' },
-        ViewXml: viewXml,
-        RenderOptions: 2,
-      },
-    };
-
-    const endpoint = `${SPContext.webAbsoluteUrl}/_api/web/lists/getbytitle('${listTitle}')/renderListDataAsStream`;
-
-    // Get request digest for POST requests
-    const digestResult = await SPContext.sp.web.select('GetContextWebInformation')();
-    const digest = (digestResult as any).GetContextWebInformation?.FormDigestValue;
-
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json;odata=verbose',
-        'Content-Type': 'application/json;odata=verbose',
-        'X-RequestDigest': digest || '',
-      },
-      credentials: 'same-origin',
-      body: JSON.stringify(requestPayload),
-    });
-
-    if (!response.ok) {
-      throw new Error(`renderListDataAsStream failed: ${response.status} ${response.statusText}`);
-    }
-
-    const data: IRenderListDataResponse = await response.json();
-
-    return (data.Row || []) as T[];
-
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    SPContext.logger.error('CAML Query: Failed to execute renderListDataAsStream (multiple)', error, {
-      listTitle,
-      fieldCount: fields.length,
-    });
 
     throw new Error(`Failed to load data from '${listTitle}': ${errorMessage}`);
   }

@@ -33,10 +33,15 @@ export interface IApprovalExistingFile {
 
 /**
  * Base approval interface - common fields for all approval types
+ *
+ * Note: approvalDate and approver are optional to support draft mode
+ * where approvals may be partially filled in. When loading a draft,
+ * the boolean flags (e.g., hasPortfolioManagerApproval) indicate
+ * that an approval exists, but the details may be incomplete.
  */
 export interface IBaseApproval {
-  approvalDate: Date;
-  approver: IPrincipal;
+  approvalDate?: Date;
+  approver?: IPrincipal;
   documentId?: string;
   existingFiles?: IApprovalExistingFile[]; // Files already saved to SharePoint
   notes?: string;

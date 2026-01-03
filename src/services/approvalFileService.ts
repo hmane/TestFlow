@@ -16,6 +16,31 @@ import type { IExistingFile } from '@stores/documentsStore';
 import { ApprovalType } from '@appTypes/approvalTypes';
 
 /**
+ * SharePoint file object from PnP query with expanded Author/Editor
+ * Note: Length is string in PnP IFileInfo interface
+ */
+interface ISharePointFileItem {
+  Name: string;
+  ServerRelativeUrl: string;
+  Length: string | number;
+  TimeCreated: string;
+  TimeLastModified?: string;
+  UniqueId: string;
+  UIVersionLabel?: string;
+  Author?: {
+    Title?: string;
+    EMail?: string;
+  };
+  Editor?: {
+    Title?: string;
+    EMail?: string;
+  };
+  ListItemAllFields?: {
+    Id?: number;
+  };
+}
+
+/**
  * File operation status
  */
 export enum FileOperationStatus {
@@ -460,10 +485,10 @@ export async function loadApprovalFiles(
     const domain = urlParts[2]; // "tenant.sharepoint.com"
     const origin = `${protocol}//${domain}`;
 
-    const existingFiles: IExistingFile[] = files.map((file: any) => ({
+    const existingFiles: IExistingFile[] = (files as ISharePointFileItem[]).map((file: ISharePointFileItem) => ({
       name: file.Name,
       url: `${origin}${file.ServerRelativeUrl}`, // Convert to absolute URL for DocumentLink preview
-      size: file.Length,
+      size: typeof file.Length === 'string' ? parseInt(file.Length, 10) : file.Length,
       timeCreated: file.TimeCreated,
       timeLastModified: file.TimeLastModified,
       uniqueId: file.UniqueId,

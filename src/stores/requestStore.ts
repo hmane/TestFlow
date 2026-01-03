@@ -44,6 +44,7 @@ import type {
   SubmissionType,
 } from '@appTypes/index';
 import { ApprovalType } from '@appTypes/approvalTypes';
+import { ReviewOutcome, LegalReviewStatus, ComplianceReviewStatus } from '@appTypes/workflowTypes';
 
 /**
  * Process pending document operations after a successful save
@@ -725,7 +726,7 @@ export const useRequestStore = create<IRequestState>()(
         }
 
         const result = await submitLegalReviewAction(state.itemId, {
-          outcome: outcome as any,
+          outcome: outcome as ReviewOutcome,
           notes,
         });
 
@@ -758,7 +759,7 @@ export const useRequestStore = create<IRequestState>()(
         }
 
         const result = await submitComplianceReviewAction(state.itemId, {
-          outcome: outcome as any,
+          outcome: outcome as ReviewOutcome,
           notes,
           isForesideReviewRequired: flags?.isForesideReviewRequired,
           isRetailUse: flags?.isRetailUse,
@@ -1098,11 +1099,11 @@ export const useRequestStore = create<IRequestState>()(
         const updatedReview: Partial<ILegalReview> = { ...currentLegalReview };
 
         if (outcome !== undefined) {
-          updatedReview.outcome = outcome === '' ? undefined : (outcome as any);
+          updatedReview.outcome = outcome === '' ? undefined : (outcome as ReviewOutcome);
         }
 
         if (status !== undefined) {
-          updatedReview.status = status === '' ? undefined : (status as any);
+          updatedReview.status = status === '' ? undefined : (status as LegalReviewStatus);
         }
 
         await get().updateRequest({
@@ -1162,11 +1163,11 @@ export const useRequestStore = create<IRequestState>()(
         const updatedReview: Partial<IComplianceReview> = { ...currentComplianceReview };
 
         if (outcome !== undefined) {
-          updatedReview.outcome = outcome === '' ? undefined : (outcome as any);
+          updatedReview.outcome = outcome === '' ? undefined : (outcome as ReviewOutcome);
         }
 
         if (status !== undefined) {
-          updatedReview.status = status === '' ? undefined : (status as any);
+          updatedReview.status = status === '' ? undefined : (status as ComplianceReviewStatus);
         }
 
         await get().updateRequest({

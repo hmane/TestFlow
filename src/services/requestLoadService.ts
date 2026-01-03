@@ -13,6 +13,27 @@
 
 import { createSPExtractor } from 'spfx-toolkit/lib/utilities/listItemHelper';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
+import type { SPLookup } from 'spfx-toolkit/lib/types';
+
+/**
+ * Raw lookup item from renderListDataAsStream
+ * The API returns lookupId/lookupValue format instead of standard id/title
+ */
+interface IRawLookupItem {
+  lookupId?: number;
+  lookupValue?: string;
+  // Fallback properties that may appear in some contexts
+  ID?: number;
+  id?: number;
+  Title?: string;
+  title?: string;
+}
+
+/**
+ * Raw SharePoint item from renderListDataAsStream
+ * Uses Record<string, unknown> as base since field names come from RequestsFields constants
+ */
+type IRawSharePointItem = Record<string, unknown>;
 
 import { Lists } from '@sp/Lists';
 import { RequestsFields } from '@sp/listFields/RequestsFields';
@@ -289,11 +310,11 @@ function buildApprovalsArrayFromFields(extractor: ReturnType<typeof createSPExtr
     // Add approval to array if boolean is true (even if approver is empty - draft mode)
     approvals.push({
       type: ApprovalType.Communications,
-      approver: commApprover || { id: '', email: '', title: '' },
+      approver: commApprover,
       approvalDate: commDate,
       documentId: '', // Documents are loaded separately
       notes: commNotes || '',
-    } as any);
+    });
   }
 
   // Portfolio Manager approval
@@ -305,11 +326,11 @@ function buildApprovalsArrayFromFields(extractor: ReturnType<typeof createSPExtr
 
     approvals.push({
       type: ApprovalType.PortfolioManager,
-      approver: pmApprover || { id: '', email: '', title: '' },
+      approver: pmApprover,
       approvalDate: pmDate,
       documentId: '',
       notes: pmNotes || '',
-    } as any);
+    });
   }
 
   // Research Analyst approval
@@ -321,11 +342,11 @@ function buildApprovalsArrayFromFields(extractor: ReturnType<typeof createSPExtr
 
     approvals.push({
       type: ApprovalType.ResearchAnalyst,
-      approver: raApprover || { id: '', email: '', title: '' },
+      approver: raApprover,
       approvalDate: raDate,
       documentId: '',
       notes: raNotes || '',
-    } as any);
+    });
   }
 
   // SME approval
@@ -337,11 +358,11 @@ function buildApprovalsArrayFromFields(extractor: ReturnType<typeof createSPExtr
 
     approvals.push({
       type: ApprovalType.SubjectMatterExpert,
-      approver: smeApprover || { id: '', email: '', title: '' },
+      approver: smeApprover,
       approvalDate: smeDate,
       documentId: '',
       notes: smeNotes || '',
-    } as any);
+    });
   }
 
   // Performance approval
@@ -353,11 +374,11 @@ function buildApprovalsArrayFromFields(extractor: ReturnType<typeof createSPExtr
 
     approvals.push({
       type: ApprovalType.Performance,
-      approver: perfApprover || { id: '', email: '', title: '' },
+      approver: perfApprover,
       approvalDate: perfDate,
       documentId: '',
       notes: perfNotes || '',
-    } as any);
+    });
   }
 
   // Other approval
@@ -370,12 +391,12 @@ function buildApprovalsArrayFromFields(extractor: ReturnType<typeof createSPExtr
 
     approvals.push({
       type: ApprovalType.Other,
-      approver: otherApprover || { id: '', email: '', title: '' },
+      approver: otherApprover,
       approvalDate: otherDate,
       documentId: '',
       notes: otherNotes || '',
       approvalTitle: otherTitle || '',
-    } as any);
+    });
   }
 
   return approvals;
@@ -390,7 +411,7 @@ function buildApprovalsArrayFromFields(extractor: ReturnType<typeof createSPExtr
  * @param item - Raw item from renderListDataAsStream (merged from both queries)
  * @returns Mapped ILegalRequest object
  */
-export function mapRequestListItemToRequest(item: any): ILegalRequest {
+export function mapRequestListItemToRequest(item: IRawSharePointItem): ILegalRequest {
   const extractor = createSPExtractor(item);
 
   return {
@@ -426,12 +447,12 @@ export function mapRequestListItemToRequest(item: any): ILegalRequest {
 
       // renderListDataAsStream returns: { lookupId: number, lookupValue: string, ... }
       // Map to SPLookup format: { id: number, title: string }
-      return raw
-        .map((item: any) => ({
-          id: item.lookupId || item.ID || item.id,
-          title: item.lookupValue || item.Title || item.title || '',
+      return (raw as IRawLookupItem[])
+        .map((lookupItem: IRawLookupItem): SPLookup => ({
+          id: lookupItem.lookupId ?? lookupItem.ID ?? lookupItem.id,
+          title: lookupItem.lookupValue ?? lookupItem.Title ?? lookupItem.title ?? '',
         }))
-        .filter((lookup: any) => lookup.id !== undefined);
+        .filter((lookup: SPLookup): lookup is SPLookup & { id: number } => lookup.id !== undefined);
     })(),
     priorSubmissionNotes: extractor.string(RequestsFields.PriorSubmissionNotes),
 

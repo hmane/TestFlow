@@ -24,6 +24,32 @@ import { ConflictResolution } from '@services/approvalFileService';
 import { DocumentType } from '@appTypes/documentTypes';
 
 /**
+ * SharePoint document metadata update payload
+ */
+interface IDocumentUpdatePayload {
+  DocumentType?: string;
+  RequestId?: number;
+}
+
+/**
+ * Raw row from renderListDataAsStream for documents
+ * Contains the fields returned by SharePoint for file queries
+ */
+interface IRenderListDataRow {
+  ID: string;
+  FileLeafRef: string;
+  FileRef: string;
+  FileDirRef: string;
+  File_x0020_Size?: string;
+  Created: string;
+  Modified?: string;
+  UniqueId: string;
+  DocumentType?: string;
+  Author?: Array<{ title?: string; email?: string }>;
+  Editor?: Array<{ title?: string; email?: string }>;
+}
+
+/**
  * Document library configuration
  */
 const DEFAULT_LIBRARY_TITLE = Lists.RequestDocuments.Title;
@@ -244,7 +270,7 @@ export async function uploadFile(
     if (documentType || requestItemId) {
       try {
         const listItem = await uploadResult.file.getItem();
-        const updatePayload: any = {};
+        const updatePayload: IDocumentUpdatePayload = {};
 
         if (documentType) {
           updatePayload.DocumentType = documentType;
@@ -492,7 +518,7 @@ export async function loadDocuments(
     }
 
     // Map renderListDataAsStream results to IDocument
-    const documents: IDocument[] = result.Row.map((row: any) => {
+    const documents: IDocument[] = result.Row.map((row: IRenderListDataRow): IDocument | undefined => {
       // Extract file info from renderListDataAsStream format
       const fileName = row.FileLeafRef;
       const serverRelativeUrl = row.FileRef;
@@ -521,7 +547,7 @@ export async function loadDocuments(
           itemId: row.ID,
           serverRelativeUrl,
         });
-        return null as any;
+        return undefined;
       }
 
       // Build absolute URL
@@ -555,7 +581,7 @@ export async function loadDocuments(
 
       return doc;
     })
-    .filter(doc => doc !== null); // Remove any null entries (documents without DocumentType)
+    .filter((doc): doc is IDocument => doc !== undefined); // Remove undefined entries (documents without DocumentType)
 
     SPContext.logger.success('✅ Documents loaded successfully', {
       count: documents.length,
@@ -748,8 +774,8 @@ export function formatRelativeTime(date: Date | string): { text: string; tooltip
  * Module-level cache for RequestDocuments library ID
  * Loaded once, shared across all callers
  */
-let cachedLibraryId: string | null = null;
-let libraryIdPromise: Promise<string> | null = null;
+let cachedLibraryId: string | undefined = undefined;
+let libraryIdPromise: Promise<string> | undefined = undefined;
 
 /**
  * Get the RequestDocuments library ID with module-level caching
@@ -784,7 +810,7 @@ export async function getRequestDocumentsLibraryId(): Promise<string> {
       SPContext.logger.error('DocumentService: Failed to load library ID', error);
       throw error;
     } finally {
-      libraryIdPromise = null;
+      libraryIdPromise = undefined;
     }
   })();
 
@@ -796,7 +822,7 @@ export async function getRequestDocumentsLibraryId(): Promise<string> {
  * Useful for testing or when the library might have been recreated
  */
 export function clearLibraryIdCache(): void {
-  cachedLibraryId = null;
-  libraryIdPromise = null;
+  cachedLibraryId = undefined;
+  libraryIdPromise = undefined;
   SPContext.logger.info('DocumentService: Library ID cache cleared');
 }

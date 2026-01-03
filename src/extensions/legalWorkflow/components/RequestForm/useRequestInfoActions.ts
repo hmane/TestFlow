@@ -6,13 +6,28 @@ import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 
 // App imports using path aliases
 import { Lists } from '@sp/Lists';
-import type { ILegalRequest, IPrincipal, SPLookup } from '@appTypes/index';
+import type { ILegalRequest, IPrincipal, SPLookup, Approval } from '@appTypes/index';
 import { ApprovalType } from '@appTypes/approvalTypes';
 import { DocumentType } from '@appTypes/documentTypes';
 import { saveRequestSchema, submitRequestSchema } from '@schemas/requestSchema';
 import type { IValidationError } from '@contexts/RequestFormContext';
 import { useDocumentsStore } from '@stores/documentsStore';
 import { useRequestStore } from '@stores/requestStore';
+
+/**
+ * Approval with validation metadata injected for Zod schema validation
+ */
+type ApprovalWithValidationMetadata = Approval & {
+  _hasDocumentInStore?: boolean;
+};
+
+/**
+ * Request with validation metadata for schema validation
+ */
+type RequestWithValidationMetadata = Partial<ILegalRequest> & {
+  _hasAttachments?: boolean;
+  approvals?: ApprovalWithValidationMetadata[];
+};
 
 /**
  * Map ApprovalType to DocumentType for validation
@@ -395,8 +410,9 @@ export const useRequestInfoActions = ({
 
       // Inject document availability from documentsStore into approvals
       // This allows the Zod schema to validate documents correctly
-      if (normalized.approvals && Array.isArray(normalized.approvals)) {
-        normalized.approvals = normalized.approvals.map((approval: any) => {
+      const normalizedWithMetadata = normalized as RequestWithValidationMetadata;
+      if (normalizedWithMetadata.approvals && Array.isArray(normalizedWithMetadata.approvals)) {
+        normalizedWithMetadata.approvals = normalizedWithMetadata.approvals.map((approval: Approval): ApprovalWithValidationMetadata => {
           const hasDoc = hasDocumentsForApprovalType(approval.type as ApprovalType);
           SPContext.logger.info('Validation: Document check for approval', {
             approvalType: approval.type,
@@ -415,7 +431,7 @@ export const useRequestInfoActions = ({
       SPContext.logger.info('Validation: Attachments check', {
         hasAttachments: hasAttachmentsValue,
       });
-      (normalized as any)._hasAttachments = hasAttachmentsValue;
+      normalizedWithMetadata._hasAttachments = hasAttachmentsValue;
 
       const validation = schema.safeParse(normalized);
 
@@ -448,7 +464,8 @@ export const useRequestInfoActions = ({
       // correctly creates nested structure at errors.approvals[0].approver
       errors.forEach(error => {
         SPContext.logger.info('Setting form error', { field: error.field, message: error.message });
-        setFormErrors(error.field as any, {
+        // Type assertion needed: dynamic validation paths are valid FieldPath values
+        setFormErrors(error.field as FieldPath<ILegalRequest>, {
           type: 'manual',
           message: error.message,
         });
@@ -601,8 +618,9 @@ export const useRequestInfoActions = ({
       const normalized = normalizeRequestValues(formValues);
 
       // Inject document availability for approval validation
-      if (normalized.approvals && Array.isArray(normalized.approvals)) {
-        normalized.approvals = normalized.approvals.map((approval: any) => {
+      const normalizedWithMetadata = normalized as RequestWithValidationMetadata;
+      if (normalizedWithMetadata.approvals && Array.isArray(normalizedWithMetadata.approvals)) {
+        normalizedWithMetadata.approvals = normalizedWithMetadata.approvals.map((approval: Approval): ApprovalWithValidationMetadata => {
           const hasDoc = hasDocumentsForApprovalType(approval.type as ApprovalType);
           return {
             ...approval,
@@ -612,7 +630,7 @@ export const useRequestInfoActions = ({
       }
 
       // Inject attachments availability
-      (normalized as any)._hasAttachments = hasAttachments();
+      normalizedWithMetadata._hasAttachments = hasAttachments();
 
       // Use the same schema that was originally used for validation
       const schema = lastValidationSchemaRef.current === 'submit' ? submitRequestSchema : saveRequestSchema;
@@ -655,7 +673,8 @@ export const useRequestInfoActions = ({
 
         // Update React Hook Form errors for current errors
         currentErrors.forEach(error => {
-          setError(error.field as any, {
+          // Type assertion needed: dynamic validation paths are valid FieldPath values
+          setError(error.field as FieldPath<ILegalRequest>, {
             type: 'manual',
             message: error.message,
           });

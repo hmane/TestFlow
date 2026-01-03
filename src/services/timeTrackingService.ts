@@ -242,19 +242,9 @@ export async function resumeTimeTracking(
 
 /**
  * Gets the current owner of a stage based on review status
- *
- * @param request - Request data
- * @param stage - Workflow stage
- * @returns Current owner or undefined
- *
- * @remarks
- * Ownership is now derived from status fields instead of dedicated owner fields:
- * - LegalReview: "In Progress"/"Waiting On Attorney" → Attorney; "Waiting On Submitter" → Submitter
- * - ComplianceReview: "In Progress"/"Waiting On Compliance" → Reviewer; "Waiting On Submitter" → Submitter
- * - Closeout: Always → Reviewer
- * - LegalIntake: Legal Admin (not status-based yet)
+ * @internal - Used by calculateAndUpdateStageTime and pauseTimeTracking
  */
-export function getStageCurrentOwner(
+function getStageCurrentOwner(
   request: ILegalRequest,
   stage: TimeTrackingStage
 ): TimeTrackingOwner | undefined {
@@ -290,19 +280,9 @@ export function getStageCurrentOwner(
 
 /**
  * Gets the last handoff date for a stage based on status update timestamps
- *
- * @param request - Request data
- * @param stage - Workflow stage
- * @returns Last handoff date or undefined
- *
- * @remarks
- * Handoff dates are now derived from status update timestamps instead of dedicated handoff fields:
- * - LegalIntake: submittedOn (start of legal intake)
- * - LegalReview: legalStatusUpdatedOn (status change = handoff)
- * - ComplianceReview: complianceStatusUpdatedOn (status change = handoff)
- * - Closeout: closeoutOn (when closeout started)
+ * @internal - Used by calculateAndUpdateStageTime and pauseTimeTracking
  */
-export function getStageLastHandoffDate(
+function getStageLastHandoffDate(
   request: ILegalRequest,
   stage: TimeTrackingStage
 ): Date | undefined {
@@ -380,17 +360,6 @@ function addHoursToStage(
       break;
   }
 }
-
-/**
- * REMOVED: setStageOwnerAndDate() function
- *
- * This function has been removed because ownership and handoff dates are now
- * derived from status fields rather than stored in dedicated fields.
- *
- * The status fields (legalReviewStatus, complianceReviewStatus) and their
- * update timestamps (legalStatusUpdatedOn, complianceStatusUpdatedOn) are
- * now managed by the caller (typically requestSaveService).
- */
 
 /**
  * Calculates total hours across all stages
