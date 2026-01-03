@@ -9,7 +9,6 @@
 .request-summary-card {
   margin-bottom: 16px;
 
-  // Override Card header if needed
   .card-header {
     border-bottom: 1px solid #edebe9;
   }
@@ -18,35 +17,44 @@
 // Enhanced header layout
 .request-summary-header {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
   gap: 12px;
   width: 100%;
 
   // Left side: Title and rush badge
   &__main {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 10px;
-    flex-shrink: 0;
-    min-width: 0;
+    width: 100%;
 
-    // Truncate long titles
+    // Icon should stay at top when title wraps
+    > i {
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+
+    // Allow title to wrap to multiple lines
     .ms-Text {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 400px;
+      white-space: normal;
+      word-break: break-word;
+      line-height: 1.4;
+      flex: 1;
     }
   }
 
-  // Right side: Key metrics
+  // Key metrics row - shown below title, aligned with title text (past the icon)
   &__metrics {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
+    margin-left: 30px; // 20px icon + 10px gap = 30px to align with title text
+
+    // Rush badge in metrics row
+    .summary-badge {
+      flex-shrink: 0;
+    }
   }
 
   // Individual metric item
@@ -142,24 +150,13 @@
   }
 }
 
-// Responsive header
+// Responsive header - already column layout, just adjust gap on smaller screens
 @media (max-width: 900px) {
   .request-summary-header {
-    flex-direction: column;
-    align-items: flex-start;
-
-    &__main {
-      width: 100%;
-
-      .ms-Text {
-        max-width: 100%;
-      }
-    }
+    gap: 8px;
 
     &__metrics {
-      width: 100%;
-      justify-content: flex-start;
-      margin-top: 8px;
+      gap: 8px;
     }
   }
 }

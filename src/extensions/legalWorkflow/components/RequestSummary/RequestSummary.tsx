@@ -338,9 +338,9 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
       allowExpand={true}
       defaultExpanded={defaultExpanded}
     >
-      <Header actions={headerActions} size='regular'>
+      <Header actions={headerActions} size='regular' allowWrap={true}>
         <div className='request-summary-header'>
-          {/* Left side: Title and primary badges */}
+          {/* Title */}
           <div className='request-summary-header__main'>
             <Icon
               iconName='ClipboardList'
@@ -349,11 +349,13 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
             <Text variant='large' styles={{ root: { fontWeight: 600 } }}>
               {currentRequest.requestTitle || 'Request Summary'}
             </Text>
-            {currentRequest.isRushRequest && <Badge text='RUSH' variant='danger' />}
           </div>
 
-          {/* Right side: Key metrics */}
+          {/* Key metrics row */}
           <div className='request-summary-header__metrics'>
+            {/* Rush indicator - shown first if rush request */}
+            {currentRequest.isRushRequest && <Badge text='RUSH' variant='danger' />}
+
             {/* Target Return Date with countdown */}
             {currentRequest.targetReturnDate && dueDateInfo && (
               <div className={`request-summary-header__metric request-summary-header__metric--${dueDateInfo.variant}`}>

@@ -363,111 +363,89 @@ export function buildRequestUpdatePayload(
     // This prevents payloads like {TargetReturnDate: null, DateOfFirstUse: null}
     return filterEmptyUpdates(updates, request, originalRequest);
   } else {
-    // New request - include all fields
+    // New request - use SPUpdater for consistent field formatting
+    // SPUpdater handles user fields (IPrincipal), dates, multi-value fields automatically
+    const newUpdater = createSPUpdater();
 
-    // Build payload with proper null/undefined handling
-    const payload: Record<string, any> = {
-      [RequestsFields.RequestId]: request.requestId,
-      [RequestsFields.RequestType]: request.requestType,
-      [RequestsFields.RequestTitle]: request.requestTitle,
-      [RequestsFields.Purpose]: request.purpose || '',
-      [RequestsFields.SubmissionType]: request.submissionType,
-      [RequestsFields.ReviewAudience]: request.reviewAudience,
-      [RequestsFields.IsRushRequest]: request.isRushRequest,
-      [RequestsFields.Status]: request.status,
-    };
+    // Required fields - always set for new request
+    newUpdater.set(RequestsFields.RequestId, request.requestId, undefined);
+    newUpdater.set(RequestsFields.RequestType, request.requestType, undefined);
+    newUpdater.set(RequestsFields.RequestTitle, request.requestTitle, undefined);
+    newUpdater.set(RequestsFields.Purpose, request.purpose || '', undefined);
+    newUpdater.set(RequestsFields.SubmissionType, request.submissionType, undefined);
+    newUpdater.set(RequestsFields.ReviewAudience, request.reviewAudience, undefined);
+    newUpdater.set(RequestsFields.IsRushRequest, request.isRushRequest, undefined);
+    newUpdater.set(RequestsFields.Status, request.status, undefined);
 
-    // Map approvals for new request
-    // Use updater to ensure proper SharePoint field formatting
-    const tempUpdater = createSPUpdater();
-    mapApprovalsToSharePointFields(tempUpdater, request.approvals);
-    const approvalFields = tempUpdater.getUpdates();
-
-    // Merge approval fields into payload
-    // SPUpdater outputs user fields with 'Id' suffix (e.g., PortfolioManagerId: 40)
-    for (const key in approvalFields) {
-      if (Object.prototype.hasOwnProperty.call(approvalFields, key)) {
-        payload[key] = approvalFields[key];
-      }
-    }
-
-    // Add optional fields only if they have values
+    // Optional fields - only set if they have values
     if (request.submissionItem) {
-      payload[RequestsFields.SubmissionItem] = request.submissionItem;
+      newUpdater.set(RequestsFields.SubmissionItem, request.submissionItem, undefined);
     }
-
     if (request.targetReturnDate) {
-      payload[RequestsFields.TargetReturnDate] = request.targetReturnDate.toISOString();
+      newUpdater.set(RequestsFields.TargetReturnDate, request.targetReturnDate, undefined);
     }
-
     if (request.rushRationale) {
-      payload[RequestsFields.RushRationale] = request.rushRationale;
+      newUpdater.set(RequestsFields.RushRationale, request.rushRationale, undefined);
     }
-
     if (request.department) {
-      payload[RequestsFields.Department] = request.department;
+      newUpdater.set(RequestsFields.Department, request.department, undefined);
     }
-
-    // Multi-choice fields - PnPjs v3 items.add() expects plain arrays
-    if (request.distributionMethod && request.distributionMethod.length > 0) {
-      payload[RequestsFields.DistributionMethod] = request.distributionMethod;
-    }
-
-    // Multi-lookup fields - pass SPLookup array directly, SPUpdater handles formatting
-    if (request.priorSubmissions && request.priorSubmissions.length > 0) {
-      payload[RequestsFields.PriorSubmissions] = request.priorSubmissions;
-    }
-
     if (request.priorSubmissionNotes) {
-      payload[RequestsFields.PriorSubmissionNotes] = request.priorSubmissionNotes;
+      newUpdater.set(RequestsFields.PriorSubmissionNotes, request.priorSubmissionNotes, undefined);
     }
-
     if (request.dateOfFirstUse) {
-      payload[RequestsFields.DateOfFirstUse] = request.dateOfFirstUse.toISOString();
+      newUpdater.set(RequestsFields.DateOfFirstUse, request.dateOfFirstUse, undefined);
     }
-
-    // Multi-user field - pass IPrincipal array directly
-    if (request.additionalParty && request.additionalParty.length > 0) {
-      payload[RequestsFields.AdditionalParty] = request.additionalParty;
-    }
-
     if (request.trackingId) {
-      payload[RequestsFields.TrackingId] = request.trackingId;
+      newUpdater.set(RequestsFields.TrackingId, request.trackingId, undefined);
     }
-
-    // Attorney fields - validate that attorney has id before saving
-    if (request.attorney) {
-      const attorneyValue = request.attorney && request.attorney.id ? request.attorney : null;
-      if (attorneyValue) {
-        payload[RequestsFields.Attorney] = attorneyValue;
-      }
-    }
-
     if (request.attorneyAssignNotes) {
-      payload[RequestsFields.AttorneyAssignNotes] = request.attorneyAssignNotes;
+      newUpdater.set(RequestsFields.AttorneyAssignNotes, request.attorneyAssignNotes, undefined);
     }
 
-    // FINRA Audience & Product Fields - multi-choice fields use plain arrays
+    // Multi-choice fields - SPUpdater handles array formatting
+    if (request.distributionMethod && request.distributionMethod.length > 0) {
+      newUpdater.set(RequestsFields.DistributionMethod, request.distributionMethod, undefined);
+    }
     if (request.finraAudienceCategory && request.finraAudienceCategory.length > 0) {
-      payload[RequestsFields.FINRAAudienceCategory] = request.finraAudienceCategory;
+      newUpdater.set(RequestsFields.FINRAAudienceCategory, request.finraAudienceCategory, undefined);
     }
     if (request.audience && request.audience.length > 0) {
-      payload[RequestsFields.Audience] = request.audience;
+      newUpdater.set(RequestsFields.Audience, request.audience, undefined);
     }
     if (request.usFunds && request.usFunds.length > 0) {
-      payload[RequestsFields.USFunds] = request.usFunds;
+      newUpdater.set(RequestsFields.USFunds, request.usFunds, undefined);
     }
     if (request.ucits && request.ucits.length > 0) {
-      payload[RequestsFields.UCITS] = request.ucits;
+      newUpdater.set(RequestsFields.UCITS, request.ucits, undefined);
     }
     if (request.separateAcctStrategies && request.separateAcctStrategies.length > 0) {
-      payload[RequestsFields.SeparateAcctStrategies] = request.separateAcctStrategies;
+      newUpdater.set(RequestsFields.SeparateAcctStrategies, request.separateAcctStrategies, undefined);
     }
     if (request.separateAcctStrategiesIncl && request.separateAcctStrategiesIncl.length > 0) {
-      payload[RequestsFields.SeparateAcctStrategiesIncl] = request.separateAcctStrategiesIncl;
+      newUpdater.set(RequestsFields.SeparateAcctStrategiesIncl, request.separateAcctStrategiesIncl, undefined);
     }
 
-    return payload;
+    // User fields - SPUpdater automatically handles IPrincipal objects
+    // It extracts IDs and formats with 'Id' suffix
+    if (request.attorney && request.attorney.id) {
+      newUpdater.set(RequestsFields.Attorney, request.attorney, undefined);
+    }
+
+    // Multi-user field - SPUpdater handles IPrincipal arrays
+    if (request.additionalParty && request.additionalParty.length > 0) {
+      newUpdater.set(RequestsFields.AdditionalParty, request.additionalParty, undefined);
+    }
+
+    // Multi-lookup field - SPUpdater handles lookup arrays
+    if (request.priorSubmissions && request.priorSubmissions.length > 0) {
+      newUpdater.set(RequestsFields.PriorSubmissions, request.priorSubmissions, undefined);
+    }
+
+    // Map approvals - uses SPUpdater internally for user field formatting
+    mapApprovalsToSharePointFields(newUpdater, request.approvals);
+
+    return newUpdater.getUpdates();
   }
 }
 
