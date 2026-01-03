@@ -37,10 +37,13 @@
           <CHOICE>Social Media</CHOICE>
         </CHOICES>
       </Field>
-      <Field Type="DateTime" Name="TargetReturnDate" DisplayName="Target Return Date" Required="TRUE" Format="DateTime" Group="Request Information" ID="{FAFC8860-3A38-436A-BDF6-019FF3CAC7C1}" ClientSideComponentId="2836aed3-5ad3-4495-a1b0-ff3924feec4e" />
-      <Field Type="Boolean" Name="IsRushRequest" DisplayName="Is Rush Request" Group="Request Information" ID="{2299E727-A5DC-461E-844F-050BABEDBE77}"><Default>0</Default></Field>
+      <Field Type="DateTime" Name="TargetReturnDate" DisplayName="Target Return Date" Required="TRUE" Format="DateTime" Group="Request Information" ID="{FAFC8860-3A38-436A-BDF6-019FF3CAC7C1}" Indexed="TRUE" ClientSideComponentId="2836aed3-5ad3-4495-a1b0-ff3924feec4e" />
+      <Field Type="Boolean" Name="IsRushRequest" DisplayName="Is Rush Request" Group="Request Information" ID="{2299E727-A5DC-461E-844F-050BABEDBE77}">
+        <Default>0</Default>
+        <CustomFormatter>{"$schema":"https://developer.microsoft.com/json-schemas/sp/v2/column-formatting.schema.json","elmType":"div","style":{"display":"flex","align-items":"center"},"children":[{"elmType":"span","style":{"display":"=if(@currentField == true, 'inline-flex', 'none')","padding":"2px 8px","border-radius":"12px","background-color":"#d13438","color":"white","font-weight":"600","font-size":"12px"},"attributes":{"iconName":"Warning"},"children":[{"elmType":"span","style":{"margin-left":"4px"},"txtContent":"RUSH"}]}]}</CustomFormatter>
+      </Field>
       <Field Type="Note" Name="RushRationale" DisplayName="Rush Rationale" RichText="FALSE" NumLines="6" Group="Request Information" ID="{25EDAC36-3D6F-4CD0-895E-F375BAC623C8}" />
-      <Field Type="Choice" Name="ReviewAudience" DisplayName="Review Audience" Required="TRUE" Group="Request Information" ID="{4DF712AF-F078-4347-8C40-19468FA515F1}">
+      <Field Type="Choice" Name="ReviewAudience" DisplayName="Review Audience" Required="TRUE" Group="Request Information" ID="{4DF712AF-F078-4347-8C40-19468FA515F1}" Indexed="TRUE">
         <CHOICES><CHOICE>Legal</CHOICE><CHOICE>Compliance</CHOICE><CHOICE>Both</CHOICE></CHOICES>
       </Field>
       <Field Type="LookupMulti" Name="PriorSubmissions" DisplayName="Prior Submissions" List="Lists/Requests" ShowField="Title" Mult="TRUE" Group="Request Information" ID="{499E8607-D98C-4EDE-BB58-E9AD387C39B7}" />
@@ -130,32 +133,36 @@
       <Field Type="Note" Name="OtherApprovalNotes" DisplayName="Other Approval Notes" RichText="FALSE" NumLines="4" Group="Approvals" ID="{F6A7B8C9-6666-4FA0-DB4C-D5E6F7A8B9CA}" />
 
       <!-- Legal Intake (2) -->
-      <Field Type="User" Name="Attorney" DisplayName="Attorney" UserSelectionMode="PeopleOnly" Group="Legal Intake" ID="{9A262A7D-F053-4B9A-A5DB-D902ECE30058}" />
+      <Field Type="User" Name="Attorney" DisplayName="Attorney" UserSelectionMode="PeopleOnly" Group="Legal Intake" ID="{9A262A7D-F053-4B9A-A5DB-D902ECE30058}" Indexed="TRUE" />
       <Field Type="Note" Name="AttorneyAssignNotes" DisplayName="Attorney Assign Notes" RichText="FALSE" AppendOnly="TRUE" NumLines="6" Group="Legal Intake" ID="{3835A7F1-5B38-4F36-90D7-ADC956D9D6F6}" />
 
       <!-- Legal Review (7 including 2 NEW) -->
-      <Field Type="Choice" Name="LegalReviewStatus" DisplayName="Legal Review Status" Group="Legal Review" ID="{2858F124-E2D8-4A14-9083-B5CB5A2C77FB}">
+      <Field Type="Choice" Name="LegalReviewStatus" DisplayName="Legal Review Status" Group="Legal Review" ID="{2858F124-E2D8-4A14-9083-B5CB5A2C77FB}" Indexed="TRUE">
         <CHOICES><CHOICE>Not Required</CHOICE><CHOICE>Not Started</CHOICE><CHOICE>In Progress</CHOICE><CHOICE>Waiting On Submitter</CHOICE><CHOICE>Waiting On Attorney</CHOICE><CHOICE>Completed</CHOICE></CHOICES>
         <Default>Not Started</Default>
+        <CustomFormatter>{"$schema":"https://developer.microsoft.com/json-schemas/sp/v2/column-formatting.schema.json","elmType":"div","style":{"display":"flex","align-items":"center"},"children":[{"elmType":"span","style":{"padding":"4px 8px","border-radius":"12px","font-size":"12px"},"attributes":{"class":{"operator":":","operands":[{"operator":"==","operands":["@currentField","Not Required"]},"sp-css-backgroundColor-BgLightGray sp-css-color-neutralSecondary",{"operator":":","operands":[{"operator":"==","operands":["@currentField","Not Started"]},"sp-css-backgroundColor-BgLightGray sp-css-color-neutralPrimary",{"operator":":","operands":[{"operator":"==","operands":["@currentField","In Progress"]},"sp-css-backgroundColor-BgCornflowerBlue sp-css-color-white",{"operator":":","operands":[{"operator":"==","operands":["@currentField","Waiting On Submitter"]},"sp-css-backgroundColor-BgPeach sp-css-color-neutralPrimary",{"operator":":","operands":[{"operator":"==","operands":["@currentField","Waiting On Attorney"]},"sp-css-backgroundColor-BgGold sp-css-color-neutralPrimary",{"operator":":","operands":[{"operator":"==","operands":["@currentField","Completed"]},"sp-css-backgroundColor-BgDarkGreen sp-css-color-white","sp-css-backgroundColor-BgLightGray"]}]}]}]}]}]}},"txtContent":"@currentField"}]}</CustomFormatter>
       </Field>
       <Field Type="DateTime" Name="LegalStatusUpdatedOn" DisplayName="Legal Status Updated On" Format="DateTime" Group="Legal Review" ID="{8FFB857A-88E0-4C8A-8317-E750AA984376}" />
       <Field Type="User" Name="LegalStatusUpdatedBy" DisplayName="Legal Status Updated By" UserSelectionMode="PeopleOnly" Group="Legal Review" ID="{9CE25BC9-036E-468C-BC05-5119C876F697}" />
       <Field Type="Choice" Name="LegalReviewOutcome" DisplayName="Legal Review Outcome" Group="Legal Review" ID="{1929D518-3AF7-4504-8CC1-1503540EAFF1}">
         <CHOICES><CHOICE>Approved</CHOICE><CHOICE>Approved With Comments</CHOICE><CHOICE>Respond To Comments And Resubmit</CHOICE><CHOICE>Not Approved</CHOICE></CHOICES>
+        <CustomFormatter>{"$schema":"https://developer.microsoft.com/json-schemas/sp/v2/column-formatting.schema.json","elmType":"div","style":{"display":"flex","align-items":"center"},"children":[{"elmType":"span","style":{"padding":"4px 8px","border-radius":"12px","font-size":"12px","display":"=if(@currentField == '', 'none', 'inline-flex')"},"attributes":{"class":{"operator":":","operands":[{"operator":"==","operands":["@currentField","Approved"]},"sp-css-backgroundColor-BgDarkGreen sp-css-color-white",{"operator":":","operands":[{"operator":"==","operands":["@currentField","Approved With Comments"]},"sp-css-backgroundColor-BgMintGreen sp-css-color-neutralPrimary",{"operator":":","operands":[{"operator":"==","operands":["@currentField","Respond To Comments And Resubmit"]},"sp-css-backgroundColor-BgGold sp-css-color-neutralPrimary",{"operator":":","operands":[{"operator":"==","operands":["@currentField","Not Approved"]},"sp-css-backgroundColor-BgDarkRed sp-css-color-white","sp-css-backgroundColor-BgLightGray"]}]}]}]}},"txtContent":"@currentField"}]}</CustomFormatter>
       </Field>
       <Field Type="Note" Name="LegalReviewNotes" DisplayName="Legal Review Notes" RichText="FALSE" AppendOnly="TRUE" NumLines="6" Group="Legal Review" ID="{2C162258-D46E-4256-88C4-2B1CA6329B6F}" />
       <Field Type="DateTime" Name="LegalReviewCompletedOn" DisplayName="Legal Review Completed On" Format="DateTime" Group="Legal Review" ID="{BE16140B-87F4-49FE-A21F-D758B4229289}" />
       <Field Type="User" Name="LegalReviewCompletedBy" DisplayName="Legal Review Completed By" UserSelectionMode="PeopleOnly" Group="Legal Review" ID="{57E8C5AD-2102-44D3-96BF-5688BDDF1266}" />
 
       <!-- Compliance Review (9 including 2 NEW) -->
-      <Field Type="Choice" Name="ComplianceReviewStatus" DisplayName="Compliance Review Status" Group="Compliance Review" ID="{0CB60E09-EEB8-478E-80C0-08DBBB466F53}">
+      <Field Type="Choice" Name="ComplianceReviewStatus" DisplayName="Compliance Review Status" Group="Compliance Review" ID="{0CB60E09-EEB8-478E-80C0-08DBBB466F53}" Indexed="TRUE">
         <CHOICES><CHOICE>Not Required</CHOICE><CHOICE>Not Started</CHOICE><CHOICE>In Progress</CHOICE><CHOICE>Waiting On Submitter</CHOICE><CHOICE>Waiting On Compliance</CHOICE><CHOICE>Completed</CHOICE></CHOICES>
         <Default>Not Started</Default>
+        <CustomFormatter>{"$schema":"https://developer.microsoft.com/json-schemas/sp/v2/column-formatting.schema.json","elmType":"div","style":{"display":"flex","align-items":"center"},"children":[{"elmType":"span","style":{"padding":"4px 8px","border-radius":"12px","font-size":"12px"},"attributes":{"class":{"operator":":","operands":[{"operator":"==","operands":["@currentField","Not Required"]},"sp-css-backgroundColor-BgLightGray sp-css-color-neutralSecondary",{"operator":":","operands":[{"operator":"==","operands":["@currentField","Not Started"]},"sp-css-backgroundColor-BgLightGray sp-css-color-neutralPrimary",{"operator":":","operands":[{"operator":"==","operands":["@currentField","In Progress"]},"sp-css-backgroundColor-BgCornflowerBlue sp-css-color-white",{"operator":":","operands":[{"operator":"==","operands":["@currentField","Waiting On Submitter"]},"sp-css-backgroundColor-BgPeach sp-css-color-neutralPrimary",{"operator":":","operands":[{"operator":"==","operands":["@currentField","Waiting On Compliance"]},"sp-css-backgroundColor-BgGold sp-css-color-neutralPrimary",{"operator":":","operands":[{"operator":"==","operands":["@currentField","Completed"]},"sp-css-backgroundColor-BgDarkGreen sp-css-color-white","sp-css-backgroundColor-BgLightGray"]}]}]}]}]}]}},"txtContent":"@currentField"}]}</CustomFormatter>
       </Field>
       <Field Type="DateTime" Name="ComplianceStatusUpdatedOn" DisplayName="Compliance Status Updated On" Format="DateTime" Group="Compliance Review" ID="{FA1BD42F-21A2-4E57-80AD-75AB8E98E699}" />
       <Field Type="User" Name="ComplianceStatusUpdatedBy" DisplayName="Compliance Status Updated By" UserSelectionMode="PeopleOnly" Group="Compliance Review" ID="{750734DB-4AAA-48E1-9057-C90057AC3F7F}" />
       <Field Type="Choice" Name="ComplianceReviewOutcome" DisplayName="Compliance Review Outcome" Group="Compliance Review" ID="{47B1A99A-7AE5-408E-B63A-4EA0E7424E33}">
         <CHOICES><CHOICE>Approved</CHOICE><CHOICE>Approved With Comments</CHOICE><CHOICE>Respond To Comments And Resubmit</CHOICE><CHOICE>Not Approved</CHOICE></CHOICES>
+        <CustomFormatter>{"$schema":"https://developer.microsoft.com/json-schemas/sp/v2/column-formatting.schema.json","elmType":"div","style":{"display":"flex","align-items":"center"},"children":[{"elmType":"span","style":{"padding":"4px 8px","border-radius":"12px","font-size":"12px","display":"=if(@currentField == '', 'none', 'inline-flex')"},"attributes":{"class":{"operator":":","operands":[{"operator":"==","operands":["@currentField","Approved"]},"sp-css-backgroundColor-BgDarkGreen sp-css-color-white",{"operator":":","operands":[{"operator":"==","operands":["@currentField","Approved With Comments"]},"sp-css-backgroundColor-BgMintGreen sp-css-color-neutralPrimary",{"operator":":","operands":[{"operator":"==","operands":["@currentField","Respond To Comments And Resubmit"]},"sp-css-backgroundColor-BgGold sp-css-color-neutralPrimary",{"operator":":","operands":[{"operator":"==","operands":["@currentField","Not Approved"]},"sp-css-backgroundColor-BgDarkRed sp-css-color-white","sp-css-backgroundColor-BgLightGray"]}]}]}]}},"txtContent":"@currentField"}]}</CustomFormatter>
       </Field>
       <Field Type="Note" Name="ComplianceReviewNotes" DisplayName="Compliance Review Notes" RichText="FALSE" AppendOnly="TRUE" NumLines="6" Group="Compliance Review" ID="{AF39C656-C05A-4223-9C48-EA101E3B5814}" />
       <Field Type="Boolean" Name="IsForesideReviewRequired" DisplayName="Is Foreside Review Required" Group="Compliance Review" ID="{412DF9F7-6068-4F9B-B66F-306120C1FEC2}"><Default>0</Default></Field>
@@ -176,7 +183,7 @@
       <Field Type="DateTime" Name="AwaitingForesideSince" DisplayName="Awaiting Foreside Since" Format="DateTime" Group="Foreside Documents" ID="{D3E4F5A6-AAAA-4B8C-2D4E-5F6A7B8C9D0E}" />
 
       <!-- System Tracking (18) -->
-      <Field Type="Choice" Name="Status" DisplayName="Status" Required="TRUE" Group="System Tracking" ID="{9E390E5D-9D57-472F-B470-EDE7F1D5EB89}" ClientSideComponentId="e55dcdea-8fa3-4708-9fbe-35c866026289">
+      <Field Type="Choice" Name="Status" DisplayName="Status" Required="TRUE" Group="System Tracking" ID="{9E390E5D-9D57-472F-B470-EDE7F1D5EB89}" Indexed="TRUE" ClientSideComponentId="e55dcdea-8fa3-4708-9fbe-35c866026289">
         <CHOICES><CHOICE>Draft</CHOICE><CHOICE>Legal Intake</CHOICE><CHOICE>Assign Attorney</CHOICE><CHOICE>In Review</CHOICE><CHOICE>Closeout</CHOICE><CHOICE>Awaiting Foreside Documents</CHOICE><CHOICE>Completed</CHOICE><CHOICE>Cancelled</CHOICE><CHOICE>On Hold</CHOICE></CHOICES>
         <Default>Draft</Default>
       </Field>
@@ -220,14 +227,14 @@
       Awaiting Foreside Documents: Separate view (not open, not closed)
       All views sort by Modified DESC unless a specific queue ordering is needed
     -->
-    <pnp:Views>
+    <pnp:Views RemoveExistingViews="true">
       <!-- ============================================ -->
       <!-- HOME DASHBOARD VIEWS (Submitters & Admins) -->
       <!-- ============================================ -->
 
-      <!-- My Open Requests - Requests created by current user in open status (Draft, Legal Intake, Assign Attorney, In Review, Closeout, On Hold) -->
-      <pnp:View Name="MyOpenRequests" DisplayName="My Open Requests" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
-        <pnp:Query>
+      <!-- My Open Requests - Requests created by current user in open status -->
+      <View DisplayName="My Open Requests" DefaultView="FALSE" MobileView="TRUE" MobileDefaultView="TRUE" Type="HTML" Url="{site}/Lists/Requests/MyOpenRequests.aspx" Level="1" BaseViewID="2" ContentTypeID="0x">
+        <Query>
           <Where>
             <And>
               <Eq><FieldRef Name="Author" /><Value Type="Integer"><UserID/></Value></Eq>
@@ -245,20 +252,22 @@
             </And>
           </Where>
           <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
-        </pnp:Query>
-        <pnp:ViewFields>
-          <FieldRef Name="Title" />
+        </Query>
+        <ViewFields>
+          <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Status" />
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="Attorney" />
           <FieldRef Name="Modified" />
-        </pnp:ViewFields>
-      </pnp:View>
+        </ViewFields>
+        <RowLimit Paged="TRUE">50</RowLimit>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+      </View>
 
       <!-- My Completed Requests - Requests created by current user that are Completed OR Cancelled -->
-      <pnp:View Name="MyCompletedRequests" DisplayName="My Completed Requests" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
-        <pnp:Query>
+      <View DisplayName="My Completed Requests" DefaultView="FALSE" Type="HTML" Url="{site}/Lists/Requests/MyCompletedRequests.aspx" Level="1" BaseViewID="3" ContentTypeID="0x">
+        <Query>
           <Where>
             <And>
               <Eq><FieldRef Name="Author" /><Value Type="Integer"><UserID/></Value></Eq>
@@ -269,21 +278,23 @@
             </And>
           </Where>
           <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
-        </pnp:Query>
-        <pnp:ViewFields>
-          <FieldRef Name="Title" />
+        </Query>
+        <ViewFields>
+          <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Status" />
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="CloseoutOn" />
           <FieldRef Name="TrackingId" />
           <FieldRef Name="Modified" />
-        </pnp:ViewFields>
-      </pnp:View>
+        </ViewFields>
+        <RowLimit Paged="TRUE">50</RowLimit>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+      </View>
 
-      <!-- My Awaiting Foreside Documents - Requests created by current user awaiting foreside documents -->
-      <pnp:View Name="MyAwaitingForesideDocuments" DisplayName="My Awaiting Foreside Documents" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
-        <pnp:Query>
+      <!-- My Awaiting Foreside Documents -->
+      <View DisplayName="My Awaiting Foreside Documents" DefaultView="FALSE" Type="HTML" Url="{site}/Lists/Requests/MyAwaitingForesideDocuments.aspx" Level="1" BaseViewID="4" ContentTypeID="0x">
+        <Query>
           <Where>
             <And>
               <Eq><FieldRef Name="Author" /><Value Type="Integer"><UserID/></Value></Eq>
@@ -291,19 +302,21 @@
             </And>
           </Where>
           <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
-        </pnp:Query>
-        <pnp:ViewFields>
-          <FieldRef Name="Title" />
+        </Query>
+        <ViewFields>
+          <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="AwaitingForesideSince" />
           <FieldRef Name="TrackingId" />
           <FieldRef Name="Modified" />
-        </pnp:ViewFields>
-      </pnp:View>
+        </ViewFields>
+        <RowLimit Paged="TRUE">50</RowLimit>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+      </View>
 
-      <!-- All Open Requests - For Admins to see all open requests (Draft, Legal Intake, Assign Attorney, In Review, Closeout, On Hold) -->
-      <pnp:View Name="AllOpenRequests" DisplayName="All Open Requests" DefaultView="false" RowLimit="100" Paged="true" TabularView="false">
-        <pnp:Query>
+      <!-- All Open Requests - For Admins -->
+      <View DisplayName="All Open Requests" DefaultView="FALSE" Type="HTML" Url="{site}/Lists/Requests/AllOpenRequests.aspx" Level="1" BaseViewID="5" ContentTypeID="0x">
+        <Query>
           <Where>
             <In>
               <FieldRef Name="Status" />
@@ -318,21 +331,23 @@
             </In>
           </Where>
           <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
-        </pnp:Query>
-        <pnp:ViewFields>
-          <FieldRef Name="Title" />
+        </Query>
+        <ViewFields>
+          <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Status" />
-          <FieldRef Name="SubmittedBy" />
+          <FieldRef Name="Author" />
           <FieldRef Name="Attorney" />
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="Modified" />
-        </pnp:ViewFields>
-      </pnp:View>
+        </ViewFields>
+        <RowLimit Paged="TRUE">100</RowLimit>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+      </View>
 
-      <!-- All Completed Requests - For Admins to see all Completed and Cancelled requests -->
-      <pnp:View Name="AllCompletedRequests" DisplayName="All Completed Requests" DefaultView="false" RowLimit="100" Paged="true" TabularView="false">
-        <pnp:Query>
+      <!-- All Completed Requests - For Admins -->
+      <View DisplayName="All Completed Requests" DefaultView="FALSE" Type="HTML" Url="{site}/Lists/Requests/AllCompletedRequests.aspx" Level="1" BaseViewID="6" ContentTypeID="0x">
+        <Query>
           <Where>
             <Or>
               <Eq><FieldRef Name="Status" /><Value Type="Choice">Completed</Value></Eq>
@@ -340,88 +355,96 @@
             </Or>
           </Where>
           <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
-        </pnp:Query>
-        <pnp:ViewFields>
-          <FieldRef Name="Title" />
+        </Query>
+        <ViewFields>
+          <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Status" />
-          <FieldRef Name="SubmittedBy" />
+          <FieldRef Name="Author" />
           <FieldRef Name="CloseoutOn" />
           <FieldRef Name="TrackingId" />
           <FieldRef Name="Modified" />
-        </pnp:ViewFields>
-      </pnp:View>
+        </ViewFields>
+        <RowLimit Paged="TRUE">100</RowLimit>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+      </View>
 
       <!-- ============================================ -->
       <!-- LEGAL ADMIN DASHBOARD VIEWS -->
       <!-- ============================================ -->
 
-      <!-- Legal Intake Queue - Requests pending intake -->
-      <pnp:View Name="LegalIntakeQueue" DisplayName="Legal Intake Queue" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
-        <pnp:Query>
+      <!-- Legal Intake Queue -->
+      <View DisplayName="Legal Intake Queue" DefaultView="FALSE" MobileView="TRUE" Type="HTML" Url="{site}/Lists/Requests/LegalIntakeQueue.aspx" Level="1" BaseViewID="7" ContentTypeID="0x">
+        <Query>
           <Where>
             <Eq><FieldRef Name="Status" /><Value Type="Choice">Legal Intake</Value></Eq>
           </Where>
           <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
-        </pnp:Query>
-        <pnp:ViewFields>
-          <FieldRef Name="Title" />
+        </Query>
+        <ViewFields>
+          <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
-          <FieldRef Name="SubmittedBy" />
+          <FieldRef Name="Author" />
           <FieldRef Name="SubmittedOn" />
           <FieldRef Name="ReviewAudience" />
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="IsRushRequest" />
           <FieldRef Name="Modified" />
-        </pnp:ViewFields>
-      </pnp:View>
+        </ViewFields>
+        <RowLimit Paged="TRUE">50</RowLimit>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+      </View>
 
-      <!-- Pending Attorney Assignment - Requests waiting for attorney assignment -->
-      <pnp:View Name="PendingAttorneyAssignment" DisplayName="Pending Attorney Assignment" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
-        <pnp:Query>
+      <!-- Pending Attorney Assignment -->
+      <View DisplayName="Pending Attorney Assignment" DefaultView="FALSE" Type="HTML" Url="{site}/Lists/Requests/PendingAttorneyAssignment.aspx" Level="1" BaseViewID="8" ContentTypeID="0x">
+        <Query>
           <Where>
             <Eq><FieldRef Name="Status" /><Value Type="Choice">Assign Attorney</Value></Eq>
           </Where>
           <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
-        </pnp:Query>
-        <pnp:ViewFields>
-          <FieldRef Name="Title" />
+        </Query>
+        <ViewFields>
+          <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
-          <FieldRef Name="SubmittedBy" />
+          <FieldRef Name="Author" />
           <FieldRef Name="ReviewAudience" />
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="IsRushRequest" />
           <FieldRef Name="SubmittedToAssignAttorneyOn" />
           <FieldRef Name="Modified" />
-        </pnp:ViewFields>
-      </pnp:View>
+        </ViewFields>
+        <RowLimit Paged="TRUE">50</RowLimit>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+      </View>
 
-      <!-- Legal Admin - All In Review -->
-      <pnp:View Name="LegalAdminInReview" DisplayName="All In Review" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
-        <pnp:Query>
+      <!-- All In Review -->
+      <View DisplayName="All In Review" DefaultView="FALSE" Type="HTML" Url="{site}/Lists/Requests/AllInReview.aspx" Level="1" BaseViewID="9" ContentTypeID="0x">
+        <Query>
           <Where>
             <Eq><FieldRef Name="Status" /><Value Type="Choice">In Review</Value></Eq>
           </Where>
           <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
-        </pnp:Query>
-        <pnp:ViewFields>
-          <FieldRef Name="Title" />
+        </Query>
+        <ViewFields>
+          <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Attorney" />
           <FieldRef Name="LegalReviewStatus" />
           <FieldRef Name="ComplianceReviewStatus" />
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="Modified" />
-        </pnp:ViewFields>
-      </pnp:View>
+        </ViewFields>
+        <RowLimit Paged="TRUE">50</RowLimit>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+      </View>
 
       <!-- ============================================ -->
       <!-- ATTORNEY DASHBOARD VIEWS -->
       <!-- ============================================ -->
 
-      <!-- My Assigned Requests - Requests assigned to current attorney (open status: Draft, Legal Intake, Assign Attorney, In Review, Closeout, On Hold) -->
-      <pnp:View Name="MyAssignedRequests" DisplayName="My Assigned Requests" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
-        <pnp:Query>
+      <!-- My Assigned Requests -->
+      <View DisplayName="My Assigned Requests" DefaultView="FALSE" Type="HTML" Url="{site}/Lists/Requests/MyAssignedRequests.aspx" Level="1" BaseViewID="10" ContentTypeID="0x">
+        <Query>
           <Where>
             <And>
               <Eq><FieldRef Name="Attorney" /><Value Type="Integer"><UserID/></Value></Eq>
@@ -439,22 +462,24 @@
             </And>
           </Where>
           <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
-        </pnp:Query>
-        <pnp:ViewFields>
-          <FieldRef Name="Title" />
+        </Query>
+        <ViewFields>
+          <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Status" />
           <FieldRef Name="LegalReviewStatus" />
-          <FieldRef Name="SubmittedBy" />
+          <FieldRef Name="Author" />
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="IsRushRequest" />
           <FieldRef Name="Modified" />
-        </pnp:ViewFields>
-      </pnp:View>
+        </ViewFields>
+        <RowLimit Paged="TRUE">50</RowLimit>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+      </View>
 
-      <!-- Attorney - Pending My Review (Not Started, In Progress, Waiting On Attorney) -->
-      <pnp:View Name="AttorneyPendingReview" DisplayName="Pending My Review" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
-        <pnp:Query>
+      <!-- Pending My Review (Attorney) -->
+      <View DisplayName="Pending My Review" DefaultView="FALSE" MobileView="TRUE" Type="HTML" Url="{site}/Lists/Requests/PendingMyReview.aspx" Level="1" BaseViewID="11" ContentTypeID="0x">
+        <Query>
           <Where>
             <And>
               <Eq><FieldRef Name="Attorney" /><Value Type="Integer"><UserID/></Value></Eq>
@@ -471,21 +496,23 @@
             </And>
           </Where>
           <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
-        </pnp:Query>
-        <pnp:ViewFields>
-          <FieldRef Name="Title" />
+        </Query>
+        <ViewFields>
+          <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="LegalReviewStatus" />
-          <FieldRef Name="SubmittedBy" />
+          <FieldRef Name="Author" />
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="IsRushRequest" />
           <FieldRef Name="Modified" />
-        </pnp:ViewFields>
-      </pnp:View>
+        </ViewFields>
+        <RowLimit Paged="TRUE">50</RowLimit>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+      </View>
 
-      <!-- Attorney - Completed Reviews (completed or cancelled requests where attorney was assigned) -->
-      <pnp:View Name="AttorneyCompletedReviews" DisplayName="My Completed Reviews" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
-        <pnp:Query>
+      <!-- My Completed Reviews (Attorney) -->
+      <View DisplayName="My Completed Reviews" DefaultView="FALSE" Type="HTML" Url="{site}/Lists/Requests/MyCompletedReviews.aspx" Level="1" BaseViewID="12" ContentTypeID="0x">
+        <Query>
           <Where>
             <And>
               <Eq><FieldRef Name="Attorney" /><Value Type="Integer"><UserID/></Value></Eq>
@@ -496,48 +523,52 @@
             </And>
           </Where>
           <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
-        </pnp:Query>
-        <pnp:ViewFields>
-          <FieldRef Name="Title" />
+        </Query>
+        <ViewFields>
+          <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Status" />
           <FieldRef Name="LegalReviewOutcome" />
           <FieldRef Name="LegalReviewCompletedOn" />
           <FieldRef Name="Modified" />
-        </pnp:ViewFields>
-      </pnp:View>
+        </ViewFields>
+        <RowLimit Paged="TRUE">50</RowLimit>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+      </View>
 
       <!-- ============================================ -->
       <!-- ATTORNEY ASSIGNER DASHBOARD VIEWS -->
       <!-- ============================================ -->
 
-      <!-- Requests Awaiting Assignment -->
-      <pnp:View Name="AwaitingAttorneyAssignment" DisplayName="Awaiting Attorney Assignment" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
-        <pnp:Query>
+      <!-- Awaiting Attorney Assignment -->
+      <View DisplayName="Awaiting Attorney Assignment" DefaultView="FALSE" Type="HTML" Url="{site}/Lists/Requests/AwaitingAttorneyAssignment.aspx" Level="1" BaseViewID="13" ContentTypeID="0x">
+        <Query>
           <Where>
             <Eq><FieldRef Name="Status" /><Value Type="Choice">Assign Attorney</Value></Eq>
           </Where>
           <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
-        </pnp:Query>
-        <pnp:ViewFields>
-          <FieldRef Name="Title" />
+        </Query>
+        <ViewFields>
+          <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
-          <FieldRef Name="SubmittedBy" />
+          <FieldRef Name="Author" />
           <FieldRef Name="ReviewAudience" />
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="IsRushRequest" />
           <FieldRef Name="SubmissionItem" />
           <FieldRef Name="Modified" />
-        </pnp:ViewFields>
-      </pnp:View>
+        </ViewFields>
+        <RowLimit Paged="TRUE">50</RowLimit>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+      </View>
 
       <!-- ============================================ -->
       <!-- COMPLIANCE DASHBOARD VIEWS -->
       <!-- ============================================ -->
 
-      <!-- Compliance - Pending Review (Not Started, In Progress, Waiting On Compliance) -->
-      <pnp:View Name="CompliancePendingReview" DisplayName="Pending Compliance Review" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
-        <pnp:Query>
+      <!-- Pending Compliance Review -->
+      <View DisplayName="Pending Compliance Review" DefaultView="FALSE" MobileView="TRUE" Type="HTML" Url="{site}/Lists/Requests/PendingComplianceReview.aspx" Level="1" BaseViewID="14" ContentTypeID="0x">
+        <Query>
           <Where>
             <And>
               <Eq><FieldRef Name="Status" /><Value Type="Choice">In Review</Value></Eq>
@@ -557,21 +588,23 @@
             </And>
           </Where>
           <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
-        </pnp:Query>
-        <pnp:ViewFields>
-          <FieldRef Name="Title" />
+        </Query>
+        <ViewFields>
+          <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="ComplianceReviewStatus" />
-          <FieldRef Name="SubmittedBy" />
+          <FieldRef Name="Author" />
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="IsRushRequest" />
           <FieldRef Name="Modified" />
-        </pnp:ViewFields>
-      </pnp:View>
+        </ViewFields>
+        <RowLimit Paged="TRUE">50</RowLimit>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+      </View>
 
-      <!-- Compliance - Completed Reviews (Completed or Cancelled requests requiring compliance review) -->
-      <pnp:View Name="ComplianceCompletedReviews" DisplayName="Completed Compliance Reviews" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
-        <pnp:Query>
+      <!-- Completed Compliance Reviews -->
+      <View DisplayName="Completed Compliance Reviews" DefaultView="FALSE" Type="HTML" Url="{site}/Lists/Requests/CompletedComplianceReviews.aspx" Level="1" BaseViewID="15" ContentTypeID="0x">
+        <Query>
           <Where>
             <And>
               <Or>
@@ -585,105 +618,115 @@
             </And>
           </Where>
           <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
-        </pnp:Query>
-        <pnp:ViewFields>
-          <FieldRef Name="Title" />
+        </Query>
+        <ViewFields>
+          <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Status" />
           <FieldRef Name="ComplianceReviewOutcome" />
           <FieldRef Name="ComplianceReviewCompletedOn" />
           <FieldRef Name="Modified" />
-        </pnp:ViewFields>
-      </pnp:View>
+        </ViewFields>
+        <RowLimit Paged="TRUE">50</RowLimit>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+      </View>
 
       <!-- ============================================ -->
       <!-- CLOSEOUT VIEWS -->
       <!-- ============================================ -->
 
-      <!-- Requests in Closeout -->
-      <pnp:View Name="CloseoutQueue" DisplayName="Closeout Queue" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
-        <pnp:Query>
+      <!-- Closeout Queue -->
+      <View DisplayName="Closeout Queue" DefaultView="FALSE" Type="HTML" Url="{site}/Lists/Requests/CloseoutQueue.aspx" Level="1" BaseViewID="16" ContentTypeID="0x">
+        <Query>
           <Where>
             <Eq><FieldRef Name="Status" /><Value Type="Choice">Closeout</Value></Eq>
           </Where>
           <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
-        </pnp:Query>
-        <pnp:ViewFields>
-          <FieldRef Name="Title" />
+        </Query>
+        <ViewFields>
+          <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
-          <FieldRef Name="SubmittedBy" />
+          <FieldRef Name="Author" />
           <FieldRef Name="LegalReviewOutcome" />
           <FieldRef Name="ComplianceReviewOutcome" />
           <FieldRef Name="IsForesideReviewRequired" />
           <FieldRef Name="IsRetailUse" />
           <FieldRef Name="Modified" />
-        </pnp:ViewFields>
-      </pnp:View>
+        </ViewFields>
+        <RowLimit Paged="TRUE">50</RowLimit>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+      </View>
 
       <!-- ============================================ -->
       <!-- FORESIDE DOCUMENTS VIEWS -->
       <!-- ============================================ -->
 
-      <!-- Requests Awaiting Foreside Documents (Admin/All view) -->
-      <pnp:View Name="AwaitingForesideDocuments" DisplayName="Awaiting Foreside Documents" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
-        <pnp:Query>
+      <!-- Awaiting Foreside Documents -->
+      <View DisplayName="Awaiting Foreside Documents" DefaultView="FALSE" Type="HTML" Url="{site}/Lists/Requests/AwaitingForesideDocuments.aspx" Level="1" BaseViewID="17" ContentTypeID="0x">
+        <Query>
           <Where>
             <Eq><FieldRef Name="Status" /><Value Type="Choice">Awaiting Foreside Documents</Value></Eq>
           </Where>
           <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
-        </pnp:Query>
-        <pnp:ViewFields>
-          <FieldRef Name="Title" />
+        </Query>
+        <ViewFields>
+          <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
-          <FieldRef Name="SubmittedBy" />
+          <FieldRef Name="Author" />
           <FieldRef Name="AwaitingForesideSince" />
           <FieldRef Name="TrackingId" />
           <FieldRef Name="Modified" />
-        </pnp:ViewFields>
-      </pnp:View>
+        </ViewFields>
+        <RowLimit Paged="TRUE">50</RowLimit>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+      </View>
 
       <!-- ============================================ -->
       <!-- GENERAL VIEWS -->
       <!-- ============================================ -->
 
       <!-- All Requests (Default) -->
-      <pnp:View Name="AllItems" DisplayName="All Requests" DefaultView="true" RowLimit="100" Paged="true" TabularView="false">
-        <pnp:Query>
+      <View DisplayName="All Requests" DefaultView="TRUE" MobileView="TRUE" MobileDefaultView="TRUE" Type="HTML" Url="{site}/Lists/Requests/AllItems.aspx" Level="1" BaseViewID="1" ContentTypeID="0x">
+        <Query>
           <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
-        </pnp:Query>
-        <pnp:ViewFields>
-          <FieldRef Name="Title" />
+        </Query>
+        <ViewFields>
+          <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Status" />
-          <FieldRef Name="SubmittedBy" />
+          <FieldRef Name="Author" />
           <FieldRef Name="Attorney" />
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="Modified" />
-        </pnp:ViewFields>
-      </pnp:View>
+        </ViewFields>
+        <RowLimit Paged="TRUE">100</RowLimit>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+      </View>
 
       <!-- On Hold Requests -->
-      <pnp:View Name="OnHoldRequests" DisplayName="On Hold Requests" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
-        <pnp:Query>
+      <View DisplayName="On Hold Requests" DefaultView="FALSE" Type="HTML" Url="{site}/Lists/Requests/OnHoldRequests.aspx" Level="1" BaseViewID="18" ContentTypeID="0x">
+        <Query>
           <Where>
             <Eq><FieldRef Name="Status" /><Value Type="Choice">On Hold</Value></Eq>
           </Where>
           <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
-        </pnp:Query>
-        <pnp:ViewFields>
-          <FieldRef Name="Title" />
+        </Query>
+        <ViewFields>
+          <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="OnHoldBy" />
           <FieldRef Name="OnHoldSince" />
           <FieldRef Name="OnHoldReason" />
           <FieldRef Name="PreviousStatus" />
           <FieldRef Name="Modified" />
-        </pnp:ViewFields>
-      </pnp:View>
+        </ViewFields>
+        <RowLimit Paged="TRUE">50</RowLimit>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+      </View>
 
-      <!-- Rush Requests (open status only: Draft, Legal Intake, Assign Attorney, In Review, Closeout, On Hold) -->
-      <pnp:View Name="RushRequests" DisplayName="Rush Requests" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
-        <pnp:Query>
+      <!-- Rush Requests -->
+      <View DisplayName="Rush Requests" DefaultView="FALSE" Type="HTML" Url="{site}/Lists/Requests/RushRequests.aspx" Level="1" BaseViewID="19" ContentTypeID="0x">
+        <Query>
           <Where>
             <And>
               <Eq><FieldRef Name="IsRushRequest" /><Value Type="Boolean">1</Value></Eq>
@@ -701,18 +744,20 @@
             </And>
           </Where>
           <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
-        </pnp:Query>
-        <pnp:ViewFields>
-          <FieldRef Name="Title" />
+        </Query>
+        <ViewFields>
+          <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Status" />
-          <FieldRef Name="SubmittedBy" />
+          <FieldRef Name="Author" />
           <FieldRef Name="Attorney" />
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="RushRationale" />
           <FieldRef Name="Modified" />
-        </pnp:ViewFields>
-      </pnp:View>
+        </ViewFields>
+        <RowLimit Paged="TRUE">50</RowLimit>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+      </View>
 
     </pnp:Views>
 

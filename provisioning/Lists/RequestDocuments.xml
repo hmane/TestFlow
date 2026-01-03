@@ -46,11 +46,12 @@
            Group="Document Metadata" />
   </pnp:Fields>
 
-  <pnp:Views>
-    <pnp:View Name="AllDocuments" DisplayName="All Documents" DefaultView="true" RowLimit="30" Paged="true">
+  <pnp:Views RemoveExistingViews="true">
+    <!-- All Documents - Flat view (no folder structure) -->
+    <pnp:View Name="AllDocuments" DisplayName="All Documents" DefaultView="true" RowLimit="100" Paged="true" Scope="Recursive">
       <pnp:Query>
         <OrderBy>
-          <FieldRef Name="FileLeafRef" Ascending="TRUE" />
+          <FieldRef Name="Modified" Ascending="FALSE" />
         </OrderBy>
       </pnp:Query>
       <pnp:ViewFields>
@@ -61,13 +62,15 @@
         <FieldRef Name="Modified" />
         <FieldRef Name="Editor" />
       </pnp:ViewFields>
+      <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"newComposite","hide":true},{"key":"upload","hide":true},{"key":"UploadCommand","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"sync","hide":true},{"key":"syncCommand","hide":true},{"key":"download","hide":false,"primary":true,"position":0,"sectionType":"Primary"},{"key":"exportExcel","hide":false,"position":1,"sectionType":"Primary"}]}}</CustomFormatter>
     </pnp:View>
 
-    <pnp:View Name="ByDocumentType" DisplayName="By Document Type" DefaultView="false" RowLimit="30" Paged="true">
+    <!-- By Document Type - Flat view -->
+    <pnp:View Name="ByDocumentType" DisplayName="By Document Type" DefaultView="false" RowLimit="100" Paged="true" Scope="Recursive">
       <pnp:Query>
         <OrderBy>
           <FieldRef Name="DocumentType" Ascending="TRUE" />
-          <FieldRef Name="FileLeafRef" Ascending="TRUE" />
+          <FieldRef Name="Modified" Ascending="FALSE" />
         </OrderBy>
       </pnp:Query>
       <pnp:ViewFields>
@@ -77,13 +80,15 @@
         <FieldRef Name="DocumentType" />
         <FieldRef Name="Modified" />
       </pnp:ViewFields>
+      <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"newComposite","hide":true},{"key":"upload","hide":true},{"key":"UploadCommand","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"sync","hide":true},{"key":"syncCommand","hide":true},{"key":"download","hide":false,"primary":true,"position":0,"sectionType":"Primary"},{"key":"exportExcel","hide":false,"position":1,"sectionType":"Primary"}]}}</CustomFormatter>
     </pnp:View>
 
-    <pnp:View Name="ByRequest" DisplayName="By Request" DefaultView="false" RowLimit="30" Paged="true">
+    <!-- By Request - Flat view -->
+    <pnp:View Name="ByRequest" DisplayName="By Request" DefaultView="false" RowLimit="100" Paged="true" Scope="Recursive">
       <pnp:Query>
         <OrderBy>
           <FieldRef Name="Request" Ascending="TRUE" />
-          <FieldRef Name="FileLeafRef" Ascending="TRUE" />
+          <FieldRef Name="Modified" Ascending="FALSE" />
         </OrderBy>
       </pnp:Query>
       <pnp:ViewFields>
@@ -93,6 +98,7 @@
         <FieldRef Name="Request" />
         <FieldRef Name="Modified" />
       </pnp:ViewFields>
+      <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"newComposite","hide":true},{"key":"upload","hide":true},{"key":"UploadCommand","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"sync","hide":true},{"key":"syncCommand","hide":true},{"key":"download","hide":false,"primary":true,"position":0,"sectionType":"Primary"},{"key":"exportExcel","hide":false,"position":1,"sectionType":"Primary"}]}}</CustomFormatter>
     </pnp:View>
   </pnp:Views>
 
