@@ -88,6 +88,8 @@ export interface ICancelMetadata {
   cancelledBy: string;
   cancelledOn: Date;
   cancelReason: string;
+  /** The status the request was in before being cancelled */
+  previousStatus: RequestStatus;
 }
 
 /**

@@ -27,6 +27,7 @@ import {
   submitLegalReview as submitLegalReviewAction,
   submitComplianceReview as submitComplianceReviewAction,
   closeoutRequest as closeoutRequestAction,
+  completeForesideDocuments as completeForesideDocumentsAction,
   cancelRequest as cancelRequestAction,
   holdRequest as holdRequestAction,
   resumeRequest as resumeRequestAction,
@@ -153,7 +154,8 @@ interface IRequestState {
     notes: string,
     flags?: { isForesideReviewRequired?: boolean; isRetailUse?: boolean }
   ) => Promise<void>;
-  closeoutRequest: (options?: { trackingId?: string; commentsAcknowledged?: boolean }) => Promise<void>;
+  closeoutRequest: (options?: { trackingId?: string; commentsAcknowledged?: boolean; closeoutNotes?: string }) => Promise<void>;
+  completeForesideDocuments: (notes?: string) => Promise<void>;
   cancelRequest: (reason: string) => Promise<void>;
   holdRequest: (reason: string) => Promise<void>;
   resumeRequest: () => Promise<void>;
@@ -799,6 +801,32 @@ export const useRequestStore = create<IRequestState>()(
           itemId: state.itemId,
           trackingId: options?.trackingId,
           commentsAcknowledged: options?.commentsAcknowledged,
+          fieldsUpdated: result.fieldsUpdated,
+        });
+      },
+
+      /**
+       * Complete Foreside documents
+       * Moves request from Awaiting Foreside Documents to Completed
+       * @param notes - Optional notes about the Foreside documents
+       */
+      completeForesideDocuments: async (notes?: string): Promise<void> => {
+        const state = get();
+
+        if (!state.itemId) {
+          throw new Error('Cannot complete Foreside documents - no item ID');
+        }
+
+        const result = await completeForesideDocumentsAction(state.itemId, notes ? { notes } : undefined);
+
+        set({
+          currentRequest: result.updatedRequest,
+          originalRequest: structuredClone(result.updatedRequest),
+          isDirty: false,
+        });
+
+        SPContext.logger.info('Foreside documents completed', {
+          itemId: state.itemId,
           fieldsUpdated: result.fieldsUpdated,
         });
       },
@@ -1503,7 +1531,8 @@ export const useRequestActions = (): {
   sendToCommittee: (notes?: string) => Promise<void>;
   submitLegalReview: (outcome: string, notes: string) => Promise<void>;
   submitComplianceReview: (outcome: string, notes: string, flags?: { isForesideReviewRequired?: boolean; isRetailUse?: boolean }) => Promise<void>;
-  closeoutRequest: (options?: { trackingId?: string; commentsAcknowledged?: boolean }) => Promise<void>;
+  closeoutRequest: (options?: { trackingId?: string; commentsAcknowledged?: boolean; closeoutNotes?: string }) => Promise<void>;
+  completeForesideDocuments: (notes?: string) => Promise<void>;
   cancelRequest: (reason: string) => Promise<void>;
   holdRequest: (reason: string) => Promise<void>;
   resumeRequest: () => Promise<void>;
@@ -1524,6 +1553,7 @@ export const useRequestActions = (): {
       submitLegalReview: state.submitLegalReview,
       submitComplianceReview: state.submitComplianceReview,
       closeoutRequest: state.closeoutRequest,
+      completeForesideDocuments: state.completeForesideDocuments,
       cancelRequest: state.cancelRequest,
       holdRequest: state.holdRequest,
       resumeRequest: state.resumeRequest,

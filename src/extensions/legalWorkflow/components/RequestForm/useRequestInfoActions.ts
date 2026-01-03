@@ -1,5 +1,5 @@
 import * as React from 'react';
-import type { UseFormSetError } from 'react-hook-form';
+import type { FieldPath, UseFormClearErrors, UseFormSetError } from 'react-hook-form';
 
 // spfx-toolkit - tree-shaken imports
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
@@ -32,7 +32,7 @@ interface IRequestInfoActionsOptions {
   updateMultipleFields: (fields: Partial<ILegalRequest>) => void;
   saveAsDraft: () => Promise<number>;
   setError: UseFormSetError<ILegalRequest>;
-  clearErrors: () => void;
+  clearErrors: UseFormClearErrors<ILegalRequest>;
   showSuccessNotification?: (message: string) => void;
   showErrorNotification?: (message: string) => void;
 }
@@ -589,7 +589,7 @@ export const useRequestInfoActions = ({
    * Revalidate errors using the same schema that was originally used.
    * This is called when form values change after initial validation to keep
    * the error summary container in sync with the actual form state.
-   * Only removes fixed errors from the container, doesn't hide the entire container.
+   * Also updates React Hook Form errors so field-level error indicators update.
    */
   const revalidateErrors = React.useCallback(
     (formValues: Partial<ILegalRequest>): void => {
@@ -620,18 +620,49 @@ export const useRequestInfoActions = ({
 
       if (validation.success) {
         // All errors fixed, clear validation errors and reset schema ref
+        clearErrors();
         setValidationErrors([]);
         lastValidationSchemaRef.current = null;
       } else {
-        // Update with current errors only (removes fixed errors from the container)
-        const currentErrors: IValidationError[] = validation.error.issues.map(issue => ({
-          field: issue.path.length > 0 ? issue.path.join('.') : 'form',
-          message: issue.message,
-        }));
+        // Build a set of current error field paths for efficient lookup
+        const currentErrorFields = new Set<string>();
+        const currentErrors: IValidationError[] = validation.error.issues.map(issue => {
+          const fieldPath = issue.path.length > 0 ? issue.path.join('.') : 'form';
+          currentErrorFields.add(fieldPath);
+          return {
+            field: fieldPath,
+            message: issue.message,
+          };
+        });
+
+        // Find fields that had errors before but are now fixed
+        // Clear those specific errors in React Hook Form
+        const fieldsToClear: string[] = [];
+        validationErrors.forEach(prevError => {
+          if (!currentErrorFields.has(prevError.field)) {
+            // This field was fixed, collect it for clearing
+            fieldsToClear.push(prevError.field);
+          }
+        });
+
+        // Clear fixed field errors in React Hook Form
+        if (fieldsToClear.length > 0) {
+          clearErrors(fieldsToClear as FieldPath<ILegalRequest>[]);
+        }
+
+        // Update validation errors state
         setValidationErrors(currentErrors);
+
+        // Update React Hook Form errors for current errors
+        currentErrors.forEach(error => {
+          setError(error.field as any, {
+            type: 'manual',
+            message: error.message,
+          });
+        });
       }
     },
-    [validationErrors.length, hasDocumentsForApprovalType, hasAttachments, setValidationErrors]
+    [validationErrors, hasDocumentsForApprovalType, hasAttachments, setValidationErrors, setError, clearErrors]
   );
 
   return {

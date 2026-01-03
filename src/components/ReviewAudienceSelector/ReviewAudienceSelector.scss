@@ -1,0 +1,234 @@
+/**
+ * ReviewAudienceSelector Styles
+ *
+ * Clean, prominent card-based selection for review audience.
+ * Uses BEM naming convention with 'ras' prefix.
+ * Aligned with Fluent UI / SharePoint theme.
+ */
+
+// ============================================================================
+// Theme Colors (SharePoint/Fluent UI aligned)
+// ============================================================================
+
+$themePrimary: #0078d4;
+$themeDark: #005a9e;
+$themeLight: #c7e0f4;
+$themeLighter: #deecf9;
+
+$neutralPrimary: #323130;
+$neutralSecondary: #605e5c;
+$neutralTertiary: #a19f9d;
+$neutralLight: #edebe9;
+$neutralLighter: #f3f2f1;
+$neutralLighterAlt: #faf9f8;
+$white: #ffffff;
+
+$successColor: #107c10;
+
+// Typography
+$fontFamily: 'Segoe UI', 'Segoe UI Web (West European)', -apple-system, BlinkMacSystemFont, Roboto, 'Helvetica Neue', sans-serif;
+
+// Spacing
+$space-xs: 4px;
+$space-sm: 8px;
+$space-md: 16px;
+$space-lg: 24px;
+
+// Shadows (Fluent UI depth)
+$depth4: 0 1.6px 3.6px 0 rgba(0, 0, 0, 0.132), 0 0.3px 0.9px 0 rgba(0, 0, 0, 0.108);
+$depth8: 0 3.2px 7.2px 0 rgba(0, 0, 0, 0.132), 0 0.6px 1.8px 0 rgba(0, 0, 0, 0.108);
+
+// Transitions
+$transitionFast: 100ms ease-out;
+$transitionNormal: 200ms ease-out;
+
+// ============================================================================
+// Animations
+// ============================================================================
+
+@keyframes ras-checkPop {
+  0% {
+    transform: scale(0);
+  }
+  70% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+// ============================================================================
+// Main Container
+// ============================================================================
+
+.ras {
+  font-family: $fontFamily;
+}
+
+// ============================================================================
+// Cards Container
+// ============================================================================
+
+.ras__cards {
+  display: flex;
+  gap: $space-md;
+  flex-wrap: wrap;
+
+  @media (max-width: 640px) {
+    flex-direction: column;
+  }
+}
+
+// ============================================================================
+// Individual Card
+// ============================================================================
+
+.ras__card {
+  flex: 1;
+  min-width: 180px;
+  max-width: 280px;
+  display: flex;
+  align-items: center;
+  gap: $space-md;
+  padding: $space-md;
+  background: $white;
+  border: 1px solid $neutralLight;
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    border-color $transitionNormal,
+    box-shadow $transitionNormal,
+    background-color $transitionNormal,
+    transform $transitionFast;
+  position: relative;
+  user-select: none;
+
+  // Hover state
+  &:hover:not(.ras__card--disabled) {
+    border-color: $neutralTertiary;
+    box-shadow: $depth4;
+    background-color: $neutralLighterAlt;
+  }
+
+  // Focus state (keyboard navigation)
+  &:focus {
+    outline: none;
+    border-color: $themePrimary;
+    box-shadow: 0 0 0 1px $themePrimary;
+  }
+
+  &:focus:not(:focus-visible) {
+    box-shadow: none;
+    border-color: $neutralLight;
+  }
+
+  &:focus-visible {
+    border-color: $themePrimary;
+    box-shadow: 0 0 0 2px $themeLight;
+  }
+
+  // Active/pressed state
+  &:active:not(.ras__card--disabled) {
+    transform: scale(0.98);
+  }
+
+  // Selected state - uses theme primary color for consistency
+  &--selected {
+    border-color: $themePrimary;
+    background-color: $themeLighter;
+    box-shadow: $depth4;
+
+    &:hover {
+      border-color: $themePrimary;
+      background-color: $themeLight;
+    }
+
+    .ras__card-title {
+      color: $themePrimary;
+    }
+  }
+
+  // Disabled state
+  &--disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: $neutralLighter;
+  }
+
+  @media (max-width: 640px) {
+    max-width: none;
+  }
+}
+
+
+// ============================================================================
+// Card Content
+// ============================================================================
+
+.ras__card-content {
+  flex: 1;
+  min-width: 0; // Allow text truncation
+}
+
+.ras__card-title {
+  font-weight: 600;
+  color: $neutralPrimary;
+  margin-bottom: 2px;
+  transition: color $transitionNormal;
+}
+
+.ras__card-description {
+  color: $neutralSecondary;
+  line-height: 1.4;
+}
+
+// ============================================================================
+// Selection Checkmark
+// ============================================================================
+
+.ras__card-check {
+  position: absolute;
+  top: $space-sm;
+  right: $space-sm;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: $themePrimary;
+  color: $white;
+  border-radius: 50%;
+  animation: ras-checkPop 0.25s ease-out;
+
+  i {
+    font-size: 12px;
+    font-weight: bold;
+  }
+}
+
+// ============================================================================
+// High Contrast Mode Support
+// ============================================================================
+
+@media (forced-colors: active) {
+  .ras__card {
+    border: 2px solid ButtonBorder;
+
+    &--selected {
+      border-color: Highlight;
+      background-color: Highlight;
+      color: HighlightText;
+    }
+
+    &:focus {
+      outline: 2px solid Highlight;
+      outline-offset: 2px;
+    }
+  }
+
+  .ras__card-check {
+    background-color: Highlight;
+    color: HighlightText;
+  }
+}

@@ -55,14 +55,13 @@
           <CHOICE>Retail / Public</CHOICE>
         </CHOICES>
       </Field>
-      <Field Type="MultiChoice" Name="Audience" DisplayName="Audience" Group="Request Information" ID="{F76C277D-114F-44A4-B569-97E5072DB2D0}">
+      <Field Type="MultiChoice" Name="Audience" DisplayName="Audience" Group="Request Information" ID="{F76C277D-114F-44A4-B569-97E5072DB2D0}" FillInChoice="TRUE">
         <CHOICES>
           <CHOICE>Prospective Separate Acct Client</CHOICE>
           <CHOICE>Existing Separate Acct Client</CHOICE>
           <CHOICE>Prospective Fund Shareholder</CHOICE>
           <CHOICE>Existing Fund Shareholder</CHOICE>
           <CHOICE>Consultant</CHOICE>
-          <CHOICE>Other</CHOICE>
         </CHOICES>
       </Field>
       <Field Type="MultiChoice" Name="USFunds" DisplayName="U.S. Funds" Group="Request Information" ID="{048BD70C-9EFF-45B3-8F4C-26E190725B43}">
@@ -166,7 +165,7 @@
 
       <!-- Closeout (4) -->
       <Field Type="Text" Name="TrackingId" DisplayName="Tracking Id" MaxLength="50" Group="Closeout" ID="{E4FD4892-C8BA-4B97-98AA-4EA4833C359C}" />
-      <Field Type="Note" Name="CloseoutNotes" DisplayName="Closeout Notes" RichText="FALSE" AppendOnly="TRUE" NumLines="6" Group="Closeout" ID="{7B8C3D4E-5F6A-4B9C-8D1E-2F3A4B5C6D7E}" />
+      <Field Type="Note" Name="CloseoutNotes" DisplayName="Closeout Notes" RichText="FALSE" NumLines="6" Group="Closeout" ID="{7B8C3D4E-5F6A-4B9C-8D1E-2F3A4B5C6D7E}" />
       <Field Type="Boolean" Name="CommentsAcknowledged" DisplayName="Comments Acknowledged" Group="Closeout" ID="{8C9D4E5F-6A7B-4C8D-9E0F-1A2B3C4D5E6F}"><Default>0</Default></Field>
       <Field Type="DateTime" Name="CommentsAcknowledgedOn" DisplayName="Comments Acknowledged On" Format="DateTime" Group="Closeout" ID="{9D0E5F6A-7B8C-4D9E-0F1A-2B3C4D5E6F7A}" />
 
@@ -215,27 +214,37 @@
     </pnp:Fields>
 
     <!-- Dashboard Views -->
+    <!--
+      Open Status Definition: Draft, Legal Intake, Assign Attorney, In Review, Closeout, On Hold
+      Closed Status Definition: Completed, Cancelled
+      Awaiting Foreside Documents: Separate view (not open, not closed)
+      All views sort by Modified DESC unless a specific queue ordering is needed
+    -->
     <pnp:Views>
       <!-- ============================================ -->
       <!-- HOME DASHBOARD VIEWS (Submitters & Admins) -->
       <!-- ============================================ -->
 
-      <!-- My Open Requests - Requests created by current user that are not completed/cancelled/awaiting foreside -->
+      <!-- My Open Requests - Requests created by current user in open status (Draft, Legal Intake, Assign Attorney, In Review, Closeout, On Hold) -->
       <pnp:View Name="MyOpenRequests" DisplayName="My Open Requests" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
         <pnp:Query>
           <Where>
             <And>
               <Eq><FieldRef Name="Author" /><Value Type="Integer"><UserID/></Value></Eq>
-              <And>
-                <And>
-                  <Neq><FieldRef Name="Status" /><Value Type="Choice">Completed</Value></Neq>
-                  <Neq><FieldRef Name="Status" /><Value Type="Choice">Cancelled</Value></Neq>
-                </And>
-                <Neq><FieldRef Name="Status" /><Value Type="Choice">Awaiting Foreside Documents</Value></Neq>
-              </And>
+              <In>
+                <FieldRef Name="Status" />
+                <Values>
+                  <Value Type="Choice">Draft</Value>
+                  <Value Type="Choice">Legal Intake</Value>
+                  <Value Type="Choice">Assign Attorney</Value>
+                  <Value Type="Choice">In Review</Value>
+                  <Value Type="Choice">Closeout</Value>
+                  <Value Type="Choice">On Hold</Value>
+                </Values>
+              </In>
             </And>
           </Where>
-          <OrderBy><FieldRef Name="Created" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
         </pnp:Query>
         <pnp:ViewFields>
           <FieldRef Name="Title" />
@@ -243,20 +252,23 @@
           <FieldRef Name="Status" />
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="Attorney" />
-          <FieldRef Name="Created" />
+          <FieldRef Name="Modified" />
         </pnp:ViewFields>
       </pnp:View>
 
-      <!-- My Completed Requests - Requests created by current user that are completed -->
+      <!-- My Completed Requests - Requests created by current user that are Completed OR Cancelled -->
       <pnp:View Name="MyCompletedRequests" DisplayName="My Completed Requests" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
         <pnp:Query>
           <Where>
             <And>
               <Eq><FieldRef Name="Author" /><Value Type="Integer"><UserID/></Value></Eq>
-              <Eq><FieldRef Name="Status" /><Value Type="Choice">Completed</Value></Eq>
+              <Or>
+                <Eq><FieldRef Name="Status" /><Value Type="Choice">Completed</Value></Eq>
+                <Eq><FieldRef Name="Status" /><Value Type="Choice">Cancelled</Value></Eq>
+              </Or>
             </And>
           </Where>
-          <OrderBy><FieldRef Name="CloseoutOn" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
         </pnp:Query>
         <pnp:ViewFields>
           <FieldRef Name="Title" />
@@ -265,22 +277,47 @@
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="CloseoutOn" />
           <FieldRef Name="TrackingId" />
+          <FieldRef Name="Modified" />
         </pnp:ViewFields>
       </pnp:View>
 
-      <!-- All Open Requests - For Admins to see all open requests (excludes completed/cancelled/awaiting foreside) -->
-      <pnp:View Name="AllOpenRequests" DisplayName="All Open Requests" DefaultView="false" RowLimit="100" Paged="true" TabularView="false">
+      <!-- My Awaiting Foreside Documents - Requests created by current user awaiting foreside documents -->
+      <pnp:View Name="MyAwaitingForesideDocuments" DisplayName="My Awaiting Foreside Documents" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
         <pnp:Query>
           <Where>
             <And>
-              <And>
-                <Neq><FieldRef Name="Status" /><Value Type="Choice">Completed</Value></Neq>
-                <Neq><FieldRef Name="Status" /><Value Type="Choice">Cancelled</Value></Neq>
-              </And>
-              <Neq><FieldRef Name="Status" /><Value Type="Choice">Awaiting Foreside Documents</Value></Neq>
+              <Eq><FieldRef Name="Author" /><Value Type="Integer"><UserID/></Value></Eq>
+              <Eq><FieldRef Name="Status" /><Value Type="Choice">Awaiting Foreside Documents</Value></Eq>
             </And>
           </Where>
-          <OrderBy><FieldRef Name="Created" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
+        </pnp:Query>
+        <pnp:ViewFields>
+          <FieldRef Name="Title" />
+          <FieldRef Name="RequestTitle" />
+          <FieldRef Name="AwaitingForesideSince" />
+          <FieldRef Name="TrackingId" />
+          <FieldRef Name="Modified" />
+        </pnp:ViewFields>
+      </pnp:View>
+
+      <!-- All Open Requests - For Admins to see all open requests (Draft, Legal Intake, Assign Attorney, In Review, Closeout, On Hold) -->
+      <pnp:View Name="AllOpenRequests" DisplayName="All Open Requests" DefaultView="false" RowLimit="100" Paged="true" TabularView="false">
+        <pnp:Query>
+          <Where>
+            <In>
+              <FieldRef Name="Status" />
+              <Values>
+                <Value Type="Choice">Draft</Value>
+                <Value Type="Choice">Legal Intake</Value>
+                <Value Type="Choice">Assign Attorney</Value>
+                <Value Type="Choice">In Review</Value>
+                <Value Type="Choice">Closeout</Value>
+                <Value Type="Choice">On Hold</Value>
+              </Values>
+            </In>
+          </Where>
+          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
         </pnp:Query>
         <pnp:ViewFields>
           <FieldRef Name="Title" />
@@ -289,7 +326,29 @@
           <FieldRef Name="SubmittedBy" />
           <FieldRef Name="Attorney" />
           <FieldRef Name="TargetReturnDate" />
-          <FieldRef Name="Created" />
+          <FieldRef Name="Modified" />
+        </pnp:ViewFields>
+      </pnp:View>
+
+      <!-- All Completed Requests - For Admins to see all Completed and Cancelled requests -->
+      <pnp:View Name="AllCompletedRequests" DisplayName="All Completed Requests" DefaultView="false" RowLimit="100" Paged="true" TabularView="false">
+        <pnp:Query>
+          <Where>
+            <Or>
+              <Eq><FieldRef Name="Status" /><Value Type="Choice">Completed</Value></Eq>
+              <Eq><FieldRef Name="Status" /><Value Type="Choice">Cancelled</Value></Eq>
+            </Or>
+          </Where>
+          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
+        </pnp:Query>
+        <pnp:ViewFields>
+          <FieldRef Name="Title" />
+          <FieldRef Name="RequestTitle" />
+          <FieldRef Name="Status" />
+          <FieldRef Name="SubmittedBy" />
+          <FieldRef Name="CloseoutOn" />
+          <FieldRef Name="TrackingId" />
+          <FieldRef Name="Modified" />
         </pnp:ViewFields>
       </pnp:View>
 
@@ -303,7 +362,7 @@
           <Where>
             <Eq><FieldRef Name="Status" /><Value Type="Choice">Legal Intake</Value></Eq>
           </Where>
-          <OrderBy><FieldRef Name="SubmittedOn" Ascending="TRUE" /></OrderBy>
+          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
         </pnp:Query>
         <pnp:ViewFields>
           <FieldRef Name="Title" />
@@ -313,6 +372,7 @@
           <FieldRef Name="ReviewAudience" />
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="IsRushRequest" />
+          <FieldRef Name="Modified" />
         </pnp:ViewFields>
       </pnp:View>
 
@@ -322,7 +382,7 @@
           <Where>
             <Eq><FieldRef Name="Status" /><Value Type="Choice">Assign Attorney</Value></Eq>
           </Where>
-          <OrderBy><FieldRef Name="SubmittedToAssignAttorneyOn" Ascending="TRUE" /></OrderBy>
+          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
         </pnp:Query>
         <pnp:ViewFields>
           <FieldRef Name="Title" />
@@ -332,6 +392,7 @@
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="IsRushRequest" />
           <FieldRef Name="SubmittedToAssignAttorneyOn" />
+          <FieldRef Name="Modified" />
         </pnp:ViewFields>
       </pnp:View>
 
@@ -341,7 +402,7 @@
           <Where>
             <Eq><FieldRef Name="Status" /><Value Type="Choice">In Review</Value></Eq>
           </Where>
-          <OrderBy><FieldRef Name="SubmittedForReviewOn" Ascending="TRUE" /></OrderBy>
+          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
         </pnp:Query>
         <pnp:ViewFields>
           <FieldRef Name="Title" />
@@ -350,6 +411,7 @@
           <FieldRef Name="LegalReviewStatus" />
           <FieldRef Name="ComplianceReviewStatus" />
           <FieldRef Name="TargetReturnDate" />
+          <FieldRef Name="Modified" />
         </pnp:ViewFields>
       </pnp:View>
 
@@ -357,28 +419,40 @@
       <!-- ATTORNEY DASHBOARD VIEWS -->
       <!-- ============================================ -->
 
-      <!-- My Assigned Requests - Requests assigned to current attorney -->
+      <!-- My Assigned Requests - Requests assigned to current attorney (open status: Draft, Legal Intake, Assign Attorney, In Review, Closeout, On Hold) -->
       <pnp:View Name="MyAssignedRequests" DisplayName="My Assigned Requests" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
         <pnp:Query>
           <Where>
             <And>
               <Eq><FieldRef Name="Attorney" /><Value Type="Integer"><UserID/></Value></Eq>
-              <Eq><FieldRef Name="Status" /><Value Type="Choice">In Review</Value></Eq>
+              <In>
+                <FieldRef Name="Status" />
+                <Values>
+                  <Value Type="Choice">Draft</Value>
+                  <Value Type="Choice">Legal Intake</Value>
+                  <Value Type="Choice">Assign Attorney</Value>
+                  <Value Type="Choice">In Review</Value>
+                  <Value Type="Choice">Closeout</Value>
+                  <Value Type="Choice">On Hold</Value>
+                </Values>
+              </In>
             </And>
           </Where>
-          <OrderBy><FieldRef Name="TargetReturnDate" Ascending="TRUE" /></OrderBy>
+          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
         </pnp:Query>
         <pnp:ViewFields>
           <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
+          <FieldRef Name="Status" />
           <FieldRef Name="LegalReviewStatus" />
           <FieldRef Name="SubmittedBy" />
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="IsRushRequest" />
+          <FieldRef Name="Modified" />
         </pnp:ViewFields>
       </pnp:View>
 
-      <!-- Attorney - Pending My Review -->
+      <!-- Attorney - Pending My Review (Not Started, In Progress, Waiting On Attorney) -->
       <pnp:View Name="AttorneyPendingReview" DisplayName="Pending My Review" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
         <pnp:Query>
           <Where>
@@ -387,13 +461,16 @@
               <And>
                 <Eq><FieldRef Name="Status" /><Value Type="Choice">In Review</Value></Eq>
                 <Or>
-                  <Eq><FieldRef Name="LegalReviewStatus" /><Value Type="Choice">Not Started</Value></Eq>
-                  <Eq><FieldRef Name="LegalReviewStatus" /><Value Type="Choice">In Progress</Value></Eq>
+                  <Or>
+                    <Eq><FieldRef Name="LegalReviewStatus" /><Value Type="Choice">Not Started</Value></Eq>
+                    <Eq><FieldRef Name="LegalReviewStatus" /><Value Type="Choice">In Progress</Value></Eq>
+                  </Or>
+                  <Eq><FieldRef Name="LegalReviewStatus" /><Value Type="Choice">Waiting On Attorney</Value></Eq>
                 </Or>
               </And>
             </And>
           </Where>
-          <OrderBy><FieldRef Name="TargetReturnDate" Ascending="TRUE" /></OrderBy>
+          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
         </pnp:Query>
         <pnp:ViewFields>
           <FieldRef Name="Title" />
@@ -402,26 +479,31 @@
           <FieldRef Name="SubmittedBy" />
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="IsRushRequest" />
+          <FieldRef Name="Modified" />
         </pnp:ViewFields>
       </pnp:View>
 
-      <!-- Attorney - Completed Reviews -->
+      <!-- Attorney - Completed Reviews (completed or cancelled requests where attorney was assigned) -->
       <pnp:View Name="AttorneyCompletedReviews" DisplayName="My Completed Reviews" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
         <pnp:Query>
           <Where>
             <And>
               <Eq><FieldRef Name="Attorney" /><Value Type="Integer"><UserID/></Value></Eq>
-              <Eq><FieldRef Name="LegalReviewStatus" /><Value Type="Choice">Completed</Value></Eq>
+              <Or>
+                <Eq><FieldRef Name="Status" /><Value Type="Choice">Completed</Value></Eq>
+                <Eq><FieldRef Name="Status" /><Value Type="Choice">Cancelled</Value></Eq>
+              </Or>
             </And>
           </Where>
-          <OrderBy><FieldRef Name="LegalReviewCompletedOn" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
         </pnp:Query>
         <pnp:ViewFields>
           <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
+          <FieldRef Name="Status" />
           <FieldRef Name="LegalReviewOutcome" />
           <FieldRef Name="LegalReviewCompletedOn" />
-          <FieldRef Name="Status" />
+          <FieldRef Name="Modified" />
         </pnp:ViewFields>
       </pnp:View>
 
@@ -435,7 +517,7 @@
           <Where>
             <Eq><FieldRef Name="Status" /><Value Type="Choice">Assign Attorney</Value></Eq>
           </Where>
-          <OrderBy><FieldRef Name="TargetReturnDate" Ascending="TRUE" /></OrderBy>
+          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
         </pnp:Query>
         <pnp:ViewFields>
           <FieldRef Name="Title" />
@@ -445,6 +527,7 @@
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="IsRushRequest" />
           <FieldRef Name="SubmissionItem" />
+          <FieldRef Name="Modified" />
         </pnp:ViewFields>
       </pnp:View>
 
@@ -452,7 +535,7 @@
       <!-- COMPLIANCE DASHBOARD VIEWS -->
       <!-- ============================================ -->
 
-      <!-- Compliance - Pending Review -->
+      <!-- Compliance - Pending Review (Not Started, In Progress, Waiting On Compliance) -->
       <pnp:View Name="CompliancePendingReview" DisplayName="Pending Compliance Review" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
         <pnp:Query>
           <Where>
@@ -464,13 +547,16 @@
                   <Eq><FieldRef Name="ReviewAudience" /><Value Type="Choice">Both</Value></Eq>
                 </Or>
                 <Or>
-                  <Eq><FieldRef Name="ComplianceReviewStatus" /><Value Type="Choice">Not Started</Value></Eq>
-                  <Eq><FieldRef Name="ComplianceReviewStatus" /><Value Type="Choice">In Progress</Value></Eq>
+                  <Or>
+                    <Eq><FieldRef Name="ComplianceReviewStatus" /><Value Type="Choice">Not Started</Value></Eq>
+                    <Eq><FieldRef Name="ComplianceReviewStatus" /><Value Type="Choice">In Progress</Value></Eq>
+                  </Or>
+                  <Eq><FieldRef Name="ComplianceReviewStatus" /><Value Type="Choice">Waiting On Compliance</Value></Eq>
                 </Or>
               </And>
             </And>
           </Where>
-          <OrderBy><FieldRef Name="TargetReturnDate" Ascending="TRUE" /></OrderBy>
+          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
         </pnp:Query>
         <pnp:ViewFields>
           <FieldRef Name="Title" />
@@ -479,10 +565,11 @@
           <FieldRef Name="SubmittedBy" />
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="IsRushRequest" />
+          <FieldRef Name="Modified" />
         </pnp:ViewFields>
       </pnp:View>
 
-      <!-- Compliance - Completed Reviews -->
+      <!-- Compliance - Completed Reviews (Completed or Cancelled requests requiring compliance review) -->
       <pnp:View Name="ComplianceCompletedReviews" DisplayName="Completed Compliance Reviews" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
         <pnp:Query>
           <Where>
@@ -491,17 +578,21 @@
                 <Eq><FieldRef Name="ReviewAudience" /><Value Type="Choice">Compliance</Value></Eq>
                 <Eq><FieldRef Name="ReviewAudience" /><Value Type="Choice">Both</Value></Eq>
               </Or>
-              <Eq><FieldRef Name="ComplianceReviewStatus" /><Value Type="Choice">Completed</Value></Eq>
+              <Or>
+                <Eq><FieldRef Name="Status" /><Value Type="Choice">Completed</Value></Eq>
+                <Eq><FieldRef Name="Status" /><Value Type="Choice">Cancelled</Value></Eq>
+              </Or>
             </And>
           </Where>
-          <OrderBy><FieldRef Name="ComplianceReviewCompletedOn" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
         </pnp:Query>
         <pnp:ViewFields>
           <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
+          <FieldRef Name="Status" />
           <FieldRef Name="ComplianceReviewOutcome" />
           <FieldRef Name="ComplianceReviewCompletedOn" />
-          <FieldRef Name="Status" />
+          <FieldRef Name="Modified" />
         </pnp:ViewFields>
       </pnp:View>
 
@@ -515,7 +606,7 @@
           <Where>
             <Eq><FieldRef Name="Status" /><Value Type="Choice">Closeout</Value></Eq>
           </Where>
-          <OrderBy><FieldRef Name="TargetReturnDate" Ascending="TRUE" /></OrderBy>
+          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
         </pnp:Query>
         <pnp:ViewFields>
           <FieldRef Name="Title" />
@@ -525,6 +616,7 @@
           <FieldRef Name="ComplianceReviewOutcome" />
           <FieldRef Name="IsForesideReviewRequired" />
           <FieldRef Name="IsRetailUse" />
+          <FieldRef Name="Modified" />
         </pnp:ViewFields>
       </pnp:View>
 
@@ -532,21 +624,21 @@
       <!-- FORESIDE DOCUMENTS VIEWS -->
       <!-- ============================================ -->
 
-      <!-- Requests Awaiting Foreside Documents -->
+      <!-- Requests Awaiting Foreside Documents (Admin/All view) -->
       <pnp:View Name="AwaitingForesideDocuments" DisplayName="Awaiting Foreside Documents" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
         <pnp:Query>
           <Where>
             <Eq><FieldRef Name="Status" /><Value Type="Choice">Awaiting Foreside Documents</Value></Eq>
           </Where>
-          <OrderBy><FieldRef Name="AwaitingForesideSince" Ascending="TRUE" /></OrderBy>
+          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
         </pnp:Query>
         <pnp:ViewFields>
           <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="SubmittedBy" />
-          <FieldRef Name="CloseoutOn" />
           <FieldRef Name="AwaitingForesideSince" />
           <FieldRef Name="TrackingId" />
+          <FieldRef Name="Modified" />
         </pnp:ViewFields>
       </pnp:View>
 
@@ -557,7 +649,7 @@
       <!-- All Requests (Default) -->
       <pnp:View Name="AllItems" DisplayName="All Requests" DefaultView="true" RowLimit="100" Paged="true" TabularView="false">
         <pnp:Query>
-          <OrderBy><FieldRef Name="Created" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
         </pnp:Query>
         <pnp:ViewFields>
           <FieldRef Name="Title" />
@@ -566,7 +658,7 @@
           <FieldRef Name="SubmittedBy" />
           <FieldRef Name="Attorney" />
           <FieldRef Name="TargetReturnDate" />
-          <FieldRef Name="Created" />
+          <FieldRef Name="Modified" />
         </pnp:ViewFields>
       </pnp:View>
 
@@ -576,7 +668,7 @@
           <Where>
             <Eq><FieldRef Name="Status" /><Value Type="Choice">On Hold</Value></Eq>
           </Where>
-          <OrderBy><FieldRef Name="OnHoldSince" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
         </pnp:Query>
         <pnp:ViewFields>
           <FieldRef Name="Title" />
@@ -585,25 +677,30 @@
           <FieldRef Name="OnHoldSince" />
           <FieldRef Name="OnHoldReason" />
           <FieldRef Name="PreviousStatus" />
+          <FieldRef Name="Modified" />
         </pnp:ViewFields>
       </pnp:View>
 
-      <!-- Rush Requests -->
+      <!-- Rush Requests (open status only: Draft, Legal Intake, Assign Attorney, In Review, Closeout, On Hold) -->
       <pnp:View Name="RushRequests" DisplayName="Rush Requests" DefaultView="false" RowLimit="50" Paged="true" TabularView="false">
         <pnp:Query>
           <Where>
             <And>
               <Eq><FieldRef Name="IsRushRequest" /><Value Type="Boolean">1</Value></Eq>
-              <And>
-                <And>
-                  <Neq><FieldRef Name="Status" /><Value Type="Choice">Completed</Value></Neq>
-                  <Neq><FieldRef Name="Status" /><Value Type="Choice">Cancelled</Value></Neq>
-                </And>
-                <Neq><FieldRef Name="Status" /><Value Type="Choice">Awaiting Foreside Documents</Value></Neq>
-              </And>
+              <In>
+                <FieldRef Name="Status" />
+                <Values>
+                  <Value Type="Choice">Draft</Value>
+                  <Value Type="Choice">Legal Intake</Value>
+                  <Value Type="Choice">Assign Attorney</Value>
+                  <Value Type="Choice">In Review</Value>
+                  <Value Type="Choice">Closeout</Value>
+                  <Value Type="Choice">On Hold</Value>
+                </Values>
+              </In>
             </And>
           </Where>
-          <OrderBy><FieldRef Name="TargetReturnDate" Ascending="TRUE" /></OrderBy>
+          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
         </pnp:Query>
         <pnp:ViewFields>
           <FieldRef Name="Title" />
@@ -613,6 +710,7 @@
           <FieldRef Name="Attorney" />
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="RushRationale" />
+          <FieldRef Name="Modified" />
         </pnp:ViewFields>
       </pnp:View>
 

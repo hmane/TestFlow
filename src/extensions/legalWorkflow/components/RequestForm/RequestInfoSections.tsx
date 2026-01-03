@@ -11,7 +11,6 @@ import {
   FormContainer,
   FormItem,
   FormLabel,
-  PnPPeoplePicker,
 } from 'spfx-toolkit/lib/components/spForm';
 import {
   SPChoiceField,
@@ -20,8 +19,8 @@ import {
   SPDateTimeFormat,
   SPTextField,
   SPTextFieldMode,
+  SPUserField,
 } from 'spfx-toolkit/lib/components/spFields';
-import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 
 import { Lists } from '@sp/Lists';
 
@@ -31,7 +30,6 @@ import {
   DistributionMethod,
   FINRAAudienceCategory,
   RequestType,
-  ReviewAudience,
   SeparateAcctStrategies,
   SeparateAcctStrategiesIncl,
   SubmissionType,
@@ -39,6 +37,7 @@ import {
   USFunds,
 } from '@appTypes/index';
 import { PriorSubmissionPicker } from '@components/PriorSubmissionPicker/PriorSubmissionPicker';
+import { ReviewAudienceSelector } from '@components/ReviewAudienceSelector';
 import { useSubmissionItems } from '@stores/submissionItemsStore';
 
 const SECTION_HEADER_TOKENS = { childrenGap: 4 };
@@ -52,11 +51,8 @@ const SUBMISSION_TYPE_CHOICES: SubmissionType[] = [
   SubmissionType.MaterialUpdates,
 ];
 
-const REVIEW_AUDIENCE_CHOICES: ReviewAudience[] = [
-  ReviewAudience.Legal,
-  ReviewAudience.Compliance,
-  ReviewAudience.Both,
-];
+// Note: Review audience choices are now handled by the ReviewAudienceSelector component
+// which has its own internal configuration for the card-based selection
 
 const DISTRIBUTION_METHOD_CHOICES: DistributionMethod[] = [
   DistributionMethod.DodgeCoxWebsiteUS,
@@ -399,6 +395,7 @@ export const DistributionSection: React.FC<DistributionSectionProps> = ({
             dateTimeFormat={SPDateTimeFormat.DateOnly}
             displayFormat='MM/dd/yyyy'
             showClearButton
+            minDate={new Date()}
             calendarButtonPosition='before'
             rules={{
               required: isVisible ? 'Date of first use is required' : false,
@@ -415,45 +412,46 @@ interface ReviewAudienceSectionProps {
   requestType?: RequestType;
 }
 
+/**
+ * ReviewAudienceSection Component
+ *
+ * Displays a prominent card-based selector for choosing the review audience.
+ * Uses the ReviewAudienceSelector component for a more visual and user-friendly
+ * selection experience compared to a dropdown.
+ *
+ * Options:
+ * - Legal Only: Request reviewed by Legal team only
+ * - Compliance Only: Request reviewed by Compliance team only
+ * - Both: Request reviewed by both teams
+ */
 export const ReviewAudienceSection: React.FC<ReviewAudienceSectionProps> = ({
   errors,
   requestType,
 }) => {
-  const requestListIdentifier = Lists.Requests.Title;
-
-  // Determine if section should be visible
+  // Determine if section should be visible (only for Communication requests)
   const isVisible = requestType === RequestType.Communication;
 
   return (
     <>
+      {/* Section header - only visible for Communication requests */}
       <div style={{ display: isVisible ? 'block' : 'none' }}>
         <Separator />
         <SectionHeader
           icon='Megaphone'
           title='Review Audience'
-          description='Specify which teams should review this communication'
+          description='Select which teams should review this communication'
         />
       </div>
-      <FormContainer labelWidth='200px' style={{ display: isVisible ? 'block' : 'none' }}>
+
+      {/* Card-based review audience selector */}
+      <div style={{ display: isVisible ? 'block' : 'none', marginTop: '16px' }}>
         <FormItem fieldName='reviewAudience'>
-          <FormLabel isRequired={isVisible}>Review Audience</FormLabel>
-          <SPChoiceField
+          <ReviewAudienceSelector
             name='reviewAudience'
-            placeholder='Select review audience'
-            displayType={SPChoiceDisplayType.Dropdown}
-            choices={REVIEW_AUDIENCE_CHOICES}
-            dataSource={{
-              type: 'list',
-              listNameOrId: requestListIdentifier,
-              fieldInternalName: 'ReviewAudience',
-            }}
-            showClearButton
-            rules={{
-              required: isVisible ? 'Review audience is required' : false,
-            }}
+            isRequired={isVisible}
           />
         </FormItem>
-      </FormContainer>
+      </div>
     </>
   );
 };
@@ -685,13 +683,14 @@ export const AdditionalPartiesSection: React.FC<AdditionalPartiesSectionProps> =
       <FormContainer labelWidth='200px'>
         <FormItem fieldName='additionalParty'>
           <FormLabel>Additional Parties</FormLabel>
-          <PnPPeoplePicker
+          <SPUserField
             name='additionalParty'
             control={control}
-            context={SPContext.peoplepickerContext}
             placeholder='Search for people to add'
-            personSelectionLimit={10}
-            ensureUser={true}
+            allowMultiple={true}
+            maxSelections={10}
+            showPhoto
+            showEmail
           />
         </FormItem>
       </FormContainer>

@@ -811,6 +811,15 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
    * Render Approval Mode
    */
   const renderApprovalMode = () => {
+    // CRITICAL DEBUG: Log render conditions
+    SPContext.logger.info('🔍 renderApprovalMode ENTRY', {
+      documentType: documentType ? String(documentType) : 'undefined',
+      isReadOnly,
+      mode,
+      itemId,
+      fileInputRefExists: !!fileInputRef.current,
+    });
+
     if (!documentType) return null;
 
     const docs = getDocumentsByType(documentType as any);
@@ -887,7 +896,13 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
               onDrop={handleDrop}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => {
+                SPContext.logger.info('🔍 DropZoneCard CLICKED', {
+                  documentType: documentType ? String(documentType) : 'undefined',
+                  fileInputRefExists: !!fileInputRef.current,
+                });
+                fileInputRef.current?.click();
+              }}
               className={
                 isDragging
                   ? 'drop-zone-card--active'
@@ -982,7 +997,7 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
           ref={fileInputRef}
           type="file"
           multiple
-          accept={allowedExtensions.join(',')}
+          accept={allowedExtensions.map(function(ext) { return ext.charAt(0) === '.' ? ext : '.' + ext; }).join(',')}
           style={{ display: 'none' }}
           onChange={handleFileInputChange}
         />
@@ -1333,7 +1348,7 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
           ref={fileInputRef}
           type="file"
           multiple
-          accept={allowedExtensions.join(',')}
+          accept={allowedExtensions.map(function(ext) { return ext.charAt(0) === '.' ? ext : '.' + ext; }).join(',')}
           style={{ display: 'none' }}
           onChange={handleFileInputChange}
         />

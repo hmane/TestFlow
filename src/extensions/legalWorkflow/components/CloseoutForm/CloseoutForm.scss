@@ -98,6 +98,29 @@
       line-height: 1.4;
     }
   }
+
+  // Invalid field styling - red border for validation errors
+  &__field--invalid {
+    // DevExtreme input styling
+    .dx-texteditor {
+      border-color: #a80000 !important;
+      border-width: 2px !important;
+
+      &.dx-state-focused {
+        border-color: #a80000 !important;
+        box-shadow: 0 0 0 1px rgba(168, 0, 0, 0.2) !important;
+      }
+
+      &.dx-state-hover:not(.dx-state-focused) {
+        border-color: #d13438 !important;
+      }
+    }
+
+    // Also style the outline mode
+    .dx-texteditor-input-container {
+      background-color: rgba(253, 231, 233, 0.3);
+    }
+  }
 }
 
 // Animation

@@ -378,7 +378,7 @@ export const DocumentCard: React.FC<IDocumentCardProps> = React.memo(({
           <FileTypeIcon
             type={IconType.image}
             path={displayName}
-            size={ImageSize.large}
+            size={ImageSize.medium}
           />
         </div>
 
@@ -450,7 +450,7 @@ export const DocumentCard: React.FC<IDocumentCardProps> = React.memo(({
               }
               displayName={typeof document.modifiedBy === 'string' ? document.modifiedBy : (document.modifiedBy as any)?.title}
               email={document.modifiedByEmail}
-              size={40}
+              size={28}
               displayMode="avatar"
             />
           </div>

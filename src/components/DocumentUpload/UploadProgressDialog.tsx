@@ -81,8 +81,9 @@ export const UploadProgressDialog: React.FC<IUploadProgressDialogProps> = ({
 
   /**
    * All complete or skipped
+   * Note: total must be > 0 to consider "done" (prevents showing success before uploads start)
    */
-  const allDone = overallProgress.completed === overallProgress.total;
+  const allDone = overallProgress.total > 0 && overallProgress.completed === overallProgress.total;
 
   /**
    * Dialog content props

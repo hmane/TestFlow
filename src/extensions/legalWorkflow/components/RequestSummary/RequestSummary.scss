@@ -15,6 +15,172 @@
   }
 }
 
+// Enhanced header layout
+.request-summary-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+
+  // Left side: Title and rush badge
+  &__main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    min-width: 0;
+
+    // Truncate long titles
+    .ms-Text {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 400px;
+    }
+  }
+
+  // Right side: Key metrics
+  &__metrics {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+  }
+
+  // Individual metric item
+  &__metric {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 500;
+    background-color: #f3f2f1;
+    color: #323130;
+    white-space: nowrap;
+
+    i {
+      font-size: 12px;
+    }
+
+    // Variants
+    &--danger {
+      background-color: #fde7e9;
+      color: #a80000;
+
+      i {
+        color: #d13438;
+      }
+    }
+
+    &--warning {
+      background-color: #fff4ce;
+      color: #8a6914;
+
+      i {
+        color: #ffb900;
+      }
+    }
+
+    &--success {
+      background-color: #dff6dd;
+      color: #107c10;
+
+      i {
+        color: #107c10;
+      }
+    }
+
+    &--info {
+      background-color: #e6f2ff;
+      color: #0062a3;
+
+      i {
+        color: #0078d4;
+      }
+    }
+
+    &--default {
+      background-color: #f3f2f1;
+      color: #323130;
+
+      i {
+        color: #605e5c;
+      }
+    }
+
+    &--subtle {
+      background-color: transparent;
+      color: #605e5c;
+      padding: 4px 0;
+
+      i {
+        color: #8a8886;
+      }
+    }
+  }
+
+  &__metric-label {
+    font-weight: 600;
+  }
+
+  &__metric-badge {
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    background-color: rgba(0, 0, 0, 0.08);
+  }
+
+  &__metric-value {
+    font-weight: 500;
+  }
+}
+
+// Responsive header
+@media (max-width: 900px) {
+  .request-summary-header {
+    flex-direction: column;
+    align-items: flex-start;
+
+    &__main {
+      width: 100%;
+
+      .ms-Text {
+        max-width: 100%;
+      }
+    }
+
+    &__metrics {
+      width: 100%;
+      justify-content: flex-start;
+      margin-top: 8px;
+    }
+  }
+}
+
+@media (max-width: 600px) {
+  .request-summary-header {
+    &__metrics {
+      gap: 8px;
+    }
+
+    &__metric {
+      font-size: 11px;
+      padding: 3px 8px;
+
+      &--subtle {
+        display: none; // Hide submission item on mobile
+      }
+    }
+  }
+}
+
 .request-summary {
   width: 100%;
 
@@ -385,34 +551,35 @@
     }
   }
 
-  // Footer section (submitted by/on)
-  .summary-footer {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-    padding-top: 12px;
-    margin-top: 16px;
-    border-top: 1px solid #edebe9;
-    background-color: #faf9f8;
-    border-radius: 4px;
-    padding: 12px;
+}
 
-    &__item {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: #605e5c;
+// Footer section (submitted by/on) - now in Card Footer
+.summary-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  align-items: center;
 
-      strong {
-        color: #323130;
-      }
-    }
+  &__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #605e5c;
+  }
 
-    &__icon {
-      font-size: 12px;
-      color: #8a8886;
-    }
+  &__icon {
+    font-size: 14px;
+    color: #8a8886;
+  }
+
+  &__label {
+    font-weight: 600;
+    color: #605e5c;
+  }
+
+  &__value {
+    color: #323130;
   }
 }
 
@@ -437,11 +604,12 @@
         grid-template-columns: 1fr;
       }
     }
+  }
 
-    .summary-footer {
-      flex-direction: column;
-      gap: 8px;
-    }
+  .summary-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
   }
 }
 

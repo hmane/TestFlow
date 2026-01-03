@@ -73,6 +73,63 @@
     padding: 24px;
     width: 100%;
     box-sizing: border-box;
+
+    // Button groups wrapper
+    .request-actions__button-groups {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      width: 100%;
+    }
+
+    // Individual button group (left or right)
+    .request-actions__button-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+
+      &--left {
+        justify-content: flex-start;
+      }
+
+      &--right {
+        justify-content: flex-end;
+      }
+    }
+
+    // Button base styles
+    button {
+      font-weight: 600;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+
+      &:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+      }
+
+      &:active:not(:disabled) {
+        transform: translateY(0);
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+
+    // Primary button gradient
+    .ms-Button--primary {
+      background: linear-gradient(135deg, #0078d4 0%, #106ebe 100%);
+      border: none;
+
+      &:hover:not(:disabled) {
+        background: linear-gradient(135deg, #106ebe 0%, #005a9e 100%);
+      }
+    }
   }
 
   .action-buttons-card {
@@ -211,43 +268,89 @@
 
   // Additional responsive breakpoint for tablet/smaller screens
   @media (max-width: 1024px) {
-    .request-actions__container {
+    &__container {
       padding: 16px !important;
 
-      // Stack sections vertically on smaller screens
-      > .ms-Stack[class*='horizontal'] {
-        flex-direction: column !important;
-        gap: 16px !important;
+      .request-actions__button-groups {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+      }
 
-        > .ms-Stack {
-          width: 100% !important;
-          justify-content: center !important;
+      .request-actions__button-group {
+        justify-content: center;
+        width: 100%;
+
+        &--left,
+        &--right {
+          justify-content: center;
         }
       }
     }
   }
 
-  @media (max-width: 600px) {
-    .request-actions__container {
-      padding: 12px !important;
+  // Medium screens - buttons wrap within groups
+  @media (max-width: 768px) {
+    &__container {
+      padding: 16px !important;
 
-      // Full width buttons on mobile
-      button {
-        width: 100% !important;
-        min-width: unset !important;
-        margin-left: 0 !important;
-        margin-bottom: 8px;
-
-        &:last-child {
-          margin-bottom: 0;
-        }
+      .request-actions__button-groups {
+        flex-direction: column;
+        gap: 12px;
       }
 
-      // Stack all buttons vertically
-      .ms-Stack[class*='horizontal'] {
-        flex-direction: column !important;
-        align-items: stretch !important;
-        gap: 8px !important;
+      .request-actions__button-group {
+        justify-content: center;
+        gap: 10px;
+
+        button {
+          min-width: 130px !important;
+          height: 40px !important;
+          padding: 0 12px !important;
+          font-size: 13px !important;
+        }
+      }
+    }
+  }
+
+  // Small screens - stack buttons vertically
+  @media (max-width: 600px) {
+    &__container {
+      padding: 12px !important;
+
+      .request-actions__button-groups {
+        gap: 8px;
+      }
+
+      .request-actions__button-group {
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+
+        button {
+          width: 100% !important;
+          min-width: unset !important;
+          height: 44px !important;
+          margin-left: 0 !important;
+          font-size: 14px !important;
+        }
+      }
+    }
+  }
+
+  // Extra small screens
+  @media (max-width: 400px) {
+    &__container {
+      padding: 8px !important;
+
+      .request-actions__button-group {
+        gap: 6px;
+
+        button {
+          height: 42px !important;
+          font-size: 13px !important;
+          padding: 0 10px !important;
+        }
       }
     }
   }

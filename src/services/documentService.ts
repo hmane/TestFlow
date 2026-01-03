@@ -31,6 +31,7 @@ const DEFAULT_LIBRARY_TITLE = Lists.RequestDocuments.Title;
 /**
  * Get folder path for document
  * - Attachments (Review/Supplemental): RequestDocuments/{itemId}/
+ * - Foreside: RequestDocuments/{itemId}/ForesideDocuments/
  * - Approvals: RequestDocuments/{itemId}/{ApprovalType}/
  */
 export function getDocumentFolderPath(itemId: number, documentType: DocumentType | string): string {
@@ -43,6 +44,11 @@ export function getDocumentFolderPath(itemId: number, documentType: DocumentType
 
   if (normalizedType === DocumentType.Supplemental || normalizedType === 'Supplemental') {
     return `${itemId}`;
+  }
+
+  // Foreside documents go to their own subfolder
+  if (normalizedType === DocumentType.Foreside || normalizedType === 'Foreside') {
+    return `${itemId}/ForesideDocuments`;
   }
 
   // Approvals go to subfolders

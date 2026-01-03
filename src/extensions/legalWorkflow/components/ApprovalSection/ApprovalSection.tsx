@@ -204,6 +204,7 @@ const AdditionalApprovalItem: React.FC<IAdditionalApprovalItemProps> = ({
     name: `approvals.${index}.approver` as const,
   });
 
+
   // Get form errors to check for document validation errors
   const { errors } = useFormState({ control });
 
@@ -298,13 +299,12 @@ const AdditionalApprovalItem: React.FC<IAdditionalApprovalItemProps> = ({
       <FormContainer labelWidth='200px'>
         {/* Approval Title (conditional - only for "Other" type) */}
         {approvalType === ApprovalType.Other && (
-          <FormItem>
+          <FormItem fieldName={`approvals.${index}.approvalTitle`}>
             <FormLabel isRequired infoText='Enter a descriptive title for this custom approval type'>
               Approval Title
             </FormLabel>
             <SPTextField
               name={`approvals.${index}.approvalTitle` as const}
-              control={formControl}
               placeholder='Enter approval title (e.g., Finance Review, IT Security)'
               mode={SPTextFieldMode.SingleLine}
               maxLength={100}
@@ -377,13 +377,12 @@ const AdditionalApprovalItem: React.FC<IAdditionalApprovalItemProps> = ({
         </FormItem>
 
         {/* Notes */}
-        <FormItem>
+        <FormItem fieldName={`approvals.${index}.notes`}>
           <FormLabel infoText='Optional notes about this approval'>
             Notes
           </FormLabel>
           <SPTextField
             name={`approvals.${index}.notes` as const}
-            control={formControl}
             placeholder='Add any notes about this approval (optional)'
             mode={SPTextFieldMode.MultiLine}
             rows={3}
@@ -791,13 +790,12 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
               </FormItem>
 
               {/* Notes */}
-              <FormItem>
+              <FormItem fieldName={`approvals.${communicationsApprovalIndex}.notes`}>
                 <FormLabel infoText='Optional notes about this approval'>
                   Notes
                 </FormLabel>
                 <SPTextField
                   name={`approvals.${communicationsApprovalIndex}.notes` as const}
-                  control={formControl}
                   placeholder='Add any notes about this approval (optional)'
                   mode={SPTextFieldMode.MultiLine}
                   rows={3}

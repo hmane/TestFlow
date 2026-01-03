@@ -16,11 +16,10 @@ import * as React from 'react';
 
 // Fluent UI - tree-shaken imports
 import { Icon } from '@fluentui/react/lib/Icon';
-import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
 
 // spfx-toolkit - tree-shaken imports
-import { Card, Content, Header } from 'spfx-toolkit/lib/components/Card';
+import { Card, Content, Header, Footer } from 'spfx-toolkit/lib/components/Card';
 import type { CardAction } from 'spfx-toolkit/lib/components/Card/Card.types';
 import { DocumentLink } from 'spfx-toolkit/lib/components/DocumentLink';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
@@ -126,15 +125,16 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
   /**
    * Check if user can edit request information
    * Only submitter (author) or admin can edit request info
-   * Editing is disabled after Closeout or Completed status
+   * Editing is disabled after Closeout, Completed, or AwaitingForesideDocuments status
    */
   const canEditRequestInfo = React.useMemo((): boolean => {
     if (!currentRequest) return false;
 
-    // No editing allowed after Closeout or Completed
+    // No editing allowed after Closeout, Completed, or AwaitingForesideDocuments
     if (
       currentRequest.status === RequestStatus.Closeout ||
-      currentRequest.status === RequestStatus.Completed
+      currentRequest.status === RequestStatus.Completed ||
+      currentRequest.status === RequestStatus.AwaitingForesideDocuments
     ) {
       return false;
     }
@@ -152,7 +152,7 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
   }, [currentRequest, permissions.isAdmin]);
 
   /**
-   * Format date for display
+   * Format date for display (short form)
    */
   const formatDate = (date?: Date | string): string => {
     if (!date) return '';
@@ -161,6 +161,21 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
       year: 'numeric',
       month: 'short',
       day: 'numeric',
+    });
+  };
+
+  /**
+   * Format date with time for display (for footer)
+   */
+  const formatDateTime = (date?: Date | string): string => {
+    if (!date) return '';
+    const dateObj = typeof date === 'string' ? new Date(date) : date;
+    return dateObj.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
     });
   };
 
@@ -265,6 +280,57 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
   // Calculate approval summary for header
   const approvalCount = currentRequest.approvals?.length || 0;
 
+  /**
+   * Calculate days until target return date
+   * Returns negative number if overdue, positive if upcoming
+   */
+  const daysUntilDue = React.useMemo((): number | undefined => {
+    if (!currentRequest.targetReturnDate) return undefined;
+    const targetDate = typeof currentRequest.targetReturnDate === 'string'
+      ? new Date(currentRequest.targetReturnDate)
+      : currentRequest.targetReturnDate;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const targetCopy = new Date(targetDate.getTime());
+    targetCopy.setHours(0, 0, 0, 0);
+    const diffTime = targetCopy.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  }, [currentRequest.targetReturnDate]);
+
+  /**
+   * Get due date display text and variant
+   */
+  const dueDateInfo = React.useMemo(() => {
+    if (daysUntilDue === undefined) return null;
+
+    if (daysUntilDue < 0) {
+      const daysPast = Math.abs(daysUntilDue);
+      return {
+        text: `${daysPast}d overdue`,
+        variant: 'danger' as const,
+        icon: 'Warning',
+      };
+    } else if (daysUntilDue === 0) {
+      return {
+        text: 'Due today',
+        variant: 'warning' as const,
+        icon: 'Clock',
+      };
+    } else if (daysUntilDue <= 2) {
+      return {
+        text: `${daysUntilDue}d left`,
+        variant: 'warning' as const,
+        icon: 'Clock',
+      };
+    } else {
+      return {
+        text: `${daysUntilDue}d left`,
+        variant: 'info' as const,
+        icon: 'Calendar',
+      };
+    }
+  }, [daysUntilDue]);
+
   return (
     <Card
       id='request-summary'
@@ -273,21 +339,65 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
       defaultExpanded={defaultExpanded}
     >
       <Header actions={headerActions} size='regular'>
-        <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
-          <Icon
-            iconName='ClipboardList'
-            styles={{ root: { fontSize: '20px', color: '#0078d4' } }}
-          />
-          <Text variant='large' styles={{ root: { fontWeight: 600 } }}>
-            Request Summary
-          </Text>
-          {currentRequest.isRushRequest && <Badge text='RUSH' variant='danger' />}
-          {approvalCount > 0 && (
-            <Text variant='small' styles={{ root: { color: '#605e5c' } }}>
-              ({approvalCount} approval{approvalCount !== 1 ? 's' : ''})
+        <div className='request-summary-header'>
+          {/* Left side: Title and primary badges */}
+          <div className='request-summary-header__main'>
+            <Icon
+              iconName='ClipboardList'
+              styles={{ root: { fontSize: '20px', color: '#0078d4' } }}
+            />
+            <Text variant='large' styles={{ root: { fontWeight: 600 } }}>
+              {currentRequest.requestTitle || 'Request Summary'}
             </Text>
-          )}
-        </Stack>
+            {currentRequest.isRushRequest && <Badge text='RUSH' variant='danger' />}
+          </div>
+
+          {/* Right side: Key metrics */}
+          <div className='request-summary-header__metrics'>
+            {/* Target Return Date with countdown */}
+            {currentRequest.targetReturnDate && dueDateInfo && (
+              <div className={`request-summary-header__metric request-summary-header__metric--${dueDateInfo.variant}`}>
+                <Icon iconName={dueDateInfo.icon} />
+                <span className='request-summary-header__metric-label'>
+                  {formatDate(currentRequest.targetReturnDate)}
+                </span>
+                <span className='request-summary-header__metric-badge'>
+                  {dueDateInfo.text}
+                </span>
+              </div>
+            )}
+
+            {/* Review Audience */}
+            {currentRequest.reviewAudience && (
+              <div className='request-summary-header__metric request-summary-header__metric--default'>
+                <Icon iconName='Shield' />
+                <span className='request-summary-header__metric-value'>
+                  {getReviewAudienceLabel(currentRequest.reviewAudience)}
+                </span>
+              </div>
+            )}
+
+            {/* Submission Item */}
+            {currentRequest.submissionItem && (
+              <div className='request-summary-header__metric request-summary-header__metric--subtle'>
+                <Icon iconName='Documentation' />
+                <span className='request-summary-header__metric-value'>
+                  {currentRequest.submissionItem}
+                </span>
+              </div>
+            )}
+
+            {/* Approval Count */}
+            {approvalCount > 0 && (
+              <div className='request-summary-header__metric request-summary-header__metric--success'>
+                <Icon iconName='CheckMark' />
+                <span className='request-summary-header__metric-value'>
+                  {approvalCount} approval{approvalCount !== 1 ? 's' : ''}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
       </Header>
 
       <Content padding='comfortable'>
@@ -541,25 +651,36 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
             </div>
           )}
 
-          {/* Submission Footer */}
-          {(currentRequest.submittedBy || currentRequest.submittedOn) && (
-            <div className='summary-footer'>
-              {currentRequest.submittedBy && (
-                <span className='summary-footer__item'>
-                  <Icon iconName='Contact' className='summary-footer__icon' />
-                  <strong>Submitted by:</strong> {currentRequest.submittedBy.title}
-                </span>
-              )}
-              {currentRequest.submittedOn && (
-                <span className='summary-footer__item'>
-                  <Icon iconName='Clock' className='summary-footer__icon' />
-                  <strong>Submitted:</strong> {formatDate(currentRequest.submittedOn)}
-                </span>
-              )}
-            </div>
-          )}
         </div>
       </Content>
+
+      {/* Card Footer with submission metadata */}
+      {(currentRequest.submittedBy || currentRequest.submittedOn) && (
+        <Footer borderTop padding='comfortable'>
+          <div className='summary-footer'>
+            {currentRequest.submittedBy && (
+              <span className='summary-footer__item'>
+                <span className='summary-footer__label'>Submitted by:</span>
+                <UserPersona
+                  userIdentifier={currentRequest.submittedBy.id || currentRequest.submittedBy.email || ''}
+                  displayName={currentRequest.submittedBy.title || 'Unknown'}
+                  email={currentRequest.submittedBy.email || ''}
+                  size={24}
+                  displayMode='avatarAndName'
+                  showLivePersona={false}
+                />
+              </span>
+            )}
+            {currentRequest.submittedOn && (
+              <span className='summary-footer__item'>
+                <Icon iconName='Clock' className='summary-footer__icon' />
+                <span className='summary-footer__label'>Submitted:</span>
+                <span className='summary-footer__value'>{formatDateTime(currentRequest.submittedOn)}</span>
+              </span>
+            )}
+          </div>
+        </Footer>
+      )}
     </Card>
   );
 };

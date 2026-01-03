@@ -34,7 +34,9 @@ import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { RequestType } from '@appTypes/requestTypes';
 import { RequestStatus } from '@appTypes/workflowTypes';
 import { LoadingFallback } from '@components/LoadingFallback';
+import { StatusBanner } from '@components/StatusBanner';
 import { useWorkflowStepper } from '@components/WorkflowStepper/useWorkflowStepper';
+import { shouldShowFormSection } from '@components/WorkflowStepper/workflowStepConfig';
 import { useRequestStore } from '@stores/requestStore';
 import { RequestActions } from '../RequestActions';
 import { RequestApprovals } from '../RequestApprovals';
@@ -42,6 +44,7 @@ import { RequestDocuments } from '../RequestDocuments';
 import { RequestSummary } from '../RequestSummary';
 import { RequestTypeSelector } from '../RequestTypeSelector';
 import { WorkflowFormWrapper } from '../WorkflowFormWrapper';
+import { ForesideDocuments } from '../ForesideDocuments';
 import './RequestContainer.scss';
 
 // Lazy load workflow stage forms - these are only loaded when needed
@@ -156,6 +159,16 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
   const [isTypeLocked, setIsTypeLocked] = React.useState<boolean>(false);
   const [isEditingRequestInfo, setIsEditingRequestInfo] = React.useState<boolean>(false);
 
+  // Determine if current user is the submitter (for contextual stepper coloring)
+  const isCurrentUserSubmitter = React.useMemo((): boolean => {
+    if (!currentRequest) return false;
+    const currentUserId = SPContext.currentUser?.id?.toString() ?? '';
+    return (
+      currentRequest.submittedBy?.id === currentUserId ||
+      currentRequest.author?.id?.toString() === currentUserId
+    );
+  }, [currentRequest?.submittedBy?.id, currentRequest?.author?.id]);
+
   // Get the workflow stepper with enhanced metadata for contextual step info
   const requestMetadata = React.useMemo(
     () => ({
@@ -194,8 +207,27 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
       closeoutCompletedBy: currentRequest?.closeoutBy?.title,
       closeoutCompletedByLogin: currentRequest?.closeoutBy?.loginName,
       trackingId: currentRequest?.trackingId,
+      // Contextual coloring fields for "In Review" step
+      legalReviewStatus: currentRequest?.legalReview?.status,
+      complianceReviewStatus: currentRequest?.complianceReview?.status,
+      isCurrentUserSubmitter,
+      // Foreside Documents step fields
+      isForesideReviewRequired: currentRequest?.complianceReview?.isForesideReviewRequired || currentRequest?.isForesideReviewRequired,
+      foresideCompletedOn: currentRequest?.foresideCompletedOn,
+      foresideCompletedBy: currentRequest?.foresideCompletedBy?.title,
+      // Terminal state fields (Cancelled/OnHold)
+      previousStatus: currentRequest?.previousStatus,
+      cancelledOn: currentRequest?.cancelledOn,
+      cancelledBy: currentRequest?.cancelledBy?.title,
+      cancelledByLogin: currentRequest?.cancelledBy?.loginName,
+      cancelReason: currentRequest?.cancelReason,
+      onHoldSince: currentRequest?.onHoldSince,
+      onHoldBy: currentRequest?.onHoldBy?.title,
+      onHoldByLogin: currentRequest?.onHoldBy?.loginName,
+      onHoldReason: currentRequest?.onHoldReason,
     }),
     [
+      currentRequest?.status, // Include status to ensure metadata updates when status changes
       currentRequest?.created,
       currentRequest?.author,
       currentRequest?.submittedOn,
@@ -210,11 +242,23 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
       currentRequest?.legalReviewCompletedOn,
       currentRequest?.complianceReview?.status,
       currentRequest?.complianceReview?.outcome,
+      currentRequest?.complianceReview?.isForesideReviewRequired,
       currentRequest?.complianceReviewCompletedBy,
       currentRequest?.complianceReviewCompletedOn,
       currentRequest?.closeoutOn,
       currentRequest?.closeoutBy,
       currentRequest?.trackingId,
+      currentRequest?.isForesideReviewRequired,
+      currentRequest?.foresideCompletedOn,
+      currentRequest?.foresideCompletedBy,
+      currentRequest?.previousStatus,
+      currentRequest?.cancelledOn,
+      currentRequest?.cancelledBy,
+      currentRequest?.cancelReason,
+      currentRequest?.onHoldSince,
+      currentRequest?.onHoldBy,
+      currentRequest?.onHoldReason,
+      isCurrentUserSubmitter,
     ]
   );
 
@@ -501,6 +545,16 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
    */
   const renderFormContent = (): React.ReactElement => {
     const status = currentRequest?.status;
+    const previousStatus = currentRequest?.previousStatus;
+
+    // Helper to check if section should be shown for Cancelled/OnHold
+    const showSection = (sectionStatus: RequestStatus): boolean => {
+      if (!status) return true;
+      return shouldShowFormSection(sectionStatus, status, previousStatus);
+    };
+
+    // Check if request is in terminal state
+    const isTerminalState = status === RequestStatus.Cancelled || status === RequestStatus.OnHold;
 
     // Draft status: Full form with approvals and attachments
     if (!status || status === RequestStatus.Draft) {
@@ -537,41 +591,69 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
     return (
       <WorkflowFormWrapper itemId={itemId}>
         <Stack tokens={{ childrenGap: 16 }}>
-          {/* Request Summary Card - includes approvals with DocumentLink */}
-          <RequestSummary onEditClick={handleEditRequestInfo} />
+          {/* Status Banner for Cancelled/OnHold - shown above Request Summary */}
+          {isTerminalState && (
+            <StatusBanner
+              status={status}
+              cancelMetadata={status === RequestStatus.Cancelled ? {
+                cancelledBy: currentRequest?.cancelledBy?.title || '',
+                cancelledOn: currentRequest?.cancelledOn || new Date(),
+                cancelReason: currentRequest?.cancelReason || '',
+                previousStatus: previousStatus || RequestStatus.Draft,
+              } : undefined}
+              holdMetadata={status === RequestStatus.OnHold ? {
+                onHoldBy: currentRequest?.onHoldBy?.title || '',
+                onHoldSince: currentRequest?.onHoldSince || new Date(),
+                onHoldReason: currentRequest?.onHoldReason || '',
+                previousStatus: previousStatus || RequestStatus.Draft,
+              } : undefined}
+            />
+          )}
 
-          {/* Stage-specific forms */}
-          {/* Legal Intake form shows for both LegalIntake and AssignAttorney status */}
-          {/* AssignAttorney is a sub-state where Legal Admin/Attorney Assigner group assigns the attorney */}
-          {(status === RequestStatus.LegalIntake || status === RequestStatus.AssignAttorney) && (
+          {/* Request Summary Card - includes approvals with DocumentLink */}
+          <RequestSummary onEditClick={isTerminalState ? undefined : handleEditRequestInfo} />
+
+          {/* Stage-specific forms - only show if status allows based on previousStatus */}
+
+          {/* Legal Intake form shows for LegalIntake/AssignAttorney status, or terminal states where previousStatus >= LegalIntake */}
+          {((status === RequestStatus.LegalIntake || status === RequestStatus.AssignAttorney) ||
+            (isTerminalState && showSection(RequestStatus.LegalIntake) && previousStatus && previousStatus !== RequestStatus.Draft)) && (
             <LazyFormWrapper formName="Legal Intake Form" fallbackMessage="Loading Legal Intake Form...">
-              <LegalIntakeForm />
+              <LegalIntakeForm defaultExpanded={!isTerminalState} readOnly={isTerminalState} />
             </LazyFormWrapper>
           )}
 
-          {status === RequestStatus.InReview && (
+          {/* In Review forms - show for InReview status, or terminal states where previousStatus >= InReview */}
+          {(status === RequestStatus.InReview ||
+            (isTerminalState && showSection(RequestStatus.InReview))) && (
             <>
-              {/* Legal Intake summary - collapsed, shows attorney info */}
-              <LazyFormWrapper formName="Legal Intake Summary" fallbackMessage="Loading intake summary...">
-                <LegalIntakeForm defaultExpanded={false} readOnly />
-              </LazyFormWrapper>
+              {/* Legal Intake summary - collapsed, shows attorney info (if not already shown above) */}
+              {status === RequestStatus.InReview && (
+                <LazyFormWrapper formName="Legal Intake Summary" fallbackMessage="Loading intake summary...">
+                  <LegalIntakeForm defaultExpanded={false} readOnly />
+                </LazyFormWrapper>
+              )}
               {/* Legal Review form with its own error boundary */}
               <LazyFormWrapper formName="Legal Review Form" fallbackMessage="Loading Legal Review Form...">
-                <LegalReviewForm collapsible defaultCollapsed={false} />
+                <LegalReviewForm collapsible defaultCollapsed={isTerminalState} />
               </LazyFormWrapper>
               {/* Compliance Review form with its own error boundary */}
               <LazyFormWrapper formName="Compliance Review Form" fallbackMessage="Loading Compliance Review Form...">
-                <ComplianceReviewForm collapsible defaultCollapsed={false} />
+                <ComplianceReviewForm collapsible defaultCollapsed={isTerminalState} />
               </LazyFormWrapper>
             </>
           )}
 
-          {(status === RequestStatus.Closeout || status === RequestStatus.Completed) && (
+          {/* Closeout and beyond - show for Closeout/Completed/AwaitingForesideDocuments, or terminal states where previousStatus >= Closeout */}
+          {((status === RequestStatus.Closeout || status === RequestStatus.Completed || status === RequestStatus.AwaitingForesideDocuments) ||
+            (isTerminalState && showSection(RequestStatus.Closeout))) && (
             <>
-              {/* Legal Intake summary - collapsed, shows attorney info */}
-              <LazyFormWrapper formName="Legal Intake Summary" fallbackMessage="Loading intake summary...">
-                <LegalIntakeForm defaultExpanded={false} readOnly />
-              </LazyFormWrapper>
+              {/* Legal Intake summary - collapsed, shows attorney info (if not already shown) */}
+              {!isTerminalState && (
+                <LazyFormWrapper formName="Legal Intake Summary" fallbackMessage="Loading intake summary...">
+                  <LegalIntakeForm defaultExpanded={false} readOnly />
+                </LazyFormWrapper>
+              )}
               {/* Completed review forms - will show in collapsed/completed state */}
               <LazyFormWrapper formName="Legal Review Summary" fallbackMessage="Loading review summary...">
                 <LegalReviewForm collapsible defaultCollapsed />
@@ -579,14 +661,14 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
               <LazyFormWrapper formName="Compliance Review Summary" fallbackMessage="Loading review summary...">
                 <ComplianceReviewForm collapsible defaultCollapsed />
               </LazyFormWrapper>
-              {/* Closeout form - show for both Closeout and Completed status */}
+              {/* Closeout form - show for Closeout, Completed, AwaitingForesideDocuments, or terminal states at Closeout */}
               <LazyFormWrapper formName="Closeout Form" fallbackMessage="Loading Closeout Form...">
-                <CloseoutForm readOnly={status === RequestStatus.Completed} />
+                <CloseoutForm readOnly={status === RequestStatus.Completed || status === RequestStatus.AwaitingForesideDocuments || isTerminalState} />
               </LazyFormWrapper>
             </>
           )}
 
-          {/* Attachments - always above action buttons */}
+          {/* Attachments - always above action buttons (read-only when AwaitingForesideDocuments or terminal) */}
           <ErrorBoundary
             enableRetry={true}
             maxRetries={2}
@@ -604,6 +686,28 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
           >
             <RequestDocuments itemId={itemId} />
           </ErrorBoundary>
+
+          {/* Foreside Documents - shown when AwaitingForesideDocuments, Completed, or terminal states at/after AwaitingForesideDocuments */}
+          {(status === RequestStatus.AwaitingForesideDocuments || status === RequestStatus.Completed ||
+            (isTerminalState && showSection(RequestStatus.AwaitingForesideDocuments))) && (
+            <ErrorBoundary
+              enableRetry={true}
+              maxRetries={2}
+              onError={handleFormError('Foreside Documents')}
+              userFriendlyMessages={{
+                title: 'Unable to load Foreside Documents',
+                description: 'An error occurred while loading Foreside documents. Please try again.',
+                retryButtonText: 'Retry',
+                detailsButtonText: 'Show Details',
+                closeButtonText: 'Close',
+                recoveringText: 'Recovering...',
+                dismissButtonText: 'Dismiss',
+                maxRetriesReached: 'Maximum retry attempts reached. Please refresh the page.',
+              }}
+            >
+              <ForesideDocuments itemId={itemId} readOnly={status === RequestStatus.Completed || isTerminalState} />
+            </ErrorBoundary>
+          )}
 
           {/* Action buttons at the bottom - always show for Close button */}
           <ErrorBoundary

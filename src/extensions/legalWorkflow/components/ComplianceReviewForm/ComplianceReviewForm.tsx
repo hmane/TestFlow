@@ -23,7 +23,7 @@ import { Text } from '@fluentui/react/lib/Text';
 
 // spfx-toolkit - tree-shaken imports
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
-import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
+import { Card, Header, Content, Footer } from 'spfx-toolkit/lib/components/Card';
 import {
   FormContainer,
   FormItem,
@@ -45,6 +45,7 @@ import {
   type ReviewOutcome as HeaderReviewOutcome,
 } from '@components/WorkflowCardHeader';
 import { useRequestStore, useRequestActions } from '@stores/requestStore';
+import { usePermissions } from '@hooks/usePermissions';
 import {
   saveComplianceReviewProgress,
   resubmitForComplianceReview,
@@ -139,6 +140,10 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
 }) => {
   const { currentRequest, isLoading, itemId } = useRequestStore();
   const { submitComplianceReview: submitComplianceReviewAction, loadRequest } = useRequestActions();
+  const { isComplianceUser, isAdmin, isLegalAdmin } = usePermissions();
+
+  // Determine if current user is a reviewer (can submit reviews)
+  const isReviewer = isComplianceUser || isAdmin || isLegalAdmin;
   const [showSuccess, setShowSuccess] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | undefined>(undefined);
   const [isSaving, setIsSaving] = React.useState<boolean>(false);
@@ -362,17 +367,20 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
     return null;
   }
 
+  // Check if review is completed (has outcome or completed status)
+  const isReviewCompleted = currentRequest.complianceReview?.status === ComplianceReviewStatus.Completed;
+  const completedOutcome = currentRequest.complianceReview?.outcome;
+  const hasComplianceReviewData = isReviewCompleted || completedOutcome;
+
   // Check if compliance review is applicable based on review audience
   const reviewAudience = currentRequest.reviewAudience;
   const isComplianceReviewRequired = reviewAudience === 'Compliance' || reviewAudience === 'Both';
 
-  if (!isComplianceReviewRequired) {
+  // Don't show if compliance review is not required AND there's no completed review data
+  // (If there's completed review data, always show it regardless of reviewAudience)
+  if (!isComplianceReviewRequired && !hasComplianceReviewData) {
     return null;
   }
-
-  // Check if review is completed
-  const isReviewCompleted = currentRequest.complianceReview?.status === ComplianceReviewStatus.Completed;
-  const completedOutcome = currentRequest.complianceReview?.outcome;
 
   // When completed, collapse by default and show green header
   const shouldDefaultCollapse = isReviewCompleted || defaultCollapsed;
@@ -512,110 +520,84 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
             </MessageBar>
           )}
 
-          {/* Waiting on submitter - show resubmit UI for submitter */}
+          {/* Waiting on submitter - unified form for both submitter and reviewer
+              Review Outcome is disabled for submitter but enabled for reviewer
+              Action buttons shown in Card Footer based on user permissions */}
           {reviewStatus === ComplianceReviewStatus.WaitingOnSubmitter ? (
-            <Stack tokens={{ childrenGap: 16 }}>
-              {/* Warning banner explaining what needs to be done */}
-              <MessageBar
-                messageBarType={MessageBarType.warning}
-                isMultiline
-                styles={{
-                  root: { borderRadius: '4px' },
-                  icon: { color: '#d83b01' },
-                }}
-              >
-                <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
-                  <Icon iconName="Warning" styles={{ root: { marginRight: 8 } }} />
-                  Action Required: Respond to Compliance Comments
-                </Text>
-                <Text block styles={{ root: { marginTop: 8 } }}>
-                  The compliance reviewer has requested changes or additional information. Please review the comments below,
-                  address the issues by updating the request or adding documents/approvals as needed,
-                  then click &quot;Resubmit for Review&quot; when ready.
-                </Text>
-              </MessageBar>
+            <form onSubmit={handleSubmit(onSubmit)}>
+              <Stack tokens={{ childrenGap: 20 }}>
+                {/* Review Outcome Selection - disabled for submitter, enabled for reviewer */}
+                <FormContainer labelWidth='200px'>
+                  <FormItem fieldName='complianceReviewOutcome'>
+                    <FormLabel isRequired={isReviewer} infoText='Select your review decision'>
+                      Review Outcome
+                    </FormLabel>
+                    <SPChoiceField
+                      name='complianceReviewOutcome'
+                      choices={REVIEW_OUTCOME_CHOICES}
+                      placeholder='Select an outcome...'
+                      disabled={!isReviewer}
+                    />
+                  </FormItem>
+                </FormContainer>
 
-              {/* Show compliance reviewer's comments if available */}
-              {currentRequest.complianceReview?.reviewNotes && (
-                <Stack
-                  styles={{
-                    root: {
-                      backgroundColor: '#f3f2f1',
-                      padding: 16,
-                      borderRadius: 4,
-                      borderLeft: '4px solid #107c10',
-                    },
-                  }}
-                >
-                  <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
-                    <Text variant="mediumPlus" styles={{ root: { fontWeight: 600, color: '#107c10' } }}>
-                      <Icon iconName="Shield" styles={{ root: { marginRight: 8 } }} />
-                      Compliance Reviewer Comments
-                    </Text>
-                    {currentRequest.complianceReviewCompletedBy?.title && (
-                      <Text variant="small" styles={{ root: { color: '#605e5c' } }}>
-                        by {currentRequest.complianceReviewCompletedBy.title}
-                      </Text>
-                    )}
-                  </Stack>
-                  <Text
-                    block
-                    styles={{
-                      root: {
-                        marginTop: 12,
-                        whiteSpace: 'pre-wrap',
-                        lineHeight: '1.5',
-                      },
-                    }}
-                  >
-                    {currentRequest.complianceReview.reviewNotes}
-                  </Text>
-                </Stack>
-              )}
+                {/* Review Notes */}
+                <FormContainer labelWidth='200px'>
+                  <FormItem fieldName='complianceReviewNotes'>
+                    <FormLabel infoText='Detailed compliance review notes, comments, and recommendations'>
+                      Review Notes
+                    </FormLabel>
+                    <SPTextField
+                      key={`compliance-review-notes-resubmit-${historyRefreshKey}`}
+                      name='complianceReviewNotes'
+                      placeholder='Provide detailed compliance review notes, comments, and recommendations'
+                      mode={SPTextFieldMode.MultiLine}
+                      rows={4}
+                      maxLength={4000}
+                      showCharacterCount
+                      stylingMode='outlined'
+                      spellCheck
+                      appendOnly
+                      itemId={itemId}
+                      listNameOrId='Requests'
+                      fieldInternalName='ComplianceReviewNotes'
+                    />
+                  </FormItem>
+                </FormContainer>
 
-              {/* Response notes field - submitter can add notes when resubmitting */}
-              <FormContainer labelWidth='200px'>
-                <FormItem fieldName='complianceReviewNotes'>
-                  <FormLabel infoText='Add notes explaining what changes you made to address the comments'>
-                    Response Notes
-                  </FormLabel>
-                  <SPTextField
-                    key={`compliance-review-notes-resubmit-${historyRefreshKey}`}
-                    name='complianceReviewNotes'
-                    placeholder='Describe the changes made to address the reviewer comments'
-                    mode={SPTextFieldMode.MultiLine}
-                    rows={3}
-                    maxLength={4000}
-                    showCharacterCount
-                    stylingMode='outlined'
-                    spellCheck
-                    appendOnly
-                    itemId={itemId}
-                    listNameOrId='Requests'
-                    fieldInternalName='ComplianceReviewNotes'
-                  />
-                </FormItem>
-              </FormContainer>
+                {/* Compliance-specific fields - only editable by reviewer */}
+                <Separator />
+                <FormContainer labelWidth='200px'>
+                  <FormItem fieldName='isForesideReviewRequired'>
+                    <FormLabel infoText='Indicate if Foreside review is required for this request'>
+                      Foreside Review Required
+                    </FormLabel>
+                    <SPBooleanField
+                      name='isForesideReviewRequired'
+                      displayType={SPBooleanDisplayType.Toggle}
+                      checkedText='Yes'
+                      uncheckedText='No'
+                      showText
+                      disabled={!isReviewer}
+                    />
+                  </FormItem>
 
-              <Separator />
-
-              {/* Resubmit button */}
-              <Stack horizontal tokens={{ childrenGap: 12 }} horizontalAlign='start'>
-                <PrimaryButton
-                  text={isResubmitting ? 'Resubmitting...' : 'Resubmit for Review'}
-                  iconProps={{ iconName: isResubmitting ? undefined : 'Send' }}
-                  onClick={handleResubmitForReview}
-                  disabled={isLoading || isSaving || isResubmitting}
-                  styles={{
-                    root: { minWidth: '180px', height: '40px', borderRadius: '4px' },
-                  }}
-                >
-                  {isResubmitting && (
-                    <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />
-                  )}
-                </PrimaryButton>
+                  <FormItem fieldName='isRetailUse'>
+                    <FormLabel infoText='Indicate if this will be used for retail purposes'>
+                      Retail Use
+                    </FormLabel>
+                    <SPBooleanField
+                      name='isRetailUse'
+                      displayType={SPBooleanDisplayType.Toggle}
+                      checkedText='Yes'
+                      uncheckedText='No'
+                      showText
+                      disabled={!isReviewer}
+                    />
+                  </FormItem>
+                </FormContainer>
               </Stack>
-            </Stack>
+            </form>
           ) : reviewStatus === ComplianceReviewStatus.WaitingOnCompliance ? (
             // Waiting on Compliance - show message to reviewers that submitter has resubmitted
             <Stack tokens={{ childrenGap: 16 }}>
@@ -632,7 +614,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                 </Stack>
               </MessageBar>
 
-              {/* Standard review form for compliance reviewer */}
+              {/* Standard review form for compliance reviewer - actions in Footer */}
               <form onSubmit={handleSubmit(onSubmit)}>
                 <Stack tokens={{ childrenGap: 20 }}>
                   {/* Review Outcome Selection */}
@@ -703,36 +685,11 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                       />
                     </FormItem>
                   </FormContainer>
-
-                  <Separator />
-
-                  {/* Action Buttons */}
-                  <Stack horizontal tokens={{ childrenGap: 12 }} horizontalAlign='start'>
-                    <PrimaryButton
-                      type='submit'
-                      text='Submit Review'
-                      iconProps={{ iconName: 'Send' }}
-                      disabled={isLoading || isSaving || !selectedOutcome}
-                      styles={{
-                        root: { minWidth: '140px', height: '40px', borderRadius: '4px' },
-                      }}
-                    />
-                    <DefaultButton
-                      text={isSaving ? 'Saving...' : 'Save'}
-                      iconProps={{ iconName: isSaving ? undefined : 'Save' }}
-                      onClick={handleSaveProgress}
-                      disabled={isLoading || isSaving}
-                      styles={{
-                        root: { minWidth: '100px', height: '40px', borderRadius: '4px' },
-                      }}
-                    >
-                      {isSaving && <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />}
-                    </DefaultButton>
-                  </Stack>
                 </Stack>
               </form>
             </Stack>
           ) : (
+            // Normal review form - actions in Footer
             <form onSubmit={handleSubmit(onSubmit)}>
               <Stack tokens={{ childrenGap: 20 }}>
                 {/* Review Outcome Selection */}
@@ -803,37 +760,69 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                     />
                   </FormItem>
                 </FormContainer>
-
-                <Separator />
-
-                {/* Action Buttons */}
-                <Stack horizontal tokens={{ childrenGap: 12 }} horizontalAlign='start'>
-                  <PrimaryButton
-                    type='submit'
-                    text='Submit Review'
-                    iconProps={{ iconName: 'Send' }}
-                    disabled={isLoading || isSaving || !selectedOutcome}
-                    styles={{
-                      root: { minWidth: '140px', height: '40px', borderRadius: '4px' },
-                    }}
-                  />
-                  <DefaultButton
-                    text={isSaving ? 'Saving...' : 'Save'}
-                    iconProps={{ iconName: isSaving ? undefined : 'Save' }}
-                    onClick={handleSaveProgress}
-                    disabled={isLoading || isSaving}
-                    styles={{
-                      root: { minWidth: '100px', height: '40px', borderRadius: '4px' },
-                    }}
-                  >
-                    {isSaving && <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />}
-                  </DefaultButton>
-                </Stack>
               </Stack>
             </form>
           )}
         </FormProvider>
       </Content>
+
+      {/* Card Footer with action buttons for all in-progress states */}
+      <Footer borderTop padding='comfortable'>
+        <Stack
+          horizontal
+          tokens={{ childrenGap: 12 }}
+          horizontalAlign={reviewStatus === ComplianceReviewStatus.WaitingOnSubmitter ? 'space-between' : 'end'}
+          verticalAlign='center'
+          wrap
+        >
+          {/* Submitter actions - only for WaitingOnSubmitter state */}
+          {reviewStatus === ComplianceReviewStatus.WaitingOnSubmitter && (
+            <Stack horizontal tokens={{ childrenGap: 12 }}>
+              <PrimaryButton
+                text={isResubmitting ? 'Resubmitting...' : 'Resubmit for Review'}
+                iconProps={{ iconName: isResubmitting ? undefined : 'Send' }}
+                onClick={handleResubmitForReview}
+                disabled={isLoading || isSaving || isResubmitting}
+                styles={{
+                  root: { minWidth: '180px', height: '40px', borderRadius: '4px' },
+                }}
+              >
+                {isResubmitting && (
+                  <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />
+                )}
+              </PrimaryButton>
+            </Stack>
+          )}
+
+          {/* Reviewer actions - visible to reviewers in all in-progress states */}
+          {isReviewer && (
+            <Stack horizontal tokens={{ childrenGap: 12 }}>
+              <DefaultButton
+                text={isSaving ? 'Saving...' : 'Save Progress'}
+                iconProps={{ iconName: isSaving ? undefined : 'Save' }}
+                onClick={handleSaveProgress}
+                disabled={isLoading || isSaving}
+                styles={{
+                  root: { minWidth: '120px', height: '40px', borderRadius: '4px' },
+                }}
+              >
+                {isSaving && (
+                  <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />
+                )}
+              </DefaultButton>
+              <PrimaryButton
+                text='Submit Review'
+                iconProps={{ iconName: 'CheckMark' }}
+                onClick={handleSubmit(onSubmit)}
+                disabled={isLoading || isSaving || !selectedOutcome}
+                styles={{
+                  root: { minWidth: '140px', height: '40px', borderRadius: '4px' },
+                }}
+              />
+            </Stack>
+          )}
+        </Stack>
+      </Footer>
     </Card>
   );
 };

@@ -36,7 +36,9 @@ import { useWorkflowPermissions } from '@hooks/useWorkflowPermissions';
 import { useRequestStore } from '@stores/requestStore';
 import { useLegalIntakeStore } from '@stores/legalIntakeStore';
 import { useCloseoutStore } from '@stores/closeoutStore';
+import { useDocumentsStore } from '@stores/documentsStore';
 import { RequestStatus, ReviewOutcome } from '@appTypes/workflowTypes';
+import { DocumentType } from '@appTypes/documentTypes';
 import {
   assignAttorneySchema,
   committeeAssignAttorneySchema,
@@ -63,6 +65,7 @@ type ActiveAction =
   | 'assignAttorney'
   | 'sendToCommittee'
   | 'closeout'
+  | 'completeForesideDocuments'
   | undefined;
 
 /**
@@ -96,6 +99,9 @@ const FIELD_LABELS: Record<string, string> = {
   // Legal Intake fields
   attorney: 'Assign Attorney',
   attorneyAssignNotes: 'Assignment Notes',
+  // Closeout fields
+  trackingId: 'Tracking ID',
+  commentsAcknowledged: 'Comments Acknowledgment',
 };
 
 /**
@@ -135,6 +141,9 @@ const FIELD_ORDER: Record<string, number> = {
   // Legal Intake section (appears after main form sections)
   attorney: 70,
   attorneyAssignNotes: 71,
+  // Closeout section
+  trackingId: 80,
+  commentsAcknowledged: 81,
 };
 
 /**
@@ -176,6 +185,7 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
     isLoading: permissionsLoading,
     sendToCommittee: workflowSendToCommittee,
     closeoutRequest: workflowCloseout,
+    completeForesideDocuments: workflowCompleteForesideDocuments,
   } = useWorkflowPermissions();
 
   // Get user permissions for role checks
@@ -189,6 +199,9 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
 
   // Get closeout form data (trackingId)
   const closeoutStore = useCloseoutStore();
+
+  // Get documents store for Foreside document validation
+  const { documents, stagedFiles } = useDocumentsStore();
 
   // Get spfx-toolkit form context for scroll/focus functionality
   const spFormContext = useFormContext();
@@ -307,6 +320,9 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
         attorney: 'legal-intake-card',
         attorneyAssignNotes: 'legal-intake-card',
         reviewAudience: 'legal-intake-card',
+        // Closeout fields
+        trackingId: 'closeout-card',
+        commentsAcknowledged: 'closeout-card',
       };
 
       // Check if this is a custom section field (e.g., "approvals" or "approvals.0.type")
@@ -719,23 +735,59 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
   }, [currentRequest]);
 
   /**
+   * Check if tracking ID is required based on compliance review flags
+   * Required when: Compliance review was done AND (Foreside Review Required OR Retail Use)
+   */
+  const isTrackingIdRequired = React.useMemo((): boolean => {
+    if (!currentRequest) return false;
+    // If review audience is Legal only, tracking ID is not required
+    if (currentRequest.reviewAudience === 'Legal') return false;
+    // Required if Foreside Review is required OR Retail Use
+    return (
+      currentRequest.complianceReview?.isForesideReviewRequired === true ||
+      currentRequest.complianceReview?.isRetailUse === true
+    );
+  }, [currentRequest]);
+
+  /**
    * Handle Closeout Submit
    */
   const handleCloseoutClick = React.useCallback(async (): Promise<void> => {
     try {
       setActiveAction('closeout');
 
-      // Get tracking ID and commentsAcknowledged from closeout store
-      const { trackingId, commentsAcknowledged } = closeoutStore.getFormData();
+      // Get tracking ID, closeoutNotes, and commentsAcknowledged from closeout store
+      const { trackingId, closeoutNotes, commentsAcknowledged } = closeoutStore.getFormData();
+
+      // Collect all validation errors
+      const errors: IValidationError[] = [];
+
+      // Validate: Tracking ID is required if Foreside Review Required or Retail Use
+      if (isTrackingIdRequired && (!trackingId || trackingId.trim() === '')) {
+        errors.push({
+          field: 'trackingId',
+          message: 'Tracking ID is required because Foreside Review or Retail Use was indicated during compliance review.',
+        });
+      }
 
       // Validate: if there are "Approved with Comments" outcomes, commentsAcknowledged must be true
       if (hasApprovedWithComments && !commentsAcknowledged) {
-        const validationError: IValidationError = {
+        errors.push({
           field: 'commentsAcknowledged',
           message: 'You must acknowledge the review comments before completing closeout.',
-        };
-        setValidationErrors([validationError]);
-        SPContext.logger.warn('RequestActions: Closeout validation failed - comments not acknowledged');
+        });
+      }
+
+      // If there are validation errors, show them and stop
+      if (errors.length > 0) {
+        setValidationErrors(errors);
+        SPContext.logger.warn('RequestActions: Closeout validation failed', {
+          errors: errors.map(e => e.field),
+          trackingIdRequired: isTrackingIdRequired,
+          trackingIdProvided: !!trackingId,
+          commentsRequired: hasApprovedWithComments,
+          commentsAcknowledged,
+        });
         setActiveAction(undefined);
         return;
       }
@@ -748,9 +800,10 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
         commentsAcknowledged: commentsAcknowledged || false,
       });
 
-      // Call closeout with tracking ID and commentsAcknowledged (only if there were comments)
+      // Call closeout with tracking ID, closeoutNotes, and commentsAcknowledged (only if there were comments)
       const result = await workflowCloseout({
         trackingId,
+        closeoutNotes,
         commentsAcknowledged: hasApprovedWithComments ? commentsAcknowledged : undefined,
       });
       if (result.allowed) {
@@ -765,7 +818,73 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
     } finally {
       setActiveAction(undefined);
     }
-  }, [workflowCloseout, closeoutStore, hasApprovedWithComments, setValidationErrors]);
+  }, [workflowCloseout, closeoutStore, hasApprovedWithComments, isTrackingIdRequired, setValidationErrors]);
+
+  /**
+   * Check if Foreside documents exist (existing + staged)
+   */
+  const hasForesideDocuments = React.useMemo((): boolean => {
+    const existingCount = documents.get(DocumentType.Foreside)?.length || 0;
+    const stagedCount = stagedFiles.filter(f => f.documentType === DocumentType.Foreside).length;
+    return (existingCount + stagedCount) > 0;
+  }, [documents, stagedFiles]);
+
+  /**
+   * Handle complete Foreside documents (when status is AwaitingForesideDocuments)
+   */
+  const handleCompleteForesideDocumentsClick = React.useCallback(async (): Promise<void> => {
+    try {
+      setActiveAction('completeForesideDocuments');
+
+      // Validate that at least one Foreside document exists
+      if (!hasForesideDocuments) {
+        const errors: IValidationError[] = [{
+          field: 'foresideDocuments',
+          message: 'Please upload at least one Foreside document before completing the request.',
+        }];
+        setValidationErrors(errors);
+        SPContext.logger.warn('RequestActions: No Foreside documents uploaded');
+        setActiveAction(undefined);
+        return;
+      }
+
+      // Clear any previous validation errors
+      setValidationErrors([]);
+
+      SPContext.logger.info('RequestActions: Completing Foreside documents');
+
+      // Check if there are staged files that need to be uploaded first
+      const hasStagedFiles = stagedFiles.length > 0;
+      if (hasStagedFiles && itemId) {
+        SPContext.logger.info('RequestActions: Uploading staged Foreside documents before completing', {
+          stagedCount: stagedFiles.length,
+          itemId,
+        });
+
+        // Upload staged files to SharePoint using the documents store
+        const { uploadPendingFiles, loadAllDocuments } = useDocumentsStore.getState();
+        await uploadPendingFiles(itemId, (fileId, progress, status) => {
+          SPContext.logger.info('RequestActions: Foreside upload progress', { fileId, progress, status });
+        });
+
+        // Reload documents to ensure they are in SharePoint
+        await loadAllDocuments(itemId, true);
+
+        SPContext.logger.success('RequestActions: Staged Foreside documents uploaded successfully');
+      }
+
+      const result = await workflowCompleteForesideDocuments();
+      if (result.allowed) {
+        SPContext.logger.success('RequestActions: Foreside documents completed, request is now Completed');
+      } else {
+        SPContext.logger.warn('RequestActions: Complete Foreside documents denied', { reason: result.reason });
+      }
+    } catch (error: unknown) {
+      SPContext.logger.error('RequestActions: Complete Foreside documents failed', error);
+    } finally {
+      setActiveAction(undefined);
+    }
+  }, [workflowCompleteForesideDocuments, hasForesideDocuments, setValidationErrors, stagedFiles, itemId]);
 
   /**
    * Handle reason dialog confirmation
@@ -848,32 +967,48 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
     if (permissionsLoading) return false;
     // Not for new requests or draft (they use Save as Draft)
     if (isNewRequest || status === RequestStatus.Draft) return false;
-    // Not for Completed, Cancelled, or Closeout
-    if (status === RequestStatus.Completed || status === RequestStatus.Cancelled || status === RequestStatus.Closeout) return false;
+    // Not after reviews completed (Completed, Cancelled, Closeout, or AwaitingForesideDocuments)
+    if (
+      status === RequestStatus.Completed ||
+      status === RequestStatus.Cancelled ||
+      status === RequestStatus.Closeout ||
+      status === RequestStatus.AwaitingForesideDocuments
+    ) return false;
     // Only show when there are changes
     if (!isDirty) return false;
     // Admin or Owner can save
     return permissions.isAdmin || isOwner;
   }, [permissionsLoading, isNewRequest, status, isDirty, permissions.isAdmin, isOwner]);
 
-  // Cancel Request button - Admin, Creator, or Legal Admin (not in Closeout, Completed, Cancelled)
+  // Cancel Request button - Admin, Creator, or Legal Admin (not after reviews completed)
   const showCancel = React.useMemo(() => {
     if (permissionsLoading) return false;
     // Not for new requests
     if (isNewRequest) return false;
-    // Not for Completed, Cancelled, or Closeout
-    if (status === RequestStatus.Completed || status === RequestStatus.Cancelled || status === RequestStatus.Closeout) return false;
+    // Not for Completed, Cancelled, Closeout, or AwaitingForesideDocuments (request is past review stage)
+    if (
+      status === RequestStatus.Completed ||
+      status === RequestStatus.Cancelled ||
+      status === RequestStatus.Closeout ||
+      status === RequestStatus.AwaitingForesideDocuments
+    ) return false;
     // Admin, Legal Admin, or Owner can cancel
     return permissions.isAdmin || permissions.isLegalAdmin || isOwner;
   }, [permissionsLoading, isNewRequest, status, permissions.isAdmin, permissions.isLegalAdmin, isOwner]);
 
-  // On Hold button - Admin, Creator, or Legal Admin (not in Closeout, Completed, Cancelled, OnHold)
+  // On Hold button - Admin, Creator, or Legal Admin (not after reviews completed)
   const showOnHold = React.useMemo(() => {
     if (permissionsLoading) return false;
     // Not for new requests
     if (isNewRequest) return false;
-    // Not for Completed, Cancelled, Closeout, or already OnHold
-    if (status === RequestStatus.Completed || status === RequestStatus.Cancelled || status === RequestStatus.Closeout || status === RequestStatus.OnHold) return false;
+    // Not for Completed, Cancelled, Closeout, OnHold, or AwaitingForesideDocuments (request is past review stage)
+    if (
+      status === RequestStatus.Completed ||
+      status === RequestStatus.Cancelled ||
+      status === RequestStatus.Closeout ||
+      status === RequestStatus.OnHold ||
+      status === RequestStatus.AwaitingForesideDocuments
+    ) return false;
     // Admin, Legal Admin, or Owner can put on hold
     return permissions.isAdmin || permissions.isLegalAdmin || isOwner;
   }, [permissionsLoading, isNewRequest, status, permissions.isAdmin, permissions.isLegalAdmin, isOwner]);
@@ -916,6 +1051,14 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
     return permissions.isAdmin || isOwner;
   }, [permissionsLoading, status, permissions.isAdmin, isOwner]);
 
+  // Complete Foreside Documents button - only when status is AwaitingForesideDocuments
+  const showCompleteForesideDocuments = React.useMemo(() => {
+    if (permissionsLoading) return false;
+    if (status !== RequestStatus.AwaitingForesideDocuments) return false;
+    // Admin or Owner can complete Foreside documents
+    return permissions.isAdmin || isOwner;
+  }, [permissionsLoading, status, permissions.isAdmin, isOwner]);
+
   // Get loading message based on active action
   const loadingMessage = React.useMemo(() => {
     switch (activeAction) {
@@ -935,6 +1078,8 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
         return 'Sending to committee...';
       case 'closeout':
         return 'Completing closeout...';
+      case 'completeForesideDocuments':
+        return 'Completing request...';
       default:
         return 'Processing...';
     }
@@ -1000,9 +1145,9 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
 
       <div className='request-actions__container'>
         {/* Two-section layout: Left (less frequent) and Right (primary actions) */}
-        <Stack horizontal horizontalAlign='space-between' wrap styles={{ root: { width: '100%', gap: '16px' } }}>
+        <div className='request-actions__button-groups'>
           {/* Left Section: Less frequent actions */}
-          <Stack horizontal tokens={{ childrenGap: 12 }} wrap>
+          <div className='request-actions__button-group request-actions__button-group--left'>
             {/* Super Admin Mode Button - Only visible to admins, not on new/draft requests */}
             {permissions.isAdmin && !isNewRequest && status !== RequestStatus.Draft && (
               <TooltipHost content="Administrative Override Mode">
@@ -1065,10 +1210,10 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
                 }}
               />
             )}
-          </Stack>
+          </div>
 
           {/* Right Section: Primary actions */}
-          <Stack horizontal tokens={{ childrenGap: 12 }} wrap>
+          <div className='request-actions__button-group request-actions__button-group--right'>
             {/* Save button - for submitted requests with changes */}
             {showSave && (
               <DefaultButton
@@ -1141,6 +1286,24 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
               />
             )}
 
+            {/* Complete Request button - AwaitingForesideDocuments status only */}
+            {showCompleteForesideDocuments && (
+              <PrimaryButton
+                text='Complete Request'
+                iconProps={{ iconName: 'Completed' }}
+                onClick={handleCompleteForesideDocumentsClick}
+                disabled={isAnyActionInProgress}
+                ariaLabel='Complete the request after Foreside documents are uploaded'
+                styles={{
+                  root: {
+                    minWidth: '160px',
+                    height: '44px',
+                    borderRadius: '4px',
+                  },
+                }}
+              />
+            )}
+
             {/* Submit Request button - Draft/New only */}
             {showSubmitRequest && (
               <PrimaryButton
@@ -1189,12 +1352,12 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
                   minWidth: '120px',
                   height: '44px',
                   borderRadius: '4px',
-                  marginLeft: '24px', // Extra spacing before Close button
+                  marginLeft: '12px',
                 },
               }}
             />
-          </Stack>
-        </Stack>
+          </div>
+        </div>
 
         {/* Loading Overlay - shown during any action */}
         {isAnyActionInProgress && (

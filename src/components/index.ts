@@ -19,3 +19,12 @@ export type { ILoadingOverlayProps } from './LoadingOverlay';
 
 export { WorkflowStepper } from './WorkflowStepper';
 export type { IWorkflowStepperProps } from './WorkflowStepper';
+
+export { ReviewAudienceSelector } from './ReviewAudienceSelector';
+export type { IReviewAudienceSelectorProps } from './ReviewAudienceSelector';
+
+export { RequestHoverCard } from './RequestHoverCard';
+export type { IRequestHoverCardProps, IRequestHoverCardData } from './RequestHoverCard';
+
+export { StatusBanner } from './StatusBanner';
+export type { IStatusBannerProps } from './StatusBanner';

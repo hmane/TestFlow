@@ -100,6 +100,42 @@ export interface IRequestMetadata {
   completedOn?: Date;
   /** Tracking ID (if applicable) */
   trackingId?: string;
+
+  // Contextual coloring fields for "In Review" step
+  /** Current legal review status (for contextual coloring) */
+  legalReviewStatus?: string;
+  /** Current compliance review status (for contextual coloring) */
+  complianceReviewStatus?: string;
+  /** Whether the current user is the submitter (for contextual coloring) */
+  isCurrentUserSubmitter?: boolean;
+
+  // Foreside Documents step fields
+  /** Whether Foreside review is required (determines if Foreside Documents step is shown) */
+  isForesideReviewRequired?: boolean;
+  /** Date Foreside documents were completed */
+  foresideCompletedOn?: Date;
+  /** User who completed Foreside documents (display name) */
+  foresideCompletedBy?: string;
+
+  // Terminal state fields (Cancelled/OnHold)
+  /** Previous status before Cancelled or OnHold */
+  previousStatus?: RequestStatus;
+  /** Date request was cancelled */
+  cancelledOn?: Date;
+  /** User who cancelled the request (display name) */
+  cancelledBy?: string;
+  /** User identifier (email/login) for cancelled by */
+  cancelledByLogin?: string;
+  /** Reason for cancellation */
+  cancelReason?: string;
+  /** Date request was put on hold */
+  onHoldSince?: Date;
+  /** User who put the request on hold (display name) */
+  onHoldBy?: string;
+  /** User identifier (email/login) for on hold by */
+  onHoldByLogin?: string;
+  /** Reason for putting on hold */
+  onHoldReason?: string;
 }
 
 /**

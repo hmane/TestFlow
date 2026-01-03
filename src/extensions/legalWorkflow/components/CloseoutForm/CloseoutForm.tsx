@@ -12,7 +12,7 @@
  */
 
 import * as React from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, FormProvider as RHFFormProvider } from 'react-hook-form';
 
 // Fluent UI - tree-shaken imports
 import { Stack } from '@fluentui/react/lib/Stack';
@@ -37,6 +37,7 @@ import {
 
 // App imports using path aliases
 import { WorkflowCardHeader } from '@components/WorkflowCardHeader';
+import { useRequestFormContext } from '@contexts/RequestFormContext';
 import { useRequestStore } from '@stores/requestStore';
 import { useCloseoutStore } from '@stores/closeoutStore';
 import { ReviewAudience, ReviewOutcome } from '@appTypes/index';
@@ -81,17 +82,41 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
   defaultCollapsed = false,
   readOnly = false,
 }) => {
-  const { currentRequest, itemId } = useRequestStore();
+  const { currentRequest } = useRequestStore();
   const { setCloseoutValues, commentsAcknowledged, setCommentsAcknowledged } = useCloseoutStore();
+  const { validationErrors, setValidationErrors } = useRequestFormContext();
+
+  // Check if there's a validation error for tracking ID
+  const trackingIdError = React.useMemo(() => {
+    if (!validationErrors) return undefined;
+    for (let i = 0; i < validationErrors.length; i++) {
+      if (validationErrors[i].field === 'trackingId') {
+        return validationErrors[i];
+      }
+    }
+    return undefined;
+  }, [validationErrors]);
+
+  // Check if there's a validation error for comments acknowledgment
+  const commentsAcknowledgedError = React.useMemo(() => {
+    if (!validationErrors) return undefined;
+    for (let i = 0; i < validationErrors.length; i++) {
+      if (validationErrors[i].field === 'commentsAcknowledged') {
+        return validationErrors[i];
+      }
+    }
+    return undefined;
+  }, [validationErrors]);
 
   // React Hook Form setup
-  const { control, watch } = useForm<ICloseoutFormData>({
+  const formMethods = useForm<ICloseoutFormData>({
     defaultValues: {
       trackingId: currentRequest?.trackingId || '',
       closeoutNotes: '',
     },
     mode: 'onChange',
   });
+  const { control, watch, setError, clearErrors } = formMethods;
 
   // Watch form values and sync to store
   const trackingIdValue = watch('trackingId');
@@ -105,6 +130,41 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
       commentsAcknowledged,
     });
   }, [trackingIdValue, closeoutNotesValue, commentsAcknowledged, setCloseoutValues]);
+
+  // Clear trackingId validation error when user provides a value
+  React.useEffect(() => {
+    if (trackingIdValue && trackingIdValue.trim() !== '' && validationErrors) {
+      // Check if there's a trackingId error in the context
+      const hasTrackingIdError = validationErrors.some((err: { field: string }) => err.field === 'trackingId');
+      if (hasTrackingIdError) {
+        // Remove trackingId error from the list
+        const filteredErrors = validationErrors.filter((err: { field: string }) => err.field !== 'trackingId');
+        setValidationErrors(filteredErrors);
+      }
+    }
+  }, [trackingIdValue, validationErrors, setValidationErrors]);
+
+  // Clear commentsAcknowledged validation error when user acknowledges comments
+  React.useEffect(() => {
+    if (commentsAcknowledged && validationErrors) {
+      // Check if there's a commentsAcknowledged error in the context
+      const hasCommentsError = validationErrors.some((err: { field: string }) => err.field === 'commentsAcknowledged');
+      if (hasCommentsError) {
+        // Remove commentsAcknowledged error from the list
+        const filteredErrors = validationErrors.filter((err: { field: string }) => err.field !== 'commentsAcknowledged');
+        setValidationErrors(filteredErrors);
+      }
+    }
+  }, [commentsAcknowledged, validationErrors, setValidationErrors]);
+
+  // Propagate external validation errors to react-hook-form
+  React.useEffect(() => {
+    if (trackingIdError) {
+      setError('trackingId', { type: 'manual', message: trackingIdError.message });
+    } else {
+      clearErrors('trackingId');
+    }
+  }, [trackingIdError, setError, clearErrors]);
 
   if (!currentRequest) {
     return null;
@@ -201,8 +261,9 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
       </Header>
 
       <Content padding='comfortable'>
-        <FormProvider control={control as any} autoShowErrors={true}>
-          <Stack tokens={{ childrenGap: 20 }}>
+        <RHFFormProvider {...formMethods}>
+          <FormProvider control={control as any} autoShowErrors={true}>
+            <Stack tokens={{ childrenGap: 20 }}>
             {/* Tracking ID */}
             <FormContainer labelWidth='150px'>
               <FormItem fieldName='trackingId'>
@@ -221,20 +282,13 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
                 {readOnly ? (
                   <span>{currentRequest.trackingId || '—'}</span>
                 ) : (
-                  <Controller
+                  <SPTextField
                     name='trackingId'
-                    control={control}
-                    render={({ field }) => (
-                      <SPTextField
-                        {...field}
-                        name='trackingId'
-                        placeholder='Enter tracking ID'
-                        mode={SPTextFieldMode.SingleLine}
-                        maxLength={50}
-                        showCharacterCount
-                        stylingMode='outlined'
-                      />
-                    )}
+                    placeholder='Enter tracking ID'
+                    mode={SPTextFieldMode.SingleLine}
+                    maxLength={50}
+                    showCharacterCount
+                    stylingMode='outlined'
                   />
                 )}
               </FormItem>
@@ -343,10 +397,10 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
                   <Stack
                     styles={{
                       root: {
-                        backgroundColor: commentsAcknowledged ? '#dff6dd' : '#fff4ce',
+                        backgroundColor: commentsAcknowledged ? '#dff6dd' : commentsAcknowledgedError ? '#fde7e9' : '#fff4ce',
                         padding: 16,
                         borderRadius: 4,
-                        border: commentsAcknowledged ? '1px solid #107c10' : '1px solid #d83b01',
+                        border: commentsAcknowledged ? '1px solid #107c10' : commentsAcknowledgedError ? '2px solid #a80000' : '1px solid #d83b01',
                       },
                     }}
                   >
@@ -357,7 +411,8 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
                       styles={{
                         root: { fontWeight: 500 },
                         checkbox: {
-                          borderColor: commentsAcknowledged ? '#107c10' : '#d83b01',
+                          borderColor: commentsAcknowledged ? '#107c10' : commentsAcknowledgedError ? '#a80000' : '#d83b01',
+                          borderWidth: commentsAcknowledgedError ? 2 : 1,
                         },
                         checkmark: {
                           color: '#107c10',
@@ -365,6 +420,23 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
                       }}
                       ariaLabel="Acknowledge review comments"
                     />
+                    {commentsAcknowledgedError && (
+                      <Text
+                        variant="small"
+                        styles={{
+                          root: {
+                            color: '#a80000',
+                            marginTop: 8,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                          },
+                        }}
+                      >
+                        <Icon iconName="ErrorBadge" styles={{ root: { fontSize: 12 } }} />
+                        {commentsAcknowledgedError.message}
+                      </Text>
+                    )}
                   </Stack>
                 </Stack>
               </>
@@ -400,32 +472,43 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
               </>
             )}
 
-            {/* Final Notes - only show in edit mode (field may be added later) */}
-            {!readOnly && (
+            {/* Final Notes - show in both edit and read-only mode */}
+            {(!readOnly || currentRequest.closeoutNotes) && (
               <FormContainer labelWidth='150px'>
                 <FormItem fieldName='closeoutNotes'>
-                  <FormLabel infoText='Add any final notes or comments about this request'>
+                  <FormLabel infoText={readOnly ? undefined : 'Add any final notes or comments about this request'}>
                     Closeout Notes
                   </FormLabel>
-                  <SPTextField
-                    name='closeoutNotes'
-                    placeholder='Add any final notes or comments'
-                    mode={SPTextFieldMode.MultiLine}
-                    rows={3}
-                    maxLength={2000}
-                    showCharacterCount
-                    stylingMode='outlined'
-                    spellCheck
-                    appendOnly
-                    itemId={itemId}
-                    listNameOrId='Requests'
-                    fieldInternalName='CloseoutNotes'
-                  />
+                  {readOnly ? (
+                    <Text
+                      styles={{
+                        root: {
+                          whiteSpace: 'pre-wrap',
+                          lineHeight: '1.5',
+                          color: currentRequest.closeoutNotes ? '#323130' : '#8a8886',
+                        },
+                      }}
+                    >
+                      {currentRequest.closeoutNotes || '—'}
+                    </Text>
+                  ) : (
+                    <SPTextField
+                      name='closeoutNotes'
+                      placeholder='Add any final notes or comments'
+                      mode={SPTextFieldMode.MultiLine}
+                      rows={3}
+                      maxLength={2000}
+                      showCharacterCount
+                      stylingMode='outlined'
+                      spellCheck
+                    />
+                  )}
                 </FormItem>
               </FormContainer>
             )}
-          </Stack>
-        </FormProvider>
+            </Stack>
+          </FormProvider>
+        </RHFFormProvider>
       </Content>
     </Card>
   );

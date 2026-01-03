@@ -161,6 +161,7 @@ const QUERY2_FIELDS = [
 
   // Closeout
   RequestsFields.TrackingId,
+  RequestsFields.CloseoutNotes,
   RequestsFields.CloseoutBy,
   RequestsFields.CloseoutOn,
   RequestsFields.CommentsAcknowledged,
@@ -418,8 +419,20 @@ export function mapRequestListItemToRequest(item: any): ILegalRequest {
     distributionMethod: extractor.multiChoice(RequestsFields.DistributionMethod) as DistributionMethod[],
     dateOfFirstUse: extractor.date(RequestsFields.DateOfFirstUse),
 
-    // Prior submissions
-    priorSubmissions: extractor.lookupMulti(RequestsFields.PriorSubmissions),
+    // Prior submissions - renderListDataAsStream returns lookupId/lookupValue format
+    priorSubmissions: (() => {
+      const raw = extractor.raw[RequestsFields.PriorSubmissions];
+      if (!Array.isArray(raw) || raw.length === 0) return [];
+
+      // renderListDataAsStream returns: { lookupId: number, lookupValue: string, ... }
+      // Map to SPLookup format: { id: number, title: string }
+      return raw
+        .map((item: any) => ({
+          id: item.lookupId || item.ID || item.id,
+          title: item.lookupValue || item.Title || item.title || '',
+        }))
+        .filter((lookup: any) => lookup.id !== undefined);
+    })(),
     priorSubmissionNotes: extractor.string(RequestsFields.PriorSubmissionNotes),
 
     // Additional parties
@@ -496,6 +509,7 @@ export function mapRequestListItemToRequest(item: any): ILegalRequest {
 
     // Closeout
     trackingId: extractor.string(RequestsFields.TrackingId),
+    closeoutNotes: extractor.string(RequestsFields.CloseoutNotes),
     closeoutBy: extractor.user(RequestsFields.CloseoutBy),
     closeoutOn: extractor.date(RequestsFields.CloseoutOn),
     commentsAcknowledged: extractor.boolean(RequestsFields.CommentsAcknowledged, false),

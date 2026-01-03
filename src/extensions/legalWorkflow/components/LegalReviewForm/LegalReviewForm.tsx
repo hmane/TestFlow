@@ -17,14 +17,13 @@ import { useForm } from 'react-hook-form';
 import { DefaultButton, PrimaryButton } from '@fluentui/react/lib/Button';
 import { Icon } from '@fluentui/react/lib/Icon';
 import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
-import { Separator } from '@fluentui/react/lib/Separator';
 import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
 
 // spfx-toolkit - tree-shaken imports
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
-import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
+import { Card, Header, Content, Footer } from 'spfx-toolkit/lib/components/Card';
 import {
   FormContainer,
   FormItem,
@@ -40,6 +39,7 @@ import {
   type ReviewOutcome as HeaderReviewOutcome,
 } from '@components/WorkflowCardHeader';
 import { useRequestStore, useRequestActions } from '@stores/requestStore';
+import { usePermissions } from '@hooks/usePermissions';
 import {
   saveLegalReviewProgress,
   resubmitForLegalReview,
@@ -131,6 +131,10 @@ interface ILegalReviewFormProps {
 export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollapsed = false }) => {
   const { currentRequest, isLoading, itemId } = useRequestStore();
   const { submitLegalReview: submitLegalReviewAction, loadRequest } = useRequestActions();
+  const { isAttorney, isAdmin, isLegalAdmin } = usePermissions();
+
+  // Determine if current user is a reviewer (can submit reviews)
+  const isReviewer = isAttorney || isAdmin || isLegalAdmin;
   const [showSuccess, setShowSuccess] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | undefined>(undefined);
   const [isSaving, setIsSaving] = React.useState<boolean>(false);
@@ -333,17 +337,20 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
     return null;
   }
 
+  // Check if review is completed (has outcome or completed status)
+  const isReviewCompleted = currentRequest.legalReview?.status === LegalReviewStatus.Completed;
+  const completedOutcome = currentRequest.legalReview?.outcome;
+  const hasLegalReviewData = isReviewCompleted || completedOutcome;
+
   // Check if legal review is applicable based on review audience
   const reviewAudience = currentRequest.reviewAudience;
   const isLegalReviewRequired = reviewAudience === 'Legal' || reviewAudience === 'Both';
 
-  if (!isLegalReviewRequired) {
+  // Don't show if legal review is not required AND there's no completed review data
+  // (If there's completed review data, always show it regardless of reviewAudience)
+  if (!isLegalReviewRequired && !hasLegalReviewData) {
     return null;
   }
-
-  // Check if review is completed
-  const isReviewCompleted = currentRequest.legalReview?.status === LegalReviewStatus.Completed;
-  const completedOutcome = currentRequest.legalReview?.outcome;
 
   // When completed, collapse by default and show green header
   const shouldDefaultCollapse = isReviewCompleted || defaultCollapsed;
@@ -478,110 +485,52 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
             </MessageBar>
           )}
 
-          {/* Waiting on submitter - show resubmit UI for submitter */}
+          {/* Waiting on submitter - unified form for both submitter and reviewer
+              Review Outcome is disabled for submitter but enabled for reviewer
+              Action buttons shown in Card Footer based on user permissions */}
           {reviewStatus === LegalReviewStatus.WaitingOnSubmitter ? (
-            <Stack tokens={{ childrenGap: 16 }}>
-              {/* Warning banner explaining what needs to be done */}
-              <MessageBar
-                messageBarType={MessageBarType.warning}
-                isMultiline
-                styles={{
-                  root: { borderRadius: '4px' },
-                  icon: { color: '#d83b01' },
-                }}
-              >
-                <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
-                  <Icon iconName="Warning" styles={{ root: { marginRight: 8 } }} />
-                  Action Required: Respond to Attorney Comments
-                </Text>
-                <Text block styles={{ root: { marginTop: 8 } }}>
-                  The attorney has requested changes or additional information. Please review the comments below,
-                  address the issues by updating the request or adding documents/approvals as needed,
-                  then click &quot;Resubmit for Review&quot; when ready.
-                </Text>
-              </MessageBar>
+            <form onSubmit={handleSubmit(onSubmit)}>
+              <Stack tokens={{ childrenGap: 20 }}>
+                {/* Review Outcome Selection - disabled for submitter, enabled for reviewer */}
+                <FormContainer labelWidth='150px'>
+                  <FormItem fieldName='legalReviewOutcome'>
+                    <FormLabel isRequired={isReviewer} infoText='Select your review decision'>
+                      Review Outcome
+                    </FormLabel>
+                    <SPChoiceField
+                      name='legalReviewOutcome'
+                      choices={REVIEW_OUTCOME_CHOICES}
+                      placeholder='Select an outcome...'
+                      disabled={!isReviewer}
+                    />
+                  </FormItem>
+                </FormContainer>
 
-              {/* Show attorney's review comments if available */}
-              {currentRequest.legalReview?.reviewNotes && (
-                <Stack
-                  styles={{
-                    root: {
-                      backgroundColor: '#f3f2f1',
-                      padding: 16,
-                      borderRadius: 4,
-                      borderLeft: '4px solid #0078d4',
-                    },
-                  }}
-                >
-                  <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
-                    <Text variant="mediumPlus" styles={{ root: { fontWeight: 600, color: '#0078d4' } }}>
-                      <Icon iconName="Scale" styles={{ root: { marginRight: 8 } }} />
-                      Attorney Comments
-                    </Text>
-                    {currentRequest.attorney?.title && (
-                      <Text variant="small" styles={{ root: { color: '#605e5c' } }}>
-                        by {currentRequest.attorney.title}
-                      </Text>
-                    )}
-                  </Stack>
-                  <Text
-                    block
-                    styles={{
-                      root: {
-                        marginTop: 12,
-                        whiteSpace: 'pre-wrap',
-                        lineHeight: '1.5',
-                      },
-                    }}
-                  >
-                    {currentRequest.legalReview.reviewNotes}
-                  </Text>
-                </Stack>
-              )}
-
-              {/* Response notes field - submitter can add notes when resubmitting */}
-              <FormContainer labelWidth='150px'>
-                <FormItem fieldName='legalReviewNotes'>
-                  <FormLabel infoText='Add notes explaining what changes you made to address the comments'>
-                    Response Notes
-                  </FormLabel>
-                  <SPTextField
-                    key={`legal-review-notes-resubmit-${historyRefreshKey}`}
-                    name='legalReviewNotes'
-                    placeholder='Describe the changes made to address the reviewer comments'
-                    mode={SPTextFieldMode.MultiLine}
-                    rows={3}
-                    maxLength={4000}
-                    showCharacterCount
-                    stylingMode='outlined'
-                    spellCheck
-                    appendOnly
-                    itemId={itemId}
-                    listNameOrId='Requests'
-                    fieldInternalName='LegalReviewNotes'
-                  />
-                </FormItem>
-              </FormContainer>
-
-              <Separator />
-
-              {/* Resubmit button */}
-              <Stack horizontal tokens={{ childrenGap: 12 }} horizontalAlign='start'>
-                <PrimaryButton
-                  text={isResubmitting ? 'Resubmitting...' : 'Resubmit for Review'}
-                  iconProps={{ iconName: isResubmitting ? undefined : 'Send' }}
-                  onClick={handleResubmitForReview}
-                  disabled={isLoading || isSaving || isResubmitting}
-                  styles={{
-                    root: { minWidth: '180px', height: '40px', borderRadius: '4px' },
-                  }}
-                >
-                  {isResubmitting && (
-                    <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />
-                  )}
-                </PrimaryButton>
+                {/* Review Notes */}
+                <FormContainer labelWidth='150px'>
+                  <FormItem fieldName='legalReviewNotes'>
+                    <FormLabel infoText='Detailed review notes, comments, and recommendations'>
+                      Review Notes
+                    </FormLabel>
+                    <SPTextField
+                      key={`legal-review-notes-resubmit-${historyRefreshKey}`}
+                      name='legalReviewNotes'
+                      placeholder='Provide detailed review notes, comments, and recommendations'
+                      mode={SPTextFieldMode.MultiLine}
+                      rows={4}
+                      maxLength={4000}
+                      showCharacterCount
+                      stylingMode='outlined'
+                      spellCheck
+                      appendOnly
+                      itemId={itemId}
+                      listNameOrId='Requests'
+                      fieldInternalName='LegalReviewNotes'
+                    />
+                  </FormItem>
+                </FormContainer>
               </Stack>
-            </Stack>
+            </form>
           ) : reviewStatus === LegalReviewStatus.WaitingOnAttorney ? (
             // Waiting on Attorney - show message to reviewers that submitter has resubmitted
             <Stack tokens={{ childrenGap: 16 }}>
@@ -598,7 +547,7 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
                 </Stack>
               </MessageBar>
 
-              {/* Standard review form for attorney */}
+              {/* Standard review form for attorney - actions in Footer */}
               <form onSubmit={handleSubmit(onSubmit)}>
                 <Stack tokens={{ childrenGap: 20 }}>
                   {/* Review Outcome Selection */}
@@ -638,38 +587,11 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
                       />
                     </FormItem>
                   </FormContainer>
-
-                  <Separator />
-
-                  {/* Action Buttons */}
-                  <Stack horizontal tokens={{ childrenGap: 12 }} horizontalAlign='start'>
-                    <PrimaryButton
-                      type='submit'
-                      text='Submit Review'
-                      iconProps={{ iconName: 'Send' }}
-                      disabled={isLoading || isSaving || !selectedOutcome}
-                      styles={{
-                        root: { minWidth: '140px', height: '40px', borderRadius: '4px' },
-                      }}
-                    />
-                    <DefaultButton
-                      text={isSaving ? 'Saving...' : 'Save'}
-                      iconProps={{ iconName: isSaving ? undefined : 'Save' }}
-                      onClick={handleSaveProgress}
-                      disabled={isLoading || isSaving}
-                      styles={{
-                        root: { minWidth: '100px', height: '40px', borderRadius: '4px' },
-                      }}
-                    >
-                      {isSaving && (
-                        <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />
-                      )}
-                    </DefaultButton>
-                  </Stack>
                 </Stack>
               </form>
             </Stack>
           ) : (
+            // Normal review form - actions in Footer
             <form onSubmit={handleSubmit(onSubmit)}>
               <Stack tokens={{ childrenGap: 20 }}>
                 {/* Review Outcome Selection */}
@@ -709,39 +631,69 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
                     />
                   </FormItem>
                 </FormContainer>
-
-                <Separator />
-
-                {/* Action Buttons */}
-                <Stack horizontal tokens={{ childrenGap: 12 }} horizontalAlign='start'>
-                  <PrimaryButton
-                    type='submit'
-                    text='Submit Review'
-                    iconProps={{ iconName: 'Send' }}
-                    disabled={isLoading || isSaving || !selectedOutcome}
-                    styles={{
-                      root: { minWidth: '140px', height: '40px', borderRadius: '4px' },
-                    }}
-                  />
-                  <DefaultButton
-                    text={isSaving ? 'Saving...' : 'Save'}
-                    iconProps={{ iconName: isSaving ? undefined : 'Save' }}
-                    onClick={handleSaveProgress}
-                    disabled={isLoading || isSaving}
-                    styles={{
-                      root: { minWidth: '100px', height: '40px', borderRadius: '4px' },
-                    }}
-                  >
-                    {isSaving && (
-                      <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />
-                    )}
-                  </DefaultButton>
-                </Stack>
               </Stack>
             </form>
           )}
         </FormProvider>
       </Content>
+
+      {/* Card Footer with action buttons for all in-progress states */}
+      <Footer borderTop padding='comfortable'>
+        <Stack
+          horizontal
+          tokens={{ childrenGap: 12 }}
+          horizontalAlign={reviewStatus === LegalReviewStatus.WaitingOnSubmitter ? 'space-between' : 'end'}
+          verticalAlign='center'
+          wrap
+        >
+          {/* Submitter actions - only for WaitingOnSubmitter state */}
+          {reviewStatus === LegalReviewStatus.WaitingOnSubmitter && (
+            <Stack horizontal tokens={{ childrenGap: 12 }}>
+              <PrimaryButton
+                text={isResubmitting ? 'Resubmitting...' : 'Resubmit for Review'}
+                iconProps={{ iconName: isResubmitting ? undefined : 'Send' }}
+                onClick={handleResubmitForReview}
+                disabled={isLoading || isSaving || isResubmitting}
+                styles={{
+                  root: { minWidth: '180px', height: '40px', borderRadius: '4px' },
+                }}
+              >
+                {isResubmitting && (
+                  <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />
+                )}
+              </PrimaryButton>
+            </Stack>
+          )}
+
+          {/* Reviewer actions - visible to reviewers in all in-progress states */}
+          {isReviewer && (
+            <Stack horizontal tokens={{ childrenGap: 12 }}>
+              <DefaultButton
+                text={isSaving ? 'Saving...' : 'Save Progress'}
+                iconProps={{ iconName: isSaving ? undefined : 'Save' }}
+                onClick={handleSaveProgress}
+                disabled={isLoading || isSaving}
+                styles={{
+                  root: { minWidth: '120px', height: '40px', borderRadius: '4px' },
+                }}
+              >
+                {isSaving && (
+                  <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />
+                )}
+              </DefaultButton>
+              <PrimaryButton
+                text='Submit Review'
+                iconProps={{ iconName: 'CheckMark' }}
+                onClick={handleSubmit(onSubmit)}
+                disabled={isLoading || isSaving || !selectedOutcome}
+                styles={{
+                  root: { minWidth: '140px', height: '40px', borderRadius: '4px' },
+                }}
+              />
+            </Stack>
+          )}
+        </Stack>
+      </Footer>
     </Card>
   );
 };

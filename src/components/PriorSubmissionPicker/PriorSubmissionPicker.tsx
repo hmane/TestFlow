@@ -6,21 +6,21 @@
  * - Filters by current user's department
  * - Searches request title, purpose, request ID, submission item
  * - Shows request ID, title, and created date in dropdown
- * - Displays selected requests as chips with click to open
+ * - Displays selected requests as compact chips with flow wrapping
+ * - Hover card shows request details
  * - Remove capability for selected items
  */
 
 import { Icon } from '@fluentui/react/lib/Icon';
 import { IconButton } from '@fluentui/react/lib/Button';
-import { Link } from '@fluentui/react/lib/Link';
 import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
-import { TooltipHost } from '@fluentui/react/lib/Tooltip';
 import Autocomplete from 'devextreme-react/autocomplete';
 import * as React from 'react';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import type { SPLookup } from 'spfx-toolkit/lib/types';
+import { RequestHoverCard } from '@components/RequestHoverCard';
 import './PriorSubmissionPicker.scss';
 
 export interface IPriorSubmission {
@@ -79,6 +79,7 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
   const [selectedRequests, setSelectedRequests] = React.useState<IPriorSubmission[]>([]);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
   const [searchValue, setSearchValue] = React.useState<string>('');
+  const [hasSearched, setHasSearched] = React.useState<boolean>(false);
 
   // Cache for submission details to avoid duplicate API calls
   // When user selects from dropdown, we already have the data - cache it
@@ -91,6 +92,7 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
     async (searchText: string): Promise<void> => {
       if (!searchText || searchText.length < 2) {
         setDataSource([]);
+        setHasSearched(false);
         return;
       }
 
@@ -153,6 +155,7 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
         setDataSource([]);
       } finally {
         setIsLoading(false);
+        setHasSearched(true);
       }
     },
     [currentUserDepartment]
@@ -162,6 +165,9 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
    * Debounced search
    */
   React.useEffect(() => {
+    // Reset hasSearched when search value changes (new search starting)
+    setHasSearched(false);
+
     const timer = setTimeout(() => {
       if (searchValue) {
         void loadPriorSubmissions(searchValue);
@@ -277,6 +283,7 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
         SPContext.logger.info('Request already selected', { id: submission.id });
         setSearchValue('');
         setDataSource([]);
+        setHasSearched(false);
         return;
       }
 
@@ -287,6 +294,7 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
       // Clear search
       setSearchValue('');
       setDataSource([]);
+      setHasSearched(false);
     },
     [value, onChange]
   );
@@ -306,11 +314,10 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
    * Open request in new tab
    */
   const handleOpenRequest = React.useCallback((id: number): void => {
-    const listId = SPContext.pageContext?.list?.id?.toString() || '';
     const webUrl = SPContext.pageContext?.web?.absoluteUrl || '';
 
-    if (webUrl && listId) {
-      const url = `${webUrl}/Lists/${listId}/DispForm.aspx?ID=${id}`;
+    if (webUrl) {
+      const url = `${webUrl}/Lists/Requests/DispForm.aspx?ID=${id}`;
       window.open(url, '_blank', 'noopener,noreferrer');
     }
   }, []);
@@ -322,6 +329,7 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
     // Clear search value and results when user focuses out
     setSearchValue('');
     setDataSource([]);
+    setHasSearched(false);
   }, []);
 
   /**
@@ -446,8 +454,8 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
           </div>
         )}
 
-        {/* No Results Message */}
-        {!isLoading && searchValue.length >= 2 && dataSource.length === 0 && (
+        {/* No Results Message - only show after search has completed */}
+        {!isLoading && hasSearched && searchValue.length >= 2 && dataSource.length === 0 && (
           <div className="no-results-container">
             <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
               <Icon iconName="SearchIssue" styles={{ root: { color: '#a19f9d', fontSize: 16 } }} />
@@ -459,94 +467,64 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
         )}
       </div>
 
-      {/* Selected Requests List */}
+      {/* Selected Requests - Compact Cards with Flow Wrapping */}
       {selectedRequests.length > 0 && (
         <div className="selected-requests">
-          <Text
-            variant="small"
-            styles={{ root: { fontWeight: 600, marginBottom: '8px', display: 'block' } }}
-          >
-            Selected Prior Submissions ({selectedRequests.length})
-          </Text>
-          <Stack tokens={{ childrenGap: 8 }}>
+          <div className="selected-cards-container">
             {selectedRequests.map(request => (
-              <div key={request.id} className="selected-request-card">
-                <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
-                  <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center" styles={{ root: { flex: 1, minWidth: 0 } }}>
-                    <Icon
-                      iconName="DocumentSet"
-                      styles={{ root: { color: '#0078d4', fontSize: 20, flexShrink: 0 } }}
-                    />
-                    <Stack tokens={{ childrenGap: 2 }} styles={{ root: { flex: 1, minWidth: 0 } }}>
-                      <Stack horizontal tokens={{ childrenGap: 8 }} verticalAlign="center">
-                        <TooltipHost content="Click to open in new tab">
-                          <Link
-                            onClick={() => handleOpenRequest(request.id)}
-                            styles={{
-                              root: {
-                                fontWeight: 600,
-                                color: '#0078d4',
-                                cursor: 'pointer',
-                                textDecoration: 'none',
-                                '&:hover': {
-                                  textDecoration: 'underline',
-                                },
-                              },
-                            }}
-                          >
-                            {request.requestId}
-                          </Link>
-                        </TooltipHost>
-                        <Text variant="small" styles={{ root: { color: '#605e5c' } }}>
-                          {formatDate(request.created)}
-                        </Text>
-                      </Stack>
-                      <Text
-                        styles={{
-                          root: {
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                          },
-                        }}
-                      >
-                        {request.requestTitle}
-                      </Text>
+              <div key={request.id} className="selected-card">
+                <RequestHoverCard
+                  requestId={request.id}
+                  data={{
+                    id: request.id,
+                    requestId: request.requestId,
+                    requestTitle: request.requestTitle,
+                    submissionItem: request.submissionItem,
+                    created: new Date(request.created),
+                  }}
+                >
+                  <button
+                    type="button"
+                    className="card-content"
+                    onClick={() => handleOpenRequest(request.id)}
+                    aria-label={`${request.requestId} - ${request.requestTitle}. Click to open, hover for details.`}
+                  >
+                    {/* Header: Request ID + Submission Type */}
+                    <div className="card-header">
+                      <span className="card-request-id">
+                        <Icon iconName="DocumentSet" className="card-icon" />
+                        {request.requestId}
+                      </span>
                       {request.submissionItem && (
-                        <Stack horizontal tokens={{ childrenGap: 4 }} verticalAlign="center">
-                          <Icon
-                            iconName="Tag"
-                            styles={{ root: { fontSize: 12, color: '#605e5c' } }}
-                          />
-                          <Text variant="small" styles={{ root: { color: '#605e5c' } }}>
-                            {request.submissionItem}
-                          </Text>
-                        </Stack>
+                        <span className="card-type-badge">{request.submissionItem}</span>
                       )}
-                    </Stack>
-                  </Stack>
-                  <TooltipHost content="Remove">
-                    <IconButton
-                      iconProps={{ iconName: 'Cancel' }}
-                      onClick={() => handleRemove(request.id)}
-                      disabled={disabled}
-                      styles={{
-                        root: {
-                          flexShrink: 0,
-                          color: '#605e5c',
-                          '&:hover': {
-                            color: '#d13438',
-                            backgroundColor: '#fef6f6',
-                          },
-                        },
-                      }}
-                      ariaLabel="Remove prior submission"
-                    />
-                  </TooltipHost>
-                </Stack>
+                    </div>
+                    {/* Title (truncated) */}
+                    <div className="card-title" title={request.requestTitle}>
+                      {request.requestTitle}
+                    </div>
+                    {/* Footer: Created By + Date */}
+                    <div className="card-footer">
+                      {request.createdBy && (
+                        <span className="card-created-by">
+                          <Icon iconName="Contact" className="card-footer-icon" />
+                          {request.createdBy}
+                        </span>
+                      )}
+                      <span className="card-date">{formatDate(request.created)}</span>
+                    </div>
+                  </button>
+                </RequestHoverCard>
+                <IconButton
+                  iconProps={{ iconName: 'Cancel' }}
+                  onClick={() => handleRemove(request.id)}
+                  disabled={disabled}
+                  className="card-remove"
+                  ariaLabel={`Remove ${request.requestId}`}
+                />
               </div>
             ))}
-          </Stack>
+          </div>
         </div>
       )}
     </div>

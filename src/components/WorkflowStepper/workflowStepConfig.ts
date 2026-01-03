@@ -8,6 +8,83 @@ import { RequestStatus, RequestType } from '@appTypes/index';
 import type { IWorkflowStep, IStepContent, StepData, AppStepperMode, IRequestMetadata } from './WorkflowStepperTypes';
 
 /**
+ * Status order for workflow progression
+ * Used to determine which form sections to show based on previousStatus
+ * Terminal statuses (Cancelled, OnHold) have high order to not affect section visibility
+ */
+const STATUS_ORDER: Record<RequestStatus, number> = {
+  [RequestStatus.Draft]: 1,
+  [RequestStatus.LegalIntake]: 2,
+  [RequestStatus.AssignAttorney]: 2, // Same as LegalIntake (merged visually)
+  [RequestStatus.InReview]: 3,
+  [RequestStatus.Closeout]: 4,
+  [RequestStatus.AwaitingForesideDocuments]: 5,
+  [RequestStatus.Completed]: 6,
+  [RequestStatus.Cancelled]: 99, // Terminal - doesn't affect section visibility
+  [RequestStatus.OnHold]: 99, // Terminal - doesn't affect section visibility
+};
+
+/**
+ * Get the workflow order for a given status
+ * Higher numbers = later in workflow
+ */
+export function getStatusOrder(status: RequestStatus): number {
+  return STATUS_ORDER[status] || 0;
+}
+
+/**
+ * Determine if a form section should be shown based on previousStatus
+ * When request is Cancelled or OnHold, only show sections up to and including previousStatus
+ *
+ * @param sectionStatus - The status that corresponds to the form section
+ * @param currentStatus - The current request status
+ * @param previousStatus - The status before Cancelled/OnHold (optional)
+ * @returns true if the section should be rendered
+ */
+export function shouldShowFormSection(
+  sectionStatus: RequestStatus,
+  currentStatus: RequestStatus,
+  previousStatus?: RequestStatus
+): boolean {
+  // Normal flow - not cancelled or on hold
+  if (currentStatus !== RequestStatus.Cancelled && currentStatus !== RequestStatus.OnHold) {
+    return true;
+  }
+
+  // For Cancelled/OnHold, if no previousStatus, show nothing beyond Draft
+  if (!previousStatus) {
+    return getStatusOrder(sectionStatus) <= getStatusOrder(RequestStatus.Draft);
+  }
+
+  // Show sections up to and including previousStatus
+  return getStatusOrder(sectionStatus) <= getStatusOrder(previousStatus);
+}
+
+/**
+ * Get the step key that corresponds to a status for stepper positioning
+ * Used to determine where to insert Cancelled/OnHold steps
+ */
+export function getStepKeyForStatus(status: RequestStatus): string {
+  switch (status) {
+    case RequestStatus.Draft:
+      return 'draft';
+    case RequestStatus.LegalIntake:
+    case RequestStatus.AssignAttorney:
+      return 'legalIntake';
+    case RequestStatus.InReview:
+      return 'inReview';
+    case RequestStatus.Closeout:
+      return 'closeout';
+    case RequestStatus.AwaitingForesideDocuments:
+      return 'foresideDocuments';
+    case RequestStatus.Completed:
+      return 'closeout'; // Completed shows on closeout step
+    default:
+      return 'draft';
+  }
+}
+
+/**
  * Format date for display in stepper (full format for tooltip)
  */
 function formatFullDate(date: Date | undefined): string {
@@ -168,6 +245,54 @@ const stepContents: Record<string, IStepContent> = {
     estimatedDuration: '1 business day',
     whoIsInvolved: ['Submitter', 'Legal Admin'],
   },
+  foresideDocuments: {
+    title: 'Foreside Documents',
+    description: 'Awaiting Foreside documentation completion',
+    details: [
+      'Request requires Foreside review documentation',
+      'Foreside team processes the documentation',
+      'Final compliance documentation is prepared',
+      'Request is marked as complete once Foreside documents are finalized',
+    ],
+    tips: [
+      'Monitor for updates from the Foreside team',
+      'Ensure all required documentation is available',
+      'Request will complete automatically when Foreside processing is done',
+    ],
+    estimatedDuration: 'Varies (typically 1-3 business days)',
+    whoIsInvolved: ['Foreside Team', 'Compliance'],
+  },
+  cancelled: {
+    title: 'Request Cancelled',
+    description: 'This request has been cancelled',
+    details: [
+      'The request was cancelled before completion',
+      'No further action is required',
+      'The request can be viewed for reference only',
+    ],
+    tips: [
+      'Review the cancellation reason for context',
+      'If needed, create a new request to restart the process',
+    ],
+    estimatedDuration: 'N/A',
+    whoIsInvolved: ['N/A'],
+  },
+  onHold: {
+    title: 'Request On Hold',
+    description: 'This request is currently on hold',
+    details: [
+      'The request has been placed on hold',
+      'Review progress is paused until the hold is lifted',
+      'The request will resume from where it was paused',
+    ],
+    tips: [
+      'Review the hold reason for context',
+      'Contact the person who placed the hold for updates',
+      'The request can be resumed by authorized personnel',
+    ],
+    estimatedDuration: 'Varies',
+    whoIsInvolved: ['Legal Admin', 'Admin'],
+  },
 };
 
 /**
@@ -251,15 +376,31 @@ export function getWorkflowSteps(requestType: RequestType): IWorkflowStep[] {
 }
 
 /**
+ * Review status values for contextual coloring
+ */
+const WAITING_ON_SUBMITTER = 'Waiting On Submitter';
+
+/**
  * Determine toolkit step status based on current request status
  *
  * Note: Since Assign Attorney is now merged into Legal Intake visually,
  * we treat AssignAttorney status as part of Legal Intake step (still current).
  * Completed status is now merged with Closeout - shows Closeout as completed.
+ *
+ * Contextual coloring for "In Review" step:
+ * - Shows 'warning' (orange) when current user IS the submitter AND review is waiting on them
+ * - Shows 'current' (blue) in all other cases when step is current
+ *
+ * Foreside Documents step:
+ * - Only shown when isForesideReviewRequired is true
+ * - Appears after Closeout step
+ * - Current when status is AwaitingForesideDocuments
+ * - Completed when status is Completed (and Foreside was required)
  */
 function determineStepStatus(
   step: IWorkflowStep,
-  currentStatus: RequestStatus
+  currentStatus: RequestStatus,
+  requestMetadata?: IRequestMetadata
 ): 'completed' | 'current' | 'pending' | 'warning' | 'error' | 'blocked' {
   // Handle special statuses first
   if (currentStatus === RequestStatus.Cancelled) {
@@ -270,8 +411,12 @@ function determineStepStatus(
     return 'warning';
   }
 
-  // Map statuses to visual step order (4 visual steps)
-  // Draft=1, LegalIntake/AssignAttorney=2, InReview=3, Closeout/Completed=4
+  // Determine if Foreside Documents step is in the workflow
+  const hasForesideStep = requestMetadata?.isForesideReviewRequired === true;
+
+  // Map statuses to visual step order
+  // Without Foreside: Draft=1, LegalIntake/AssignAttorney=2, InReview=3, Closeout/Completed=4
+  // With Foreside: Draft=1, LegalIntake/AssignAttorney=2, InReview=3, Closeout=4, ForesideDocuments/Completed=5
   const getVisualOrder = (status: RequestStatus): number => {
     switch (status) {
       case RequestStatus.Draft:
@@ -282,8 +427,12 @@ function determineStepStatus(
       case RequestStatus.InReview:
         return 3;
       case RequestStatus.Closeout:
+        return 4;
+      case RequestStatus.AwaitingForesideDocuments:
+        return 5; // After Closeout
       case RequestStatus.Completed:
-        return 4; // Merged - Completed shows Closeout as completed
+        // Completed order depends on whether Foreside step exists
+        return hasForesideStep ? 5 : 4;
       default:
         return 0;
     }
@@ -292,9 +441,28 @@ function determineStepStatus(
   const currentOrder = getVisualOrder(currentStatus);
   const stepOrder = getVisualOrder(step.requestStatus);
 
-  // Special handling: When status is Completed, the Closeout step should show as completed
-  if (currentStatus === RequestStatus.Completed && step.key === 'closeout') {
-    return 'completed';
+  // Special handling: When status is Completed
+  if (currentStatus === RequestStatus.Completed) {
+    // If Foreside step exists and this is the Foreside step, show as completed
+    if (step.key === 'foresideDocuments') {
+      return 'completed';
+    }
+    // Closeout step should show as completed
+    if (step.key === 'closeout') {
+      return 'completed';
+    }
+  }
+
+  // Special handling: When status is AwaitingForesideDocuments
+  if (currentStatus === RequestStatus.AwaitingForesideDocuments) {
+    // Closeout step should show as completed
+    if (step.key === 'closeout') {
+      return 'completed';
+    }
+    // Foreside Documents step is current
+    if (step.key === 'foresideDocuments') {
+      return 'current';
+    }
   }
 
   // Completed steps
@@ -304,6 +472,17 @@ function determineStepStatus(
 
   // Current step
   if (stepOrder === currentOrder) {
+    // Contextual coloring for "In Review" step
+    // Show 'warning' (orange) when current user IS the submitter AND review is waiting on them
+    if (step.key === 'inReview' && requestMetadata?.isCurrentUserSubmitter) {
+      const legalWaiting = requestMetadata.legalReviewStatus === WAITING_ON_SUBMITTER;
+      const complianceWaiting = requestMetadata.complianceReviewStatus === WAITING_ON_SUBMITTER;
+
+      if (legalWaiting || complianceWaiting) {
+        return 'warning';
+      }
+    }
+
     return 'current';
   }
 
@@ -595,7 +774,7 @@ function convertToStepData(
 ): StepData {
   // In informational mode, all steps are pending and clickable
   const status =
-    mode === 'informational' ? 'pending' : currentStatus ? determineStepStatus(step, currentStatus) : 'pending';
+    mode === 'informational' ? 'pending' : currentStatus ? determineStepStatus(step, currentStatus, requestMetadata) : 'pending';
 
   // In informational mode: all steps clickable (for preview)
   // In progress mode: only completed or current steps clickable (not pending/future steps)
@@ -622,7 +801,111 @@ function convertToStepData(
 }
 
 /**
+ * Foreside Documents step definition
+ * This step is conditionally added when isForesideReviewRequired is true
+ */
+const foresideDocumentsStep: IWorkflowStep = {
+  key: 'foresideDocuments',
+  label: 'Foreside',
+  description: 'Awaiting documents',
+  requestStatus: RequestStatus.AwaitingForesideDocuments,
+  isOptional: true, // Only shown when Foreside review is required
+  content: stepContents.foresideDocuments,
+  order: 5,
+};
+
+/**
+ * Cancelled step definition
+ * This step is added when status is Cancelled, shown after previousStatus step
+ */
+const cancelledStep: IWorkflowStep = {
+  key: 'cancelled',
+  label: 'Cancelled',
+  description: 'Request cancelled',
+  requestStatus: RequestStatus.Cancelled,
+  isOptional: false,
+  content: stepContents.cancelled,
+  order: 99, // Always at end
+};
+
+/**
+ * On Hold step definition
+ * This step is added when status is OnHold, shown after previousStatus step
+ */
+const onHoldStep: IWorkflowStep = {
+  key: 'onHold',
+  label: 'On Hold',
+  description: 'Request paused',
+  requestStatus: RequestStatus.OnHold,
+  isOptional: false,
+  content: stepContents.onHold,
+  order: 99, // Always at end
+};
+
+/**
+ * Get step descriptions for terminal states (Cancelled/OnHold)
+ */
+function getTerminalStepDescriptions(
+  stepKey: string,
+  requestMetadata?: IRequestMetadata
+): { description1: string | React.ReactNode; description2?: string | React.ReactNode } {
+  if (stepKey === 'cancelled' && requestMetadata) {
+    const cancelledOn = requestMetadata.cancelledOn;
+    const cancelledBy = requestMetadata.cancelledBy;
+    const cancelledByLogin = requestMetadata.cancelledByLogin;
+
+    return {
+      description1: cancelledOn ? createDateElement('Cancelled', cancelledOn) : 'Cancelled',
+      description2: cancelledByLogin
+        ? createUserElement(cancelledByLogin, cancelledBy)
+        : (cancelledBy ? `by ${cancelledBy}` : undefined),
+    };
+  }
+
+  if (stepKey === 'onHold' && requestMetadata) {
+    const onHoldSince = requestMetadata.onHoldSince;
+    const onHoldBy = requestMetadata.onHoldBy;
+    const onHoldByLogin = requestMetadata.onHoldByLogin;
+
+    return {
+      description1: onHoldSince ? createDateElement('On hold since', onHoldSince) : 'On Hold',
+      description2: onHoldByLogin
+        ? createUserElement(onHoldByLogin, onHoldBy)
+        : (onHoldBy ? `by ${onHoldBy}` : undefined),
+    };
+  }
+
+  return { description1: 'Terminal state' };
+}
+
+/**
+ * Convert terminal step to StepData format
+ */
+function convertTerminalStepToStepData(
+  step: IWorkflowStep,
+  status: 'error' | 'blocked',
+  requestMetadata?: IRequestMetadata
+): StepData {
+  const { description1, description2 } = getTerminalStepDescriptions(step.key, requestMetadata);
+
+  return {
+    id: step.key,
+    title: step.label,
+    description1,
+    description2,
+    status,
+    content: step.content ? renderStepContent(step.content) : undefined,
+    isClickable: true, // Allow clicking to see details
+  };
+}
+
+/**
  * Get steps as StepData array for use with toolkit WorkflowStepper
+ *
+ * Conditionally includes:
+ * - Foreside Documents step when isForesideReviewRequired is true
+ * - Cancelled step when status is Cancelled (shown after previousStatus)
+ * - OnHold step when status is OnHold (shown after previousStatus)
  */
 export function getStepsForStepper(
   requestType: RequestType,
@@ -631,5 +914,67 @@ export function getStepsForStepper(
   requestMetadata?: IRequestMetadata
 ): StepData[] {
   const steps = getWorkflowSteps(requestType);
-  return steps.map((step) => convertToStepData(step, currentStatus, mode, requestMetadata));
+
+  // Determine if Foreside Documents step should be included
+  // Show it if: isForesideReviewRequired is true OR current status is AwaitingForesideDocuments
+  const shouldIncludeForesideStep =
+    requestMetadata?.isForesideReviewRequired === true ||
+    currentStatus === RequestStatus.AwaitingForesideDocuments;
+
+  // Build the base steps array
+  let finalSteps = [...steps];
+  if (shouldIncludeForesideStep) {
+    finalSteps.push(foresideDocumentsStep);
+  }
+
+  // Convert base steps to StepData
+  const stepDataArray = finalSteps.map((step) => convertToStepData(step, currentStatus, mode, requestMetadata));
+
+  // For Cancelled status: Add Cancelled step at the end
+  if (currentStatus === RequestStatus.Cancelled) {
+    // Mark steps up to previousStatus as completed, rest as pending
+    const previousStatus = requestMetadata?.previousStatus;
+    const previousStepKey = previousStatus ? getStepKeyForStatus(previousStatus) : 'draft';
+
+    // Update step statuses based on previousStatus
+    let foundPreviousStep = false;
+    for (let i = 0; i < stepDataArray.length; i++) {
+      if (stepDataArray[i].id === previousStepKey) {
+        stepDataArray[i].status = 'completed';
+        foundPreviousStep = true;
+      } else if (!foundPreviousStep) {
+        stepDataArray[i].status = 'completed';
+      } else {
+        stepDataArray[i].status = 'pending';
+      }
+    }
+
+    // Add the Cancelled step at the end
+    stepDataArray.push(convertTerminalStepToStepData(cancelledStep, 'error', requestMetadata));
+  }
+
+  // For OnHold status: Add OnHold step at the end
+  if (currentStatus === RequestStatus.OnHold) {
+    // Mark steps up to previousStatus as completed, rest as pending
+    const previousStatus = requestMetadata?.previousStatus;
+    const previousStepKey = previousStatus ? getStepKeyForStatus(previousStatus) : 'draft';
+
+    // Update step statuses based on previousStatus
+    let foundPreviousStep = false;
+    for (let i = 0; i < stepDataArray.length; i++) {
+      if (stepDataArray[i].id === previousStepKey) {
+        stepDataArray[i].status = 'completed';
+        foundPreviousStep = true;
+      } else if (!foundPreviousStep) {
+        stepDataArray[i].status = 'completed';
+      } else {
+        stepDataArray[i].status = 'pending';
+      }
+    }
+
+    // Add the OnHold step at the end
+    stepDataArray.push(convertTerminalStepToStepData(onHoldStep, 'blocked', requestMetadata));
+  }
+
+  return stepDataArray;
 }

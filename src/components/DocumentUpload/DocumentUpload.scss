@@ -25,7 +25,7 @@ $neutral-lighter: #faf9f8;
 
 .document-card {
   position: relative;
-  padding: 12px;
+  padding: 8px 10px;
   border: 1px solid $neutral-light;
   border-radius: 4px;
   background: white;
@@ -33,7 +33,7 @@ $neutral-lighter: #faf9f8;
   cursor: default; // Default cursor, links inside will have pointer
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 
   &:hover {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -52,21 +52,29 @@ $neutral-lighter: #faf9f8;
   .card-header {
     display: flex;
     align-items: flex-start;
-    gap: 12px;
-    min-height: 40px;
+    gap: 8px;
+    min-height: 32px;
 
     .file-icon {
       flex-shrink: 0;
-      width: 40px;
-      height: 40px;
+      width: 32px;
+      height: 32px;
       display: flex;
       align-items: center;
       justify-content: center;
 
       img {
-        max-width: 40px;
-        max-height: 40px;
+        max-width: 32px;
+        max-height: 32px;
       }
+    }
+
+    // HoverCard wrapper - ensure it takes full width
+    .ms-HoverCard-host {
+      flex: 1;
+      min-width: 0;
+      max-width: 100%;
+      display: block;
     }
 
     .file-name-wrapper {
@@ -75,20 +83,18 @@ $neutral-lighter: #faf9f8;
       max-width: 100%; // Prevent overflow
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 2px;
       overflow: hidden; // Contain children
+      width: 100%;
     }
 
     .file-name {
-      font-size: 15px;
+      font-size: 13px;
       font-weight: 600;
       color: $neutral-primary;
-      line-height: 1.4;
+      line-height: 1.3;
       word-break: break-word;
-      display: -webkit-box;
-      -webkit-line-clamp: 3; // Max 3 lines
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+      overflow-wrap: break-word;
       cursor: default; // New files not clickable
 
       &.deleted {
@@ -102,33 +108,56 @@ $neutral-lighter: #faf9f8;
       display: block;
       width: 100%;
       max-width: 100%;
-      overflow: hidden;
 
-      // Target all elements inside DocumentLink component
-      * {
+      // Target ALL nested containers including document-link-container
+      .document-link-container,
+      > div {
+        display: block !important;
+        width: 100% !important;
         max-width: 100% !important;
+        background: transparent !important;
+        margin: 0 !important;
+        padding: 0 !important;
       }
 
       // Target the actual link inside DocumentLink component
       a, span {
-        font-size: 15px !important;
+        font-size: 13px !important;
         font-weight: 600 !important;
         color: $neutral-primary !important;
         text-decoration: none !important;
-        line-height: 1.4 !important;
+        line-height: 1.3 !important;
         word-break: break-word !important;
-        white-space: normal !important;
         overflow-wrap: break-word !important;
-        display: -webkit-box !important;
-        -webkit-line-clamp: 3 !important; // Max 3 lines
-        -webkit-box-orient: vertical !important;
-        overflow: hidden !important;
         max-width: 100% !important;
         cursor: pointer !important;
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        display: inline !important;
+        text-indent: 0 !important;
 
         &:hover {
           text-decoration: underline !important;
           color: $primary-color !important;
+          background: transparent !important;
+        }
+      }
+
+      // Specific targeting for document-link-text span
+      .document-link-text {
+        white-space: normal !important;
+        background: transparent !important;
+        display: inline !important;
+      }
+
+      // Override any hover backgrounds from DocumentLink component
+      .document-link {
+        background: transparent !important;
+        padding: 0 !important;
+
+        &:hover {
+          background: transparent !important;
         }
       }
 
@@ -141,6 +170,7 @@ $neutral-lighter: #faf9f8;
         &:hover {
           text-decoration: line-through !important;
           color: $neutral-tertiary !important;
+          background: transparent !important;
         }
       }
     }
@@ -150,24 +180,30 @@ $neutral-lighter: #faf9f8;
   .card-center {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 8px 0;
+    gap: 8px;
+    padding: 6px 0;
     border-top: 1px solid $neutral-lighter;
     border-bottom: 1px solid $neutral-lighter;
 
     .persona-avatar {
       flex-shrink: 0;
+
+      // Make persona smaller
+      [class*="ms-Persona"] {
+        width: 28px !important;
+        height: 28px !important;
+      }
     }
 
     .user-info {
       flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 2px;
       min-width: 0; // Allow truncation
 
       .user-name {
-        font-size: 14px;
+        font-size: 12px;
         font-weight: 600;
         color: $neutral-primary;
         line-height: 1.2;
@@ -177,14 +213,14 @@ $neutral-lighter: #faf9f8;
       }
 
       .relative-time {
-        font-size: 12px;
+        font-size: 11px;
         color: $neutral-secondary;
         cursor: help;
         line-height: 1.2;
       }
 
       .type-change {
-        font-size: 11px;
+        font-size: 10px;
         color: $warning-color;
         font-weight: 600;
         font-style: italic;
@@ -195,7 +231,7 @@ $neutral-lighter: #faf9f8;
 
   // Spacer for new cards (to match height of existing cards)
   .card-center-spacer {
-    height: 56px; // Match height of card-center (8px top + 40px content + 8px bottom)
+    height: 40px; // Match height of card-center
     border-top: 1px solid $neutral-lighter;
     border-bottom: 1px solid $neutral-lighter;
   }
@@ -205,17 +241,17 @@ $neutral-lighter: #faf9f8;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 8px;
 
     .footer-left {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       flex: 1;
       min-width: 0; // Allow truncation
 
       .file-size {
-        font-size: 12px;
+        font-size: 11px;
         color: $neutral-secondary;
         font-weight: 400;
         white-space: nowrap;
@@ -225,7 +261,7 @@ $neutral-lighter: #faf9f8;
     .footer-right {
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 2px;
       flex-shrink: 0;
     }
   }
@@ -234,18 +270,18 @@ $neutral-lighter: #faf9f8;
   .quick-actions {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
     opacity: 0;
     transition: opacity 0.2s ease;
 
     .quick-action-btn {
-      width: 32px;
-      height: 32px;
+      width: 26px;
+      height: 26px;
       padding: 0;
-      min-width: 32px;
+      min-width: 26px;
 
       i {
-        font-size: 14px;
+        font-size: 12px;
       }
 
       &:hover {
@@ -261,15 +297,15 @@ $neutral-lighter: #faf9f8;
 
   // ECB Menu
   .ecb-menu {
-    width: 32px;
-    height: 32px;
+    width: 26px;
+    height: 26px;
     padding: 0;
-    min-width: 32px;
+    min-width: 26px;
     opacity: 0;
     transition: opacity 0.2s ease;
 
     i {
-      font-size: 14px;
+      font-size: 12px;
     }
 
     &:hover {
@@ -316,15 +352,15 @@ $neutral-lighter: #faf9f8;
     transform: scale(0.98);
   }
 
-  // Badges (inline in footer) - refined styling
+  // Badges (inline in footer) - compact styling
   .card-badge {
     display: inline-block;
-    padding: 2px 8px;
-    font-size: 9px;
+    padding: 1px 5px;
+    font-size: 8px;
     font-weight: 700;
     border-radius: 2px;
     text-transform: uppercase;
-    letter-spacing: 0.6px;
+    letter-spacing: 0.5px;
     white-space: nowrap;
 
     &.badge-new {
@@ -810,122 +846,27 @@ $neutral-lighter: #faf9f8;
 
 @media (max-width: 768px) {
   .document-card {
-    padding: 12px;
-    gap: 10px;
+    padding: 8px;
+    gap: 6px;
 
     .card-header {
-      gap: 10px;
-      min-height: 36px;
+      gap: 8px;
+      min-height: 28px;
 
       .file-icon {
-        width: 36px;
-        height: 36px;
-
-        img {
-          max-width: 36px;
-          max-height: 36px;
-        }
-      }
-
-      .file-name {
-        font-size: 14px;
-      }
-
-      .file-name-link a,
-      .file-name-link span {
-        font-size: 14px !important;
-      }
-    }
-
-    .card-footer .footer-left .file-size {
-      font-size: 11px;
-    }
-
-    .card-center {
-      gap: 10px;
-      padding: 10px 0;
-
-      .user-info {
-        .user-name {
-          font-size: 13px;
-        }
-
-        .relative-time {
-          font-size: 11px;
-        }
-
-        .type-change {
-          font-size: 10px;
-        }
-      }
-    }
-
-    .card-footer {
-      flex-wrap: wrap;
-      gap: 8px;
-
-      .quick-actions {
-        .quick-action-btn {
-          width: 28px;
-          height: 28px;
-          min-width: 28px;
-        }
-      }
-
-      .ecb-menu {
         width: 28px;
         height: 28px;
-        min-width: 28px;
-      }
-    }
-
-    .card-badge {
-      font-size: 9px;
-      padding: 2px 6px;
-    }
-  }
-
-  .document-group .group-content,
-  .document-upload--approval-mode .cards-container,
-  .document-upload--attachment-mode .cards-container {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 10px;
-  }
-
-  .document-upload--attachment-mode {
-    .empty-upload-zone {
-      padding: 32px 20px;
-      min-height: 250px;
-    }
-  }
-}
-
-@media (max-width: 480px) {
-  .document-card {
-    padding: 10px;
-    gap: 8px;
-
-    .card-header {
-      gap: 8px;
-      min-height: 32px;
-
-      .file-icon {
-        width: 32px;
-        height: 32px;
 
         img {
-          max-width: 32px;
-          max-height: 32px;
+          max-width: 28px;
+          max-height: 28px;
         }
       }
 
-      .file-name {
-        font-size: 13px;
-      }
-
+      .file-name,
       .file-name-link a,
       .file-name-link span {
-        font-size: 13px !important;
+        font-size: 12px !important;
       }
     }
 
@@ -934,12 +875,12 @@ $neutral-lighter: #faf9f8;
     }
 
     .card-center {
-      gap: 8px;
-      padding: 8px 0;
+      gap: 6px;
+      padding: 5px 0;
 
       .user-info {
         .user-name {
-          font-size: 12px;
+          font-size: 11px;
         }
 
         .relative-time {
@@ -953,19 +894,108 @@ $neutral-lighter: #faf9f8;
     }
 
     .card-footer {
+      flex-wrap: wrap;
+      gap: 6px;
+
+      .quick-actions {
+        .quick-action-btn {
+          width: 24px;
+          height: 24px;
+          min-width: 24px;
+        }
+      }
+
+      .ecb-menu {
+        width: 24px;
+        height: 24px;
+        min-width: 24px;
+      }
+    }
+
+    .card-badge {
+      font-size: 7px;
+      padding: 1px 4px;
+    }
+  }
+
+  .document-group .group-content,
+  .document-upload--approval-mode .cards-container,
+  .document-upload--attachment-mode .cards-container {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 8px;
+  }
+
+  .document-upload--attachment-mode {
+    .empty-upload-zone {
+      padding: 24px 16px;
+      min-height: 180px;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .document-card {
+    padding: 6px 8px;
+    gap: 4px;
+
+    .card-header {
+      gap: 6px;
+      min-height: 24px;
+
+      .file-icon {
+        width: 24px;
+        height: 24px;
+
+        img {
+          max-width: 24px;
+          max-height: 24px;
+        }
+      }
+
+      .file-name,
+      .file-name-link a,
+      .file-name-link span {
+        font-size: 11px !important;
+      }
+    }
+
+    .card-footer .footer-left .file-size {
+      font-size: 9px;
+    }
+
+    .card-center {
+      gap: 5px;
+      padding: 4px 0;
+
+      .user-info {
+        .user-name {
+          font-size: 10px;
+        }
+
+        .relative-time {
+          font-size: 9px;
+        }
+
+        .type-change {
+          font-size: 8px;
+        }
+      }
+    }
+
+    .card-footer {
       .quick-actions,
       .ecb-menu {
         // Keep sizes for touch targets
         .quick-action-btn,
         .ecb-menu {
-          min-width: 32px; // Maintain touch-friendly size
+          min-width: 28px; // Maintain touch-friendly size
         }
       }
     }
 
     .card-badge {
-      font-size: 8px;
-      padding: 2px 6px;
+      font-size: 7px;
+      padding: 1px 4px;
     }
   }
 
@@ -973,17 +1003,17 @@ $neutral-lighter: #faf9f8;
   .document-upload--approval-mode .cards-container,
   .document-upload--attachment-mode .cards-container {
     grid-template-columns: 1fr;
-    gap: 8px;
+    gap: 6px;
   }
 
   .document-upload--attachment-mode {
     .empty-upload-zone {
-      padding: 24px 16px;
-      min-height: 200px;
+      padding: 20px 12px;
+      min-height: 150px;
     }
 
     .section-divider {
-      margin: 20px 0;
+      margin: 16px 0;
     }
   }
 }

@@ -332,7 +332,15 @@ export const WorkflowCardHeader: React.FC<IWorkflowCardHeaderProps> = ({
         parts.push(
           <span key="completedOn" className='workflow-header__context-item'>
             <span className='workflow-header__context-sep'>·</span>
-            <span className='workflow-header__context-date'>{formatDate(completedOn)}</span>
+            <TooltipHost
+              content={formatDateTime(completedOn)}
+              delay={TooltipDelay.zero}
+              directionalHint={DirectionalHint.bottomCenter}
+            >
+              <span className='workflow-header__context-date workflow-header__context-date--hoverable'>
+                {formatDate(completedOn)}
+              </span>
+            </TooltipHost>
           </span>
         );
       }
@@ -353,7 +361,15 @@ export const WorkflowCardHeader: React.FC<IWorkflowCardHeaderProps> = ({
           <span key="waitingSince" className='workflow-header__context-item'>
             {attorney?.title && <span className='workflow-header__context-sep'>·</span>}
             <span className='workflow-header__context-label'>since</span>
-            <span className='workflow-header__context-date'>{formatDate(waitingSince)}</span>
+            <TooltipHost
+              content={formatDateTime(waitingSince)}
+              delay={TooltipDelay.zero}
+              directionalHint={DirectionalHint.bottomCenter}
+            >
+              <span className='workflow-header__context-date workflow-header__context-date--hoverable'>
+                {formatDate(waitingSince)}
+              </span>
+            </TooltipHost>
           </span>
         );
       }
@@ -374,7 +390,15 @@ export const WorkflowCardHeader: React.FC<IWorkflowCardHeaderProps> = ({
           <span key="startedOn" className='workflow-header__context-item'>
             {attorney?.title && <span className='workflow-header__context-sep'>·</span>}
             <span className='workflow-header__context-label'>since</span>
-            <span className='workflow-header__context-date'>{formatDate(startedOn)}</span>
+            <TooltipHost
+              content={formatDateTime(startedOn)}
+              delay={TooltipDelay.zero}
+              directionalHint={DirectionalHint.bottomCenter}
+            >
+              <span className='workflow-header__context-date workflow-header__context-date--hoverable'>
+                {formatDate(startedOn)}
+              </span>
+            </TooltipHost>
           </span>
         );
       }

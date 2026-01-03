@@ -112,6 +112,8 @@ export interface ICloseoutPayload {
   trackingId?: string;
   /** Whether review comments have been acknowledged (required if outcome was Approved with Comments) */
   commentsAcknowledged?: boolean;
+  /** Closeout notes */
+  closeoutNotes?: string;
 }
 
 /**
@@ -623,11 +625,23 @@ export async function submitLegalReview(
   const updater = createSPUpdater();
   updater.set(RequestsFields.LegalReviewOutcome, payload.outcome);
   updater.set(RequestsFields.LegalReviewNotes, payload.notes);
-  updater.set(RequestsFields.LegalReviewStatus, LegalReviewStatus.Completed);
+
+  // Determine the new review status based on outcome
+  // RespondToCommentsAndResubmit means review is NOT complete - waiting on submitter to address comments
+  const isResubmitRequired = payload.outcome === ReviewOutcome.RespondToCommentsAndResubmit;
+  const newReviewStatus = isResubmitRequired
+    ? LegalReviewStatus.WaitingOnSubmitter
+    : LegalReviewStatus.Completed;
+
+  updater.set(RequestsFields.LegalReviewStatus, newReviewStatus);
   updater.set(RequestsFields.LegalStatusUpdatedBy, currentUser);
   updater.set(RequestsFields.LegalStatusUpdatedOn, now.toISOString());
-  updater.set(RequestsFields.LegalReviewCompletedBy, currentUser);
-  updater.set(RequestsFields.LegalReviewCompletedOn, now.toISOString());
+
+  // Only set completed fields when actually completing the review (not for resubmit workflow)
+  if (!isResubmitRequired) {
+    updater.set(RequestsFields.LegalReviewCompletedBy, currentUser);
+    updater.set(RequestsFields.LegalReviewCompletedOn, now.toISOString());
+  }
 
   // Add time tracking fields to update
   if (timeTrackingUpdates.legalReviewAttorneyHours !== undefined) {
@@ -644,10 +658,10 @@ export async function submitLegalReview(
   }
 
   // Check if all reviews will be complete after this submission
-  // and auto-progress to Closeout if so
-  const shouldProgressToCloseout = areAllReviewsComplete(
+  // Only progress to Closeout when review is actually completed (not for resubmit workflow)
+  const shouldProgressToCloseout = !isResubmitRequired && areAllReviewsComplete(
     currentRequest,
-    LegalReviewStatus.Completed, // New legal status
+    newReviewStatus, // Use actual new status
     undefined // No change to compliance status
   );
 
@@ -768,11 +782,23 @@ export async function submitComplianceReview(
   const updater = createSPUpdater();
   updater.set(RequestsFields.ComplianceReviewOutcome, payload.outcome);
   updater.set(RequestsFields.ComplianceReviewNotes, payload.notes);
-  updater.set(RequestsFields.ComplianceReviewStatus, ComplianceReviewStatus.Completed);
+
+  // Determine the new review status based on outcome
+  // RespondToCommentsAndResubmit means review is NOT complete - waiting on submitter to address comments
+  const isResubmitRequired = payload.outcome === ReviewOutcome.RespondToCommentsAndResubmit;
+  const newReviewStatus = isResubmitRequired
+    ? ComplianceReviewStatus.WaitingOnSubmitter
+    : ComplianceReviewStatus.Completed;
+
+  updater.set(RequestsFields.ComplianceReviewStatus, newReviewStatus);
   updater.set(RequestsFields.ComplianceStatusUpdatedBy, currentUser);
   updater.set(RequestsFields.ComplianceStatusUpdatedOn, now.toISOString());
-  updater.set(RequestsFields.ComplianceReviewCompletedBy, currentUser);
-  updater.set(RequestsFields.ComplianceReviewCompletedOn, now.toISOString());
+
+  // Only set completed fields when actually completing the review (not for resubmit workflow)
+  if (!isResubmitRequired) {
+    updater.set(RequestsFields.ComplianceReviewCompletedBy, currentUser);
+    updater.set(RequestsFields.ComplianceReviewCompletedOn, now.toISOString());
+  }
 
   // Add time tracking fields to update
   if (timeTrackingUpdates.complianceReviewReviewerHours !== undefined) {
@@ -797,11 +823,11 @@ export async function submitComplianceReview(
   }
 
   // Check if all reviews will be complete after this submission
-  // and auto-progress to Closeout if so
-  const shouldProgressToCloseout = areAllReviewsComplete(
+  // Only progress to Closeout when review is actually completed (not for resubmit workflow)
+  const shouldProgressToCloseout = !isResubmitRequired && areAllReviewsComplete(
     currentRequest,
     undefined, // No change to legal status
-    ComplianceReviewStatus.Completed // New compliance status
+    newReviewStatus // Use actual new status
   );
 
   if (shouldProgressToCloseout) {
@@ -935,6 +961,11 @@ export async function closeoutRequest(
 
   if (payload?.trackingId) {
     updater.set(RequestsFields.TrackingId, payload.trackingId);
+  }
+
+  // Add closeout notes if provided
+  if (payload?.closeoutNotes) {
+    updater.set(RequestsFields.CloseoutNotes, payload.closeoutNotes);
   }
 
   // Add comments acknowledged fields if provided (for "Approved with Comments" outcomes)
@@ -1487,6 +1518,8 @@ export async function saveLegalReviewProgress(
     hasNotes: !!payload.notes,
   });
 
+  // Load current request to check if status is changing
+  const currentRequest = await loadRequestById(itemId);
   const currentUser = getCurrentUserPrincipal();
   const now = new Date();
 
@@ -1506,7 +1539,18 @@ export async function saveLegalReviewProgress(
   // Set status to In Progress (not Completed)
   updater.set(RequestsFields.LegalReviewStatus, LegalReviewStatus.InProgress);
   updater.set(RequestsFields.LegalStatusUpdatedBy, currentUser);
-  updater.set(RequestsFields.LegalStatusUpdatedOn, now.toISOString());
+
+  // IMPORTANT: Only update timestamp if status is actually changing
+  // This preserves time tracking - we track from when status first changed to "In Progress"
+  const isStatusChanging = currentRequest.legalReviewStatus !== LegalReviewStatus.InProgress;
+  if (isStatusChanging) {
+    updater.set(RequestsFields.LegalStatusUpdatedOn, now.toISOString());
+    SPContext.logger.info('WorkflowActionService: Legal review status changing to In Progress, updating timestamp', {
+      correlationId,
+      itemId,
+      previousStatus: currentRequest.legalReviewStatus,
+    });
+  }
 
   const updatePayload = updater.getUpdates();
   const fieldsUpdated = Object.keys(updatePayload);
@@ -1565,6 +1609,8 @@ export async function saveComplianceReviewProgress(
     hasNotes: !!payload.notes,
   });
 
+  // Load current request to check if status is changing
+  const currentRequest = await loadRequestById(itemId);
   const currentUser = getCurrentUserPrincipal();
   const now = new Date();
 
@@ -1584,7 +1630,18 @@ export async function saveComplianceReviewProgress(
   // Set status to In Progress (not Completed)
   updater.set(RequestsFields.ComplianceReviewStatus, ComplianceReviewStatus.InProgress);
   updater.set(RequestsFields.ComplianceStatusUpdatedBy, currentUser);
-  updater.set(RequestsFields.ComplianceStatusUpdatedOn, now.toISOString());
+
+  // IMPORTANT: Only update timestamp if status is actually changing
+  // This preserves time tracking - we track from when status first changed to "In Progress"
+  const isStatusChanging = currentRequest.complianceReviewStatus !== ComplianceReviewStatus.InProgress;
+  if (isStatusChanging) {
+    updater.set(RequestsFields.ComplianceStatusUpdatedOn, now.toISOString());
+    SPContext.logger.info('WorkflowActionService: Compliance review status changing to In Progress, updating timestamp', {
+      correlationId,
+      itemId,
+      previousStatus: currentRequest.complianceReviewStatus,
+    });
+  }
 
   // Optional flags
   if (payload.isForesideReviewRequired !== undefined) {

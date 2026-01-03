@@ -113,72 +113,184 @@ $sp-gray-160: #a19f9d;
     }
   }
 
-  // Selected requests section - SharePoint card style
+  // Selected requests section - Compact cards with flow wrapping
   .selected-requests {
-    margin-top: 12px;
+    margin-top: 8px;
     padding: 0;
 
-    .selected-request-card {
+    .selected-cards-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .selected-card {
+      display: flex;
+      position: relative;
       background-color: #ffffff;
       border: 1px solid $sp-gray-30;
-      border-radius: 4px;
-      padding: 12px 16px;
+      border-radius: 6px;
       transition: all 0.15s ease;
-      box-shadow: 0 1.6px 3.6px 0 rgba(0, 0, 0, 0.08);
+      width: calc(50% - 4px); // Two cards per row with gap
+      min-width: 240px;
+      max-width: 100%;
 
       &:hover {
         background-color: $sp-gray-10;
-        border-color: $sp-gray-130;
-        box-shadow: 0 3.2px 7.2px 0 rgba(0, 0, 0, 0.12);
+        border-color: $sp-primary;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
       }
 
-      .ms-Stack {
+      .card-content {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 8px 32px 8px 10px; // Right padding for remove button
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-family: inherit;
+        text-align: left;
         width: 100%;
+        text-decoration: none;
+
+        &:focus {
+          outline: none;
+        }
+
+        &:focus-visible {
+          outline: 2px solid $sp-primary;
+          outline-offset: -2px;
+          border-radius: 4px;
+        }
       }
 
-      .ms-Link {
+      // Header row: Request ID + Submission Type badge
+      .card-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .card-request-id {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
         font-weight: 600;
         color: $sp-primary;
-        text-decoration: none;
-        cursor: pointer;
-        font-size: 13px;
 
         &:hover {
           text-decoration: underline;
-          color: $sp-primary-dark;
-        }
-
-        &:active {
-          color: #005a9e;
         }
       }
 
-      .ms-Text {
+      .card-icon {
+        font-size: 14px;
+        color: $sp-primary;
+        flex-shrink: 0;
+      }
+
+      .card-type-badge {
+        display: inline-block;
+        padding: 1px 6px;
+        font-size: 10px;
+        font-weight: 500;
+        color: #005a9e;
+        background-color: #deecf9;
+        border-radius: 10px;
+        white-space: nowrap;
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      // Title row
+      .card-title {
+        font-size: 12px;
+        color: $sp-gray-90;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-        max-width: 100%;
-        font-size: 13px;
+        line-height: 1.3;
       }
 
-      .ms-IconButton {
-        width: 28px;
-        height: 28px;
+      // Footer row: Created By + Date
+      .card-footer {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 11px;
         color: $sp-gray-130;
+        margin-top: 2px;
+      }
+
+      .card-created-by {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 140px;
+      }
+
+      .card-footer-icon {
+        font-size: 11px;
+        color: $sp-gray-130;
+        flex-shrink: 0;
+      }
+
+      .card-date {
+        flex-shrink: 0;
+        color: $sp-gray-160;
+      }
+
+      // Remove button - positioned absolute in top right
+      .card-remove {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 22px;
+        height: 22px;
+        min-width: 22px;
+        padding: 0;
+        border-radius: 50%;
+        color: $sp-gray-130;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         transition: all 0.1s ease;
+        opacity: 0.6;
 
         i {
-          font-size: 12px;
+          font-size: 10px;
         }
 
         &:hover {
+          opacity: 1;
           color: #d13438;
-          background-color: #fef6f6;
+          background-color: rgba(209, 52, 56, 0.1);
         }
 
         &:active {
           color: #750b1c;
         }
+
+        &:disabled {
+          opacity: 0.3;
+          cursor: not-allowed;
+        }
+      }
+
+      // Show remove button on card hover
+      &:hover .card-remove {
+        opacity: 1;
       }
     }
   }
@@ -292,18 +404,9 @@ $sp-gray-160: #a19f9d;
 // Responsive design
 @media (max-width: 768px) {
   .prior-submission-picker {
-    .selected-request-card {
-      padding: 10px 12px;
-
-      .ms-Stack {
-        flex-direction: column;
-        align-items: flex-start !important;
-        gap: 6px !important;
-
-        > .ms-Stack {
-          width: 100%;
-        }
-      }
+    .selected-card {
+      width: 100%; // Full width on mobile
+      min-width: unset;
     }
 
     .prior-submission-item {

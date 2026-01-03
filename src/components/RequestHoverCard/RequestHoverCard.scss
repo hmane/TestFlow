@@ -1,0 +1,131 @@
+/**
+ * RequestHoverCard Component Styles
+ *
+ * Matches the styling of RequestIdHoverCard but as a standalone component
+ */
+
+// SharePoint Theme Colors
+$sp-primary: #0078d4;
+$sp-gray-10: #faf9f8;
+$sp-gray-20: #f3f2f1;
+$sp-gray-30: #edebe9;
+$sp-gray-90: #323130;
+$sp-gray-130: #605e5c;
+$sp-gray-160: #a19f9d;
+
+// Hover card container
+.rhc-card {
+  width: 320px;
+  padding: 16px;
+  background-color: #ffffff;
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+
+  &.rhc-loading,
+  &.rhc-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100px;
+    gap: 8px;
+  }
+
+  &.rhc-error {
+    .rhc-error-icon {
+      color: #a4262c;
+      font-size: 24px;
+    }
+  }
+}
+
+// Header section
+.rhc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 8px;
+}
+
+.rhc-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.rhc-request-id {
+  font-weight: 600;
+  color: $sp-gray-90;
+  white-space: nowrap;
+}
+
+.rhc-type-token {
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.rhc-status-badge {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+// Content section
+.rhc-content {
+  padding: 4px 0;
+}
+
+// Field rows
+.rhc-field-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.rhc-field-label {
+  flex-shrink: 0;
+  width: 80px;
+  color: $sp-gray-130;
+  font-weight: 500;
+}
+
+.rhc-field-value {
+  flex: 1;
+  color: $sp-gray-90;
+  min-width: 0;
+
+  &.rhc-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+// Divider
+.rhc-divider {
+  height: 1px;
+  background-color: $sp-gray-30;
+  margin: 12px 0;
+}
+
+// Footer
+.rhc-footer {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid $sp-gray-30;
+}
+
+.rhc-relative-time {
+  color: $sp-gray-160;
+  cursor: default;
+}

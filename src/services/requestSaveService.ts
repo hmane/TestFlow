@@ -229,8 +229,17 @@ function filterEmptyUpdates(
     'PriorSubmissionNotes': 'priorSubmissionNotes',
     'TrackingId': 'trackingId',
     'DistributionMethod': 'distributionMethod',
-    'PriorSubmissionsId': 'priorSubmissions',
-    'AdditionalPartyId': 'additionalParty',
+    'PriorSubmissions': 'priorSubmissions',
+    'AdditionalParty': 'additionalParty',
+    // Legal/Compliance status fields that may be null
+    'LegalStatusUpdatedOn': 'legalStatusUpdatedOn',
+    'LegalStatusUpdatedBy': 'legalStatusUpdatedBy',
+    'LegalReviewCompletedOn': 'legalReviewCompletedOn',
+    'LegalReviewCompletedBy': 'legalReviewCompletedBy',
+    'ComplianceStatusUpdatedOn': 'complianceStatusUpdatedOn',
+    'ComplianceStatusUpdatedBy': 'complianceStatusUpdatedBy',
+    'ComplianceReviewCompletedOn': 'complianceReviewCompletedOn',
+    'ComplianceReviewCompletedBy': 'complianceReviewCompletedBy',
   };
 
   // ES5 compatible iteration
@@ -305,9 +314,8 @@ export function buildRequestUpdatePayload(
     updater.set(RequestsFields.PriorSubmissionNotes, request.priorSubmissionNotes, originalRequest.priorSubmissionNotes);
     updater.set(RequestsFields.TrackingId, request.trackingId, originalRequest.trackingId);
 
-    // Multi-value lookup fields - pass arrays directly
-    // SPUpdater handles ID extraction and {results: []} wrapping automatically
-    updater.set(RequestsFields.PriorSubmissions + 'Id', request.priorSubmissions, originalRequest.priorSubmissions);
+    // Multi-value lookup/user fields - SPUpdater handles ID extraction and formatting automatically
+    updater.set(RequestsFields.PriorSubmissions, request.priorSubmissions, originalRequest.priorSubmissions);
     updater.set(RequestsFields.AdditionalParty, request.additionalParty, originalRequest.additionalParty);
 
     // FINRA Audience & Product Fields
@@ -362,14 +370,6 @@ export function buildRequestUpdatePayload(
     return filterEmptyUpdates(updates, request, originalRequest);
   } else {
     // New request - include all fields
-    // Helper to extract numeric IDs for multi-lookup/multi-user fields
-    // SharePoint expects array of numbers, not strings or objects
-    const priorSubmissionsIds = request.priorSubmissions
-      ?.map(ps => typeof ps.id === 'string' ? parseInt(ps.id, 10) : ps.id)
-      .filter((id): id is number => id !== undefined && !isNaN(id)) || [];
-    const additionalPartyIds = request.additionalParty
-      ?.map(p => typeof p.id === 'string' ? parseInt(p.id, 10) : p.id)
-      .filter((id): id is number => id !== undefined && !isNaN(id)) || [];
 
     // Build payload with proper null/undefined handling
     const payload: Record<string, any> = {
@@ -419,9 +419,9 @@ export function buildRequestUpdatePayload(
       payload[RequestsFields.DistributionMethod] = request.distributionMethod;
     }
 
-    // Multi-lookup fields - needs 'Id' suffix with array of numeric IDs
-    if (priorSubmissionsIds.length > 0) {
-      payload[RequestsFields.PriorSubmissions + 'Id'] = priorSubmissionsIds;
+    // Multi-lookup fields - pass SPLookup array directly, SPUpdater handles formatting
+    if (request.priorSubmissions && request.priorSubmissions.length > 0) {
+      payload[RequestsFields.PriorSubmissions] = request.priorSubmissions;
     }
 
     if (request.priorSubmissionNotes) {
@@ -432,9 +432,9 @@ export function buildRequestUpdatePayload(
       payload[RequestsFields.DateOfFirstUse] = request.dateOfFirstUse.toISOString();
     }
 
-    // Multi-user field - needs 'Id' suffix with array of numeric IDs
-    if (additionalPartyIds.length > 0) {
-      payload[RequestsFields.AdditionalParty + 'Id'] = additionalPartyIds;
+    // Multi-user field - pass IPrincipal array directly
+    if (request.additionalParty && request.additionalParty.length > 0) {
+      payload[RequestsFields.AdditionalParty] = request.additionalParty;
     }
 
     if (request.trackingId) {
@@ -968,7 +968,15 @@ export async function saveRequest(
     SPContext.logger.info('RequestSaveService: Saving changes', {
       itemId,
       changedFields: Object.keys(payload),
+      payload,
     });
+
+    // Debug: Log priorSubmissions specifically
+    if ('PriorSubmissionsId' in payload) {
+      SPContext.logger.info('RequestSaveService: PriorSubmissions in payload', {
+        priorSubmissionsId: payload.PriorSubmissionsId,
+      });
+    }
 
     // Update SharePoint item
     await SPContext.sp.web.lists

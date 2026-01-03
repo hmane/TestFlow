@@ -29,7 +29,7 @@
   </pnp:ClientSidePage>
 
   <!-- ========================================================================
-       1. Request Dashboard (Main Dashboard with Toolbar, Open & Closed Requests)
+       1. Request Dashboard (Main Dashboard with Toolbar, Open, Foreside & Closed Requests)
        ======================================================================== -->
   <pnp:ClientSidePage PromoteAsNewsArticle="false"
                        PromoteAsTemplate="false"
@@ -65,12 +65,30 @@
       <pnp:Section Order="3" Type="OneColumn">
         <pnp:Controls>
           <pnp:CanvasControl WebPartType="List" ControlId="00000000-0000-0000-0000-000000000102" Order="1" Column="1"
-            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000102&quot;,&quot;title&quot;:&quot;My Open Requests&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewId:MyOpenRequests}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000102&quot;,&quot;title&quot;:&quot;My Open Requests&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,My Open Requests}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
         </pnp:Controls>
       </pnp:Section>
 
-      <!-- Section 4: My Closed Requests -->
+      <!-- Section 4: My Awaiting Foreside Documents -->
       <pnp:Section Order="4" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="Text" ControlId="00000000-0000-0000-0000-000000000105" Order="1" Column="1">
+            <pnp:CanvasControlProperties>
+              <pnp:CanvasControlProperty Key="Text" Value="&lt;h2&gt;Awaiting Foreside Documents&lt;/h2&gt;" />
+            </pnp:CanvasControlProperties>
+          </pnp:CanvasControl>
+        </pnp:Controls>
+      </pnp:Section>
+
+      <pnp:Section Order="5" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="List" ControlId="00000000-0000-0000-0000-000000000106" Order="1" Column="1"
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000106&quot;,&quot;title&quot;:&quot;My Awaiting Foreside Documents&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,My Awaiting Foreside Documents}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
+        </pnp:Controls>
+      </pnp:Section>
+
+      <!-- Section 6: My Closed Requests (Completed + Cancelled) -->
+      <pnp:Section Order="6" Type="OneColumn">
         <pnp:Controls>
           <pnp:CanvasControl WebPartType="Text" ControlId="00000000-0000-0000-0000-000000000103" Order="1" Column="1">
             <pnp:CanvasControlProperties>
@@ -80,10 +98,10 @@
         </pnp:Controls>
       </pnp:Section>
 
-      <pnp:Section Order="5" Type="OneColumn">
+      <pnp:Section Order="7" Type="OneColumn">
         <pnp:Controls>
           <pnp:CanvasControl WebPartType="List" ControlId="00000000-0000-0000-0000-000000000104" Order="1" Column="1"
-            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000104&quot;,&quot;title&quot;:&quot;My Completed Requests&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewId:MyCompletedRequests}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000104&quot;,&quot;title&quot;:&quot;My Completed Requests&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,My Completed Requests}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
         </pnp:Controls>
       </pnp:Section>
     </pnp:Sections>
@@ -148,10 +166,72 @@
           </pnp:CanvasControl>
         </pnp:Controls>
       </pnp:Section>
+
+      <!-- Legal Intake Queue -->
       <pnp:Section Order="2" Type="OneColumn">
         <pnp:Controls>
+          <pnp:CanvasControl WebPartType="Text" ControlId="00000000-0000-0000-0000-000000000023" Order="1" Column="1">
+            <pnp:CanvasControlProperties>
+              <pnp:CanvasControlProperty Key="Text" Value="&lt;h3&gt;Legal Intake Queue&lt;/h3&gt;" />
+            </pnp:CanvasControlProperties>
+          </pnp:CanvasControl>
+        </pnp:Controls>
+      </pnp:Section>
+      <pnp:Section Order="3" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="List" ControlId="00000000-0000-0000-0000-000000000024" Order="1" Column="1"
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000024&quot;,&quot;title&quot;:&quot;Legal Intake Queue&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,Legal Intake Queue}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
+        </pnp:Controls>
+      </pnp:Section>
+
+      <!-- All Open Requests -->
+      <pnp:Section Order="4" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="Text" ControlId="00000000-0000-0000-0000-000000000025" Order="1" Column="1">
+            <pnp:CanvasControlProperties>
+              <pnp:CanvasControlProperty Key="Text" Value="&lt;h3&gt;All Open Requests&lt;/h3&gt;" />
+            </pnp:CanvasControlProperties>
+          </pnp:CanvasControl>
+        </pnp:Controls>
+      </pnp:Section>
+      <pnp:Section Order="5" Type="OneColumn">
+        <pnp:Controls>
           <pnp:CanvasControl WebPartType="List" ControlId="00000000-0000-0000-0000-000000000022" Order="1" Column="1"
-            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000022&quot;,&quot;title&quot;:&quot;All Requests&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000022&quot;,&quot;title&quot;:&quot;All Open Requests&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,All Open Requests}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
+        </pnp:Controls>
+      </pnp:Section>
+
+      <!-- Awaiting Foreside Documents -->
+      <pnp:Section Order="6" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="Text" ControlId="00000000-0000-0000-0000-000000000026" Order="1" Column="1">
+            <pnp:CanvasControlProperties>
+              <pnp:CanvasControlProperty Key="Text" Value="&lt;h3&gt;Awaiting Foreside Documents&lt;/h3&gt;" />
+            </pnp:CanvasControlProperties>
+          </pnp:CanvasControl>
+        </pnp:Controls>
+      </pnp:Section>
+      <pnp:Section Order="7" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="List" ControlId="00000000-0000-0000-0000-000000000027" Order="1" Column="1"
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000027&quot;,&quot;title&quot;:&quot;Awaiting Foreside Documents&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,Awaiting Foreside Documents}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
+        </pnp:Controls>
+      </pnp:Section>
+
+      <!-- All Completed Requests -->
+      <pnp:Section Order="8" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="Text" ControlId="00000000-0000-0000-0000-000000000028" Order="1" Column="1">
+            <pnp:CanvasControlProperties>
+              <pnp:CanvasControlProperty Key="Text" Value="&lt;h3&gt;All Completed Requests&lt;/h3&gt;" />
+            </pnp:CanvasControlProperties>
+          </pnp:CanvasControl>
+        </pnp:Controls>
+      </pnp:Section>
+      <pnp:Section Order="9" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="List" ControlId="00000000-0000-0000-0000-000000000029" Order="1" Column="1"
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000029&quot;,&quot;title&quot;:&quot;All Completed Requests&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,All Completed Requests}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
         </pnp:Controls>
       </pnp:Section>
     </pnp:Sections>
@@ -182,10 +262,21 @@
           </pnp:CanvasControl>
         </pnp:Controls>
       </pnp:Section>
+
+      <!-- Awaiting Attorney Assignment -->
       <pnp:Section Order="2" Type="OneColumn">
         <pnp:Controls>
+          <pnp:CanvasControl WebPartType="Text" ControlId="00000000-0000-0000-0000-000000000033" Order="1" Column="1">
+            <pnp:CanvasControlProperties>
+              <pnp:CanvasControlProperty Key="Text" Value="&lt;h3&gt;Awaiting Attorney Assignment&lt;/h3&gt;" />
+            </pnp:CanvasControlProperties>
+          </pnp:CanvasControl>
+        </pnp:Controls>
+      </pnp:Section>
+      <pnp:Section Order="3" Type="OneColumn">
+        <pnp:Controls>
           <pnp:CanvasControl WebPartType="List" ControlId="00000000-0000-0000-0000-000000000032" Order="1" Column="1"
-            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000032&quot;,&quot;title&quot;:&quot;Requests&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000032&quot;,&quot;title&quot;:&quot;Awaiting Attorney Assignment&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,Awaiting Attorney Assignment}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
         </pnp:Controls>
       </pnp:Section>
     </pnp:Sections>
@@ -216,10 +307,55 @@
           </pnp:CanvasControl>
         </pnp:Controls>
       </pnp:Section>
+
+      <!-- Pending My Review -->
       <pnp:Section Order="2" Type="OneColumn">
         <pnp:Controls>
+          <pnp:CanvasControl WebPartType="Text" ControlId="00000000-0000-0000-0000-000000000043" Order="1" Column="1">
+            <pnp:CanvasControlProperties>
+              <pnp:CanvasControlProperty Key="Text" Value="&lt;h3&gt;Pending My Review&lt;/h3&gt;" />
+            </pnp:CanvasControlProperties>
+          </pnp:CanvasControl>
+        </pnp:Controls>
+      </pnp:Section>
+      <pnp:Section Order="3" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="List" ControlId="00000000-0000-0000-0000-000000000044" Order="1" Column="1"
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000044&quot;,&quot;title&quot;:&quot;Pending My Review&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,Pending My Review}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
+        </pnp:Controls>
+      </pnp:Section>
+
+      <!-- My Assigned Requests (Open) -->
+      <pnp:Section Order="4" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="Text" ControlId="00000000-0000-0000-0000-000000000045" Order="1" Column="1">
+            <pnp:CanvasControlProperties>
+              <pnp:CanvasControlProperty Key="Text" Value="&lt;h3&gt;My Assigned Requests&lt;/h3&gt;" />
+            </pnp:CanvasControlProperties>
+          </pnp:CanvasControl>
+        </pnp:Controls>
+      </pnp:Section>
+      <pnp:Section Order="5" Type="OneColumn">
+        <pnp:Controls>
           <pnp:CanvasControl WebPartType="List" ControlId="00000000-0000-0000-0000-000000000042" Order="1" Column="1"
-            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000042&quot;,&quot;title&quot;:&quot;Requests&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000042&quot;,&quot;title&quot;:&quot;My Assigned Requests&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,My Assigned Requests}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
+        </pnp:Controls>
+      </pnp:Section>
+
+      <!-- My Completed Reviews -->
+      <pnp:Section Order="6" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="Text" ControlId="00000000-0000-0000-0000-000000000046" Order="1" Column="1">
+            <pnp:CanvasControlProperties>
+              <pnp:CanvasControlProperty Key="Text" Value="&lt;h3&gt;My Completed Reviews&lt;/h3&gt;" />
+            </pnp:CanvasControlProperties>
+          </pnp:CanvasControl>
+        </pnp:Controls>
+      </pnp:Section>
+      <pnp:Section Order="7" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="List" ControlId="00000000-0000-0000-0000-000000000047" Order="1" Column="1"
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000047&quot;,&quot;title&quot;:&quot;My Completed Reviews&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,My Completed Reviews}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
         </pnp:Controls>
       </pnp:Section>
     </pnp:Sections>
@@ -250,10 +386,38 @@
           </pnp:CanvasControl>
         </pnp:Controls>
       </pnp:Section>
+
+      <!-- Pending Compliance Review -->
       <pnp:Section Order="2" Type="OneColumn">
         <pnp:Controls>
+          <pnp:CanvasControl WebPartType="Text" ControlId="00000000-0000-0000-0000-000000000053" Order="1" Column="1">
+            <pnp:CanvasControlProperties>
+              <pnp:CanvasControlProperty Key="Text" Value="&lt;h3&gt;Pending Compliance Review&lt;/h3&gt;" />
+            </pnp:CanvasControlProperties>
+          </pnp:CanvasControl>
+        </pnp:Controls>
+      </pnp:Section>
+      <pnp:Section Order="3" Type="OneColumn">
+        <pnp:Controls>
           <pnp:CanvasControl WebPartType="List" ControlId="00000000-0000-0000-0000-000000000052" Order="1" Column="1"
-            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000052&quot;,&quot;title&quot;:&quot;Requests&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000052&quot;,&quot;title&quot;:&quot;Pending Compliance Review&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,Pending Compliance Review}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
+        </pnp:Controls>
+      </pnp:Section>
+
+      <!-- Completed Compliance Reviews -->
+      <pnp:Section Order="4" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="Text" ControlId="00000000-0000-0000-0000-000000000054" Order="1" Column="1">
+            <pnp:CanvasControlProperties>
+              <pnp:CanvasControlProperty Key="Text" Value="&lt;h3&gt;Completed Compliance Reviews&lt;/h3&gt;" />
+            </pnp:CanvasControlProperties>
+          </pnp:CanvasControl>
+        </pnp:Controls>
+      </pnp:Section>
+      <pnp:Section Order="5" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="List" ControlId="00000000-0000-0000-0000-000000000055" Order="1" Column="1"
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000055&quot;,&quot;title&quot;:&quot;Completed Compliance Reviews&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,Completed Compliance Reviews}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:false}}" />
         </pnp:Controls>
       </pnp:Section>
     </pnp:Sections>

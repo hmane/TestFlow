@@ -109,12 +109,13 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
   const [isFormReady, setIsFormReady] = React.useState<boolean>(false);
 
   // Check if user can edit review audience (Legal Admin or Admin only)
-  // Disable editing in Closeout or Completed status
-  const isCloseoutOrCompleted =
+  // Disable editing after reviews are completed (Closeout, Completed, or AwaitingForesideDocuments)
+  const isAfterReviewsCompleted =
     currentRequest?.status === RequestStatus.Closeout ||
-    currentRequest?.status === RequestStatus.Completed;
+    currentRequest?.status === RequestStatus.Completed ||
+    currentRequest?.status === RequestStatus.AwaitingForesideDocuments;
   const canEditReviewAudience =
-    (permissions.isLegalAdmin || permissions.isAdmin) && !isCloseoutOrCompleted;
+    (permissions.isLegalAdmin || permissions.isAdmin) && !isAfterReviewsCompleted;
 
   // Get validation errors from parent context (RequestFormContext)
   // These errors come from Zod validation in RequestActions
@@ -305,7 +306,6 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
   // Admin/Legal Admin can toggle edit mode to modify attorney, review audience, or add notes
   if (readOnly) {
     const assignedAttorney = currentRequest.attorney;
-    const assignmentNotes = currentRequest.attorneyAssignNotes;
     const completedDate = currentRequest.submittedForReviewOn;
 
     // In edit mode, show editable fields; otherwise show read-only summary
@@ -457,6 +457,15 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
                       itemId={currentRequest.id}
                       listNameOrId='Requests'
                       fieldInternalName='AttorneyAssignNotes'
+                      historyConfig={{
+                        initialDisplayCount: 5,
+                        showUserPhoto: true,
+                        timeFormat: 'relative',
+                        showLoadMore: true,
+                        enableCopyPrevious: false,
+                        historyTitle: 'Previous Notes',
+                        emptyHistoryMessage: 'No previous notes',
+                      }}
                     />
                   </FormItem>
                 </FormContainer>
@@ -611,7 +620,6 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
               <FormItem>
                 <FormLabel>Assignment Notes</FormLabel>
                 <SPTextField
-                  value={assignmentNotes || ''}
                   mode={SPTextFieldMode.MultiLine}
                   rows={3}
                   appendOnly
@@ -620,6 +628,14 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
                   fieldInternalName='AttorneyAssignNotes'
                   readOnly={true}
                   stylingMode='outlined'
+                  historyConfig={{
+                    initialDisplayCount: 10,
+                    showUserPhoto: true,
+                    timeFormat: 'both',
+                    showLoadMore: true,
+                    historyTitle: 'Notes History',
+                    emptyHistoryMessage: 'No notes have been added yet',
+                  }}
                 />
               </FormItem>
             </FormContainer>
@@ -756,6 +772,19 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
                   stylingMode='outlined'
                   spellCheck
                   disabled={isLoading}
+                  appendOnly
+                  itemId={currentRequest.id}
+                  listNameOrId='Requests'
+                  fieldInternalName='AttorneyAssignNotes'
+                  historyConfig={{
+                    initialDisplayCount: 5,
+                    showUserPhoto: true,
+                    timeFormat: 'relative',
+                    showLoadMore: true,
+                    enableCopyPrevious: false,
+                    historyTitle: 'Previous Notes',
+                    emptyHistoryMessage: 'No previous notes',
+                  }}
                 />
               </FormItem>
             </FormContainer>

@@ -10,6 +10,7 @@ import type { IPrincipal, SPLookup } from 'spfx-toolkit/lib/types';
 export enum DocumentType {
   Review = 'Review',
   Supplemental = 'Supplemental',
+  Foreside = 'Foreside',
   CommunicationApproval = 'Communication Approval',
   PortfolioManagerApproval = 'Portfolio Manager Approval',
   ResearchAnalystApproval = 'Research Analyst Approval',
