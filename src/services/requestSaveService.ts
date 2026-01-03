@@ -19,7 +19,7 @@ import { loadRequestById } from './requestLoadService';
 import { batchUploadFiles, deleteFile, renameFile } from './documentService';
 
 import type { ILegalRequest } from '@appTypes/requestTypes';
-import { RequestStatus } from '@appTypes/workflowTypes';
+import { RequestStatus, ReviewAudience, LegalReviewStatus, ComplianceReviewStatus } from '@appTypes/workflowTypes';
 import { ApprovalType } from '@appTypes/approvalTypes';
 import type { IStagedDocument, IDocument } from '@stores/documentsStore';
 
@@ -290,6 +290,43 @@ export function buildRequestUpdatePayload(
     updater.set(RequestsFields.DateOfFirstUse, request.dateOfFirstUse, originalRequest.dateOfFirstUse);
 
     updater.set(RequestsFields.ReviewAudience, request.reviewAudience, originalRequest.reviewAudience);
+
+    // When review audience changes (Legal Admin override), adjust review statuses accordingly
+    // This ensures workflow progresses correctly based on the new audience setting
+    if (request.reviewAudience !== originalRequest.reviewAudience) {
+      const requiresLegal = request.reviewAudience === ReviewAudience.Legal || request.reviewAudience === ReviewAudience.Both;
+      const requiresCompliance = request.reviewAudience === ReviewAudience.Compliance || request.reviewAudience === ReviewAudience.Both;
+
+      // Only adjust statuses if they haven't been started yet (preserve in-progress/completed reviews)
+      const legalNotStarted = !originalRequest.legalReviewStatus ||
+        originalRequest.legalReviewStatus === LegalReviewStatus.NotRequired ||
+        originalRequest.legalReviewStatus === LegalReviewStatus.NotStarted;
+      const complianceNotStarted = !originalRequest.complianceReviewStatus ||
+        originalRequest.complianceReviewStatus === ComplianceReviewStatus.NotRequired ||
+        originalRequest.complianceReviewStatus === ComplianceReviewStatus.NotStarted;
+
+      // Set Legal Review Status based on new audience
+      if (legalNotStarted) {
+        const newLegalStatus = requiresLegal ? LegalReviewStatus.NotStarted : LegalReviewStatus.NotRequired;
+        updater.set(RequestsFields.LegalReviewStatus, newLegalStatus, originalRequest.legalReviewStatus);
+      }
+
+      // Set Compliance Review Status based on new audience
+      if (complianceNotStarted) {
+        const newComplianceStatus = requiresCompliance ? ComplianceReviewStatus.NotStarted : ComplianceReviewStatus.NotRequired;
+        updater.set(RequestsFields.ComplianceReviewStatus, newComplianceStatus, originalRequest.complianceReviewStatus);
+      }
+
+      SPContext.logger.info('RequestSaveService: Review audience changed, adjusted review statuses', {
+        oldAudience: originalRequest.reviewAudience,
+        newAudience: request.reviewAudience,
+        requiresLegal,
+        requiresCompliance,
+        legalStatusAdjusted: legalNotStarted,
+        complianceStatusAdjusted: complianceNotStarted,
+      });
+    }
+
     updater.set(RequestsFields.IsRushRequest, request.isRushRequest, originalRequest.isRushRequest);
     updater.set(RequestsFields.RushRationale, request.rushRationale, originalRequest.rushRationale);
     updater.set(RequestsFields.Status, request.status, originalRequest.status);
