@@ -26,6 +26,9 @@
 
         <!-- 6. SitePages Library (Permissions) - Commented out: System library, permissions should be set separately -->
         <!-- <xi:include href="Lists/SitePages.xml" xmlns:xi="http://www.w3.org/2001/XInclude" /> -->
+
+        <!-- 7. Notifications List -->
+        <xi:include href="Lists/Notifications.xml" xmlns:xi="http://www.w3.org/2001/XInclude" />
       </pnp:Lists>
 
       <!-- ========================================================================

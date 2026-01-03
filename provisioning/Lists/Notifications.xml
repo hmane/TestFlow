@@ -1,0 +1,1615 @@
+<pnp:ListInstance xmlns:pnp="http://schemas.dev.office.com/PnP/2022/09/ProvisioningSchema"
+                  Title="Notifications"
+                  Description="Email notification templates for the Legal Review System"
+                  TemplateType="100"
+                  Url="Lists/Notifications"
+                  OnQuickLaunch="true"
+                  EnableVersioning="true"
+                  EnableMinorVersions="false"
+                  EnableAttachments="false">
+
+  <pnp:Fields>
+    <!-- Category for grouping notifications -->
+    <Field Type="Choice"
+           DisplayName="Category"
+           Name="Category"
+           ID="{A1B2C3D4-1234-5678-9ABC-DEF012345678}"
+           Required="TRUE"
+           Group="Notifications">
+      <CHOICES>
+        <CHOICE>Submission</CHOICE>
+        <CHOICE>Assignment</CHOICE>
+        <CHOICE>Review</CHOICE>
+        <CHOICE>Status Change</CHOICE>
+        <CHOICE>Closeout</CHOICE>
+        <CHOICE>System</CHOICE>
+      </CHOICES>
+      <Default>Submission</Default>
+    </Field>
+
+    <!-- Trigger event that causes this notification -->
+    <Field Type="Choice"
+           DisplayName="Trigger Event"
+           Name="TriggerEvent"
+           ID="{B2C3D4E5-2345-6789-ABCD-EF0123456789}"
+           Required="TRUE"
+           Group="Notifications">
+      <CHOICES>
+        <CHOICE>StatusChange</CHOICE>
+        <CHOICE>ReviewComplete</CHOICE>
+        <CHOICE>ReviewChangesRequested</CHOICE>
+        <CHOICE>AttorneyAssigned</CHOICE>
+        <CHOICE>Resubmission</CHOICE>
+        <CHOICE>HoldResume</CHOICE>
+        <CHOICE>Cancellation</CHOICE>
+      </CHOICES>
+      <Default>StatusChange</Default>
+    </Field>
+
+    <!-- To recipients template -->
+    <Field Type="Note"
+           DisplayName="To Recipients"
+           Name="ToRecipients"
+           ID="{C3D4E5F6-3456-789A-BCDE-F01234567890}"
+           Required="TRUE"
+           RichText="FALSE"
+           NumLines="3"
+           Group="Notifications" />
+
+    <!-- CC recipients template -->
+    <Field Type="Note"
+           DisplayName="CC Recipients"
+           Name="CcRecipients"
+           ID="{D4E5F6A7-4567-89AB-CDEF-012345678901}"
+           Required="FALSE"
+           RichText="FALSE"
+           NumLines="3"
+           Group="Notifications" />
+
+    <!-- BCC recipients template -->
+    <Field Type="Note"
+           DisplayName="BCC Recipients"
+           Name="BccRecipients"
+           ID="{E5F6A7B8-5678-9ABC-DEF0-123456789012}"
+           Required="FALSE"
+           RichText="FALSE"
+           NumLines="3"
+           Group="Notifications" />
+
+    <!-- Email subject template -->
+    <Field Type="Text"
+           DisplayName="Subject"
+           Name="Subject"
+           ID="{F6A7B8C9-6789-ABCD-EF01-234567890123}"
+           Required="TRUE"
+           MaxLength="255"
+           Group="Notifications" />
+
+    <!-- Email body template (HTML) -->
+    <Field Type="Note"
+           DisplayName="Body"
+           Name="Body"
+           ID="{A7B8C9D0-789A-BCDE-F012-345678901234}"
+           Required="TRUE"
+           RichText="TRUE"
+           RichTextMode="FullHtml"
+           NumLines="20"
+           Group="Notifications" />
+
+    <!-- Include request documents as attachments -->
+    <Field Type="Boolean"
+           DisplayName="Include Documents"
+           Name="IncludeDocuments"
+           ID="{B8C9D0E1-89AB-CDEF-0123-456789012345}"
+           Required="FALSE"
+           Group="Notifications">
+      <Default>0</Default>
+    </Field>
+
+    <!-- Email importance -->
+    <Field Type="Choice"
+           DisplayName="Importance"
+           Name="Importance"
+           ID="{C9D0E1F2-9ABC-DEF0-1234-567890123456}"
+           Required="FALSE"
+           Group="Notifications">
+      <CHOICES>
+        <CHOICE>Low</CHOICE>
+        <CHOICE>Normal</CHOICE>
+        <CHOICE>High</CHOICE>
+      </CHOICES>
+      <Default>Normal</Default>
+    </Field>
+
+    <!-- Is Active flag -->
+    <Field Type="Boolean"
+           DisplayName="Is Active"
+           Name="IsActive"
+           ID="{D0E1F2A3-ABCD-EF01-2345-678901234567}"
+           Required="FALSE"
+           Group="Notifications">
+      <Default>1</Default>
+    </Field>
+
+    <!-- Description/Notes -->
+    <Field Type="Note"
+           DisplayName="Description"
+           Name="Description"
+           ID="{E1F2A3B4-BCDE-F012-3456-789012345678}"
+           Required="FALSE"
+           RichText="FALSE"
+           NumLines="4"
+           Group="Notifications" />
+  </pnp:Fields>
+
+  <pnp:Views>
+    <pnp:View Name="AllItems" DisplayName="All Notifications" DefaultView="true" RowLimit="30" Paged="true">
+      <pnp:Query>
+        <OrderBy>
+          <FieldRef Name="Category" Ascending="TRUE" />
+          <FieldRef Name="Title" Ascending="TRUE" />
+        </OrderBy>
+      </pnp:Query>
+      <pnp:ViewFields>
+        <FieldRef Name="LinkTitle" />
+        <FieldRef Name="Category" />
+        <FieldRef Name="TriggerEvent" />
+        <FieldRef Name="Subject" />
+        <FieldRef Name="ToRecipients" />
+        <FieldRef Name="IsActive" />
+        <FieldRef Name="Modified" />
+      </pnp:ViewFields>
+    </pnp:View>
+
+    <pnp:View Name="ActiveNotifications" DisplayName="Active Notifications" DefaultView="false" RowLimit="30" Paged="true">
+      <pnp:Query>
+        <Where>
+          <Eq>
+            <FieldRef Name="IsActive" />
+            <Value Type="Boolean">1</Value>
+          </Eq>
+        </Where>
+        <OrderBy>
+          <FieldRef Name="Category" Ascending="TRUE" />
+          <FieldRef Name="Title" Ascending="TRUE" />
+        </OrderBy>
+      </pnp:Query>
+      <pnp:ViewFields>
+        <FieldRef Name="LinkTitle" />
+        <FieldRef Name="Category" />
+        <FieldRef Name="TriggerEvent" />
+        <FieldRef Name="Subject" />
+        <FieldRef Name="ToRecipients" />
+        <FieldRef Name="Modified" />
+      </pnp:ViewFields>
+    </pnp:View>
+
+    <pnp:View Name="ByCategory" DisplayName="By Category" DefaultView="false" RowLimit="30" Paged="true">
+      <pnp:Query>
+        <GroupBy Collapse="TRUE">
+          <FieldRef Name="Category" />
+        </GroupBy>
+        <OrderBy>
+          <FieldRef Name="Title" Ascending="TRUE" />
+        </OrderBy>
+      </pnp:Query>
+      <pnp:ViewFields>
+        <FieldRef Name="LinkTitle" />
+        <FieldRef Name="TriggerEvent" />
+        <FieldRef Name="Subject" />
+        <FieldRef Name="IsActive" />
+      </pnp:ViewFields>
+    </pnp:View>
+  </pnp:Views>
+
+  <pnp:DataRows>
+    <!-- ============================================ -->
+    <!-- SUBMISSION NOTIFICATIONS -->
+    <!-- ============================================ -->
+
+    <!-- Request Submitted - to Legal Admin -->
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">RequestSubmitted</pnp:DataValue>
+      <pnp:DataValue FieldName="Category">Submission</pnp:DataValue>
+      <pnp:DataValue FieldName="TriggerEvent">StatusChange</pnp:DataValue>
+      <pnp:DataValue FieldName="ToRecipients">{{LegalAdminGroup}}</pnp:DataValue>
+      <pnp:DataValue FieldName="CcRecipients"></pnp:DataValue>
+      <pnp:DataValue FieldName="Subject">[Action Required] New Legal Review Request: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Body"><![CDATA[<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:14px;line-height:1.6;color:#323130;background-color:#f3f2f1;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="padding:20px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#0078d4;padding:24px 32px;border-radius:4px 4px 0 0;">
+              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600;">New Request Submitted</h1>
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 16px;">A new legal review request has been submitted and requires your attention.</p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;">{{RequestId}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Title:</strong></td>
+                        <td style="padding:4px 0;">{{RequestTitle}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Submitted By:</strong></td>
+                        <td style="padding:4px 0;">{{SubmitterName}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Submission Type:</strong></td>
+                        <td style="padding:4px 0;">{{SubmissionType}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Target Return Date:</strong></td>
+                        <td style="padding:4px 0;">{{TargetReturnDate}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Review Audience:</strong></td>
+                        <td style="padding:4px 0;">{{ReviewAudience}}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="border-radius:4px;background-color:#0078d4;">
+                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">View Request</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 32px;background-color:#faf9f8;border-top:1px solid #edebe9;border-radius:0 0 4px 4px;">
+              <p style="margin:0;font-size:12px;color:#605e5c;">This is an automated message from the Legal Review System. Please do not reply to this email.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>]]></pnp:DataValue>
+      <pnp:DataValue FieldName="IncludeDocuments">0</pnp:DataValue>
+      <pnp:DataValue FieldName="Importance">Normal</pnp:DataValue>
+      <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Sent to Legal Admin when a new request is submitted (Draft → Legal Intake)</pnp:DataValue>
+    </pnp:DataRow>
+
+    <!-- Rush Request Alert -->
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">RushRequestAlert</pnp:DataValue>
+      <pnp:DataValue FieldName="Category">Submission</pnp:DataValue>
+      <pnp:DataValue FieldName="TriggerEvent">StatusChange</pnp:DataValue>
+      <pnp:DataValue FieldName="ToRecipients">{{LegalAdminGroup}}</pnp:DataValue>
+      <pnp:DataValue FieldName="CcRecipients"></pnp:DataValue>
+      <pnp:DataValue FieldName="Subject">[RUSH] Urgent Legal Review Request: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Body"><![CDATA[<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:14px;line-height:1.6;color:#323130;background-color:#f3f2f1;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="padding:20px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#d13438;padding:24px 32px;border-radius:4px 4px 0 0;">
+              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600;">Rush Request Submitted</h1>
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding:32px;">
+              <div style="background-color:#fde7e9;border-left:4px solid #d13438;padding:12px 16px;margin:0 0 24px;border-radius:0 4px 4px 0;">
+                <strong style="color:#a4262c;">This is a rush request requiring expedited review.</strong>
+              </div>
+
+              <p style="margin:0 0 16px;">A new rush request has been submitted and requires immediate attention.</p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;">{{RequestId}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Title:</strong></td>
+                        <td style="padding:4px 0;">{{RequestTitle}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Submitted By:</strong></td>
+                        <td style="padding:4px 0;">{{SubmitterName}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Target Return Date:</strong></td>
+                        <td style="padding:4px 0;color:#d13438;font-weight:600;">{{TargetReturnDate}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Rush Rationale:</strong></td>
+                        <td style="padding:4px 0;">{{RushRationale}}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="border-radius:4px;background-color:#d13438;">
+                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">View Rush Request</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 32px;background-color:#faf9f8;border-top:1px solid #edebe9;border-radius:0 0 4px 4px;">
+              <p style="margin:0;font-size:12px;color:#605e5c;">This is an automated message from the Legal Review System. Please do not reply to this email.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>]]></pnp:DataValue>
+      <pnp:DataValue FieldName="IncludeDocuments">0</pnp:DataValue>
+      <pnp:DataValue FieldName="Importance">High</pnp:DataValue>
+      <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Sent to Legal Admin when a rush request is submitted</pnp:DataValue>
+    </pnp:DataRow>
+
+    <!-- ============================================ -->
+    <!-- ASSIGNMENT NOTIFICATIONS -->
+    <!-- ============================================ -->
+
+    <!-- Ready for Attorney Assignment -->
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">ReadyForAttorneyAssignment</pnp:DataValue>
+      <pnp:DataValue FieldName="Category">Assignment</pnp:DataValue>
+      <pnp:DataValue FieldName="TriggerEvent">StatusChange</pnp:DataValue>
+      <pnp:DataValue FieldName="ToRecipients">{{AttorneyAssignerGroup}}</pnp:DataValue>
+      <pnp:DataValue FieldName="CcRecipients"></pnp:DataValue>
+      <pnp:DataValue FieldName="Subject">[Action Required] Attorney Assignment Needed: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Body"><![CDATA[<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:14px;line-height:1.6;color:#323130;background-color:#f3f2f1;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="padding:20px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#8764b8;padding:24px 32px;border-radius:4px 4px 0 0;">
+              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600;">Attorney Assignment Required</h1>
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 16px;">A legal review request is awaiting attorney assignment by the committee.</p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;">{{RequestId}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Title:</strong></td>
+                        <td style="padding:4px 0;">{{RequestTitle}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Submitted By:</strong></td>
+                        <td style="padding:4px 0;">{{SubmitterName}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Submission Type:</strong></td>
+                        <td style="padding:4px 0;">{{SubmissionType}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Target Return Date:</strong></td>
+                        <td style="padding:4px 0;">{{TargetReturnDate}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Assignment Notes:</strong></td>
+                        <td style="padding:4px 0;">{{AssignmentNotes}}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="border-radius:4px;background-color:#8764b8;">
+                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">Assign Attorney</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 32px;background-color:#faf9f8;border-top:1px solid #edebe9;border-radius:0 0 4px 4px;">
+              <p style="margin:0;font-size:12px;color:#605e5c;">This is an automated message from the Legal Review System. Please do not reply to this email.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>]]></pnp:DataValue>
+      <pnp:DataValue FieldName="IncludeDocuments">0</pnp:DataValue>
+      <pnp:DataValue FieldName="Importance">Normal</pnp:DataValue>
+      <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Sent to Attorney Assigner group when request moves to Assign Attorney status</pnp:DataValue>
+    </pnp:DataRow>
+
+    <!-- Attorney Assigned -->
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">AttorneyAssigned</pnp:DataValue>
+      <pnp:DataValue FieldName="Category">Assignment</pnp:DataValue>
+      <pnp:DataValue FieldName="TriggerEvent">AttorneyAssigned</pnp:DataValue>
+      <pnp:DataValue FieldName="ToRecipients">{{AssignedAttorneyEmail}}</pnp:DataValue>
+      <pnp:DataValue FieldName="CcRecipients">{{SubmitterEmail}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Subject">[Action Required] Legal Review Assigned: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Body"><![CDATA[<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:14px;line-height:1.6;color:#323130;background-color:#f3f2f1;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="padding:20px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#0078d4;padding:24px 32px;border-radius:4px 4px 0 0;">
+              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600;">Review Assigned to You</h1>
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 16px;">You have been assigned to review the following request.</p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;">{{RequestId}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Title:</strong></td>
+                        <td style="padding:4px 0;">{{RequestTitle}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Submitted By:</strong></td>
+                        <td style="padding:4px 0;">{{SubmitterName}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Submission Type:</strong></td>
+                        <td style="padding:4px 0;">{{SubmissionType}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Target Return Date:</strong></td>
+                        <td style="padding:4px 0;">{{TargetReturnDate}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Review Audience:</strong></td>
+                        <td style="padding:4px 0;">{{ReviewAudience}}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="border-radius:4px;background-color:#0078d4;">
+                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">Begin Review</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 32px;background-color:#faf9f8;border-top:1px solid #edebe9;border-radius:0 0 4px 4px;">
+              <p style="margin:0;font-size:12px;color:#605e5c;">This is an automated message from the Legal Review System. Please do not reply to this email.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>]]></pnp:DataValue>
+      <pnp:DataValue FieldName="IncludeDocuments">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Importance">Normal</pnp:DataValue>
+      <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Sent to the assigned attorney when they are assigned to a request</pnp:DataValue>
+    </pnp:DataRow>
+
+    <!-- ============================================ -->
+    <!-- REVIEW NOTIFICATIONS -->
+    <!-- ============================================ -->
+
+    <!-- Legal Review Complete - Approved -->
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">LegalReviewApproved</pnp:DataValue>
+      <pnp:DataValue FieldName="Category">Review</pnp:DataValue>
+      <pnp:DataValue FieldName="TriggerEvent">ReviewComplete</pnp:DataValue>
+      <pnp:DataValue FieldName="ToRecipients">{{SubmitterEmail}}</pnp:DataValue>
+      <pnp:DataValue FieldName="CcRecipients">{{AdditionalPartyEmails}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Subject">Legal Review Approved: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Body"><![CDATA[<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:14px;line-height:1.6;color:#323130;background-color:#f3f2f1;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="padding:20px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#107c10;padding:24px 32px;border-radius:4px 4px 0 0;">
+              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600;">Legal Review Approved</h1>
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 16px;">Your legal review request has been <strong style="color:#107c10;">approved</strong>.</p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;">{{RequestId}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Title:</strong></td>
+                        <td style="padding:4px 0;">{{RequestTitle}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Reviewed By:</strong></td>
+                        <td style="padding:4px 0;">{{AssignedAttorneyName}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Review Outcome:</strong></td>
+                        <td style="padding:4px 0;color:#107c10;font-weight:600;">Approved</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              {{#if LegalReviewNotes}}
+              <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 24px;">
+                <p style="margin:0 0 8px;font-weight:600;">Reviewer Notes:</p>
+                <p style="margin:0;">{{LegalReviewNotes}}</p>
+              </div>
+              {{/if}}
+
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="border-radius:4px;background-color:#107c10;">
+                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">View Request</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 32px;background-color:#faf9f8;border-top:1px solid #edebe9;border-radius:0 0 4px 4px;">
+              <p style="margin:0;font-size:12px;color:#605e5c;">This is an automated message from the Legal Review System. Please do not reply to this email.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>]]></pnp:DataValue>
+      <pnp:DataValue FieldName="IncludeDocuments">0</pnp:DataValue>
+      <pnp:DataValue FieldName="Importance">Normal</pnp:DataValue>
+      <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Sent to submitter when legal review is approved</pnp:DataValue>
+    </pnp:DataRow>
+
+    <!-- Legal Review - Changes Requested -->
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">LegalChangesRequested</pnp:DataValue>
+      <pnp:DataValue FieldName="Category">Review</pnp:DataValue>
+      <pnp:DataValue FieldName="TriggerEvent">ReviewChangesRequested</pnp:DataValue>
+      <pnp:DataValue FieldName="ToRecipients">{{SubmitterEmail}}</pnp:DataValue>
+      <pnp:DataValue FieldName="CcRecipients">{{AdditionalPartyEmails}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Subject">[Action Required] Changes Requested: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Body"><![CDATA[<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:14px;line-height:1.6;color:#323130;background-color:#f3f2f1;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="padding:20px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#ffaa44;padding:24px 32px;border-radius:4px 4px 0 0;">
+              <h1 style="margin:0;color:#323130;font-size:20px;font-weight:600;">Changes Requested</h1>
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding:32px;">
+              <div style="background-color:#fff4ce;border-left:4px solid #ffaa44;padding:12px 16px;margin:0 0 24px;border-radius:0 4px 4px 0;">
+                <strong>Action Required:</strong> Please review the comments below and resubmit your request.
+              </div>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;">{{RequestId}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Title:</strong></td>
+                        <td style="padding:4px 0;">{{RequestTitle}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Reviewed By:</strong></td>
+                        <td style="padding:4px 0;">{{AssignedAttorneyName}}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 24px;">
+                <p style="margin:0 0 8px;font-weight:600;">Reviewer Comments:</p>
+                <p style="margin:0;">{{LegalReviewNotes}}</p>
+              </div>
+
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="border-radius:4px;background-color:#0078d4;">
+                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">Address Comments &amp; Resubmit</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 32px;background-color:#faf9f8;border-top:1px solid #edebe9;border-radius:0 0 4px 4px;">
+              <p style="margin:0;font-size:12px;color:#605e5c;">This is an automated message from the Legal Review System. Please do not reply to this email.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>]]></pnp:DataValue>
+      <pnp:DataValue FieldName="IncludeDocuments">0</pnp:DataValue>
+      <pnp:DataValue FieldName="Importance">High</pnp:DataValue>
+      <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Sent to submitter when legal reviewer requests changes (Respond To Comments And Resubmit)</pnp:DataValue>
+    </pnp:DataRow>
+
+    <!-- Legal Review - Not Approved -->
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">LegalReviewNotApproved</pnp:DataValue>
+      <pnp:DataValue FieldName="Category">Review</pnp:DataValue>
+      <pnp:DataValue FieldName="TriggerEvent">ReviewComplete</pnp:DataValue>
+      <pnp:DataValue FieldName="ToRecipients">{{SubmitterEmail}}</pnp:DataValue>
+      <pnp:DataValue FieldName="CcRecipients">{{AdditionalPartyEmails}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Subject">Legal Review Not Approved: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Body"><![CDATA[<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:14px;line-height:1.6;color:#323130;background-color:#f3f2f1;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="padding:20px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#a4262c;padding:24px 32px;border-radius:4px 4px 0 0;">
+              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600;">Legal Review Not Approved</h1>
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 16px;">Your legal review request has <strong>not been approved</strong>. The request has been moved to Completed status.</p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;">{{RequestId}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Title:</strong></td>
+                        <td style="padding:4px 0;">{{RequestTitle}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Reviewed By:</strong></td>
+                        <td style="padding:4px 0;">{{AssignedAttorneyName}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Review Outcome:</strong></td>
+                        <td style="padding:4px 0;color:#a4262c;font-weight:600;">Not Approved</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 24px;">
+                <p style="margin:0 0 8px;font-weight:600;">Reviewer Notes:</p>
+                <p style="margin:0;">{{LegalReviewNotes}}</p>
+              </div>
+
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="border-radius:4px;background-color:#605e5c;">
+                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">View Request</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 32px;background-color:#faf9f8;border-top:1px solid #edebe9;border-radius:0 0 4px 4px;">
+              <p style="margin:0;font-size:12px;color:#605e5c;">This is an automated message from the Legal Review System. Please do not reply to this email.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>]]></pnp:DataValue>
+      <pnp:DataValue FieldName="IncludeDocuments">0</pnp:DataValue>
+      <pnp:DataValue FieldName="Importance">Normal</pnp:DataValue>
+      <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Sent to submitter when legal review is not approved</pnp:DataValue>
+    </pnp:DataRow>
+
+    <!-- Compliance Review Complete - Approved -->
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">ComplianceReviewApproved</pnp:DataValue>
+      <pnp:DataValue FieldName="Category">Review</pnp:DataValue>
+      <pnp:DataValue FieldName="TriggerEvent">ReviewComplete</pnp:DataValue>
+      <pnp:DataValue FieldName="ToRecipients">{{SubmitterEmail}}</pnp:DataValue>
+      <pnp:DataValue FieldName="CcRecipients">{{AdditionalPartyEmails}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Subject">Compliance Review Approved: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Body"><![CDATA[<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:14px;line-height:1.6;color:#323130;background-color:#f3f2f1;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="padding:20px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#107c10;padding:24px 32px;border-radius:4px 4px 0 0;">
+              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600;">Compliance Review Approved</h1>
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 16px;">Your compliance review has been <strong style="color:#107c10;">approved</strong>.</p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;">{{RequestId}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Title:</strong></td>
+                        <td style="padding:4px 0;">{{RequestTitle}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Review Outcome:</strong></td>
+                        <td style="padding:4px 0;color:#107c10;font-weight:600;">Approved</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              {{#if ComplianceReviewNotes}}
+              <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 24px;">
+                <p style="margin:0 0 8px;font-weight:600;">Reviewer Notes:</p>
+                <p style="margin:0;">{{ComplianceReviewNotes}}</p>
+              </div>
+              {{/if}}
+
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="border-radius:4px;background-color:#107c10;">
+                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">View Request</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 32px;background-color:#faf9f8;border-top:1px solid #edebe9;border-radius:0 0 4px 4px;">
+              <p style="margin:0;font-size:12px;color:#605e5c;">This is an automated message from the Legal Review System. Please do not reply to this email.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>]]></pnp:DataValue>
+      <pnp:DataValue FieldName="IncludeDocuments">0</pnp:DataValue>
+      <pnp:DataValue FieldName="Importance">Normal</pnp:DataValue>
+      <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Sent to submitter when compliance review is approved</pnp:DataValue>
+    </pnp:DataRow>
+
+    <!-- Compliance Review - Changes Requested -->
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">ComplianceChangesRequested</pnp:DataValue>
+      <pnp:DataValue FieldName="Category">Review</pnp:DataValue>
+      <pnp:DataValue FieldName="TriggerEvent">ReviewChangesRequested</pnp:DataValue>
+      <pnp:DataValue FieldName="ToRecipients">{{SubmitterEmail}}</pnp:DataValue>
+      <pnp:DataValue FieldName="CcRecipients">{{AdditionalPartyEmails}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Subject">[Action Required] Compliance Changes Requested: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Body"><![CDATA[<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:14px;line-height:1.6;color:#323130;background-color:#f3f2f1;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="padding:20px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#ffaa44;padding:24px 32px;border-radius:4px 4px 0 0;">
+              <h1 style="margin:0;color:#323130;font-size:20px;font-weight:600;">Compliance Changes Requested</h1>
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding:32px;">
+              <div style="background-color:#fff4ce;border-left:4px solid #ffaa44;padding:12px 16px;margin:0 0 24px;border-radius:0 4px 4px 0;">
+                <strong>Action Required:</strong> Please review the compliance comments below and resubmit your request.
+              </div>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;">{{RequestId}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Title:</strong></td>
+                        <td style="padding:4px 0;">{{RequestTitle}}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 24px;">
+                <p style="margin:0 0 8px;font-weight:600;">Compliance Comments:</p>
+                <p style="margin:0;">{{ComplianceReviewNotes}}</p>
+              </div>
+
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="border-radius:4px;background-color:#0078d4;">
+                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">Address Comments &amp; Resubmit</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 32px;background-color:#faf9f8;border-top:1px solid #edebe9;border-radius:0 0 4px 4px;">
+              <p style="margin:0;font-size:12px;color:#605e5c;">This is an automated message from the Legal Review System. Please do not reply to this email.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>]]></pnp:DataValue>
+      <pnp:DataValue FieldName="IncludeDocuments">0</pnp:DataValue>
+      <pnp:DataValue FieldName="Importance">High</pnp:DataValue>
+      <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Sent to submitter when compliance reviewer requests changes</pnp:DataValue>
+    </pnp:DataRow>
+
+    <!-- Resubmission Received - to Attorney -->
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">ResubmissionReceivedLegal</pnp:DataValue>
+      <pnp:DataValue FieldName="Category">Review</pnp:DataValue>
+      <pnp:DataValue FieldName="TriggerEvent">Resubmission</pnp:DataValue>
+      <pnp:DataValue FieldName="ToRecipients">{{AssignedAttorneyEmail}}</pnp:DataValue>
+      <pnp:DataValue FieldName="CcRecipients"></pnp:DataValue>
+      <pnp:DataValue FieldName="Subject">[Action Required] Resubmission Received: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Body"><![CDATA[<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:14px;line-height:1.6;color:#323130;background-color:#f3f2f1;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="padding:20px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#0078d4;padding:24px 32px;border-radius:4px 4px 0 0;">
+              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600;">Resubmission Received</h1>
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 16px;">The submitter has addressed your comments and resubmitted the request for your review.</p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;">{{RequestId}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Title:</strong></td>
+                        <td style="padding:4px 0;">{{RequestTitle}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Submitted By:</strong></td>
+                        <td style="padding:4px 0;">{{SubmitterName}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Resubmitted On:</strong></td>
+                        <td style="padding:4px 0;">{{ResubmittedOn}}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              {{#if SubmitterResponseNotes}}
+              <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 24px;">
+                <p style="margin:0 0 8px;font-weight:600;">Submitter's Response:</p>
+                <p style="margin:0;">{{SubmitterResponseNotes}}</p>
+              </div>
+              {{/if}}
+
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="border-radius:4px;background-color:#0078d4;">
+                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">Continue Review</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 32px;background-color:#faf9f8;border-top:1px solid #edebe9;border-radius:0 0 4px 4px;">
+              <p style="margin:0;font-size:12px;color:#605e5c;">This is an automated message from the Legal Review System. Please do not reply to this email.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>]]></pnp:DataValue>
+      <pnp:DataValue FieldName="IncludeDocuments">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Importance">Normal</pnp:DataValue>
+      <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Sent to assigned attorney when submitter resubmits after addressing comments</pnp:DataValue>
+    </pnp:DataRow>
+
+    <!-- Resubmission Received - to Compliance -->
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">ResubmissionReceivedCompliance</pnp:DataValue>
+      <pnp:DataValue FieldName="Category">Review</pnp:DataValue>
+      <pnp:DataValue FieldName="TriggerEvent">Resubmission</pnp:DataValue>
+      <pnp:DataValue FieldName="ToRecipients">{{ComplianceGroup}}</pnp:DataValue>
+      <pnp:DataValue FieldName="CcRecipients"></pnp:DataValue>
+      <pnp:DataValue FieldName="Subject">[Action Required] Compliance Resubmission: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Body"><![CDATA[<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:14px;line-height:1.6;color:#323130;background-color:#f3f2f1;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="padding:20px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#0078d4;padding:24px 32px;border-radius:4px 4px 0 0;">
+              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600;">Compliance Resubmission Received</h1>
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 16px;">The submitter has addressed compliance comments and resubmitted the request for review.</p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;">{{RequestId}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Title:</strong></td>
+                        <td style="padding:4px 0;">{{RequestTitle}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Submitted By:</strong></td>
+                        <td style="padding:4px 0;">{{SubmitterName}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Resubmitted On:</strong></td>
+                        <td style="padding:4px 0;">{{ResubmittedOn}}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              {{#if SubmitterResponseNotes}}
+              <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 24px;">
+                <p style="margin:0 0 8px;font-weight:600;">Submitter's Response:</p>
+                <p style="margin:0;">{{SubmitterResponseNotes}}</p>
+              </div>
+              {{/if}}
+
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="border-radius:4px;background-color:#0078d4;">
+                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">Continue Review</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 32px;background-color:#faf9f8;border-top:1px solid #edebe9;border-radius:0 0 4px 4px;">
+              <p style="margin:0;font-size:12px;color:#605e5c;">This is an automated message from the Legal Review System. Please do not reply to this email.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>]]></pnp:DataValue>
+      <pnp:DataValue FieldName="IncludeDocuments">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Importance">Normal</pnp:DataValue>
+      <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Sent to compliance group when submitter resubmits after addressing compliance comments</pnp:DataValue>
+    </pnp:DataRow>
+
+    <!-- ============================================ -->
+    <!-- STATUS CHANGE NOTIFICATIONS -->
+    <!-- ============================================ -->
+
+    <!-- Request On Hold -->
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">RequestOnHold</pnp:DataValue>
+      <pnp:DataValue FieldName="Category">Status Change</pnp:DataValue>
+      <pnp:DataValue FieldName="TriggerEvent">HoldResume</pnp:DataValue>
+      <pnp:DataValue FieldName="ToRecipients">{{SubmitterEmail}}</pnp:DataValue>
+      <pnp:DataValue FieldName="CcRecipients">{{AdditionalPartyEmails}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Subject">Request Placed On Hold: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Body"><![CDATA[<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:14px;line-height:1.6;color:#323130;background-color:#f3f2f1;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="padding:20px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#605e5c;padding:24px 32px;border-radius:4px 4px 0 0;">
+              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600;">Request On Hold</h1>
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 16px;">Your request has been placed on hold. No action is required from you at this time.</p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;">{{RequestId}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Title:</strong></td>
+                        <td style="padding:4px 0;">{{RequestTitle}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>On Hold By:</strong></td>
+                        <td style="padding:4px 0;">{{OnHoldByName}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>On Hold Since:</strong></td>
+                        <td style="padding:4px 0;">{{OnHoldSince}}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 24px;">
+                <p style="margin:0 0 8px;font-weight:600;">Reason:</p>
+                <p style="margin:0;">{{OnHoldReason}}</p>
+              </div>
+
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="border-radius:4px;background-color:#605e5c;">
+                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">View Request</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 32px;background-color:#faf9f8;border-top:1px solid #edebe9;border-radius:0 0 4px 4px;">
+              <p style="margin:0;font-size:12px;color:#605e5c;">This is an automated message from the Legal Review System. Please do not reply to this email.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>]]></pnp:DataValue>
+      <pnp:DataValue FieldName="IncludeDocuments">0</pnp:DataValue>
+      <pnp:DataValue FieldName="Importance">Normal</pnp:DataValue>
+      <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Sent to submitter when request is placed on hold</pnp:DataValue>
+    </pnp:DataRow>
+
+    <!-- Request Resumed -->
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">RequestResumed</pnp:DataValue>
+      <pnp:DataValue FieldName="Category">Status Change</pnp:DataValue>
+      <pnp:DataValue FieldName="TriggerEvent">HoldResume</pnp:DataValue>
+      <pnp:DataValue FieldName="ToRecipients">{{SubmitterEmail}}</pnp:DataValue>
+      <pnp:DataValue FieldName="CcRecipients">{{AdditionalPartyEmails}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Subject">Request Resumed: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Body"><![CDATA[<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:14px;line-height:1.6;color:#323130;background-color:#f3f2f1;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="padding:20px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#0078d4;padding:24px 32px;border-radius:4px 4px 0 0;">
+              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600;">Request Resumed</h1>
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 16px;">Your request has been taken off hold and processing has resumed.</p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;">{{RequestId}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Title:</strong></td>
+                        <td style="padding:4px 0;">{{RequestTitle}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Current Status:</strong></td>
+                        <td style="padding:4px 0;">{{Status}}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="border-radius:4px;background-color:#0078d4;">
+                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">View Request</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 32px;background-color:#faf9f8;border-top:1px solid #edebe9;border-radius:0 0 4px 4px;">
+              <p style="margin:0;font-size:12px;color:#605e5c;">This is an automated message from the Legal Review System. Please do not reply to this email.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>]]></pnp:DataValue>
+      <pnp:DataValue FieldName="IncludeDocuments">0</pnp:DataValue>
+      <pnp:DataValue FieldName="Importance">Normal</pnp:DataValue>
+      <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Sent to submitter when request is resumed from hold</pnp:DataValue>
+    </pnp:DataRow>
+
+    <!-- Request Cancelled -->
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">RequestCancelled</pnp:DataValue>
+      <pnp:DataValue FieldName="Category">Status Change</pnp:DataValue>
+      <pnp:DataValue FieldName="TriggerEvent">Cancellation</pnp:DataValue>
+      <pnp:DataValue FieldName="ToRecipients">{{SubmitterEmail}}</pnp:DataValue>
+      <pnp:DataValue FieldName="CcRecipients">{{AssignedAttorneyEmail}},{{AdditionalPartyEmails}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Subject">Request Cancelled: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Body"><![CDATA[<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:14px;line-height:1.6;color:#323130;background-color:#f3f2f1;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="padding:20px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#a4262c;padding:24px 32px;border-radius:4px 4px 0 0;">
+              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600;">Request Cancelled</h1>
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 16px;">The following request has been cancelled.</p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;">{{RequestId}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Title:</strong></td>
+                        <td style="padding:4px 0;">{{RequestTitle}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Cancelled By:</strong></td>
+                        <td style="padding:4px 0;">{{CancelledByName}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Cancelled On:</strong></td>
+                        <td style="padding:4px 0;">{{CancelledOn}}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 24px;">
+                <p style="margin:0 0 8px;font-weight:600;">Cancellation Reason:</p>
+                <p style="margin:0;">{{CancelReason}}</p>
+              </div>
+
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="border-radius:4px;background-color:#605e5c;">
+                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">View Request</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 32px;background-color:#faf9f8;border-top:1px solid #edebe9;border-radius:0 0 4px 4px;">
+              <p style="margin:0;font-size:12px;color:#605e5c;">This is an automated message from the Legal Review System. Please do not reply to this email.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>]]></pnp:DataValue>
+      <pnp:DataValue FieldName="IncludeDocuments">0</pnp:DataValue>
+      <pnp:DataValue FieldName="Importance">Normal</pnp:DataValue>
+      <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Sent to submitter and assigned attorney when request is cancelled</pnp:DataValue>
+    </pnp:DataRow>
+
+    <!-- ============================================ -->
+    <!-- CLOSEOUT NOTIFICATIONS -->
+    <!-- ============================================ -->
+
+    <!-- Ready for Closeout -->
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">ReadyForCloseout</pnp:DataValue>
+      <pnp:DataValue FieldName="Category">Closeout</pnp:DataValue>
+      <pnp:DataValue FieldName="TriggerEvent">StatusChange</pnp:DataValue>
+      <pnp:DataValue FieldName="ToRecipients">{{SubmitterEmail}}</pnp:DataValue>
+      <pnp:DataValue FieldName="CcRecipients">{{AdditionalPartyEmails}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Subject">[Action Required] Ready for Closeout: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Body"><![CDATA[<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:14px;line-height:1.6;color:#323130;background-color:#f3f2f1;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="padding:20px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#107c10;padding:24px 32px;border-radius:4px 4px 0 0;">
+              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600;">Ready for Closeout</h1>
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 16px;">All reviews have been completed. Please complete the closeout process for your request.</p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;">{{RequestId}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Title:</strong></td>
+                        <td style="padding:4px 0;">{{RequestTitle}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Legal Review:</strong></td>
+                        <td style="padding:4px 0;color:#107c10;">{{LegalReviewOutcome}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Compliance Review:</strong></td>
+                        <td style="padding:4px 0;color:#107c10;">{{ComplianceReviewOutcome}}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 24px;">Please review any comments from the reviewers and complete the closeout form to finalize this request.</p>
+
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="border-radius:4px;background-color:#107c10;">
+                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">Complete Closeout</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 32px;background-color:#faf9f8;border-top:1px solid #edebe9;border-radius:0 0 4px 4px;">
+              <p style="margin:0;font-size:12px;color:#605e5c;">This is an automated message from the Legal Review System. Please do not reply to this email.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>]]></pnp:DataValue>
+      <pnp:DataValue FieldName="IncludeDocuments">0</pnp:DataValue>
+      <pnp:DataValue FieldName="Importance">Normal</pnp:DataValue>
+      <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Sent to submitter when all reviews are complete and request moves to Closeout status</pnp:DataValue>
+    </pnp:DataRow>
+
+    <!-- Request Completed -->
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">RequestCompleted</pnp:DataValue>
+      <pnp:DataValue FieldName="Category">Closeout</pnp:DataValue>
+      <pnp:DataValue FieldName="TriggerEvent">StatusChange</pnp:DataValue>
+      <pnp:DataValue FieldName="ToRecipients">{{SubmitterEmail}}</pnp:DataValue>
+      <pnp:DataValue FieldName="CcRecipients">{{AdditionalPartyEmails}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Subject">Request Completed: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Body"><![CDATA[<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;font-size:14px;line-height:1.6;color:#323130;background-color:#f3f2f1;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+    <tr>
+      <td style="padding:20px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="background-color:#107c10;padding:24px 32px;border-radius:4px 4px 0 0;">
+              <h1 style="margin:0;color:#ffffff;font-size:20px;font-weight:600;">Request Completed</h1>
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding:32px;">
+              <p style="margin:0 0 16px;">Your legal review request has been completed successfully.</p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;">{{RequestId}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Title:</strong></td>
+                        <td style="padding:4px 0;">{{RequestTitle}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Completed On:</strong></td>
+                        <td style="padding:4px 0;">{{CompletedOn}}</td>
+                      </tr>
+                      {{#if TrackingId}}
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Tracking ID:</strong></td>
+                        <td style="padding:4px 0;">{{TrackingId}}</td>
+                      </tr>
+                      {{/if}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 24px;">Thank you for using the Legal Review System. You can access the completed request and all associated documents at any time.</p>
+
+              <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+                <tr>
+                  <td style="border-radius:4px;background-color:#107c10;">
+                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">View Completed Request</a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:24px 32px;background-color:#faf9f8;border-top:1px solid #edebe9;border-radius:0 0 4px 4px;">
+              <p style="margin:0;font-size:12px;color:#605e5c;">This is an automated message from the Legal Review System. Please do not reply to this email.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>]]></pnp:DataValue>
+      <pnp:DataValue FieldName="IncludeDocuments">0</pnp:DataValue>
+      <pnp:DataValue FieldName="Importance">Normal</pnp:DataValue>
+      <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Sent to submitter when request is completed (closeout finished or not approved)</pnp:DataValue>
+    </pnp:DataRow>
+
+  </pnp:DataRows>
+
+</pnp:ListInstance>
