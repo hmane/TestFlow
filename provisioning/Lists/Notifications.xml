@@ -237,12 +237,14 @@
             <td style="padding:32px;">
               <p style="margin:0 0 16px;">A new legal review request has been submitted and requires your attention.</p>
 
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
+              <!-- Basic Information -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 16px;">
                 <tr>
                   <td style="padding:16px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#323130;">Basic Information</p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;width:35%;"><strong>Request ID:</strong></td>
                         <td style="padding:4px 0;">{{RequestId}}</td>
                       </tr>
                       <tr>
@@ -254,8 +256,16 @@
                         <td style="padding:4px 0;">{{SubmitterName}}</td>
                       </tr>
                       <tr>
+                        <td style="padding:4px 0;"><strong>Request Type:</strong></td>
+                        <td style="padding:4px 0;">{{RequestType}}</td>
+                      </tr>
+                      <tr>
                         <td style="padding:4px 0;"><strong>Submission Type:</strong></td>
                         <td style="padding:4px 0;">{{SubmissionType}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Submission Item:</strong></td>
+                        <td style="padding:4px 0;">{{SubmissionItem}}</td>
                       </tr>
                       <tr>
                         <td style="padding:4px 0;"><strong>Target Return Date:</strong></td>
@@ -269,6 +279,93 @@
                   </td>
                 </tr>
               </table>
+
+              <!-- Purpose -->
+              {{#if Purpose}}
+              <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 16px;">
+                <p style="margin:0 0 8px;font-weight:600;color:#323130;">Purpose</p>
+                <p style="margin:0;color:#605e5c;">{{Purpose}}</p>
+              </div>
+              {{/if}}
+
+              <!-- Product & Audience -->
+              {{#if FINRAAudienceCategory}}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 16px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#323130;">Product &amp; Audience</p>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:4px 0;width:35%;"><strong>FINRA Audience:</strong></td>
+                        <td style="padding:4px 0;">{{FINRAAudienceCategory}}</td>
+                      </tr>
+                      {{#if Audience}}
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Audience:</strong></td>
+                        <td style="padding:4px 0;">{{Audience}}</td>
+                      </tr>
+                      {{/if}}
+                      {{#if USFunds}}
+                      <tr>
+                        <td style="padding:4px 0;"><strong>US Funds:</strong></td>
+                        <td style="padding:4px 0;">{{USFunds}}</td>
+                      </tr>
+                      {{/if}}
+                      {{#if UCITS}}
+                      <tr>
+                        <td style="padding:4px 0;"><strong>UCITS:</strong></td>
+                        <td style="padding:4px 0;">{{UCITS}}</td>
+                      </tr>
+                      {{/if}}
+                      {{#if SeparateAccountStrategies}}
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Separate Account Strategies:</strong></td>
+                        <td style="padding:4px 0;">{{SeparateAccountStrategies}}</td>
+                      </tr>
+                      {{/if}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+
+              <!-- Distribution -->
+              {{#if DistributionMethod}}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 16px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#323130;">Distribution</p>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:4px 0;width:35%;"><strong>Distribution Method:</strong></td>
+                        <td style="padding:4px 0;">{{DistributionMethod}}</td>
+                      </tr>
+                      {{#if DateOfFirstUse}}
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Date of First Use:</strong></td>
+                        <td style="padding:4px 0;">{{DateOfFirstUse}}</td>
+                      </tr>
+                      {{/if}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+
+              <!-- Approvals Summary -->
+              {{#if ApprovalCount}}
+              <div style="background-color:#dff6dd;border-radius:4px;padding:16px;margin:0 0 16px;">
+                <p style="margin:0;color:#107c10;font-weight:600;">{{ApprovalCount}} Approval(s) Attached</p>
+              </div>
+              {{/if}}
+
+              <!-- Additional Parties -->
+              {{#if AdditionalParties}}
+              <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 24px;">
+                <p style="margin:0 0 8px;font-weight:600;color:#323130;">Additional Parties</p>
+                <p style="margin:0;color:#605e5c;">{{AdditionalParties}}</p>
+              </div>
+              {{/if}}
 
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
@@ -331,12 +428,14 @@
 
               <p style="margin:0 0 16px;">A new rush request has been submitted and requires immediate attention.</p>
 
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
+              <!-- Basic Information -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 16px;">
                 <tr>
                   <td style="padding:16px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#323130;">Basic Information</p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;width:35%;"><strong>Request ID:</strong></td>
                         <td style="padding:4px 0;">{{RequestId}}</td>
                       </tr>
                       <tr>
@@ -348,17 +447,75 @@
                         <td style="padding:4px 0;">{{SubmitterName}}</td>
                       </tr>
                       <tr>
+                        <td style="padding:4px 0;"><strong>Request Type:</strong></td>
+                        <td style="padding:4px 0;">{{RequestType}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Submission Item:</strong></td>
+                        <td style="padding:4px 0;">{{SubmissionItem}}</td>
+                      </tr>
+                      <tr>
                         <td style="padding:4px 0;"><strong>Target Return Date:</strong></td>
                         <td style="padding:4px 0;color:#d13438;font-weight:600;">{{TargetReturnDate}}</td>
                       </tr>
                       <tr>
-                        <td style="padding:4px 0;"><strong>Rush Rationale:</strong></td>
-                        <td style="padding:4px 0;">{{RushRationale}}</td>
+                        <td style="padding:4px 0;"><strong>Review Audience:</strong></td>
+                        <td style="padding:4px 0;">{{ReviewAudience}}</td>
                       </tr>
                     </table>
                   </td>
                 </tr>
               </table>
+
+              <!-- Rush Rationale (highlighted) -->
+              <div style="background-color:#fde7e9;border-left:4px solid #d13438;padding:16px;margin:0 0 16px;border-radius:0 4px 4px 0;">
+                <p style="margin:0 0 8px;font-weight:600;color:#a4262c;">Rush Rationale</p>
+                <p style="margin:0;color:#323130;">{{RushRationale}}</p>
+              </div>
+
+              <!-- Purpose -->
+              {{#if Purpose}}
+              <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 16px;">
+                <p style="margin:0 0 8px;font-weight:600;color:#323130;">Purpose</p>
+                <p style="margin:0;color:#605e5c;">{{Purpose}}</p>
+              </div>
+              {{/if}}
+
+              <!-- Product & Audience -->
+              {{#if FINRAAudienceCategory}}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 16px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#323130;">Product &amp; Audience</p>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:4px 0;width:35%;"><strong>FINRA Audience:</strong></td>
+                        <td style="padding:4px 0;">{{FINRAAudienceCategory}}</td>
+                      </tr>
+                      {{#if Audience}}
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Audience:</strong></td>
+                        <td style="padding:4px 0;">{{Audience}}</td>
+                      </tr>
+                      {{/if}}
+                      {{#if USFunds}}
+                      <tr>
+                        <td style="padding:4px 0;"><strong>US Funds:</strong></td>
+                        <td style="padding:4px 0;">{{USFunds}}</td>
+                      </tr>
+                      {{/if}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+
+              <!-- Approvals Summary -->
+              {{#if ApprovalCount}}
+              <div style="background-color:#dff6dd;border-radius:4px;padding:16px;margin:0 0 16px;">
+                <p style="margin:0;color:#107c10;font-weight:600;">{{ApprovalCount}} Approval(s) Attached</p>
+              </div>
+              {{/if}}
 
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
@@ -511,12 +668,21 @@
             <td style="padding:32px;">
               <p style="margin:0 0 16px;">You have been assigned to review the following request.</p>
 
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
+              <!-- Rush Indicator -->
+              {{#if IsRushRequest}}
+              <div style="background-color:#fde7e9;border-left:4px solid #d13438;padding:12px 16px;margin:0 0 16px;border-radius:0 4px 4px 0;">
+                <strong style="color:#a4262c;">This is a RUSH request requiring expedited review.</strong>
+              </div>
+              {{/if}}
+
+              <!-- Basic Information -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 16px;">
                 <tr>
                   <td style="padding:16px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#323130;">Basic Information</p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;width:35%;"><strong>Request ID:</strong></td>
                         <td style="padding:4px 0;">{{RequestId}}</td>
                       </tr>
                       <tr>
@@ -528,8 +694,16 @@
                         <td style="padding:4px 0;">{{SubmitterName}}</td>
                       </tr>
                       <tr>
+                        <td style="padding:4px 0;"><strong>Request Type:</strong></td>
+                        <td style="padding:4px 0;">{{RequestType}}</td>
+                      </tr>
+                      <tr>
                         <td style="padding:4px 0;"><strong>Submission Type:</strong></td>
                         <td style="padding:4px 0;">{{SubmissionType}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Submission Item:</strong></td>
+                        <td style="padding:4px 0;">{{SubmissionItem}}</td>
                       </tr>
                       <tr>
                         <td style="padding:4px 0;"><strong>Target Return Date:</strong></td>
@@ -543,6 +717,93 @@
                   </td>
                 </tr>
               </table>
+
+              <!-- Purpose -->
+              {{#if Purpose}}
+              <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 16px;">
+                <p style="margin:0 0 8px;font-weight:600;color:#323130;">Purpose</p>
+                <p style="margin:0;color:#605e5c;">{{Purpose}}</p>
+              </div>
+              {{/if}}
+
+              <!-- Product & Audience -->
+              {{#if FINRAAudienceCategory}}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 16px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#323130;">Product &amp; Audience</p>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:4px 0;width:35%;"><strong>FINRA Audience:</strong></td>
+                        <td style="padding:4px 0;">{{FINRAAudienceCategory}}</td>
+                      </tr>
+                      {{#if Audience}}
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Audience:</strong></td>
+                        <td style="padding:4px 0;">{{Audience}}</td>
+                      </tr>
+                      {{/if}}
+                      {{#if USFunds}}
+                      <tr>
+                        <td style="padding:4px 0;"><strong>US Funds:</strong></td>
+                        <td style="padding:4px 0;">{{USFunds}}</td>
+                      </tr>
+                      {{/if}}
+                      {{#if UCITS}}
+                      <tr>
+                        <td style="padding:4px 0;"><strong>UCITS:</strong></td>
+                        <td style="padding:4px 0;">{{UCITS}}</td>
+                      </tr>
+                      {{/if}}
+                      {{#if SeparateAccountStrategies}}
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Separate Account Strategies:</strong></td>
+                        <td style="padding:4px 0;">{{SeparateAccountStrategies}}</td>
+                      </tr>
+                      {{/if}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+
+              <!-- Distribution -->
+              {{#if DistributionMethod}}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 16px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#323130;">Distribution</p>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:4px 0;width:35%;"><strong>Distribution Method:</strong></td>
+                        <td style="padding:4px 0;">{{DistributionMethod}}</td>
+                      </tr>
+                      {{#if DateOfFirstUse}}
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Date of First Use:</strong></td>
+                        <td style="padding:4px 0;">{{DateOfFirstUse}}</td>
+                      </tr>
+                      {{/if}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+
+              <!-- Approvals Summary -->
+              {{#if ApprovalCount}}
+              <div style="background-color:#dff6dd;border-radius:4px;padding:16px;margin:0 0 16px;">
+                <p style="margin:0;color:#107c10;font-weight:600;">{{ApprovalCount}} Approval(s) Attached</p>
+              </div>
+              {{/if}}
+
+              <!-- Assignment Notes -->
+              {{#if AttorneyAssignNotes}}
+              <div style="background-color:#e6f2ff;border-left:4px solid #0078d4;padding:16px;margin:0 0 16px;border-radius:0 4px 4px 0;">
+                <p style="margin:0 0 8px;font-weight:600;color:#0078d4;">Assignment Notes</p>
+                <p style="margin:0;color:#323130;">{{AttorneyAssignNotes}}</p>
+              </div>
+              {{/if}}
 
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
@@ -1470,12 +1731,14 @@
             <td style="padding:32px;">
               <p style="margin:0 0 16px;">All reviews have been completed. Please complete the closeout process for your request.</p>
 
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
+              <!-- Basic Information -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 16px;">
                 <tr>
                   <td style="padding:16px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#323130;">Request Summary</p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;width:35%;"><strong>Request ID:</strong></td>
                         <td style="padding:4px 0;">{{RequestId}}</td>
                       </tr>
                       <tr>
@@ -1483,17 +1746,69 @@
                         <td style="padding:4px 0;">{{RequestTitle}}</td>
                       </tr>
                       <tr>
-                        <td style="padding:4px 0;"><strong>Legal Review:</strong></td>
-                        <td style="padding:4px 0;color:#107c10;">{{LegalReviewOutcome}}</td>
+                        <td style="padding:4px 0;"><strong>Submission Item:</strong></td>
+                        <td style="padding:4px 0;">{{SubmissionItem}}</td>
                       </tr>
                       <tr>
-                        <td style="padding:4px 0;"><strong>Compliance Review:</strong></td>
-                        <td style="padding:4px 0;color:#107c10;">{{ComplianceReviewOutcome}}</td>
+                        <td style="padding:4px 0;"><strong>Target Return Date:</strong></td>
+                        <td style="padding:4px 0;">{{TargetReturnDate}}</td>
                       </tr>
+                      {{#if AssignedAttorneyName}}
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Assigned Attorney:</strong></td>
+                        <td style="padding:4px 0;">{{AssignedAttorneyName}}</td>
+                      </tr>
+                      {{/if}}
                     </table>
                   </td>
                 </tr>
               </table>
+
+              <!-- Review Results -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#dff6dd;border-radius:4px;margin:0 0 16px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#107c10;">Review Results</p>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      {{#if LegalReviewOutcome}}
+                      <tr>
+                        <td style="padding:4px 0;width:35%;"><strong>Legal Review:</strong></td>
+                        <td style="padding:4px 0;color:#107c10;font-weight:600;">{{LegalReviewOutcome}}</td>
+                      </tr>
+                      {{/if}}
+                      {{#if ComplianceReviewOutcome}}
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Compliance Review:</strong></td>
+                        <td style="padding:4px 0;color:#107c10;font-weight:600;">{{ComplianceReviewOutcome}}</td>
+                      </tr>
+                      {{/if}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Legal Review Notes -->
+              {{#if LegalReviewNotes}}
+              <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 16px;">
+                <p style="margin:0 0 8px;font-weight:600;color:#323130;">Legal Review Notes</p>
+                <p style="margin:0;color:#605e5c;">{{LegalReviewNotes}}</p>
+              </div>
+              {{/if}}
+
+              <!-- Compliance Review Notes -->
+              {{#if ComplianceReviewNotes}}
+              <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 16px;">
+                <p style="margin:0 0 8px;font-weight:600;color:#323130;">Compliance Review Notes</p>
+                <p style="margin:0;color:#605e5c;">{{ComplianceReviewNotes}}</p>
+              </div>
+              {{/if}}
+
+              <!-- Tracking ID Requirement Notice -->
+              {{#if TrackingIdRequired}}
+              <div style="background-color:#fff4ce;border-left:4px solid #ffaa44;padding:12px 16px;margin:0 0 16px;border-radius:0 4px 4px 0;">
+                <strong>Note:</strong> A Tracking ID is required to complete the closeout for this request.
+              </div>
+              {{/if}}
 
               <p style="margin:0 0 24px;">Please review any comments from the reviewers and complete the closeout form to finalize this request.</p>
 
@@ -1554,17 +1869,27 @@
             <td style="padding:32px;">
               <p style="margin:0 0 16px;">Your legal review request has been completed successfully.</p>
 
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
+              <!-- Request Summary -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 16px;">
                 <tr>
                   <td style="padding:16px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#323130;">Request Summary</p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;width:35%;"><strong>Request ID:</strong></td>
                         <td style="padding:4px 0;">{{RequestId}}</td>
                       </tr>
                       <tr>
                         <td style="padding:4px 0;"><strong>Title:</strong></td>
                         <td style="padding:4px 0;">{{RequestTitle}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Submission Item:</strong></td>
+                        <td style="padding:4px 0;">{{SubmissionItem}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Submitted On:</strong></td>
+                        <td style="padding:4px 0;">{{SubmittedOn}}</td>
                       </tr>
                       <tr>
                         <td style="padding:4px 0;"><strong>Completed On:</strong></td>
@@ -1580,6 +1905,64 @@
                   </td>
                 </tr>
               </table>
+
+              <!-- Final Review Results -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#dff6dd;border-radius:4px;margin:0 0 16px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#107c10;">Final Review Results</p>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      {{#if LegalReviewOutcome}}
+                      <tr>
+                        <td style="padding:4px 0;width:35%;"><strong>Legal Review:</strong></td>
+                        <td style="padding:4px 0;color:#107c10;font-weight:600;">{{LegalReviewOutcome}}</td>
+                      </tr>
+                      {{#if AssignedAttorneyName}}
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Reviewed By:</strong></td>
+                        <td style="padding:4px 0;">{{AssignedAttorneyName}}</td>
+                      </tr>
+                      {{/if}}
+                      {{/if}}
+                      {{#if ComplianceReviewOutcome}}
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Compliance Review:</strong></td>
+                        <td style="padding:4px 0;color:#107c10;font-weight:600;">{{ComplianceReviewOutcome}}</td>
+                      </tr>
+                      {{/if}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Time Tracking Summary -->
+              {{#if TotalProcessingTime}}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 16px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#323130;">Processing Time</p>
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+                      <tr>
+                        <td style="padding:4px 0;width:35%;"><strong>Total Time:</strong></td>
+                        <td style="padding:4px 0;">{{TotalProcessingTime}}</td>
+                      </tr>
+                      {{#if LegalReviewTime}}
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Legal Review:</strong></td>
+                        <td style="padding:4px 0;">{{LegalReviewTime}}</td>
+                      </tr>
+                      {{/if}}
+                      {{#if ComplianceReviewTime}}
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Compliance Review:</strong></td>
+                        <td style="padding:4px 0;">{{ComplianceReviewTime}}</td>
+                      </tr>
+                      {{/if}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
 
               <p style="margin:0 0 24px;">Thank you for using the Legal Review System. You can access the completed request and all associated documents at any time.</p>
 
