@@ -52,6 +52,7 @@ import {
 } from '@services/workflowActionService';
 import { ComplianceReviewStatus, ReviewOutcome } from '@appTypes/index';
 import { calculateBusinessHours } from '@utils/businessHoursCalculator';
+import { RESUBMIT_NOTES_MAX_LENGTH } from '@constants/fieldLimits';
 
 import './ComplianceReviewForm.scss';
 
@@ -232,8 +233,11 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
         isRetailUse: data.isRetailUse,
       });
 
-      // Increment key to force NoteHistory refresh
-      setHistoryRefreshKey((prev) => prev + 1);
+      // Increment key to force NoteHistory refresh after a short delay
+      // Delay allows SharePoint to create the version before we fetch it
+      setTimeout(() => {
+        setHistoryRefreshKey((prev) => prev + 1);
+      }, 500);
 
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 5000);
@@ -287,8 +291,11 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
         isRetailUse: formData.isRetailUse,
       });
 
-      // Increment key to force NoteHistory refresh
-      setHistoryRefreshKey((prev) => prev + 1);
+      // Increment key to force NoteHistory refresh after a short delay
+      // Delay allows SharePoint to create the version before we fetch it
+      setTimeout(() => {
+        setHistoryRefreshKey((prev) => prev + 1);
+      }, 500);
 
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
@@ -347,8 +354,11 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
         isRetailUse: formData.isRetailUse,
       });
 
-      // Increment key to force NoteHistory refresh
-      setHistoryRefreshKey((prev) => prev + 1);
+      // Increment key to force NoteHistory refresh after a short delay
+      // Delay allows SharePoint to create the version before we fetch it
+      setTimeout(() => {
+        setHistoryRefreshKey((prev) => prev + 1);
+      }, 500);
 
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 5000);
@@ -421,7 +431,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
 
         <Content padding='comfortable'>
           <Stack tokens={{ childrenGap: 16 }}>
-            {/* Show note history read-only */}
+            {/* Show note history read-only using append-only SPTextField */}
             <FormContainer labelWidth='200px'>
               <FormItem fieldName='reviewNotes'>
                 <FormLabel>Review Notes</FormLabel>
@@ -436,6 +446,10 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                   itemId={itemId}
                   listNameOrId='Requests'
                   fieldInternalName='ComplianceReviewNotes'
+                  historyConfig={{
+                    initialDisplayCount: 10,
+                    showUserPhoto: true,
+                  }}
                 />
               </FormItem>
             </FormContainer>
@@ -553,7 +567,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                       placeholder='Provide detailed compliance review notes, comments, and recommendations'
                       mode={SPTextFieldMode.MultiLine}
                       rows={4}
-                      maxLength={4000}
+                      maxLength={RESUBMIT_NOTES_MAX_LENGTH}
                       showCharacterCount
                       stylingMode='outlined'
                       spellCheck
@@ -643,7 +657,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                         placeholder='Provide detailed compliance review notes, comments, and recommendations'
                         mode={SPTextFieldMode.MultiLine}
                         rows={4}
-                        maxLength={4000}
+                        maxLength={RESUBMIT_NOTES_MAX_LENGTH}
                         showCharacterCount
                         stylingMode='outlined'
                         spellCheck
@@ -718,7 +732,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                       placeholder='Provide detailed compliance review notes, comments, and recommendations'
                       mode={SPTextFieldMode.MultiLine}
                       rows={4}
-                      maxLength={4000}
+                      maxLength={RESUBMIT_NOTES_MAX_LENGTH}
                       showCharacterCount
                       stylingMode='outlined'
                       spellCheck

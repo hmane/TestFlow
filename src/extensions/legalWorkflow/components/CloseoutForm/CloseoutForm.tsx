@@ -41,6 +41,7 @@ import { useRequestFormContext } from '@contexts/RequestFormContext';
 import { useRequestStore } from '@stores/requestStore';
 import { useCloseoutStore } from '@stores/closeoutStore';
 import { ReviewAudience, ReviewOutcome } from '@appTypes/index';
+import { TRACKING_ID_MAX_LENGTH, CLOSEOUT_NOTES_MAX_LENGTH } from '@constants/fieldLimits';
 
 /**
  * CloseoutForm props
@@ -286,7 +287,7 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
                     name='trackingId'
                     placeholder='Enter tracking ID'
                     mode={SPTextFieldMode.SingleLine}
-                    maxLength={50}
+                    maxLength={TRACKING_ID_MAX_LENGTH}
                     showCharacterCount
                     stylingMode='outlined'
                   />
@@ -497,7 +498,7 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
                       placeholder='Add any final notes or comments'
                       mode={SPTextFieldMode.MultiLine}
                       rows={3}
-                      maxLength={2000}
+                      maxLength={CLOSEOUT_NOTES_MAX_LENGTH}
                       showCharacterCount
                       stylingMode='outlined'
                       spellCheck

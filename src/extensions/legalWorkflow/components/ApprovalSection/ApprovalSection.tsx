@@ -74,6 +74,7 @@ import { DocumentUpload } from '@components/DocumentUpload';
 import type { ILegalRequest } from '@appTypes/index';
 import { ApprovalType } from '@appTypes/approvalTypes';
 import { DocumentType } from '@appTypes/documentTypes';
+import { APPROVAL_TITLE_MAX_LENGTH, NOTES_MAX_LENGTH } from '@constants/fieldLimits';
 
 import './ApprovalSection.scss';
 
@@ -307,7 +308,7 @@ const AdditionalApprovalItem: React.FC<IAdditionalApprovalItemProps> = ({
               name={`approvals.${index}.approvalTitle` as const}
               placeholder='Enter approval title (e.g., Finance Review, IT Security)'
               mode={SPTextFieldMode.SingleLine}
-              maxLength={100}
+              maxLength={APPROVAL_TITLE_MAX_LENGTH}
               showCharacterCount
               stylingMode='outlined'
               disabled={disabled}
@@ -386,7 +387,7 @@ const AdditionalApprovalItem: React.FC<IAdditionalApprovalItemProps> = ({
             placeholder='Add any notes about this approval (optional)'
             mode={SPTextFieldMode.MultiLine}
             rows={3}
-            maxLength={500}
+            maxLength={NOTES_MAX_LENGTH}
             showCharacterCount
             stylingMode='outlined'
             disabled={disabled}

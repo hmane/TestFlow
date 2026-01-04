@@ -5,6 +5,14 @@
 import { z } from 'zod';
 import { ApprovalType } from '@appTypes/approvalTypes';
 import {
+  TITLE_MAX_LENGTH,
+  PURPOSE_MAX_LENGTH,
+  RUSH_RATIONALE_MAX_LENGTH,
+  REASON_MAX_LENGTH,
+  DEPARTMENT_MAX_LENGTH,
+  FIELD_LIMIT_MESSAGES,
+} from '@constants/fieldLimits';
+import {
   Audience,
   DistributionMethod,
   FINRAAudienceCategory,
@@ -65,11 +73,11 @@ export const requestInformationSchema = z.object({
   requestTitle: z
     .string()
     .min(3, 'Request title must be at least 3 characters')
-    .max(255, 'Request title cannot exceed 255 characters'),
+    .max(TITLE_MAX_LENGTH, FIELD_LIMIT_MESSAGES.title),
   purpose: z
     .string()
     .min(10, 'Purpose must be at least 10 characters')
-    .max(1000, 'Purpose cannot exceed 1000 characters'),
+    .max(PURPOSE_MAX_LENGTH, FIELD_LIMIT_MESSAGES.purpose),
   submissionType: z.enum([SubmissionType.New, SubmissionType.MaterialUpdates], {
     message: 'Submission type is required',
   }),
@@ -93,7 +101,7 @@ export const requestInformationSchema = z.object({
     message: 'Review audience is required',
   }),
   requiresCommunicationsApproval: z.boolean(),
-  department: z.string().max(100).optional(),
+  department: z.string().max(DEPARTMENT_MAX_LENGTH).optional(),
   distributionMethod: z
     .array(
       z.enum([
@@ -110,10 +118,10 @@ export const requestInformationSchema = z.object({
     )
     .optional(),
   priorSubmissions: z.array(lookupSchema).optional(),
-  priorSubmissionNotes: z.string().max(1000).optional(),
+  priorSubmissionNotes: z.string().max(PURPOSE_MAX_LENGTH).optional(),
   dateOfFirstUse: z.date().optional(),
   additionalParty: z.array(principalSchema).optional(),
-  rushRationale: z.string().max(500).optional(),
+  rushRationale: z.string().max(RUSH_RATIONALE_MAX_LENGTH).optional(),
   // FINRA Audience & Product Fields
   finraAudienceCategory: z
     .array(z.enum([FINRAAudienceCategory.Institutional, FINRAAudienceCategory.RetailPublic]))
@@ -215,7 +223,7 @@ export const saveRequestSchema = z
     requestTitle: z
       .string()
       .min(1, 'Request title is required')
-      .max(255, 'Request title cannot exceed 255 characters'),
+      .max(TITLE_MAX_LENGTH, FIELD_LIMIT_MESSAGES.title),
     // All other fields are optional for Save
     submissionType: z.enum([SubmissionType.New, SubmissionType.MaterialUpdates]).optional(),
     submissionItem: z.string().optional(),
@@ -223,20 +231,20 @@ export const saveRequestSchema = z
     requestType: z
       .enum([RequestType.Communication, RequestType.GeneralReview, RequestType.IMAReview])
       .optional(),
-    purpose: z.string().max(1000).optional(),
+    purpose: z.string().max(PURPOSE_MAX_LENGTH).optional(),
     targetReturnDate: z.date().optional(),
     reviewAudience: z
       .enum([ReviewAudience.Legal, ReviewAudience.Compliance, ReviewAudience.Both])
       .optional(),
     requiresCommunicationsApproval: z.boolean().optional(),
     approvals: z.array(z.any()).optional(),
-    department: z.string().max(100).optional(),
+    department: z.string().max(DEPARTMENT_MAX_LENGTH).optional(),
     distributionMethod: z.array(z.any()).optional(),
     priorSubmissions: z.array(lookupSchema).optional(),
-    priorSubmissionNotes: z.string().max(1000).optional(),
+    priorSubmissionNotes: z.string().max(PURPOSE_MAX_LENGTH).optional(),
     dateOfFirstUse: z.date().optional(),
     additionalParty: z.array(principalSchema).optional(),
-    rushRationale: z.string().max(500).optional(),
+    rushRationale: z.string().max(RUSH_RATIONALE_MAX_LENGTH).optional(),
     isRushRequest: z.boolean().optional(),
     // FINRA Audience & Product Fields
     finraAudienceCategory: z.array(z.any()).optional(),
@@ -298,11 +306,11 @@ export const submitRequestSchema = z
     distributionMethod: z.array(z.any()).optional(),
     dateOfFirstUse: z.any().optional(),
     // Optional fields
-    department: z.string().max(100).optional(),
+    department: z.string().max(DEPARTMENT_MAX_LENGTH).optional(),
     priorSubmissions: z.array(lookupSchema).optional(),
-    priorSubmissionNotes: z.string().max(1000).optional(),
+    priorSubmissionNotes: z.string().max(PURPOSE_MAX_LENGTH).optional(),
     additionalParty: z.array(principalSchema).optional(),
-    rushRationale: z.string().max(500).optional(),
+    rushRationale: z.string().max(RUSH_RATIONALE_MAX_LENGTH).optional(),
     isRushRequest: z.boolean().optional(),
     // FINRA Audience & Product Fields
     finraAudienceCategory: z.array(z.any()).optional(),
@@ -621,8 +629,8 @@ export const draftRequestSchema = saveRequestSchema;
  */
 export const updateRequestSchema = z.object({
   id: z.number().min(1, 'Request ID is required'),
-  requestTitle: z.string().min(3).max(255).optional(),
-  purpose: z.string().min(10).max(1000).optional(),
+  requestTitle: z.string().min(3).max(TITLE_MAX_LENGTH).optional(),
+  purpose: z.string().min(10).max(PURPOSE_MAX_LENGTH).optional(),
   targetReturnDate: z.date().optional(),
   reviewAudience: z
     .enum([ReviewAudience.Legal, ReviewAudience.Compliance, ReviewAudience.Both])
@@ -642,7 +650,7 @@ export const updateRequestSchema = z.object({
       ])
     )
     .optional(),
-  priorSubmissionNotes: z.string().max(1000).optional(),
+  priorSubmissionNotes: z.string().max(PURPOSE_MAX_LENGTH).optional(),
   dateOfFirstUse: z.date().optional(),
   additionalParty: z.array(principalSchema).optional(),
 });
@@ -685,7 +693,7 @@ export const cancelRequestSchema = z.object({
   cancelReason: z
     .string()
     .min(10, 'Cancel reason must be at least 10 characters')
-    .max(500, 'Cancel reason cannot exceed 500 characters'),
+    .max(REASON_MAX_LENGTH, FIELD_LIMIT_MESSAGES.cancelReason),
 });
 
 /**
@@ -695,7 +703,7 @@ export const holdRequestSchema = z.object({
   onHoldReason: z
     .string()
     .min(10, 'Hold reason must be at least 10 characters')
-    .max(500, 'Hold reason cannot exceed 500 characters'),
+    .max(REASON_MAX_LENGTH, FIELD_LIMIT_MESSAGES.holdReason),
 });
 
 /**
@@ -747,14 +755,14 @@ export const fullRequestSchema = z.object({
     RequestStatus.OnHold,
   ]),
   requestType: z.enum([RequestType.Communication, RequestType.GeneralReview, RequestType.IMAReview]),
-  requestTitle: z.string().min(3).max(255),
-  purpose: z.string().min(10).max(1000),
+  requestTitle: z.string().min(3).max(TITLE_MAX_LENGTH),
+  purpose: z.string().min(10).max(PURPOSE_MAX_LENGTH),
   submissionType: z.enum([SubmissionType.New, SubmissionType.MaterialUpdates]),
   submissionItem: z.string(), // Changed from lookup to text
   submissionItemOther: z.string().optional(),
   targetReturnDate: z.date().optional(),
   isRushRequest: z.boolean(),
-  rushRationale: z.string().max(500).optional(),
+  rushRationale: z.string().max(RUSH_RATIONALE_MAX_LENGTH).optional(),
   reviewAudience: z.enum([ReviewAudience.Legal, ReviewAudience.Compliance, ReviewAudience.Both]),
   requiresCommunicationsApproval: z.boolean(),
   hasPortfolioManagerApproval: z.boolean().optional(),

@@ -5,6 +5,7 @@
 
 import { z } from 'zod';
 import { RequestStatus, ReviewOutcome, LegalReviewStatus, ComplianceReviewStatus } from '@appTypes/workflowTypes';
+import { NOTES_MAX_LENGTH, REASON_MAX_LENGTH, REVIEW_NOTES_MAX_LENGTH, STATUS_NOTES_MAX_LENGTH, FIELD_LIMIT_MESSAGES } from '@constants/fieldLimits';
 
 /**
  * IPrincipal schema for workflow actions
@@ -39,7 +40,7 @@ const requiredAttorneySchema = principalSchema.refine(
  */
 export const assignAttorneySchema = z.object({
   attorney: requiredAttorneySchema,
-  assignmentNotes: z.string().max(500, 'Assignment notes cannot exceed 500 characters').optional(),
+  assignmentNotes: z.string().max(NOTES_MAX_LENGTH, FIELD_LIMIT_MESSAGES.assignmentNotes).optional(),
   // Context fields for validation
   currentStatus: z.enum([RequestStatus.LegalIntake], {
     message: 'Attorney can only be assigned when request is in Legal Intake status',
@@ -52,7 +53,7 @@ export const assignAttorneySchema = z.object({
  * Valid from status: Legal Intake
  */
 export const sendToCommitteeSchema = z.object({
-  notes: z.string().max(500, 'Notes cannot exceed 500 characters').optional(),
+  notes: z.string().max(NOTES_MAX_LENGTH, FIELD_LIMIT_MESSAGES.notes).optional(),
   // Context fields for validation
   currentStatus: z.enum([RequestStatus.LegalIntake], {
     message: 'Can only send to committee when request is in Legal Intake status',
@@ -66,7 +67,7 @@ export const sendToCommitteeSchema = z.object({
  */
 export const committeeAssignAttorneySchema = z.object({
   attorney: requiredAttorneySchema,
-  assignmentNotes: z.string().max(500, 'Assignment notes cannot exceed 500 characters').optional(),
+  assignmentNotes: z.string().max(NOTES_MAX_LENGTH, FIELD_LIMIT_MESSAGES.assignmentNotes).optional(),
   // Context fields for validation
   currentStatus: z.enum([RequestStatus.AssignAttorney], {
     message: 'Committee can only assign attorney when request is in Assign Attorney status',
@@ -98,7 +99,7 @@ export const submitLegalReviewSchema = z.object({
   reviewNotes: z
     .string()
     .min(10, 'Review notes must be at least 10 characters')
-    .max(2000, 'Review notes cannot exceed 2000 characters'),
+    .max(REVIEW_NOTES_MAX_LENGTH, FIELD_LIMIT_MESSAGES.reviewNotes),
   // Context fields for validation
   currentStatus: z.enum([RequestStatus.InReview], {
     message: 'Legal review can only be submitted when request is In Review status',
@@ -141,7 +142,7 @@ export const submitComplianceReviewSchema = z.object({
   reviewNotes: z
     .string()
     .min(10, 'Review notes must be at least 10 characters')
-    .max(2000, 'Review notes cannot exceed 2000 characters'),
+    .max(REVIEW_NOTES_MAX_LENGTH, FIELD_LIMIT_MESSAGES.reviewNotes),
   isForesideReviewRequired: z.boolean({
     message: 'Foreside review flag is required',
   }),
@@ -199,7 +200,7 @@ export const cancelRequestSchema = z.object({
   cancelReason: z
     .string()
     .min(10, 'Cancel reason must be at least 10 characters')
-    .max(500, 'Cancel reason cannot exceed 500 characters'),
+    .max(REASON_MAX_LENGTH, FIELD_LIMIT_MESSAGES.cancelReason),
   // Context fields for validation
   currentStatus: z.string(),
   isOwner: z.boolean(),
@@ -237,7 +238,7 @@ export const holdRequestSchema = z.object({
   onHoldReason: z
     .string()
     .min(10, 'Hold reason must be at least 10 characters')
-    .max(500, 'Hold reason cannot exceed 500 characters'),
+    .max(REASON_MAX_LENGTH, FIELD_LIMIT_MESSAGES.holdReason),
   // Context fields for validation
   currentStatus: z.string(),
 }).superRefine((data, ctx) => {
@@ -286,7 +287,7 @@ export const updateLegalReviewStatusSchema = z.object({
   ], {
     message: 'Invalid legal review status',
   }),
-  notes: z.string().max(1000, 'Notes cannot exceed 1000 characters').optional(),
+  notes: z.string().max(STATUS_NOTES_MAX_LENGTH, FIELD_LIMIT_MESSAGES.statusNotes).optional(),
   // Context
   currentStatus: z.enum([RequestStatus.InReview], {
     message: 'Can only update legal review status when request is In Review',
@@ -305,7 +306,7 @@ export const updateComplianceReviewStatusSchema = z.object({
   ], {
     message: 'Invalid compliance review status',
   }),
-  notes: z.string().max(1000, 'Notes cannot exceed 1000 characters').optional(),
+  notes: z.string().max(STATUS_NOTES_MAX_LENGTH, FIELD_LIMIT_MESSAGES.statusNotes).optional(),
   // Context
   currentStatus: z.enum([RequestStatus.InReview], {
     message: 'Can only update compliance review status when request is In Review',

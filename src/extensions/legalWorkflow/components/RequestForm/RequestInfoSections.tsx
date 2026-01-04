@@ -39,6 +39,12 @@ import {
 import { PriorSubmissionPicker } from '@components/PriorSubmissionPicker/PriorSubmissionPicker';
 import { ReviewAudienceSelector } from '@components/ReviewAudienceSelector';
 import { useSubmissionItems } from '@stores/submissionItemsStore';
+import {
+  TITLE_MAX_LENGTH,
+  PURPOSE_MAX_LENGTH,
+  RUSH_RATIONALE_MAX_LENGTH,
+  FIELD_LIMIT_MESSAGES,
+} from '@constants/fieldLimits';
 
 const SECTION_HEADER_TOKENS = { childrenGap: 4 };
 const SECTION_HEADER_INNER_TOKENS = { childrenGap: 12 };
@@ -182,13 +188,13 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
             name='requestTitle'
             placeholder='Enter a descriptive title for your request'
             mode={SPTextFieldMode.SingleLine}
-            maxLength={255}
+            maxLength={TITLE_MAX_LENGTH}
             showCharacterCount
             stylingMode='outlined'
             rules={{
               required: 'Request title is required',
               minLength: { value: 3, message: 'Request title must be at least 3 characters' },
-              maxLength: { value: 255, message: 'Request title cannot exceed 255 characters' },
+              maxLength: { value: TITLE_MAX_LENGTH, message: FIELD_LIMIT_MESSAGES.title },
             }}
           />
         </FormItem>
@@ -200,13 +206,13 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
             placeholder='Describe the purpose of this request in detail'
             mode={SPTextFieldMode.MultiLine}
             rows={4}
-            maxLength={1000}
+            maxLength={PURPOSE_MAX_LENGTH}
             showCharacterCount
             stylingMode='outlined'
             rules={{
               required: 'Purpose is required',
               minLength: { value: 10, message: 'Purpose must be at least 10 characters' },
-              maxLength: { value: 1000, message: 'Purpose cannot exceed 1000 characters' },
+              maxLength: { value: PURPOSE_MAX_LENGTH, message: FIELD_LIMIT_MESSAGES.purpose },
             }}
           />
         </FormItem>
@@ -278,7 +284,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
             name='submissionItemOther'
             placeholder='Please specify the submission item'
             mode={SPTextFieldMode.SingleLine}
-            maxLength={255}
+            maxLength={TITLE_MAX_LENGTH}
             showCharacterCount
             stylingMode='outlined'
             rules={{
@@ -326,12 +332,12 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
                 placeholder='Please explain why this deadline is necessary.'
                 mode={SPTextFieldMode.MultiLine}
                 rows={3}
-                maxLength={500}
+                maxLength={RUSH_RATIONALE_MAX_LENGTH}
                 showCharacterCount
                 stylingMode='outlined'
                 rules={{
                   required: 'Rush rationale is required for rush requests',
-                  maxLength: { value: 500, message: 'Rush rationale cannot exceed 500 characters' },
+                  maxLength: { value: RUSH_RATIONALE_MAX_LENGTH, message: FIELD_LIMIT_MESSAGES.rushRationale },
                 }}
               />
             </>
@@ -655,7 +661,7 @@ export const PriorSubmissionsSection: React.FC<PriorSubmissionsSectionProps> = (
             placeholder='Add any notes about prior submissions'
             mode={SPTextFieldMode.MultiLine}
             rows={3}
-            maxLength={1000}
+            maxLength={PURPOSE_MAX_LENGTH}
             showCharacterCount
             stylingMode='outlined'
           />

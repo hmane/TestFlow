@@ -4,6 +4,7 @@
 
 import { z } from 'zod';
 import { ApprovalType } from '@appTypes/approvalTypes';
+import { NOTES_MAX_LENGTH, APPROVAL_TITLE_MAX_LENGTH, FIELD_LIMIT_MESSAGES } from '@constants/fieldLimits';
 
 /**
  * IPrincipal validation schema
@@ -32,7 +33,7 @@ const baseApprovalSchema = z.object({
     message: 'Approver is required',
   }),
   documentId: z.string().optional(),
-  notes: z.string().max(500, 'Notes cannot exceed 500 characters').optional(),
+  notes: z.string().max(NOTES_MAX_LENGTH, FIELD_LIMIT_MESSAGES.notes).optional(),
 });
 
 /**
@@ -78,7 +79,7 @@ export const otherApprovalSchema = baseApprovalSchema.extend({
   approvalTitle: z
     .string()
     .min(1, 'Approval title is required for Other approval type')
-    .max(100, 'Approval title cannot exceed 100 characters'),
+    .max(APPROVAL_TITLE_MAX_LENGTH, FIELD_LIMIT_MESSAGES.approvalTitle),
 });
 
 /**
@@ -131,7 +132,7 @@ export const addApprovalSchema = z.object({
   }),
   approver: principalSchema,
   documentId: z.string().min(1, 'Approval document is required'),
-  notes: z.string().max(500, 'Notes cannot exceed 500 characters').optional(),
+  notes: z.string().max(NOTES_MAX_LENGTH, FIELD_LIMIT_MESSAGES.notes).optional(),
   approvalTitle: z.string().optional(), // Required only for 'Other' type
 });
 

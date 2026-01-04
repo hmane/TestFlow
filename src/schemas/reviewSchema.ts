@@ -4,6 +4,12 @@
 
 import { z } from 'zod';
 import { ComplianceReviewStatus, LegalReviewStatus, ReviewOutcome } from '@appTypes/workflowTypes';
+import {
+  NOTES_MAX_LENGTH,
+  STATUS_NOTES_MAX_LENGTH,
+  REVIEW_NOTES_MAX_LENGTH,
+  FIELD_LIMIT_MESSAGES,
+} from '@constants/fieldLimits';
 
 /**
  * IPrincipal schema (shared)
@@ -34,7 +40,7 @@ export const legalReviewStatusUpdateSchema = z.object({
     }
   ),
   statusUpdatedBy: principalSchema.optional(),
-  notes: z.string().max(1000, 'Notes cannot exceed 1000 characters').optional(),
+  notes: z.string().max(STATUS_NOTES_MAX_LENGTH, FIELD_LIMIT_MESSAGES.statusNotes).optional(),
 });
 
 /**
@@ -55,7 +61,7 @@ export const complianceReviewStatusUpdateSchema = z.object({
     }
   ),
   statusUpdatedBy: principalSchema.optional(),
-  notes: z.string().max(1000, 'Notes cannot exceed 1000 characters').optional(),
+  notes: z.string().max(STATUS_NOTES_MAX_LENGTH, FIELD_LIMIT_MESSAGES.statusNotes).optional(),
 });
 
 /**
@@ -76,7 +82,7 @@ export const legalReviewCompletionSchema = z.object({
   reviewNotes: z
     .string()
     .min(10, 'Review notes must be at least 10 characters')
-    .max(2000, 'Review notes cannot exceed 2000 characters'),
+    .max(REVIEW_NOTES_MAX_LENGTH, FIELD_LIMIT_MESSAGES.reviewNotes),
   completedBy: principalSchema,
   completedOn: z.date({
     message: 'Completion date is required and must be a valid date',
@@ -101,7 +107,7 @@ export const complianceReviewCompletionSchema = z.object({
   reviewNotes: z
     .string()
     .min(10, 'Review notes must be at least 10 characters')
-    .max(2000, 'Review notes cannot exceed 2000 characters'),
+    .max(REVIEW_NOTES_MAX_LENGTH, FIELD_LIMIT_MESSAGES.reviewNotes),
   isForesideReviewRequired: z.boolean({
     message: 'Foreside review flag is required',
   }),
@@ -125,7 +131,7 @@ export const attorneyAssignmentSchema = z.object({
   assignedOn: z.date({
     message: 'Assignment date is required and must be a valid date',
   }),
-  assignmentNotes: z.string().max(500, 'Assignment notes cannot exceed 500 characters').optional(),
+  assignmentNotes: z.string().max(NOTES_MAX_LENGTH, FIELD_LIMIT_MESSAGES.assignmentNotes).optional(),
   assignmentMethod: z.enum(['Direct', 'Committee', 'Reassignment'] as const, {
     message: 'Assignment method is required',
   }),
@@ -153,7 +159,7 @@ export const legalReviewSchema = z.object({
       ReviewOutcome.NotApproved,
     ])
     .optional(),
-  reviewNotes: z.string().max(2000).optional(),
+  reviewNotes: z.string().max(REVIEW_NOTES_MAX_LENGTH).optional(),
   assignedAttorney: principalSchema.optional(),
   assignedOn: z.date().optional(),
   completedOn: z.date().optional(),
@@ -181,7 +187,7 @@ export const complianceReviewSchema = z.object({
       ReviewOutcome.NotApproved,
     ])
     .optional(),
-  reviewNotes: z.string().max(2000).optional(),
+  reviewNotes: z.string().max(REVIEW_NOTES_MAX_LENGTH).optional(),
   isForesideReviewRequired: z.boolean(),
   isRetailUse: z.boolean(),
   completedOn: z.date().optional(),

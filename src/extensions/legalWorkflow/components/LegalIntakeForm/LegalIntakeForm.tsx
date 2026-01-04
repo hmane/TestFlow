@@ -51,6 +51,7 @@ import { useRequestStore } from '@stores/requestStore';
 import type { IPrincipal } from '@appTypes/index';
 import { RequestStatus, ReviewAudience } from '@appTypes/workflowTypes';
 import { calculateBusinessHours } from '@utils/businessHoursCalculator';
+import { NOTES_MAX_LENGTH } from '@constants/fieldLimits';
 
 import './LegalIntakeForm.scss';
 
@@ -436,7 +437,7 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
                       placeholder='Add any notes or instructions'
                       mode={SPTextFieldMode.MultiLine}
                       rows={4}
-                      maxLength={2000}
+                      maxLength={NOTES_MAX_LENGTH}
                       showCharacterCount
                       stylingMode='outlined'
                       spellCheck
@@ -755,7 +756,7 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
                   placeholder='Add any notes or instructions'
                   mode={SPTextFieldMode.MultiLine}
                   rows={4}
-                  maxLength={2000}
+                  maxLength={NOTES_MAX_LENGTH}
                   showCharacterCount
                   stylingMode='outlined'
                   spellCheck

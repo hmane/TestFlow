@@ -46,6 +46,7 @@ import {
 } from '@services/workflowActionService';
 import { LegalReviewStatus, ReviewOutcome } from '@appTypes/index';
 import { calculateBusinessHours } from '@utils/businessHoursCalculator';
+import { RESUBMIT_NOTES_MAX_LENGTH } from '@constants/fieldLimits';
 
 import './LegalReviewForm.scss';
 
@@ -206,8 +207,11 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
           legalReviewNotes: undefined, // Clear for append-only
         });
 
-        // Increment key to force NoteHistory refresh
-        setHistoryRefreshKey((prev) => prev + 1);
+        // Increment key to force NoteHistory refresh after a short delay
+        // Delay allows SharePoint to create the version before we fetch it
+        setTimeout(() => {
+          setHistoryRefreshKey((prev) => prev + 1);
+        }, 500);
 
         setShowSuccess(true);
         setTimeout(() => setShowSuccess(false), 5000);
@@ -258,8 +262,11 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
         legalReviewNotes: undefined, // Clear for append-only
       });
 
-      // Increment key to force NoteHistory refresh
-      setHistoryRefreshKey((prev) => prev + 1);
+      // Increment key to force NoteHistory refresh after a short delay
+      // Delay allows SharePoint to create the version before we fetch it
+      setTimeout(() => {
+        setHistoryRefreshKey((prev) => prev + 1);
+      }, 500);
 
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
@@ -317,8 +324,11 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
         legalReviewNotes: undefined, // Clear for append-only
       });
 
-      // Increment key to force NoteHistory refresh
-      setHistoryRefreshKey((prev) => prev + 1);
+      // Increment key to force NoteHistory refresh after a short delay
+      // Delay allows SharePoint to create the version before we fetch it
+      setTimeout(() => {
+        setHistoryRefreshKey((prev) => prev + 1);
+      }, 500);
 
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 5000);
@@ -396,7 +406,7 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
 
         <Content padding='comfortable'>
           <Stack tokens={{ childrenGap: 16 }}>
-            {/* Show note history read-only */}
+            {/* Show note history read-only using append-only SPTextField */}
             <FormContainer labelWidth='150px'>
               <FormItem fieldName='reviewNotes'>
                 <FormLabel>Review Notes</FormLabel>
@@ -411,6 +421,10 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
                   itemId={itemId}
                   listNameOrId='Requests'
                   fieldInternalName='LegalReviewNotes'
+                  historyConfig={{
+                    initialDisplayCount: 10,
+                    showUserPhoto: true,
+                  }}
                 />
               </FormItem>
             </FormContainer>
@@ -518,7 +532,7 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
                       placeholder='Provide detailed review notes, comments, and recommendations'
                       mode={SPTextFieldMode.MultiLine}
                       rows={4}
-                      maxLength={4000}
+                      maxLength={RESUBMIT_NOTES_MAX_LENGTH}
                       showCharacterCount
                       stylingMode='outlined'
                       spellCheck
@@ -576,7 +590,7 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
                         placeholder='Provide detailed review notes, comments, and recommendations'
                         mode={SPTextFieldMode.MultiLine}
                         rows={4}
-                        maxLength={4000}
+                        maxLength={RESUBMIT_NOTES_MAX_LENGTH}
                         showCharacterCount
                         stylingMode='outlined'
                         spellCheck
@@ -620,7 +634,7 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
                       placeholder='Provide detailed review notes, comments, and recommendations'
                       mode={SPTextFieldMode.MultiLine}
                       rows={4}
-                      maxLength={4000}
+                      maxLength={RESUBMIT_NOTES_MAX_LENGTH}
                       showCharacterCount
                       stylingMode='outlined'
                       spellCheck

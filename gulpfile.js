@@ -43,6 +43,7 @@ build.configureWebpack.mergeConfig({
       '@extensions': path.resolve(__dirname, 'lib/extensions'),
       '@sp': path.resolve(__dirname, 'lib/sp'),
       '@utils': path.resolve(__dirname, 'lib/utils'),
+      '@constants': path.resolve(__dirname, 'lib/constants'),
     };
 
     // Enhanced module resolution
