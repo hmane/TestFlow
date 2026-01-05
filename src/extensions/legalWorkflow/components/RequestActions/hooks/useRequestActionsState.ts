@@ -8,6 +8,7 @@ import * as React from 'react';
 
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { useFormContext } from 'spfx-toolkit/lib/components/spForm';
+import { confirm } from 'spfx-toolkit/lib/utilities/dialogService';
 
 import type { ReasonDialogAction } from '@components/ReasonDialog/ReasonDialog';
 import { useRequestFormContext } from '@contexts/RequestFormContext';
@@ -715,22 +716,35 @@ export function useRequestActionsState(props: {
 
   /**
    * Handle complete Foreside documents
+   * Shows confirmation dialog if no documents are uploaded
    */
   const handleCompleteForesideDocumentsClick = React.useCallback(async (): Promise<void> => {
-    try {
-      setActiveAction('completeForesideDocuments');
+    // If no Foreside documents, show confirmation dialog using spfx-toolkit
+    if (!hasForesideDocuments) {
+      SPContext.logger.info('RequestActions: No Foreside documents uploaded, showing confirmation dialog');
 
-      if (!hasForesideDocuments) {
-        const errors: IValidationError[] = [{
-          field: 'foresideDocuments',
-          message: 'Please upload at least one Foreside document before completing the request.',
-        }];
-        setValidationErrors(errors);
-        SPContext.logger.warn('RequestActions: No Foreside documents uploaded');
-        setActiveAction(undefined);
+      const confirmed = await confirm(
+        'You have not attached the Foreside document. Do you want to close the request anyway?',
+        {
+          title: 'No Foreside Document',
+          buttons: [
+            { text: 'Yes, Complete Request', primary: true, value: true },
+            { text: 'Cancel', value: false },
+          ],
+        }
+      );
+
+      if (!confirmed) {
+        SPContext.logger.info('RequestActions: User cancelled completing without Foreside documents');
         return;
       }
 
+      SPContext.logger.info('RequestActions: User confirmed completing without Foreside documents');
+    }
+
+    // Proceed with completion
+    try {
+      setActiveAction('completeForesideDocuments');
       setValidationErrors([]);
 
       SPContext.logger.info('RequestActions: Completing Foreside documents');

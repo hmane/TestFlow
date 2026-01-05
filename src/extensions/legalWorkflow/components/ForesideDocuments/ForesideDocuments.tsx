@@ -130,9 +130,13 @@ export const ForesideDocuments: React.FC<IForesideDocumentsProps> = ({
     [itemId]
   );
 
-  // Don't render if read-only and no documents (request didn't go through Foreside stage)
+  // Check if request was completed without Foreside documents
+  // (foresideCompletedOn is set, meaning the Foreside stage was completed)
+  const foresideCompletedWithoutDocuments = readOnlyProp && !isLoading && foresideDocumentCount === 0 && currentRequest?.foresideCompletedOn;
+
+  // Don't render if read-only, no documents, and request never went through Foreside completion
   // But wait for documents to finish loading before deciding
-  if (readOnlyProp && !isLoading && foresideDocumentCount === 0) {
+  if (readOnlyProp && !isLoading && foresideDocumentCount === 0 && !currentRequest?.foresideCompletedOn) {
     return null;
   }
 
@@ -154,7 +158,7 @@ export const ForesideDocuments: React.FC<IForesideDocumentsProps> = ({
               {foresideDocumentCount}
             </span>
           )}
-          {foresideDocumentCount === 0 && (
+          {foresideDocumentCount === 0 && !foresideCompletedWithoutDocuments && (
             <Text variant='small' styles={{ root: { color: '#a19f9d', fontStyle: 'italic' } }}>
               No documents uploaded
             </Text>
@@ -168,26 +172,50 @@ export const ForesideDocuments: React.FC<IForesideDocumentsProps> = ({
       </Header>
 
       <Content padding='comfortable'>
-        <DocumentUpload
-          itemId={itemId}
-          documentType={DocumentType.Foreside}
-          isReadOnly={isReadOnly}
-          required={true}
-          hasError={foresideDocumentCount === 0}
-          siteUrl={siteUrl || SPContext.webAbsoluteUrl}
-          documentLibraryTitle={documentLibraryTitle}
-          maxFiles={10}
-          maxFileSize={250 * 1024 * 1024}
-          allowedExtensions={[
-            'pdf',
-            'doc',
-            'docx',
-            'msg',
-            'eml',
-          ]}
-          onFilesChange={handleFilesChange}
-          onError={handleError}
-        />
+        {foresideCompletedWithoutDocuments ? (
+          <Stack
+            horizontal
+            verticalAlign='center'
+            tokens={{ childrenGap: 8 }}
+            styles={{
+              root: {
+                padding: '16px',
+                backgroundColor: '#f3f2f1',
+                borderRadius: '4px',
+                border: '1px solid #edebe9',
+              },
+            }}
+          >
+            <Icon
+              iconName='Info'
+              styles={{ root: { fontSize: '16px', color: '#605e5c' } }}
+            />
+            <Text styles={{ root: { color: '#323130' } }}>
+              No Foreside documents were uploaded. The request was completed without attaching Foreside documents.
+            </Text>
+          </Stack>
+        ) : (
+          <DocumentUpload
+            itemId={itemId}
+            documentType={DocumentType.Foreside}
+            isReadOnly={isReadOnly}
+            required={true}
+            hasError={foresideDocumentCount === 0}
+            siteUrl={siteUrl || SPContext.webAbsoluteUrl}
+            documentLibraryTitle={documentLibraryTitle}
+            maxFiles={10}
+            maxFileSize={250 * 1024 * 1024}
+            allowedExtensions={[
+              'pdf',
+              'doc',
+              'docx',
+              'msg',
+              'eml',
+            ]}
+            onFilesChange={handleFilesChange}
+            onError={handleError}
+          />
+        )}
       </Content>
     </Card>
   );

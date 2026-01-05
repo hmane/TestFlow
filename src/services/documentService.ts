@@ -798,7 +798,8 @@ export async function getRequestDocumentsLibraryId(): Promise<string> {
     return libraryIdPromise;
   }
 
-  // Create new promise and cache it
+  // IMPORTANT: Assign to module-level variable SYNCHRONOUSLY before any await
+  // This ensures concurrent callers will see the promise and wait for it
   libraryIdPromise = (async (): Promise<string> => {
     try {
       SPContext.logger.info('DocumentService: Loading RequestDocuments library ID');
@@ -810,6 +811,8 @@ export async function getRequestDocumentsLibraryId(): Promise<string> {
       SPContext.logger.error('DocumentService: Failed to load library ID', error);
       throw error;
     } finally {
+      // Clear promise reference after completion (success or failure)
+      // Note: cachedLibraryId remains set on success for subsequent calls
       libraryIdPromise = undefined;
     }
   })();

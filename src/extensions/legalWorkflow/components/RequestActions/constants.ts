@@ -126,6 +126,8 @@ export const SECTION_HANDLED_FIELDS: string[] = [
   // Compliance Review fields - shown in ComplianceReviewForm
   'complianceReviewOutcome',
   'complianceReviewNotes',
+  'isForesideReviewRequired',
+  'isRetailUse',
   // Closeout fields - shown in CloseoutForm
   'trackingId',
   'commentsAcknowledged',

@@ -142,8 +142,12 @@ export const usePermissionsStore = create<IPermissionsState>()(
           return pendingLoadPromise;
         }
 
+        // IMPORTANT: Set pendingLoadPromise BEFORE any async work to prevent race conditions
+        // This ensures concurrent calls will wait for the same promise
         set({ isLoading: true, error: undefined });
 
+        // Create the promise and assign to module-level variable SYNCHRONOUSLY
+        // This is critical: the assignment must happen before any await
         pendingLoadPromise = (async (): Promise<void> => {
           try {
             SPContext.logger.info('PermissionsStore: Loading user permissions');

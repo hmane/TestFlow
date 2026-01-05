@@ -202,7 +202,7 @@
     </pnp:View>
   </pnp:Views>
 
-  <pnp:DataRows>
+  <pnp:DataRows KeyColumn="Title">
     <!-- ============================================ -->
     <!-- SUBMISSION NOTIFICATIONS -->
     <!-- ============================================ -->

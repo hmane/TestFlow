@@ -200,17 +200,27 @@ export function useSubmissionItems(): {
   getItemByTitle: (title: string) => ISubmissionItem | undefined;
   refresh: () => Promise<void>;
 } {
-  const { items, isLoading, isLoaded, error, loadItems, getItemById, getItemByTitle, refresh } =
+  const { items, isLoading, isLoaded, error, getItemById, getItemByTitle, refresh } =
     useSubmissionItemsStore();
 
-  // Auto-load on first mount
+  // Track if we've already triggered a load to prevent duplicate calls
+  const hasTriggeredLoadRef = React.useRef<boolean>(false);
+
+  // Auto-load on first mount only
+  // Uses ref to ensure load is only triggered once per component lifecycle
   React.useEffect(() => {
-    if (!isLoaded && !isLoading && !error) {
-      loadItems().catch(err => {
-        SPContext.logger.error('Auto-load submission items failed', err);
+    // Get current store state directly to avoid stale closure issues
+    const store = useSubmissionItemsStore.getState();
+
+    // Only load if not already loaded/loading and we haven't triggered a load
+    if (!store.isLoaded && !store.isLoading && !hasTriggeredLoadRef.current) {
+      hasTriggeredLoadRef.current = true;
+      SPContext.logger.info('useSubmissionItems: Auto-loading submission items');
+      store.loadItems().catch((err: unknown) => {
+        SPContext.logger.error('useSubmissionItems: Auto-load failed', err);
       });
     }
-  }, [isLoaded, isLoading, error, loadItems]);
+  }, []); // Empty deps - only run on mount
 
   return {
     items,

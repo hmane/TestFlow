@@ -62,7 +62,7 @@
     </pnp:View>
   </pnp:Views>
 
-  <pnp:DataRows>
+  <pnp:DataRows KeyColumn="Title">
     <pnp:DataRow>
       <pnp:DataValue FieldName="Title">New Exhibit</pnp:DataValue>
       <pnp:DataValue FieldName="TurnAroundTimeInDays">3</pnp:DataValue>

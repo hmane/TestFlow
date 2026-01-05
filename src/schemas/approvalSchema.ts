@@ -95,14 +95,18 @@ export const approvalSchema = z.discriminatedUnion('type', [
 ]);
 
 /**
- * Array of approvals with minimum requirement validation
+ * Array of approvals with minimum requirement validation for SUBMISSION.
+ * Note: This schema enforces stricter requirements than individual approvalSchema
+ * because documentId is required at submission time but optional during draft editing.
+ * - Base approvalSchema: documentId is optional (allows building approvals in draft)
+ * - approvalsArraySchema: documentId is required (enforced at submission)
  */
 export const approvalsArraySchema = z
   .array(approvalSchema)
   .min(1, 'At least one approval is required')
   .refine(
     approvals => {
-      // Each approval must have a document ID
+      // At submission, each approval must have an associated document
       return approvals.every(approval => approval.documentId && approval.documentId.length > 0);
     },
     {

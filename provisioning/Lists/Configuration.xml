@@ -85,7 +85,7 @@
     </pnp:View>
   </pnp:Views>
 
-  <pnp:DataRows>
+  <pnp:DataRows KeyColumn="Title">
     <pnp:DataRow>
       <pnp:DataValue FieldName="Title">azureFunctionUrl</pnp:DataValue>
       <pnp:DataValue FieldName="ConfigValue">https://your-function.azurewebsites.net/api</pnp:DataValue>
