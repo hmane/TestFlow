@@ -143,7 +143,7 @@
 | 4 | Enter Purpose: "Testing purposes" | Field accepts input |
 | 5 | Select Submission Type from dropdown | Options load from SubmissionItems list |
 | 6 | Select Target Return Date (future date) | Date picker works correctly |
-| 7 | Click "Save" | Request saves, Request ID generated (format: LRS-YYYY-####) |
+| 7 | Click "Save" | Request saves, Request ID generated (format: CRR-YY-N, e.g., CRR-26-1) |
 
 ---
 
@@ -157,7 +157,7 @@
 |------|--------|-----------------|
 | 1 | Create new request | Form opens with no Request ID |
 | 2 | Fill minimum required fields | Fields populated |
-| 3 | Click "Save" for first time | Request ID generated in format LRS-YYYY-#### |
+| 3 | Click "Save" for first time | Request ID generated in format CRR-YY-N (e.g., CRR-26-1) |
 | 4 | Note the generated ID | ID follows sequential pattern |
 | 5 | Create another new request and save | New ID is incremented from previous |
 
@@ -829,19 +829,21 @@
 
 ---
 
-### TC-CLO-005: Request Awaiting Foreside Documents
+### TC-CLO-005: Request Routed to Awaiting Foreside Documents
 | Field | Value |
 |-------|-------|
 | **Priority** | Medium |
-| **Preconditions** | Request in Closeout, Foreside docs not ready |
+| **Preconditions** | Request in Closeout, Compliance review marked "Is Foreside Review Required" = true |
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
-| 1 | Open request in Closeout | Form loads |
-| 2 | Click "Wait for Foreside Documents" | Option available |
-| 3 | Confirm action | Status = "Awaiting Foreside Documents" |
-| 4 | Later: Upload Foreside documents | Documents added |
-| 5 | Complete closeout | Status = Completed |
+| 1 | Open request in Closeout | Form loads, Tracking ID field visible (required) |
+| 2 | Enter Tracking ID | Field accepts input |
+| 3 | Click "Complete Request" | Submission processes |
+| 4 | Verify status | Status = "Awaiting Foreside Documents" (not Completed) |
+| 5 | Open request in Awaiting Foreside Documents | Foreside Documents section visible |
+| 6 | Upload Foreside document(s) | Documents uploaded successfully |
+| 7 | Click "Complete Request" | Status = Completed |
 
 ---
 

@@ -59,7 +59,7 @@ Before testing, confirm which role(s) you will be testing:
 
 5. **Save as Draft**
    - Click "Save"
-   - Verify the Request ID is generated (format: LRS-YYYY-####)
+   - Verify the Request ID is generated (format: CRR-YY-N, e.g., CRR-26-1)
    - Close and reopen the request to verify all data saved
 
 6. **Submit Request**
@@ -272,14 +272,40 @@ Before testing, confirm which role(s) you will be testing:
    - Check the acknowledgment box
 
 3. **Enter Tracking ID (if required)**
-   - If Foreside or Retail was flagged
+   - If Foreside Review or Retail Use was flagged during Compliance review
    - Enter the external Tracking ID
 
-4. **Complete Closeout**
-   - Click "Complete Closeout"
+4. **Complete Request**
+   - Click "Complete Request"
+   - **If Foreside Review Required:** Status changes to "Awaiting Foreside Documents"
+   - **If No Foreside Required:** Status changes to "Completed"
+
+**Expected Outcome:** Request moves to Completed or Awaiting Foreside Documents based on compliance flags.
+
+---
+
+## Scenario 9A: Foreside Document Upload
+
+**Role Required:** Submitter (or user with Foreside upload permission)
+
+### Precondition
+Request is in "Awaiting Foreside Documents" status (Compliance review marked "Is Foreside Review Required" = Yes)
+
+### Steps
+
+1. **Access Request in Awaiting Foreside Documents**
+   - Open your request in "Awaiting Foreside Documents" status
+   - Verify the Foreside Documents section is visible
+
+2. **Upload Foreside Documents**
+   - Click to upload Foreside document(s)
+   - Verify documents appear in the Foreside Documents list
+
+3. **Complete Request**
+   - Click "Complete Request"
    - Verify status changes to "Completed"
 
-**Expected Outcome:** Request is fully completed.
+**Expected Outcome:** Request is fully completed after Foreside documents are uploaded.
 
 ---
 
@@ -428,14 +454,17 @@ Legal Intake
 In Review
   ↓ All reviews complete
 Closeout
-  ↓ Complete
-Completed
+  ↓ Complete Request
+  ├─→ Completed (if no Foreside required)
+  └─→ Awaiting Foreside Documents (if Foreside required)
+        ↓ Upload docs + Complete
+        Completed
 ```
 
 **Special Statuses:**
 - **On Hold** - Temporarily paused (can resume)
 - **Cancelled** - Terminated (cannot resume)
-- **Awaiting Foreside Documents** - Waiting for external docs
+- **Awaiting Foreside Documents** - Waiting for Foreside documents before final completion
 
 ---
 

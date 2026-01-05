@@ -111,7 +111,7 @@ Additional frontend libraries include **DevExtreme 22.2.3** for advanced UI comp
 
 ### 3.2 Backend and Integration Technologies
 
-**SharePoint Online Lists and Libraries** serve as the primary data store, eliminating the need for traditional database management. SharePoint provides built-in features critical to the application: role-based access control (RBAC), item-level permissions, version history, audit trails, and enterprise search. The Requests list (73 fields), SubmissionItems configuration list, and RequestDocuments library form the data foundation.
+**SharePoint Online Lists and Libraries** serve as the primary data store, eliminating the need for traditional database management. SharePoint provides built-in features critical to the application: role-based access control (RBAC), item-level permissions, version history, audit trails, and enterprise search. The Requests list (with fields organized into Request Information, FINRA Audience, Approvals, Legal Intake, Legal Review, Compliance Review, Closeout, System Tracking, and Time Tracking sections), SubmissionItems configuration list, RequestDocuments library, and supporting lists (RequestIds, Notifications, Configuration) form the data foundation.
 
 **Azure Functions** (serverless compute) host backend business logic that cannot be efficiently executed client-side. Two primary functions are implemented: Permission Management (breaks inheritance and assigns item-level permissions based on workflow status) and Notification Generation (creates email content based on request context). Azure Functions automatically scale based on demand and follow a pay-per-execution pricing model.
 
@@ -157,13 +157,19 @@ Form validation is implemented using **Zod schemas** that define validation rule
 
 ### 4.2 Data Layer (SharePoint Online)
 
-SharePoint Lists provide the data persistence layer with three primary entities:
+SharePoint Lists provide the data persistence layer with six primary entities:
 
-**Requests List** contains 73 fields organized into sections: Request Information (17 fields), Approval Fields (18 fields), Legal Intake (2 fields), Legal Review (5 fields), Compliance Review (7 fields), Closeout (1 field), and System Tracking (16 fields). The list uses indexed columns on Status, AssignedTo, and SubmittedDate to optimize queries and avoid the 5000-item view threshold.
+**Requests List** contains fields organized into sections: Request Information (17 fields), FINRA Audience & Product Fields (6 fields), Approval Fields (24 fields), Legal Intake (2 fields), Legal Review (7 fields), Compliance Review (9 fields), Closeout (2 fields), System Tracking (18 fields), and Time Tracking (10 fields). The list uses indexed columns on Status, AssignedTo, and SubmittedDate to optimize queries and avoid the 5000-item view threshold.
 
-**SubmissionItems List** stores configuration data for request types, including Title, TurnAroundTimeInDays, and Description. This design allows administrators to add new request types without code changes.
+**SubmissionItems List** stores configuration data for request types, including Title, TurnAroundTimeInDays, Description, and DisplayOrder. This design allows administrators to add new request types without code changes.
 
 **RequestDocuments Library** stores file attachments with metadata linking documents to parent requests. Item-level permissions on documents mirror the parent request's permissions, ensuring consistent security.
+
+**RequestIds List** (hidden system list) tracks request ID sequences independently of item-level permissions, ensuring unique sequential numbering across all request types. Request IDs follow the format `{PREFIX}-{YY}-{N}` (e.g., CRR-25-1 for Communication Review Requests).
+
+**Notifications List** stores email notification templates with fields for Category, TriggerEvent, Recipients (To/CC/BCC), Subject, Body (HTML), IncludeDocuments flag, Importance, and IsActive flag. This approach allows notification templates to be managed without code deployments.
+
+**Configuration List** stores application settings as key-value pairs (Azure Function URLs, feature flags, time tracking settings), allowing administrators to modify configuration without code changes.
 
 ### 4.3 Business Logic Layer (Azure Functions)
 
@@ -210,11 +216,17 @@ Flows use error handling with retry policies, logging to SharePoint list or Appl
 
 ### 6.1 Data Model
 
-The data model consists of three primary entities with defined relationships:
+The data model consists of six primary entities with defined relationships:
 
 **Requests** is the central entity containing all request information. It relates to **SubmissionItems** via a Lookup column (Request Type), ensuring referential integrity and allowing dynamic request type configuration. Requests also relate to **Users** through multiple People Picker fields (Submitter, Attorney, Legal Reviewer, Compliance Reviewer), leveraging SharePoint's user profile integration.
 
 **RequestDocuments** relates to Requests through a metadata field (Request ID), creating a one-to-many relationship where each request can have multiple document attachments. Documents inherit permissions from their parent request, maintaining security consistency.
+
+**RequestIds** stores auto-generated sequential request identifiers, maintaining unique ID sequences independently of item-level permissions on the Requests list. Request IDs follow the format `{PREFIX}-{YY}-{N}` where PREFIX indicates request type (CRR for Communication, GRR for General, IMA for IMA).
+
+**Notifications** contains email notification templates that can be managed independently of code deployments. Templates use placeholder tokens (e.g., `{{RequestId}}`, `{{SubmitterName}}`) that are replaced with actual values at runtime.
+
+**Configuration** provides key-value storage for application settings (Azure Function URLs, feature flags, time tracking parameters) that can be modified without code changes.
 
 ### 6.2 Security Model
 

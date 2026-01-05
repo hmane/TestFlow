@@ -112,7 +112,7 @@ The Legal Review System (LRS) automates the review and approval process for mark
 | **Permissions** | Only creator can view/edit |
 
 **Business Rules:**
-- Request ID is auto-generated on first save (format: LRS-YYYY-####)
+- Request ID is auto-generated on submission (format: CRR-YY-N for Communication requests, e.g., CRR-25-1)
 - Documents can be uploaded but are not required
 - No notifications sent during Draft stage
 - Request does not appear in any shared views
@@ -527,7 +527,7 @@ Time is tracked at each stage for SLA monitoring:
 
 | Token | Description | Example |
 |-------|-------------|---------|
-| `{{RequestId}}` | Unique request identifier | LRS-2026-0001 |
+| `{{RequestId}}` | Unique request identifier | CRR-26-1 |
 | `{{RequestTitle}}` | Request title/name | Q1 Marketing Brochure |
 | `{{RequestLink}}` | Direct URL to request | https://... |
 | `{{SubmitterName}}` | Name of person who created request | John Smith |

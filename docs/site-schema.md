@@ -13,6 +13,7 @@ This document provides a comprehensive reference for the SharePoint site schema 
 5. [SubmissionItems List](#submissionitems-list)
 6. [Configuration List](#configuration-list)
 7. [RequestIds List](#requestids-list)
+8. [Notifications List](#notifications-list)
 
 ---
 
@@ -47,6 +48,7 @@ This document provides a comprehensive reference for the SharePoint site schema 
 | SubmissionItems | /Lists/SubmissionItems | 100 (Generic) | Configuration for submission types and turnaround times |
 | Configuration | /Lists/Configuration | 100 (Generic) | Application configuration settings |
 | RequestIds | /Lists/RequestIds | 100 (Generic) | Hidden system list for tracking request ID sequences |
+| Notifications | /Lists/Notifications | 100 (Generic) | Email notification templates |
 
 ---
 
@@ -91,7 +93,7 @@ This document provides a comprehensive reference for the SharePoint site schema 
 | Internal Name | Display Name | Type | Required | Choices |
 |---------------|--------------|------|----------|---------|
 | FINRAAudienceCategory | FINRA Audience Category | MultiChoice | No | `Institutional`, `Retail / Public` |
-| Audience | Audience | MultiChoice | No | `Prospective Separate Acct Client`, `Existing Separate Acct Client`, `Prospective Fund Shareholder`, `Existing Fund Shareholder`, `Consultant`, `Other` |
+| Audience | Audience | MultiChoice | No | `Prospective Separate Acct Client`, `Existing Separate Acct Client`, `Prospective Fund Shareholder`, `Existing Fund Shareholder`, `Consultant` (FillInChoice enabled) |
 | USFunds | U.S. Funds | MultiChoice | No | `All Funds`, `Balanced Fund`, `EM Stock Fund`, `Global Stock Fund`, `Income Fund`, `International Stock Fund`, `Stock Fund`, `Global Bond Fund (I Shares)`, `Global Bond Fund (X Shares)` |
 | UCITS | UCITS | MultiChoice | No | `All UCITS Funds`, `EM Stock Fund`, `Global Bond Fund`, `Global Stock Fund`, `U.S. Stock Fund` |
 | SeparateAcctStrategies | Separate Account Strategies | MultiChoice | No | `All Separate Account Strategies`, `Equity`, `Fixed Income`, `Balanced` |
@@ -160,18 +162,29 @@ This document provides a comprehensive reference for the SharePoint site schema 
 | ComplianceReviewCompletedOn | Compliance Review Completed On | DateTime | No | - | - |
 | ComplianceReviewCompletedBy | Compliance Review Completed By | User | No | - | People only |
 
-#### Closeout (2 fields)
+#### Closeout (4 fields)
 
 | Internal Name | Display Name | Type | Required | Max Length | Notes |
 |---------------|--------------|------|----------|------------|-------|
 | TrackingId | Tracking Id | Text | No | 50 | Required at closeout if compliance reviewed AND (IsForesideReviewRequired OR IsRetailUse) |
-| CloseoutNotes | Closeout Notes | Note (Multi-line) | No | - | AppendOnly, 6 lines |
+| CloseoutNotes | Closeout Notes | Note (Multi-line) | No | - | 6 lines |
+| CommentsAcknowledged | Comments Acknowledged | Boolean | No | - | Default: 0 (No) |
+| CommentsAcknowledgedOn | Comments Acknowledged On | DateTime | No | - | - |
+
+#### Foreside Documents (4 fields)
+
+| Internal Name | Display Name | Type | Required | Notes |
+|---------------|--------------|------|----------|-------|
+| ForesideCompletedBy | Foreside Completed By | User | No | People only |
+| ForesideCompletedOn | Foreside Completed On | DateTime | No | - |
+| ForesideNotes | Foreside Notes | Note (Multi-line) | No | AppendOnly, 6 lines |
+| AwaitingForesideSince | Awaiting Foreside Since | DateTime | No | Set when status changes to Awaiting Foreside Documents |
 
 #### System Tracking (18 fields)
 
 | Internal Name | Display Name | Type | Required | Default | Choices/Notes |
 |---------------|--------------|------|----------|---------|---------------|
-| Status | Status | Choice | Yes | Draft | `Draft`, `Legal Intake`, `Assign Attorney`, `In Review`, `Closeout`, `Completed`, `Cancelled`, `On Hold` - Has field customizer |
+| Status | Status | Choice | Yes | Draft | `Draft`, `Legal Intake`, `Assign Attorney`, `In Review`, `Closeout`, `Awaiting Foreside Documents`, `Completed`, `Cancelled`, `On Hold` - Has field customizer |
 | SubmittedBy | Submitted By | User | No | - | People only |
 | SubmittedOn | Submitted On | DateTime | No | - | - |
 | SubmittedToAssignAttorneyBy | Submitted To Assign Attorney By | User | No | - | People only |
@@ -208,24 +221,59 @@ This document provides a comprehensive reference for the SharePoint site schema 
 
 ### Requests List Views
 
+#### Home Dashboard Views (Submitters & Admins)
+
 | View Name | Display Name | Default | Row Limit | Description |
 |-----------|--------------|---------|-----------|-------------|
-| AllItems | All Requests | Yes | 100 | All requests ordered by Created descending |
-| MyOpenRequests | My Open Requests | No | 50 | Current user's requests not Completed/Cancelled |
-| MyCompletedRequests | My Completed Requests | No | 50 | Current user's completed requests |
-| AllOpenRequests | All Open Requests | No | 100 | All requests not Completed/Cancelled (Admin view) |
+| AllItems | All Requests | Yes | 100 | All requests ordered by Modified descending |
+| MyOpenRequests | My Open Requests | No | 50 | Current user's requests in open status (Draft, Legal Intake, Assign Attorney, In Review, Closeout, On Hold) |
+| MyCompletedRequests | My Completed Requests | No | 50 | Current user's Completed or Cancelled requests |
+| MyAwaitingForesideDocuments | My Awaiting Foreside Documents | No | 50 | Current user's requests awaiting Foreside documents |
+| AllOpenRequests | All Open Requests | No | 100 | All requests in open status (Admin view) |
+| AllCompletedRequests | All Completed Requests | No | 100 | All Completed or Cancelled requests (Admin view) |
+
+#### Legal Admin Dashboard Views
+
+| View Name | Display Name | Default | Row Limit | Description |
+|-----------|--------------|---------|-----------|-------------|
 | LegalIntakeQueue | Legal Intake Queue | No | 50 | Requests in Legal Intake status |
 | PendingAttorneyAssignment | Pending Attorney Assignment | No | 50 | Requests in Assign Attorney status |
-| LegalAdminInReview | All In Review | No | 50 | All requests in In Review status |
-| MyAssignedRequests | My Assigned Requests | No | 50 | Requests assigned to current attorney |
-| AttorneyPendingReview | Pending My Review | No | 50 | Attorney's requests needing review |
-| AttorneyCompletedReviews | My Completed Reviews | No | 50 | Attorney's completed reviews |
-| AwaitingAttorneyAssignment | Awaiting Attorney Assignment | No | 50 | For attorney assigners |
-| CompliancePendingReview | Pending Compliance Review | No | 50 | Requests needing compliance review |
-| ComplianceCompletedReviews | Completed Compliance Reviews | No | 50 | Completed compliance reviews |
+| AllInReview | All In Review | No | 50 | All requests in In Review status |
+
+#### Attorney Dashboard Views
+
+| View Name | Display Name | Default | Row Limit | Description |
+|-----------|--------------|---------|-----------|-------------|
+| MyAssignedRequests | My Assigned Requests | No | 50 | Requests assigned to current attorney in open status |
+| PendingMyReview | Pending My Review | No | 50 | Attorney's requests with LegalReviewStatus = Not Started, In Progress, or Waiting On Attorney |
+| MyCompletedReviews | My Completed Reviews | No | 50 | Attorney's Completed or Cancelled requests |
+
+#### Attorney Assigner Dashboard Views
+
+| View Name | Display Name | Default | Row Limit | Description |
+|-----------|--------------|---------|-----------|-------------|
+| AwaitingAttorneyAssignment | Awaiting Attorney Assignment | No | 50 | Requests in Assign Attorney status |
+
+#### Compliance Dashboard Views
+
+| View Name | Display Name | Default | Row Limit | Description |
+|-----------|--------------|---------|-----------|-------------|
+| PendingComplianceReview | Pending Compliance Review | No | 50 | Requests needing compliance review (ReviewAudience = Compliance or Both, ComplianceReviewStatus = Not Started, In Progress, or Waiting On Compliance) |
+| CompletedComplianceReviews | Completed Compliance Reviews | No | 50 | Completed compliance reviews |
+
+#### Closeout & Foreside Views
+
+| View Name | Display Name | Default | Row Limit | Description |
+|-----------|--------------|---------|-----------|-------------|
 | CloseoutQueue | Closeout Queue | No | 50 | Requests in Closeout status |
-| OnHoldRequests | On Hold Requests | No | 50 | Requests on hold |
-| RushRequests | Rush Requests | No | 50 | Active rush requests |
+| AwaitingForesideDocuments | Awaiting Foreside Documents | No | 50 | Requests in Awaiting Foreside Documents status |
+
+#### General Views
+
+| View Name | Display Name | Default | Row Limit | Description |
+|-----------|--------------|---------|-----------|-------------|
+| OnHoldRequests | On Hold Requests | No | 50 | Requests in On Hold status |
+| RushRequests | Rush Requests | No | 50 | Active rush requests (IsRushRequest = true, in open status) |
 
 ---
 
@@ -317,6 +365,7 @@ This document provides a comprehensive reference for the SharePoint site schema 
 | WorkingDays | 1,2,3,4,5 | Working days of week (1=Monday through 5=Friday). Weekends excluded. | Yes | TimeTracking |
 | SearchResultLimit | 10 | Maximum number of search results to display in spotlight search | Yes | Search |
 | RecentSearchesLimit | 5 | Maximum number of recent searches to store and display | Yes | Search |
+| allowedFileExtensions | .pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif,.zip | Comma-separated list of allowed file extensions for document uploads | Yes | FileUpload |
 
 ### Views
 
@@ -387,6 +436,91 @@ This hidden system list tracks request ID sequences independently of item-level 
 
 ---
 
+## Notifications List
+
+**URL:** `/Lists/Notifications`
+**Template:** Generic List (100)
+**Versioning:** Enabled
+**Attachments:** Disabled
+
+### Purpose
+
+Email notification templates for the Legal Review System. Each row defines a notification type with its recipients, subject, body (HTML template), and configuration.
+
+### Fields
+
+| Internal Name | Display Name | Type | Required | Default | Choices/Notes |
+|---------------|--------------|------|----------|---------|---------------|
+| Title | Title | Text | Yes | - | Notification identifier (e.g., RequestSubmitted, AttorneyAssigned) |
+| Category | Category | Choice | Yes | Submission | `Submission`, `Assignment`, `Review`, `Status Change`, `Closeout`, `System` |
+| TriggerEvent | Trigger Event | Choice | Yes | StatusChange | `StatusChange`, `ReviewComplete`, `ReviewChangesRequested`, `AttorneyAssigned`, `Resubmission`, `HoldResume`, `Cancellation` |
+| ToRecipients | To Recipients | Note (Multi-line) | Yes | - | Template for recipients (e.g., `{{LegalAdminGroup}}`, `{{Attorney}}`) |
+| CcRecipients | CC Recipients | Note (Multi-line) | No | - | Template for CC recipients |
+| BccRecipients | BCC Recipients | Note (Multi-line) | No | - | Template for BCC recipients |
+| Subject | Subject | Text | Yes | - | Email subject with placeholders |
+| Body | Body | Note (RichHTML) | Yes | - | HTML email body template |
+| IncludeDocuments | Include Documents | Boolean | No | 0 | Whether to attach request documents |
+| Importance | Importance | Choice | No | Normal | `Low`, `Normal`, `High` |
+| IsActive | Is Active | Boolean | No | 1 | Enable/disable notification |
+| Description | Description | Note (Multi-line) | No | - | Description of when notification is sent |
+
+### Default Notification Templates
+
+| Title | Category | Trigger Event | To Recipients | Subject |
+|-------|----------|---------------|---------------|---------|
+| RequestSubmitted | Submission | StatusChange | {{LegalAdminGroup}} | [Action Required] New Legal Review Request: {{RequestId}} - {{RequestTitle}} |
+| RushRequestAlert | Submission | StatusChange | {{LegalAdminGroup}} | [RUSH] Urgent Legal Review Request: {{RequestId}} - {{RequestTitle}} |
+| AttorneyAssigned | Assignment | AttorneyAssigned | {{Attorney}} | [Action Required] New Assignment: {{RequestId}} - {{RequestTitle}} |
+| ReadyForAttorneyAssignment | Assignment | StatusChange | {{AttorneyAssignerGroup}} | [Action Required] Request Pending Attorney Assignment: {{RequestId}} - {{RequestTitle}} |
+| ComplianceReviewRequired | Assignment | StatusChange | {{ComplianceGroup}} | [Action Required] Compliance Review Required: {{RequestId}} - {{RequestTitle}} |
+| LegalReviewApproved | Review | ReviewComplete | {{Submitter}} | Legal Review Approved: {{RequestId}} - {{RequestTitle}} |
+| LegalReviewNotApproved | Review | ReviewComplete | {{Submitter}} | Legal Review Not Approved: {{RequestId}} - {{RequestTitle}} |
+| ComplianceReviewApproved | Review | ReviewComplete | {{Submitter}} | Compliance Review Approved: {{RequestId}} - {{RequestTitle}} |
+| ComplianceReviewNotApproved | Review | ReviewComplete | {{Submitter}} | Compliance Review Not Approved: {{RequestId}} - {{RequestTitle}} |
+| LegalChangesRequested | Review | ReviewChangesRequested | {{Submitter}} | [Action Required] Changes Requested: {{RequestId}} - {{RequestTitle}} |
+| ComplianceChangesRequested | Review | ReviewChangesRequested | {{Submitter}} | [Action Required] Compliance Changes Requested: {{RequestId}} - {{RequestTitle}} |
+| ResubmissionReceivedLegal | Review | Resubmission | {{Attorney}} | [Action Required] Resubmission Received: {{RequestId}} - {{RequestTitle}} |
+| ResubmissionReceivedCompliance | Review | Resubmission | {{ComplianceReviewer}} | [Action Required] Resubmission Received: {{RequestId}} - {{RequestTitle}} |
+| ReadyForCloseout | Closeout | StatusChange | {{Submitter}} | [Action Required] Ready for Closeout: {{RequestId}} - {{RequestTitle}} |
+| RequestCompleted | Status Change | StatusChange | {{Submitter}}, {{Attorney}} | Request Completed: {{RequestId}} - {{RequestTitle}} |
+| RequestOnHold | Status Change | HoldResume | {{Submitter}}, {{Attorney}} | Request On Hold: {{RequestId}} - {{RequestTitle}} |
+| RequestResumed | Status Change | HoldResume | {{Submitter}}, {{Attorney}} | Request Resumed: {{RequestId}} - {{RequestTitle}} |
+| RequestCancelled | Status Change | Cancellation | {{Submitter}}, {{Attorney}} | Request Cancelled: {{RequestId}} - {{RequestTitle}} |
+
+### Template Placeholders
+
+| Placeholder | Description |
+|-------------|-------------|
+| `{{RequestId}}` | Request ID (e.g., CRR-25-1) |
+| `{{RequestTitle}}` | Request title |
+| `{{RequestLink}}` | Direct URL to the request |
+| `{{SubmitterName}}` | Name of the person who submitted the request |
+| `{{Submitter}}` | Email of the submitter (for recipients) |
+| `{{Attorney}}` | Email of the assigned attorney |
+| `{{LegalAdminGroup}}` | Legal Admin SharePoint group |
+| `{{AttorneyAssignerGroup}}` | Attorney Assigner SharePoint group |
+| `{{ComplianceGroup}}` | Compliance Users SharePoint group |
+| `{{ComplianceReviewer}}` | Email of compliance reviewer |
+| `{{RequestType}}` | Request type (Communication, General Review, etc.) |
+| `{{SubmissionType}}` | Submission type (New, Material Updates) |
+| `{{SubmissionItem}}` | Selected submission item |
+| `{{TargetReturnDate}}` | Target return date |
+| `{{ReviewAudience}}` | Review audience (Legal, Compliance, Both) |
+| `{{Purpose}}` | Request purpose |
+| `{{RushRationale}}` | Rush rationale (for rush requests) |
+| `{{ReviewerNotes}}` | Notes from reviewer |
+| `{{Status}}` | Current request status |
+
+### Views
+
+| View Name | Display Name | Default | Row Limit |
+|-----------|--------------|---------|-----------|
+| AllItems | All Notifications | Yes | 30 |
+| ActiveNotifications | Active Notifications | No | 30 |
+| ByCategory | By Category | No | 30 |
+
+---
+
 ## Notes
 
 1. **Item-Level Permissions:** The Requests list uses item-level permissions that are broken when status changes from Draft to Legal Intake. Permissions are managed by Azure Functions.
@@ -399,3 +533,5 @@ This hidden system list tracks request ID sequences independently of item-level 
 3. **AppendOnly Fields:** Comments fields (AttorneyAssignNotes, LegalReviewNotes, ComplianceReviewNotes, CloseoutNotes, AdminOverrideNotes) use AppendOnly to maintain full comment history.
 
 4. **Rush Request Calculation:** A request is considered "rush" if `TargetReturnDate < (SubmittedOn + SubmissionItem.TurnAroundTimeInDays)` (business days only).
+
+5. **Notifications:** Email notifications are stored as templates in the Notifications list and processed by Azure Functions/Power Automate to generate actual emails with populated placeholders.

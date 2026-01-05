@@ -324,12 +324,12 @@ The **Workflow Stepper** at the top of each request shows:
 
 ### Request ID Format
 
-Each request has a unique ID: `CER-YY-NNNN`
-- **CER**: Communication Request (or other prefix for other types)
+Each request has a unique ID: `CRR-YY-N`
+- **CRR**: Communication Review Request (or GRR for General Review, IMA for IMA Review)
 - **YY**: Two-digit year
-- **NNNN**: Sequential number
+- **N**: Sequential number
 
-Example: `CER-25-0042` (42nd communication request in 2025)
+Example: `CRR-25-42` (42nd communication request in 2025)
 
 ### Hover Cards
 
