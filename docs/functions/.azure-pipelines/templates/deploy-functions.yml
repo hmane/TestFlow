@@ -1,0 +1,98 @@
+# =============================================================================
+# Deploy Functions Template
+# =============================================================================
+# Reusable template for deploying Azure Functions to any environment.
+# This template is called from the main pipeline with environment-specific
+# parameters.
+# =============================================================================
+
+parameters:
+  - name: azureSubscription
+    type: string
+    displayName: 'Azure Service Connection'
+
+  - name: functionAppName
+    type: string
+    displayName: 'Function App Name'
+
+  - name: resourceGroupName
+    type: string
+    displayName: 'Resource Group Name'
+
+  - name: slotName
+    type: string
+    default: ''
+    displayName: 'Deployment Slot (optional)'
+
+steps:
+  # Download build artifacts
+  - download: current
+    artifact: 'functions-drop'
+    displayName: 'Download build artifacts'
+
+  # Deploy to Azure Functions
+  - task: AzureFunctionApp@2
+    displayName: 'Deploy to Azure Functions'
+    inputs:
+      connectedServiceNameARM: ${{ parameters.azureSubscription }}
+      appType: functionApp
+      appName: ${{ parameters.functionAppName }}
+      resourceGroupName: ${{ parameters.resourceGroupName }}
+      package: $(Pipeline.Workspace)/functions-drop/**/*.zip
+      deploymentMethod: zipDeploy
+      ${{ if ne(parameters.slotName, '') }}:
+        slotName: ${{ parameters.slotName }}
+
+  # Verify deployment
+  - task: AzureCLI@2
+    displayName: 'Verify deployment health'
+    inputs:
+      azureSubscription: ${{ parameters.azureSubscription }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        echo "Checking function app health..."
+
+        # Get the function app URL
+        FUNCTION_URL=$(az functionapp show \
+          --name "${{ parameters.functionAppName }}" \
+          --resource-group "${{ parameters.resourceGroupName }}" \
+          --query "defaultHostName" -o tsv)
+
+        echo "Function App URL: https://$FUNCTION_URL"
+
+        # Wait for the app to be ready
+        sleep 30
+
+        # Check health endpoint
+        HEALTH_URL="https://$FUNCTION_URL/api/notifications/health"
+        echo "Checking health endpoint: $HEALTH_URL"
+
+        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$HEALTH_URL")
+
+        if [ "$HTTP_STATUS" -eq 200 ]; then
+          echo "Health check passed (HTTP $HTTP_STATUS)"
+        else
+          echo "Health check returned HTTP $HTTP_STATUS"
+          # Don't fail the pipeline, just warn
+        fi
+
+        echo "Deployment completed successfully!"
+
+  # Update Application Settings (optional - use Azure Key Vault references)
+  - task: AzureAppServiceSettings@1
+    displayName: 'Configure app settings'
+    inputs:
+      azureSubscription: ${{ parameters.azureSubscription }}
+      appName: ${{ parameters.functionAppName }}
+      resourceGroupName: ${{ parameters.resourceGroupName }}
+      appSettings: |
+        [
+          {
+            "name": "FUNCTIONS_WORKER_RUNTIME",
+            "value": "dotnet-isolated",
+            "slotSetting": false
+          }
+        ]
+    condition: succeededOrFailed()
+    continueOnError: true

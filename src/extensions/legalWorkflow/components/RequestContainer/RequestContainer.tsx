@@ -24,6 +24,7 @@ import { TooltipHost } from '@fluentui/react/lib/Tooltip';
 
 // PnP Controls - SharePoint Comments
 import { ListItemComments } from '@pnp/spfx-controls-react/lib/controls/listItemComments';
+import type { ServiceScope } from '@microsoft/sp-core-library';
 
 // spfx-toolkit - tree-shaken imports
 import { ErrorBoundary } from 'spfx-toolkit/lib/components/ErrorBoundary';
@@ -38,6 +39,7 @@ import { StatusBanner } from '@components/StatusBanner';
 import { useWorkflowStepper } from '@components/WorkflowStepper/useWorkflowStepper';
 import { shouldShowFormSection } from '@components/WorkflowStepper/workflowStepConfig';
 import { useRequestStore } from '@stores/requestStore';
+import { handleManageAccessChange, type IPermissionPrincipal } from '@services/azureFunctionService';
 import { RequestActions } from '../RequestActions';
 import { RequestApprovals } from '../RequestApprovals';
 import { RequestDocuments } from '../RequestDocuments';
@@ -388,14 +390,59 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
   }, []);
 
   /**
-   * Handle ManageAccess permission changed (read-only mode)
+   * Handle ManageAccess permission changed
+   * Calls Azure Function via APIM to add/remove user permissions
    */
   const handlePermissionChanged = React.useCallback(
-    async (): Promise<boolean> => {
-      // Read-only mode - no changes allowed from here
-      return false;
+    async (
+      operation: 'add' | 'remove',
+      principals: IPermissionPrincipal[]
+    ): Promise<boolean> => {
+      if (!itemId || !currentRequest?.requestId) {
+        SPContext.logger.warn('RequestContainer: Cannot change permissions - missing itemId or requestId');
+        return false;
+      }
+
+      try {
+        SPContext.logger.info('RequestContainer: Permission change requested', {
+          operation,
+          itemId,
+          requestId: currentRequest.requestId,
+          principalCount: principals.length,
+        });
+
+        // Call Azure Function via APIM
+        const success = await handleManageAccessChange(
+          operation,
+          itemId,
+          currentRequest.requestId,
+          principals
+        );
+
+        if (success) {
+          SPContext.logger.success('RequestContainer: Permission change completed', {
+            operation,
+            itemId,
+          });
+        } else {
+          SPContext.logger.warn('RequestContainer: Permission change failed', {
+            operation,
+            itemId,
+          });
+        }
+
+        return success;
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
+        SPContext.logger.error('RequestContainer: Permission change error', error, {
+          operation,
+          itemId,
+          error: message,
+        });
+        return false;
+      }
     },
-    []
+    [itemId, currentRequest?.requestId]
   );
 
   /**
@@ -452,7 +499,7 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
                 <LazyManageAccessComponent
                   itemId={itemId}
                   listId={listId}
-                  permissionTypes='view'
+                  permissionTypes='both'
                   maxAvatars={5}
                   enabled={true}
                   onPermissionChanged={handlePermissionChanged}
@@ -482,9 +529,11 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
   const renderCommentsPanel = (): React.ReactElement => {
     if (!itemId) return <div />;
 
+
     // Get serviceScope from SPFx context for ListItemComments
-    const spfxContext = SPContext.spfxContext as { serviceScope?: import('@microsoft/sp-core-library').ServiceScope };
-    const serviceScope = spfxContext?.serviceScope;
+    // SPContext.spfxContext returns SPFxContextInput which extends BaseComponentContext
+    // Cast through unknown to avoid type mismatch between spfx-toolkit's and local node_modules
+    const serviceScope = SPContext.spfxContext.serviceScope as unknown as ServiceScope;
 
     if (!serviceScope) {
       // Fallback if serviceScope is not available

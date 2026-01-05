@@ -255,7 +255,6 @@ export const checkUserAccess = async (): Promise<IUserAccess> => {
   } catch (error: unknown) {
     // Log the actual error for debugging
     SPContext.logger.error('AnalyticsDataService: Access check failed', error);
-    console.error('Dashboard access check failed:', error);
 
     // Return access denied on error
     return {

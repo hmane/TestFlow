@@ -1,0 +1,33 @@
+# Build results
+bin/
+obj/
+out/
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio cache/options
+.vs/
+*.csproj.user
+
+# Azure Functions local settings (contains secrets)
+local.settings.json
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Application Insights
+ApplicationInsights.config
+
+# Publish output
+publish/

@@ -10,6 +10,7 @@
  *   if (visibility.buttons.saveAsDraft.enabled) { ... }
  */
 
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { RequestStatus } from '@appTypes/workflowTypes';
 import type { IUserPermissions } from '@hooks/usePermissions';
 
@@ -519,13 +520,14 @@ export function createVisibilityContext(
 }
 
 /**
- * Debug helper - logs visibility state to console
+ * Debug helper - logs visibility state using SPContext.logger
+ *
+ * Uses debug level so it only appears when log level is set to Verbose.
  */
 export function debugVisibility(ctx: IVisibilityContext): void {
   const visibility = getUIVisibility(ctx);
 
-  console.group('UI Visibility Debug');
-  console.log('Context:', {
+  SPContext.logger.debug('UI Visibility Debug - Context', {
     status: ctx.status,
     isOwner: ctx.isOwner,
     isNewRequest: ctx.isNewRequest,
@@ -533,7 +535,8 @@ export function debugVisibility(ctx: IVisibilityContext): void {
     hasAssignedAttorney: ctx.hasAssignedAttorney,
     isAssignedAttorney: ctx.isAssignedAttorney,
   });
-  console.log('Permissions:', {
+
+  SPContext.logger.debug('UI Visibility Debug - Permissions', {
     isAdmin: ctx.permissions.isAdmin,
     isLegalAdmin: ctx.permissions.isLegalAdmin,
     isAttorneyAssigner: ctx.permissions.isAttorneyAssigner,
@@ -541,8 +544,10 @@ export function debugVisibility(ctx: IVisibilityContext): void {
     isComplianceUser: ctx.permissions.isComplianceUser,
     isSubmitter: ctx.permissions.isSubmitter,
   });
-  console.log('Buttons:', visibility.buttons);
-  console.log('Fields:', visibility.fields);
-  console.log('Cards:', visibility.cards);
-  console.groupEnd();
+
+  SPContext.logger.debug('UI Visibility Debug - Visibility', {
+    buttons: visibility.buttons,
+    fields: visibility.fields,
+    cards: visibility.cards,
+  });
 }

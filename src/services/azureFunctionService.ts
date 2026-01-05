@@ -1,9 +1,21 @@
 /**
  * Azure Function Service
  *
- * Handles synchronous calls to Azure Functions for permission management.
+ * Handles synchronous calls to Azure Functions via APIM for permission management.
  * This ensures permissions are set BEFORE user continues, avoiding "item not found" errors
  * that occur when Flow breaks inheritance asynchronously.
+ *
+ * Uses SPContext.http.callFunction() from spfx-toolkit for:
+ * - Azure AD token acquisition and authentication
+ * - Automatic retries with exponential backoff
+ * - Timeout handling
+ * - Correlation ID tracking
+ *
+ * Authentication Flow:
+ * 1. SPFx app acquires token for APIM API (Azure AD) via SPContext.http
+ * 2. Token is sent as Bearer token to APIM
+ * 3. APIM validates token and forwards to Azure Function
+ * 4. Azure Function extracts user identity and checks SharePoint group membership
  */
 
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
@@ -24,6 +36,42 @@ export interface IPermissionManagementRequest {
 }
 
 /**
+ * Request payload for adding/removing user permissions
+ */
+export interface IUserPermissionRequest {
+  /** SharePoint item ID */
+  requestId: number;
+  /** Request title (e.g., "LRQ-2024-001234") */
+  requestTitle: string;
+  /** User email address */
+  userEmail: string;
+  /** User display name */
+  userName: string;
+  /** SharePoint site URL */
+  siteUrl: string;
+  /** List title */
+  listTitle: string;
+}
+
+/**
+ * Permission principal from ManageAccess component
+ */
+export interface IPermissionPrincipal {
+  /** Principal ID (user or group) */
+  id: string;
+  /** Display name */
+  displayName: string;
+  /** Email address (for users) */
+  email?: string;
+  /** SharePoint login name */
+  loginName?: string;
+  /** Permission level */
+  permissionLevel: 'view' | 'edit';
+  /** Whether this is a group */
+  isGroup: boolean;
+}
+
+/**
  * Response from Azure Function
  */
 export interface IPermissionManagementResponse {
@@ -32,125 +80,230 @@ export interface IPermissionManagementResponse {
   error?: string;
 }
 
-/**
- * Configuration for retry logic
- */
-const RETRY_CONFIG = {
-  maxAttempts: 3,
-  initialDelayMs: 1000,
-  maxDelayMs: 10000,
-  timeoutMs: 30000, // 30 seconds max per attempt
-};
+// ============================================
+// FEATURE FLAG
+// ============================================
 
 /**
- * Get Azure Function URL from configuration
+ * Feature flag to enable/disable Azure Function calls via APIM.
  *
- * Priority:
- * 1. Environment configuration (from config store)
- * 2. Web property bag
- * 3. Environment variable
+ * Set to `false` while Azure Functions are not yet deployed.
+ * Set to `true` once Azure Functions and APIM are deployed and configured.
  *
- * @returns Azure Function URL
- * @throws Error if URL not configured
+ * When disabled:
+ * - All permission management functions return success immediately
+ * - No actual API calls are made
+ * - Logs indicate that calls are skipped
+ *
+ * Configuration items required in SharePoint Configuration list when enabled:
+ * - ApimBaseUrl: e.g., "https://legalworkflow-apim.azure-api.net"
+ * - ApimApiClientId: Azure AD App Registration Client ID for the API
  */
-function getAzureFunctionUrl(): string {
-  // TODO: Read from configuration store once environment config is implemented
-  // For now, check web properties or environment
-  const url = process.env.AZURE_FUNCTION_URL;
+export const AZURE_FUNCTIONS_ENABLED = false;
 
-  if (!url) {
-    throw new Error(
-      'Azure Function URL not configured. Please set AZURE_FUNCTION_URL in environment configuration or web property bag.'
-    );
+/**
+ * Default timeout for Azure Function calls (30 seconds)
+ */
+const DEFAULT_TIMEOUT_MS = 30000;
+
+/**
+ * APIM Configuration
+ * These values should be loaded from SharePoint Configuration list in production
+ */
+interface IApimConfig {
+  /** APIM base URL (e.g., "https://legalworkflow-apim.azure-api.net") */
+  baseUrl: string;
+  /** Azure AD Client ID for the API (used for token acquisition) */
+  apiClientId: string;
+}
+
+/**
+ * Cached APIM configuration promise
+ * Using a promise prevents race conditions when multiple concurrent calls are made
+ */
+let apimConfigPromise: Promise<IApimConfig> | undefined;
+
+/**
+ * Loads APIM configuration from SharePoint Configuration list
+ * This is the actual fetch logic, separated from caching
+ */
+async function loadApimConfig(): Promise<IApimConfig> {
+  // Load from SharePoint Configuration list
+  const items = await SPContext.sp.web.lists
+    .getByTitle('Configuration')
+    .items.select('Title', 'ConfigValue')
+    .filter(`(Title eq 'ApimBaseUrl' or Title eq 'ApimApiClientId') and IsActive eq true`)();
+
+  const configMap = new Map<string, string>();
+  for (const item of items) {
+    configMap.set(item.Title, item.ConfigValue);
   }
 
-  return url;
+  const baseUrl = configMap.get('ApimBaseUrl');
+  const apiClientId = configMap.get('ApimApiClientId');
+
+  if (!baseUrl) {
+    throw new Error('ApimBaseUrl not configured in Configuration list');
+  }
+
+  if (!apiClientId) {
+    throw new Error('ApimApiClientId not configured in Configuration list');
+  }
+
+  return { baseUrl, apiClientId };
 }
 
 /**
- * Delay execution for specified milliseconds
+ * Gets APIM configuration from SharePoint Configuration list
  *
- * @param ms - Milliseconds to delay
- * @returns Promise that resolves after delay
+ * Uses promise-based caching to prevent race conditions when multiple
+ * concurrent calls are made. All callers will await the same promise.
+ *
+ * @returns APIM configuration
+ * @throws Error if configuration not found
  */
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+async function getApimConfig(): Promise<IApimConfig> {
+  // If we already have a pending or resolved promise, return it
+  if (apimConfigPromise) {
+    return apimConfigPromise;
+  }
+
+  // Create the promise and cache it immediately (before awaiting)
+  // This ensures concurrent calls all get the same promise
+  apimConfigPromise = loadApimConfig().catch((error: unknown) => {
+    // On error, clear the cache so next call can retry
+    apimConfigPromise = undefined;
+    const message = error instanceof Error ? error.message : String(error);
+    SPContext.logger.error('Failed to load APIM configuration', error, { error: message });
+    throw new Error(`Failed to load APIM configuration: ${message}`);
+  });
+
+  return apimConfigPromise;
 }
 
 /**
- * Calculate exponential backoff delay
- *
- * @param attempt - Current attempt number (0-based)
- * @returns Delay in milliseconds
+ * Clears the APIM configuration cache
+ * Call this if configuration is updated
  */
-function getBackoffDelay(attempt: number): number {
-  const exponentialDelay = RETRY_CONFIG.initialDelayMs * Math.pow(2, attempt);
-  return Math.min(exponentialDelay, RETRY_CONFIG.maxDelayMs);
+export function clearApimConfigCache(): void {
+  apimConfigPromise = undefined;
+  SPContext.logger.info('APIM configuration cache cleared');
 }
 
 /**
- * Execute Azure Function call with timeout
- *
- * @param url - Azure Function endpoint URL
- * @param payload - Request payload
- * @param timeoutMs - Timeout in milliseconds
- * @returns Promise resolving to response
- * @throws Error if timeout exceeded or fetch fails
+ * Request payload for initialize permissions
  */
-async function fetchWithTimeout(
-  url: string,
-  payload: IPermissionManagementRequest,
-  timeoutMs: number
-): Promise<Response> {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+interface IInitializePermissionsRequest {
+  /** SharePoint item ID */
+  requestId: number;
+  /** Request title (e.g., "CRR-25-1") */
+  requestTitle: string;
+  /** SharePoint site URL */
+  siteUrl: string;
+  /** List title */
+  listTitle: string;
+}
+
+/**
+ * Initialize permissions for a request via APIM
+ *
+ * This function calls the Azure Function through APIM to break inheritance
+ * and set initial permissions when a request is first submitted.
+ *
+ * Called when transitioning from Draft → Legal Intake.
+ *
+ * Uses SPContext.http.callFunction() which provides:
+ * - Automatic Azure AD token acquisition
+ * - Retry logic with exponential backoff
+ * - Timeout handling
+ *
+ * @param itemId - SharePoint list item ID
+ * @param requestTitle - Request title (e.g., "CRR-25-1")
+ * @returns Promise resolving when permissions are initialized
+ * @throws Error if initialization fails
+ */
+export async function initializePermissions(
+  itemId: number,
+  requestTitle: string
+): Promise<void> {
+  // Check feature flag
+  if (!AZURE_FUNCTIONS_ENABLED) {
+    SPContext.logger.info('AzureFunctionService: initializePermissions SKIPPED (Azure Functions disabled)', {
+      itemId,
+      requestTitle,
+      featureFlag: 'AZURE_FUNCTIONS_ENABLED = false',
+    });
+    return;
+  }
 
   try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
+    SPContext.logger.info('AzureFunctionService: Initializing permissions via APIM', {
+      itemId,
+      requestTitle,
     });
 
-    clearTimeout(timeoutId);
-    return response;
+    const config = await getApimConfig();
 
-  } catch (error: unknown) {
-    clearTimeout(timeoutId);
+    const payload: IInitializePermissionsRequest = {
+      requestId: itemId,
+      requestTitle,
+      siteUrl: SPContext.webAbsoluteUrl,
+      listTitle: 'Requests',
+    };
 
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error(`Azure Function call timed out after ${timeoutMs}ms`);
+    const url = `${config.baseUrl}/api/permissions/initialize`;
+
+    // Use SPContext.http.callFunction() for Azure AD authenticated calls
+    // This handles token acquisition, retries, and timeouts automatically
+    const response = await SPContext.http.callFunction<IPermissionManagementResponse>({
+      url,
+      method: 'POST',
+      data: payload,
+      useAuth: true,
+      resourceUri: `api://${config.apiClientId}`,
+      timeout: DEFAULT_TIMEOUT_MS,
+    });
+
+    if (response.ok && response.data.success) {
+      SPContext.logger.success('AzureFunctionService: Permissions initialized successfully', {
+        itemId,
+        requestTitle,
+        duration: response.duration,
+      });
+      return;
     }
 
-    throw error;
+    // Handle failure response
+    const errorMessage = response.data?.error || response.data?.message || `HTTP ${response.status}`;
+    throw new Error(`Permission initialization failed: ${errorMessage}`);
+
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    SPContext.logger.error('AzureFunctionService: Permission initialization error', error, {
+      itemId,
+      requestTitle,
+      error: message,
+    });
+    throw new Error(`Failed to initialize permissions: ${message}`);
   }
 }
 
 /**
- * Manage request permissions via Azure Function (with retry logic)
+ * Manage request permissions via Azure Function
  *
  * This function is called synchronously during workflow transitions to ensure
  * permissions are set before the user continues. This prevents the "item not found"
  * error that occurs when Flow breaks inheritance asynchronously.
  *
- * **Retry Logic**:
- * - 3 attempts with exponential backoff (1s, 2s, 4s)
- * - 30 second timeout per attempt
- * - Retries on network errors and 5xx server errors
- * - No retry on 4xx client errors (bad request, auth failures)
- *
- * **Error Handling**:
- * - Throws error on final failure (caller should rollback SharePoint update)
- * - Logs all attempts and failures
+ * Uses SPContext.http.callFunction() which provides:
+ * - Automatic Azure AD token acquisition
+ * - Retry logic with exponential backoff (retries on 5xx, 429)
+ * - Timeout handling
  *
  * @param itemId - SharePoint list item ID
  * @param status - New request status
  * @returns Promise resolving when permissions are successfully set
- * @throws Error if all retry attempts fail
+ * @throws Error if permission management fails
  *
  * @example
  * ```typescript
@@ -168,121 +321,340 @@ async function fetchWithTimeout(
  *   showErrorMessage('Failed to submit request');
  * }
  * ```
+ *
+ * @deprecated Use initializePermissions() for first submit (Draft → Legal Intake).
+ * This function is kept for backward compatibility with other status transitions
+ * that may still use the legacy flow.
  */
 export async function manageRequestPermissions(
   itemId: number,
   status: RequestStatus
 ): Promise<void> {
-  const url = `${getAzureFunctionUrl()}/api/permissions/manage`;
-
-  const payload: IPermissionManagementRequest = {
-    itemId,
-    status,
-    siteUrl: SPContext.webAbsoluteUrl,
-    listTitle: 'Requests', // TODO: Use Lists.Requests.Title
-  };
-
-  SPContext.logger.info('AzureFunctionService: Managing permissions', {
-    itemId,
-    status,
-    url,
-  });
-
-  let lastError: Error | undefined;
-
-  for (let attempt = 0; attempt < RETRY_CONFIG.maxAttempts; attempt++) {
-    try {
-      // Log retry attempt
-      if (attempt > 0) {
-        const backoffDelay = getBackoffDelay(attempt - 1);
-        SPContext.logger.info(`AzureFunctionService: Retry attempt ${attempt + 1} after ${backoffDelay}ms`, {
-          itemId,
-          status,
-        });
-        await delay(backoffDelay);
-      }
-
-      // Execute with timeout
-      const response = await fetchWithTimeout(url, payload, RETRY_CONFIG.timeoutMs);
-
-      // Check response status
-      if (response.ok) {
-        const result: IPermissionManagementResponse = await response.json();
-
-        if (result.success) {
-          SPContext.logger.success('AzureFunctionService: Permissions updated successfully', {
-            itemId,
-            status,
-            attempts: attempt + 1,
-          });
-          return; // SUCCESS
-        } else {
-          // Azure Function returned success: false
-          throw new Error(result.error || result.message || 'Permission management failed');
-        }
-      }
-
-      // Handle HTTP errors
-      const errorText = await response.text();
-
-      // Don't retry on 4xx client errors (bad request, unauthorized, etc.)
-      if (response.status >= 400 && response.status < 500) {
-        throw new Error(
-          `Azure Function request failed (${response.status}): ${errorText}. This is likely a configuration or authorization issue.`
-        );
-      }
-
-      // Retry on 5xx server errors
-      if (response.status >= 500) {
-        lastError = new Error(
-          `Azure Function server error (${response.status}): ${errorText}`
-        );
-        SPContext.logger.warn('AzureFunctionService: Server error, will retry', {
-          error: lastError.message,
-          itemId,
-          status,
-          attempt: attempt + 1,
-          httpStatus: response.status,
-        });
-        continue; // Retry
-      }
-
-      // Other errors
-      throw new Error(`Unexpected response (${response.status}): ${errorText}`);
-
-    } catch (error: unknown) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-
-      SPContext.logger.warn('AzureFunctionService: Attempt failed', {
-        error: lastError.message,
-        itemId,
-        status,
-        attempt: attempt + 1,
-      });
-
-      // Don't retry on certain errors
-      if (
-        lastError.message.indexOf('not configured') !== -1 ||
-        lastError.message.indexOf('configuration') !== -1 ||
-        lastError.message.indexOf('authorization') !== -1
-      ) {
-        break; // Don't retry configuration/auth errors
-      }
-
-      // Continue to retry for network errors, timeouts, server errors
-    }
+  // Check feature flag
+  if (!AZURE_FUNCTIONS_ENABLED) {
+    SPContext.logger.info('AzureFunctionService: manageRequestPermissions SKIPPED (Azure Functions disabled)', {
+      itemId,
+      status,
+      featureFlag: 'AZURE_FUNCTIONS_ENABLED = false',
+    });
+    return;
   }
 
-  // All attempts failed
-  const finalError = new Error(
-    `Failed to manage permissions for request ${itemId} after ${RETRY_CONFIG.maxAttempts} attempts: ${lastError?.message || 'Unknown error'}`
-  );
+  try {
+    const config = await getApimConfig();
 
-  SPContext.logger.error('AzureFunctionService: All retry attempts failed', finalError, {
+    const payload: IPermissionManagementRequest = {
+      itemId,
+      status,
+      siteUrl: SPContext.webAbsoluteUrl,
+      listTitle: 'Requests',
+    };
+
+    const url = `${config.baseUrl}/api/permissions/manage`;
+
+    SPContext.logger.info('AzureFunctionService: Managing permissions', {
+      itemId,
+      status,
+      url,
+    });
+
+    // Use SPContext.http.callFunction() for Azure AD authenticated calls
+    const response = await SPContext.http.callFunction<IPermissionManagementResponse>({
+      url,
+      method: 'POST',
+      data: payload,
+      useAuth: true,
+      resourceUri: `api://${config.apiClientId}`,
+      timeout: DEFAULT_TIMEOUT_MS,
+    });
+
+    if (response.ok && response.data.success) {
+      SPContext.logger.success('AzureFunctionService: Permissions updated successfully', {
+        itemId,
+        status,
+        duration: response.duration,
+      });
+      return;
+    }
+
+    // Handle failure response
+    const errorMessage = response.data?.error || response.data?.message || `HTTP ${response.status}`;
+    throw new Error(`Permission management failed: ${errorMessage}`);
+
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    SPContext.logger.error('AzureFunctionService: Permission management error', error, {
+      itemId,
+      status,
+      error: message,
+    });
+    throw new Error(`Failed to manage permissions for request ${itemId}: ${message}`);
+  }
+}
+
+/**
+ * Add user permission to a request via APIM
+ *
+ * This function calls the Azure Function through APIM to add Read permission
+ * for a user on the specified request. The user's token is used for authentication
+ * and authorization is checked based on SharePoint group membership.
+ *
+ * @param itemId - SharePoint list item ID
+ * @param requestTitle - Request title (e.g., "LRQ-2024-001234")
+ * @param principal - User principal to add
+ * @returns Promise resolving to true if successful, false otherwise
+ *
+ * @example
+ * ```typescript
+ * const success = await addUserPermission(123, 'LRQ-2024-001234', {
+ *   id: '1',
+ *   displayName: 'John Doe',
+ *   email: 'john.doe@company.com',
+ *   permissionLevel: 'view',
+ *   isGroup: false
+ * });
+ * ```
+ */
+export async function addUserPermission(
+  itemId: number,
+  requestTitle: string,
+  principal: IPermissionPrincipal
+): Promise<boolean> {
+  // Check feature flag
+  if (!AZURE_FUNCTIONS_ENABLED) {
+    SPContext.logger.info('AzureFunctionService: addUserPermission SKIPPED (Azure Functions disabled)', {
+      itemId,
+      requestTitle,
+      userEmail: principal.email,
+      featureFlag: 'AZURE_FUNCTIONS_ENABLED = false',
+    });
+    return true; // Return success when disabled
+  }
+
+  try {
+    SPContext.logger.info('AzureFunctionService: Adding user permission via APIM', {
+      itemId,
+      requestTitle,
+      userEmail: principal.email,
+      userName: principal.displayName,
+    });
+
+    const config = await getApimConfig();
+
+    const payload: IUserPermissionRequest = {
+      requestId: itemId,
+      requestTitle,
+      userEmail: principal.email || '',
+      userName: principal.displayName,
+      siteUrl: SPContext.webAbsoluteUrl,
+      listTitle: 'Requests',
+    };
+
+    const url = `${config.baseUrl}/api/permissions/add-user`;
+
+    // Use SPContext.http.callFunction() for Azure AD authenticated calls
+    const response = await SPContext.http.callFunction<IPermissionManagementResponse>({
+      url,
+      method: 'POST',
+      data: payload,
+      useAuth: true,
+      resourceUri: `api://${config.apiClientId}`,
+      timeout: DEFAULT_TIMEOUT_MS,
+    });
+
+    if (response.ok && response.data.success) {
+      SPContext.logger.success('AzureFunctionService: User permission added successfully', {
+        itemId,
+        userEmail: principal.email,
+        duration: response.duration,
+      });
+      return true;
+    }
+
+    // Handle failure response
+    SPContext.logger.warn('AzureFunctionService: Add user permission returned failure', {
+      itemId,
+      userEmail: principal.email,
+      error: response.data?.error || response.data?.message,
+      status: response.status,
+    });
+    return false;
+
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    SPContext.logger.error('AzureFunctionService: Add user permission error', error, {
+      itemId,
+      userEmail: principal.email,
+      error: message,
+    });
+    return false;
+  }
+}
+
+/**
+ * Remove user permission from a request via APIM
+ *
+ * This function calls the Azure Function through APIM to remove permissions
+ * for a user on the specified request. The user's token is used for authentication
+ * and authorization is checked based on SharePoint group membership.
+ *
+ * @param itemId - SharePoint list item ID
+ * @param requestTitle - Request title (e.g., "LRQ-2024-001234")
+ * @param principal - User principal to remove
+ * @returns Promise resolving to true if successful, false otherwise
+ *
+ * @example
+ * ```typescript
+ * const success = await removeUserPermission(123, 'LRQ-2024-001234', {
+ *   id: '1',
+ *   displayName: 'John Doe',
+ *   email: 'john.doe@company.com',
+ *   permissionLevel: 'view',
+ *   isGroup: false
+ * });
+ * ```
+ */
+export async function removeUserPermission(
+  itemId: number,
+  requestTitle: string,
+  principal: IPermissionPrincipal
+): Promise<boolean> {
+  // Check feature flag
+  if (!AZURE_FUNCTIONS_ENABLED) {
+    SPContext.logger.info('AzureFunctionService: removeUserPermission SKIPPED (Azure Functions disabled)', {
+      itemId,
+      requestTitle,
+      userEmail: principal.email,
+      featureFlag: 'AZURE_FUNCTIONS_ENABLED = false',
+    });
+    return true; // Return success when disabled
+  }
+
+  try {
+    SPContext.logger.info('AzureFunctionService: Removing user permission via APIM', {
+      itemId,
+      requestTitle,
+      userEmail: principal.email,
+      userName: principal.displayName,
+    });
+
+    const config = await getApimConfig();
+
+    const payload: IUserPermissionRequest = {
+      requestId: itemId,
+      requestTitle,
+      userEmail: principal.email || '',
+      userName: principal.displayName,
+      siteUrl: SPContext.webAbsoluteUrl,
+      listTitle: 'Requests',
+    };
+
+    const url = `${config.baseUrl}/api/permissions/remove-user`;
+
+    // Use SPContext.http.callFunction() for Azure AD authenticated calls
+    const response = await SPContext.http.callFunction<IPermissionManagementResponse>({
+      url,
+      method: 'POST',
+      data: payload,
+      useAuth: true,
+      resourceUri: `api://${config.apiClientId}`,
+      timeout: DEFAULT_TIMEOUT_MS,
+    });
+
+    if (response.ok && response.data.success) {
+      SPContext.logger.success('AzureFunctionService: User permission removed successfully', {
+        itemId,
+        userEmail: principal.email,
+        duration: response.duration,
+      });
+      return true;
+    }
+
+    // Handle failure response
+    SPContext.logger.warn('AzureFunctionService: Remove user permission returned failure', {
+      itemId,
+      userEmail: principal.email,
+      error: response.data?.error || response.data?.message,
+      status: response.status,
+    });
+    return false;
+
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    SPContext.logger.error('AzureFunctionService: Remove user permission error', error, {
+      itemId,
+      userEmail: principal.email,
+      error: message,
+    });
+    return false;
+  }
+}
+
+/**
+ * Handle permission changes from ManageAccess component
+ *
+ * This function processes add/remove operations from the ManageAccess component
+ * and calls the appropriate Azure Function through APIM.
+ *
+ * @param operation - 'add' or 'remove' operation
+ * @param itemId - SharePoint list item ID
+ * @param requestTitle - Request title
+ * @param principals - Array of principals to add/remove
+ * @returns Promise resolving to true if all operations succeeded
+ *
+ * @example
+ * ```typescript
+ * // In ManageAccess component callback
+ * const handlePermissionChanged = async (
+ *   operation: 'add' | 'remove',
+ *   principals: IPermissionPrincipal[]
+ * ): Promise<boolean> => {
+ *   return handleManageAccessChange(operation, itemId, requestTitle, principals);
+ * };
+ * ```
+ */
+export async function handleManageAccessChange(
+  operation: 'add' | 'remove',
+  itemId: number,
+  requestTitle: string,
+  principals: IPermissionPrincipal[]
+): Promise<boolean> {
+  SPContext.logger.info('AzureFunctionService: Processing ManageAccess change', {
+    operation,
     itemId,
-    status,
-    attempts: RETRY_CONFIG.maxAttempts,
+    requestTitle,
+    principalCount: principals.length,
   });
 
-  throw finalError;
+  // Process each principal
+  const results = await Promise.all(
+    principals.map(async (principal) => {
+      if (operation === 'add') {
+        return addUserPermission(itemId, requestTitle, principal);
+      } else {
+        return removeUserPermission(itemId, requestTitle, principal);
+      }
+    })
+  );
+
+  // Check if all operations succeeded
+  const allSucceeded = results.every((result) => result === true);
+
+  if (allSucceeded) {
+    SPContext.logger.success('AzureFunctionService: All ManageAccess changes completed', {
+      operation,
+      itemId,
+      successCount: results.length,
+    });
+  } else {
+    const failedCount = results.filter((r) => !r).length;
+    SPContext.logger.warn('AzureFunctionService: Some ManageAccess changes failed', {
+      operation,
+      itemId,
+      successCount: results.filter((r) => r).length,
+      failedCount,
+    });
+  }
+
+  return allSucceeded;
 }

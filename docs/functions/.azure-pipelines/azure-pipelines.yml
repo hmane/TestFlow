@@ -1,0 +1,208 @@
+# =============================================================================
+# Legal Workflow Azure Functions - CI/CD Pipeline
+# =============================================================================
+# This pipeline builds, tests, and deploys the Azure Functions application
+# to Azure. It supports multiple environments (dev, staging, production).
+#
+# Prerequisites:
+# 1. Azure Service Connection named 'AzureServiceConnection' in ADO
+# 2. Variable groups: 'LegalWorkflow-Dev', 'LegalWorkflow-Staging', 'LegalWorkflow-Prod'
+# 3. Azure Function App already provisioned in each environment
+# =============================================================================
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+      - release/*
+  paths:
+    include:
+      - docs/functions/**
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    include:
+      - docs/functions/**
+
+# Pipeline variables
+variables:
+  buildConfiguration: Release
+  dotnetVersion: 8.0.x
+  projectPath: docs/functions/LegalWorkflow.Functions.csproj
+  publishPath: $(Build.ArtifactStagingDirectory)/publish
+  azureSubscription: AzureServiceConnection
+
+# Build stages
+stages:
+  # =============================================================================
+  # Build Stage
+  # =============================================================================
+  - stage: Build
+    displayName: 'Build & Test'
+    jobs:
+      - job: BuildJob
+        displayName: 'Build Azure Functions'
+        pool:
+          vmImage: 'ubuntu-latest'
+
+        steps:
+          # Checkout code
+          - checkout: self
+            displayName: Checkout repository
+            fetchDepth: '1'
+
+          # Setup .NET SDK
+          - task: UseDotNet@2
+            displayName: Setup .NET $(dotnetVersion)
+            inputs:
+              version: $(dotnetVersion)
+              packageType: sdk
+
+          # Restore NuGet packages
+          - task: DotNetCoreCLI@2
+            displayName: Restore NuGet packages
+            inputs:
+              command: restore
+              projects: $(projectPath)
+              feedsToUse: select
+
+          # Build the project
+          - task: DotNetCoreCLI@2
+            displayName: Build project
+            inputs:
+              command: build
+              projects: $(projectPath)
+              arguments: --configuration $(buildConfiguration) --no-restore
+
+          # Note: Unit tests can be added later by creating a test project
+          # and uncommenting the test task below:
+          # - task: DotNetCoreCLI@2
+          #   displayName: Run unit tests
+          #   inputs:
+          #     command: test
+          #     projects: docs/functions/**/*Tests.csproj
+          #     arguments: --configuration $(buildConfiguration) --no-build --verbosity normal
+          #     publishTestResults: true
+
+          # Publish the Azure Functions
+          - task: DotNetCoreCLI@2
+            displayName: Publish Azure Functions
+            inputs:
+              command: publish
+              projects: $(projectPath)
+              arguments: --configuration $(buildConfiguration) --output $(publishPath) --no-build
+              publishWebProjects: false
+              zipAfterPublish: true
+
+          # Publish build artifacts
+          - task: PublishBuildArtifacts@1
+            displayName: Publish artifacts
+            inputs:
+              PathtoPublish: $(publishPath)
+              ArtifactName: functions-drop
+              publishLocation: Container
+
+  # =============================================================================
+  # Deploy to Development
+  # =============================================================================
+  - stage: DeployDev
+    displayName: Deploy to Development
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+    variables:
+      - group: LegalWorkflow-Dev
+    jobs:
+      - deployment: DeployDevJob
+        displayName: Deploy to Dev Function App
+        pool:
+          vmImage: ubuntu-latest
+        environment: LegalWorkflow-Dev
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: templates/deploy-functions.yml
+                  parameters:
+                    azureSubscription: $(azureSubscription)
+                    functionAppName: $(functionAppName)
+                    resourceGroupName: $(resourceGroupName)
+
+  # =============================================================================
+  # Deploy to Staging
+  # =============================================================================
+  - stage: DeployStaging
+    displayName: Deploy to Staging
+    dependsOn: Build
+    condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/heads/release/'))
+    variables:
+      - group: LegalWorkflow-Staging
+    jobs:
+      - deployment: DeployStagingJob
+        displayName: Deploy to Staging Function App
+        pool:
+          vmImage: ubuntu-latest
+        environment: LegalWorkflow-Staging
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: templates/deploy-functions.yml
+                  parameters:
+                    azureSubscription: $(azureSubscription)
+                    functionAppName: $(functionAppName)
+                    resourceGroupName: $(resourceGroupName)
+
+  # =============================================================================
+  # Deploy to Production
+  # =============================================================================
+  - stage: DeployProd
+    displayName: Deploy to Production
+    dependsOn: DeployStaging
+    condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/heads/release/'))
+    variables:
+      - group: LegalWorkflow-Prod
+    jobs:
+      - deployment: DeployProdJob
+        displayName: Deploy to Production Function App
+        pool:
+          vmImage: ubuntu-latest
+        environment: LegalWorkflow-Production
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: templates/deploy-functions.yml
+                  parameters:
+                    azureSubscription: $(azureSubscription)
+                    functionAppName: $(functionAppName)
+                    resourceGroupName: $(resourceGroupName)
+
+  # =============================================================================
+  # Deploy Main to Production (Direct)
+  # =============================================================================
+  - stage: DeployProdFromMain
+    displayName: Deploy Main to Production
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    variables:
+      - group: LegalWorkflow-Prod
+    jobs:
+      - deployment: DeployProdFromMainJob
+        displayName: Deploy to Production Function App
+        pool:
+          vmImage: ubuntu-latest
+        environment: LegalWorkflow-Production
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: templates/deploy-functions.yml
+                  parameters:
+                    azureSubscription: $(azureSubscription)
+                    functionAppName: $(functionAppName)
+                    resourceGroupName: $(resourceGroupName)

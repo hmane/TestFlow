@@ -1,0 +1,39 @@
+{
+  "_comment": "Copy this file to local.settings.json and update with your values",
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+
+    "_comment_azure_ad": "Azure AD App Registration for SharePoint access",
+    "AzureAd:TenantId": "<your-tenant-id-guid>",
+    "AzureAd:ClientId": "<your-app-registration-client-id>",
+    "AzureAd:ClientSecret": "<your-client-secret>",
+    "AzureAd:CertificateThumbprint": "",
+
+    "_comment_sharepoint": "SharePoint site and list configuration",
+    "SharePoint:SiteUrl": "https://<tenant>.sharepoint.com/sites/LegalWorkflow",
+    "SharePoint:RequestsListName": "Requests",
+    "SharePoint:NotificationsListName": "Notifications",
+    "SharePoint:DocumentsLibraryName": "RequestDocuments",
+
+    "_comment_notifications": "Email addresses for group notifications",
+    "Notifications:LegalAdminEmail": "lw-legaladmin@company.com",
+    "Notifications:AttorneyAssignerEmail": "lw-attorneyassigner@company.com",
+    "Notifications:ComplianceEmail": "lw-compliance@company.com",
+    "Notifications:EnableDebugLogging": "false",
+
+    "_comment_permissions": "SharePoint group names for permission management",
+    "Permissions:SubmittersGroup": "LW - Submitters",
+    "Permissions:LegalAdminGroup": "LW - Legal Admin",
+    "Permissions:AttorneyAssignerGroup": "LW - Attorney Assigner",
+    "Permissions:AttorneysGroup": "LW - Attorneys",
+    "Permissions:ComplianceGroup": "LW - Compliance Users",
+    "Permissions:AdminGroup": "LW - Admin"
+  },
+  "Host": {
+    "LocalHttpPort": 7071,
+    "CORS": "*",
+    "CORSCredentials": false
+  }
+}
