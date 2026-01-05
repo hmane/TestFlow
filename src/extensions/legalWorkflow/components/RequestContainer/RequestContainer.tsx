@@ -16,7 +16,7 @@
 import * as React from 'react';
 
 // Fluent UI - tree-shaken imports
-import { DefaultButton, IconButton, PrimaryButton } from '@fluentui/react/lib/Button';
+import { IconButton } from '@fluentui/react/lib/Button';
 import { Icon } from '@fluentui/react/lib/Icon';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
@@ -143,6 +143,10 @@ export interface IRequestFormProps {
   itemId?: number;
   renderApprovalsAndActions?: boolean;
   children?: React.ReactNode;
+  /** Callback when save completes successfully (for edit mode) */
+  onSaveComplete?: () => void;
+  /** If true, enables edit mode with integrated save button */
+  isEditMode?: boolean;
 }
 
 /**
@@ -619,17 +623,18 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
       return <div />;
     }
 
-    // Editing request info - show the full form with approvals
+    // Editing request info - show the full form with approvals (no documents - managed separately)
+    // Pass isEditMode=true and onSaveComplete callback so RequestInfo handles the save
     if (isEditingRequestInfo && RequestFormComponent) {
       return (
         <WorkflowFormWrapper itemId={itemId}>
-          <RequestFormComponent itemId={itemId} renderApprovalsAndActions={false}>
-            <RequestApprovals />
-            <RequestDocuments itemId={itemId} />
-            <Stack horizontal horizontalAlign='end' tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: 16 } }}>
-              <DefaultButton text='Cancel' onClick={handleCloseEditRequestInfo} />
-              <PrimaryButton text='Save Changes' onClick={handleCloseEditRequestInfo} />
-            </Stack>
+          <RequestFormComponent
+            itemId={itemId}
+            renderApprovalsAndActions={false}
+            isEditMode={true}
+            onSaveComplete={handleCloseEditRequestInfo}
+          >
+            <RequestApprovals forceShow defaultExpanded />
           </RequestFormComponent>
         </WorkflowFormWrapper>
       );

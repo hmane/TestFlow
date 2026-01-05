@@ -137,6 +137,21 @@ export const NotificationProvider: React.FC<INotificationProviderProps> = ({
   }, []);
 
   /**
+   * Memoized context value to prevent unnecessary re-renders of consumers
+   */
+  const contextValue = React.useMemo<INotificationContext>(
+    () => ({
+      showNotification,
+      showSuccess,
+      showError,
+      showWarning,
+      showInfo,
+      clearAll,
+    }),
+    [showNotification, showSuccess, showError, showWarning, showInfo, clearAll]
+  );
+
+  /**
    * Get container position styles
    */
   const getPositionStyles = (): React.CSSProperties => {
@@ -164,16 +179,7 @@ export const NotificationProvider: React.FC<INotificationProviderProps> = ({
   };
 
   return (
-    <NotificationContext.Provider
-      value={{
-        showNotification,
-        showSuccess,
-        showError,
-        showWarning,
-        showInfo,
-        clearAll,
-      }}
-    >
+    <NotificationContext.Provider value={contextValue}>
       {children}
 
       {/* Toast notification container */}

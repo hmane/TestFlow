@@ -14,13 +14,18 @@
 import * as React from 'react';
 
 // Fluent UI - tree-shaken imports
+import { DefaultButton, PrimaryButton } from '@fluentui/react/lib/Button';
 import { Icon } from '@fluentui/react/lib/Icon';
+import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
 
 // spfx-toolkit - tree-shaken imports
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
-import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
+import { Card, Header, Content, Footer } from 'spfx-toolkit/lib/components/Card';
+
+// Notification context
+import { useNotification } from '@contexts/NotificationContext';
 
 // App imports using path aliases
 import { Lists } from '@sp/Lists';
@@ -72,7 +77,23 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
   }, [currentRequest]);
 
   // Get documents from store
-  const { documents, stagedFiles } = useDocumentsStore();
+  const {
+    documents,
+    stagedFiles,
+    filesToDelete,
+    filesToRename,
+    uploadPendingFiles,
+    deletePendingFiles,
+    renamePendingFiles,
+    loadDocuments,
+    clearPendingOperations,
+  } = useDocumentsStore();
+
+  // Get notification functions
+  const { showSuccess, showError } = useNotification();
+
+  // State for saving
+  const [isSaving, setIsSaving] = React.useState(false);
 
   // Check if there's an attachments validation error
   // The error is set on 'attachments' path via Zod superRefine in requestSchema.ts
@@ -188,6 +209,95 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
     [itemId]
   );
 
+  /**
+   * Check if there are pending document operations
+   */
+  const hasPendingOperations = React.useMemo(() => {
+    return stagedFiles.length > 0 || filesToDelete.length > 0 || filesToRename.length > 0;
+  }, [stagedFiles, filesToDelete, filesToRename]);
+
+  /**
+   * Determine if save button footer should be shown
+   * - Not in Draft (Draft has its own Save Draft button)
+   * - Not in Completed/Cancelled (no edits allowed)
+   * - Not read-only (user has permission)
+   * Save button is always visible but disabled when no pending changes
+   * Cancel button only appears when there are pending changes
+   */
+  const showSaveFooter = React.useMemo(() => {
+    // Don't show in Draft mode - main form handles saving
+    if (!status || status === RequestStatus.Draft) {
+      return false;
+    }
+
+    // Don't show in terminal states
+    if (
+      status === RequestStatus.Completed ||
+      status === RequestStatus.Cancelled
+    ) {
+      return false;
+    }
+
+    // Don't show if read-only (no permission)
+    if (isReadOnly) {
+      return false;
+    }
+
+    return true;
+  }, [status, isReadOnly]);
+
+  /**
+   * Handle save document changes
+   */
+  const handleSaveDocuments = React.useCallback(async (): Promise<void> => {
+    if (!itemId) {
+      showError?.('Cannot save: No request ID');
+      return;
+    }
+
+    setIsSaving(true);
+    SPContext.logger.info('RequestDocuments: Saving document changes', { itemId });
+
+    try {
+      // Upload staged files
+      if (stagedFiles.length > 0) {
+        await uploadPendingFiles(itemId, (fileId, progress, uploadStatus) => {
+          SPContext.logger.info('Upload progress', { fileId, progress, status: uploadStatus });
+        });
+      }
+
+      // Process renames
+      if (filesToRename.length > 0) {
+        await renamePendingFiles();
+      }
+
+      // Process deletions
+      if (filesToDelete.length > 0) {
+        await deletePendingFiles();
+      }
+
+      // Reload documents to refresh the view
+      await loadDocuments(itemId, true);
+
+      showSuccess?.('Attachments saved successfully!');
+      SPContext.logger.success('RequestDocuments: Document changes saved', { itemId });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to save attachments';
+      showError?.(message);
+      SPContext.logger.error('RequestDocuments: Save failed', error, { itemId });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [itemId, stagedFiles, filesToRename, filesToDelete, uploadPendingFiles, renamePendingFiles, deletePendingFiles, loadDocuments, showSuccess, showError]);
+
+  /**
+   * Handle cancel - discard all pending changes
+   */
+  const handleCancelChanges = React.useCallback((): void => {
+    clearPendingOperations();
+    SPContext.logger.info('RequestDocuments: Pending changes discarded');
+  }, [clearPendingOperations]);
+
   return (
     <Card
       id='attachments-card'
@@ -253,6 +363,32 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
           onError={handleError}
         />
       </Content>
+
+      {/* Save button always visible (disabled when no changes), Cancel only when there are changes */}
+      {showSaveFooter && (
+        <Footer>
+          <Stack horizontal horizontalAlign='end' tokens={{ childrenGap: 8 }}>
+            {hasPendingOperations && (
+              <DefaultButton
+                text='Cancel'
+                onClick={handleCancelChanges}
+                disabled={isSaving}
+                iconProps={{ iconName: 'Cancel' }}
+              />
+            )}
+            <PrimaryButton
+              onClick={handleSaveDocuments}
+              disabled={isSaving || !hasPendingOperations}
+              iconProps={{ iconName: 'Save' }}
+            >
+              {isSaving && (
+                <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />
+              )}
+              {isSaving ? 'Saving...' : 'Save Attachments'}
+            </PrimaryButton>
+          </Stack>
+        </Footer>
+      )}
     </Card>
   );
 };

@@ -352,6 +352,36 @@
     }
   }
 
+  // Prior submissions container
+  .summary-prior-submissions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0;
+  }
+
+  // Clickable prior submission link with hover card
+  .summary-prior-link {
+    color: #0078d4;
+    cursor: pointer;
+    text-decoration: none;
+    font-weight: 500;
+    padding: 2px 4px;
+    margin: -2px -4px;
+    border-radius: 4px;
+    transition: background-color 0.15s ease;
+
+    &:hover {
+      text-decoration: underline;
+      background-color: rgba(0, 120, 212, 0.08);
+    }
+
+    &:focus-visible {
+      outline: 2px solid #0078d4;
+      outline-offset: 1px;
+    }
+  }
+
   // Approvals list container
   .summary-approvals-list {
     display: grid;

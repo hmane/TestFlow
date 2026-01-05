@@ -1,12 +1,16 @@
 /**
  * RequestActions Component
  *
- * Action buttons container at the bottom of forms with enhanced UX.
+ * Global action buttons container at the bottom of forms with enhanced UX.
  * Features left/right button grouping, per-action loading states, and confirmation dialogs.
  *
+ * Note: Stage-specific actions (Legal Intake, Closeout) are now in their respective
+ * contextual card footers. This component handles global actions that apply across stages.
+ *
  * Features:
- * - Primary actions (Submit, Save as Draft) on the right
- * - Less frequent actions (Cancel, Put On Hold) on the left
+ * - Left section: Cancel Request, Put On Hold, Resume, Super Admin toggle
+ * - Right section: Submit Request, Save as Draft (Draft mode), Save (in-progress),
+ *   Complete Request (Foreside Documents), Close
  * - Visual progress indicators during actions
  * - Confirmation dialogs with reason capture
  * - All buttons disabled during any action
@@ -18,7 +22,6 @@ import * as React from 'react';
 // Fluent UI - tree-shaken imports
 import { DefaultButton, IconButton, PrimaryButton } from '@fluentui/react/lib/Button';
 import { Dialog, DialogFooter, DialogType } from '@fluentui/react/lib/Dialog';
-import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { TooltipHost } from '@fluentui/react/lib/Tooltip';
 
@@ -29,6 +32,7 @@ import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { LoadingOverlay } from '@components/LoadingOverlay/LoadingOverlay';
 import { ReasonDialog } from '@components/ReasonDialog/ReasonDialog';
 import { LoadingFallback } from '@components/LoadingFallback/LoadingFallback';
+import { ValidationErrorContainer } from '@components/ValidationErrorContainer';
 import { RequestStatus } from '@appTypes/workflowTypes';
 
 import type { IRequestActionsProps } from './types';
@@ -82,9 +86,6 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
     showCancel,
     showOnHold,
     showResume,
-    showAssignAttorney,
-    showSendToCommittee,
-    showCloseoutSubmit,
     showCompleteForesideDocuments,
 
     // Handlers
@@ -98,9 +99,6 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
     handleCancelRequestClick,
     handlePutOnHoldClick,
     handleResumeClick,
-    handleSendToCommitteeClick,
-    handleAssignAttorneyClick,
-    handleCloseoutClick,
     handleCompleteForesideDocumentsClick,
     handleReasonConfirm,
     handleReasonCancel,
@@ -111,58 +109,13 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
       tokens={{ childrenGap: 16 }}
       styles={{ root: { padding: '24px', width: '100%', margin: '0' } }}
     >
-      {/* Validation Errors Summary - displayed above action buttons (no dismiss button) */}
-      {sortedValidationErrors && sortedValidationErrors.length > 0 && (
-        <div
-          ref={errorContainerRef}
-          tabIndex={-1}
-          role='alert'
-          aria-live='assertive'
-          style={{ outline: 'none' }}
-        >
-          <MessageBar
-            messageBarType={MessageBarType.error}
-            isMultiline={true}
-            styles={{
-              root: {
-                marginBottom: '8px',
-                borderRadius: '4px',
-              },
-            }}
-          >
-            <Stack tokens={{ childrenGap: 4 }}>
-              <span style={{ fontWeight: 600 }}>
-                Please fix the following errors before continuing:
-              </span>
-              <ul style={{ margin: '8px 0 0 0', paddingLeft: '20px' }}>
-                {sortedValidationErrors.map((error, index) => (
-                  <li key={`error-${index}`} style={{ marginBottom: '4px' }}>
-                    <button
-                      type='button'
-                      onClick={() => scrollToField(error.field)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        padding: 0,
-                        margin: 0,
-                        font: 'inherit',
-                        fontWeight: 600,
-                        color: '#0078d4',
-                        cursor: 'pointer',
-                        textDecoration: 'underline',
-                      }}
-                      aria-label={`Go to ${getFieldLabel(error.field)} field`}
-                    >
-                      {getFieldLabel(error.field)}
-                    </button>
-                    : {error.message}
-                  </li>
-                ))}
-              </ul>
-            </Stack>
-          </MessageBar>
-        </div>
-      )}
+      {/* Validation Errors Summary - displayed above action buttons */}
+      <ValidationErrorContainer
+        ref={errorContainerRef}
+        errors={sortedValidationErrors}
+        onScrollToField={scrollToField}
+        getFieldLabel={getFieldLabel}
+      />
 
       <div className='request-actions__container'>
         {/* Two-section layout: Left (less frequent) and Right (primary actions) */}
@@ -246,60 +199,6 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
                 styles={{
                   root: {
                     minWidth: '120px',
-                    height: '44px',
-                    borderRadius: '4px',
-                  },
-                }}
-              />
-            )}
-
-            {/* Submit to Assign Attorney button - Legal Intake only */}
-            {showSendToCommittee && (
-              <DefaultButton
-                text='Submit to Assign Attorney'
-                iconProps={{ iconName: 'Group' }}
-                onClick={handleSendToCommitteeClick}
-                disabled={isAnyActionInProgress}
-                ariaLabel='Submit to committee for attorney assignment'
-                styles={{
-                  root: {
-                    minWidth: '180px',
-                    height: '44px',
-                    borderRadius: '4px',
-                  },
-                }}
-              />
-            )}
-
-            {/* Assign Attorney button - Legal Intake and Assign Attorney status */}
-            {showAssignAttorney && (
-              <PrimaryButton
-                text='Assign Attorney'
-                iconProps={{ iconName: 'UserFollowed' }}
-                onClick={handleAssignAttorneyClick}
-                disabled={isAnyActionInProgress}
-                ariaLabel='Assign attorney to this request'
-                styles={{
-                  root: {
-                    minWidth: '160px',
-                    height: '44px',
-                    borderRadius: '4px',
-                  },
-                }}
-              />
-            )}
-
-            {/* Closeout Submit button - Closeout status only */}
-            {showCloseoutSubmit && (
-              <PrimaryButton
-                text='Complete Closeout'
-                iconProps={{ iconName: 'Completed' }}
-                onClick={handleCloseoutClick}
-                disabled={isAnyActionInProgress}
-                ariaLabel='Complete the closeout process'
-                styles={{
-                  root: {
-                    minWidth: '160px',
                     height: '44px',
                     borderRadius: '4px',
                   },

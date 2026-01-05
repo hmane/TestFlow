@@ -18,7 +18,10 @@ import * as React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 
 // Context imports for validation error syncing
-import { useRequestFormContext } from '@contexts/RequestFormContext';
+import { useRequestFormContextSafe } from '@contexts/RequestFormContext';
+
+// Import the read-only summary component (extracted to avoid hook issues)
+import { LegalIntakeSummary } from './LegalIntakeSummary';
 
 // Fluent UI - tree-shaken imports
 import { DefaultButton, IconButton, PrimaryButton } from '@fluentui/react/lib/Button';
@@ -30,7 +33,7 @@ import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
 
 // spfx-toolkit - tree-shaken imports
-import { Card, Content, Header } from 'spfx-toolkit/lib/components/Card';
+import { Card, Content, Footer, Header } from 'spfx-toolkit/lib/components/Card';
 import { SPTextField, SPTextFieldMode } from 'spfx-toolkit/lib/components/spFields';
 import {
   FormContainer,
@@ -41,8 +44,10 @@ import {
 } from 'spfx-toolkit/lib/components/spForm';
 import { GroupUsersPicker } from 'spfx-toolkit/lib/components/spForm/customComponents';
 import { UserPersona } from 'spfx-toolkit/lib/components/UserPersona';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 
 // App imports using path aliases
+import { ValidationErrorContainer } from '@components/ValidationErrorContainer';
 import { WorkflowCardHeader } from '@components/WorkflowCardHeader';
 import { usePermissions } from '@hooks/usePermissions';
 import { saveRequest } from '@services/requestSaveService';
@@ -85,22 +90,41 @@ export interface ILegalIntakeFormProps {
 }
 
 /**
- * LegalIntakeForm Component
+ * LegalIntakeFormEditable - Internal component with all form hooks
+ * Separated to allow conditional rendering without violating React hook rules
+ * Defined BEFORE LegalIntakeForm to satisfy ESLint's define-before-use rule
  */
-export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
-  defaultExpanded = true,
-  readOnly = false,
+interface ILegalIntakeFormEditableProps {
+  defaultExpanded: boolean;
+  readOnly: boolean;
+  isEditMode: boolean;
+  setIsEditMode: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
+  defaultExpanded,
+  readOnly,
+  isEditMode,
+  setIsEditMode,
 }) => {
-  const { currentRequest, isLoading } = useRequestStore();
+  const {
+    currentRequest,
+    isLoading,
+    assignAttorney: storeAssignAttorney,
+    sendToCommittee: storeSendToCommittee,
+  } = useRequestStore();
+
   const permissions = usePermissions();
+
   const [showSuccess, setShowSuccess] = React.useState<boolean>(false);
   const [messageBarError, setMessageBarError] = React.useState<string | undefined>(undefined);
 
-  // Edit mode state - allows admin/legal admin to modify completed Legal Intake
-  const [isEditMode, setIsEditMode] = React.useState<boolean>(false);
+  // Saving state for edit mode
   const [isSaving, setIsSaving] = React.useState<boolean>(false);
-  // Track when form is ready after reset to prevent GroupUsersPicker mounting with stale values
-  const [isFormReady, setIsFormReady] = React.useState<boolean>(false);
+
+  // Action button states
+  const [isAssigning, setIsAssigning] = React.useState<boolean>(false);
+  const [isSendingToCommittee, setIsSendingToCommittee] = React.useState<boolean>(false);
 
   // Check if user can edit review audience (Legal Admin or Admin only)
   // Disable editing after reviews are completed (Closeout, Completed, or AwaitingForesideDocuments)
@@ -153,38 +177,53 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
     reValidateMode: 'onChange',
   });
 
-  // Track if we've already processed the edit mode transition to prevent re-runs
-  const hasInitializedEditMode = React.useRef(false);
+  // Track if we've done initial reset for edit mode
+  const hasInitializedRef = React.useRef(false);
 
-  // Reset form values when entering edit mode to ensure attorney is selected
-  // Only run once when isEditMode transitions to true
+  // Reset form values when in edit mode - handles both initial mount and transitions
   React.useEffect(() => {
-    if (isEditMode && currentRequest && !hasInitializedEditMode.current) {
-      hasInitializedEditMode.current = true;
+    SPContext.logger.info('LegalIntakeForm: Edit mode effect running', {
+      isEditMode,
+      hasCurrentRequest: !!currentRequest,
+      hasInitialized: hasInitializedRef.current,
+      attorneyFromRequest: currentRequest?.attorney,
+    });
 
+    // When in edit mode and we haven't initialized yet, reset the form with current values
+    if (isEditMode && currentRequest && !hasInitializedRef.current) {
+      hasInitializedRef.current = true;
       // Reset form with current request values, normalizing attorney ID for picker
+      const normalizedAttorney = normalizeAttorneyForPicker(currentRequest.attorney);
+      SPContext.logger.info('LegalIntakeForm: Resetting form with attorney', {
+        originalAttorney: currentRequest.attorney,
+        normalizedAttorney,
+      });
       reset({
-        attorney: normalizeAttorneyForPicker(currentRequest.attorney),
+        attorney: normalizedAttorney,
         attorneyAssignNotes: undefined, // Start fresh for new notes
         reviewAudience: currentRequest.reviewAudience || ReviewAudience.Both,
       });
-
-      // Mark form as ready after reset
-      setIsFormReady(true);
-    } else if (!isEditMode) {
-      // Reset the flag when exiting edit mode
-      hasInitializedEditMode.current = false;
-      setIsFormReady(false);
+    }
+    // Reset the flag when exiting edit mode so it can initialize again next time
+    if (!isEditMode) {
+      hasInitializedRef.current = false;
     }
   }, [isEditMode, currentRequest, reset, normalizeAttorneyForPicker]);
 
   // Get validation errors from RequestFormContext (set by RequestActions during Zod validation)
-  const { validationErrors: contextValidationErrors } = useRequestFormContext();
+  // Use the safe version that returns undefined if context is not available
+  // This avoids React Error #300 when rendered in read-only mode outside of RequestFormProvider
+  const formContext = useRequestFormContextSafe();
+  const contextValidationErrors = formContext?.validationErrors ?? [];
 
   // Sync validation errors from RequestFormContext to React Hook Form
   // This allows FormItem components to display field-level errors via autoShowErrors
   // The RequestActions component also shows a summary list with navigation links
+  // Skip in read-only mode - no validation needed for display-only
   React.useEffect(() => {
+    // Skip in read-only mode
+    if (readOnly) return;
+
     // Clear previous errors for Legal Intake fields
     clearErrors(['attorney', 'attorneyAssignNotes', 'reviewAudience']);
 
@@ -198,7 +237,27 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
         }
       });
     }
-  }, [contextValidationErrors, setFormError, clearErrors]);
+  }, [contextValidationErrors, setFormError, clearErrors, readOnly]);
+
+  // Filter validation errors to only show Legal Intake related fields
+  const legalIntakeFields = ['attorney', 'attorneyAssignNotes', 'reviewAudience'];
+  const legalIntakeValidationErrors = React.useMemo(() => {
+    return contextValidationErrors.filter(error => legalIntakeFields.includes(error.field));
+  }, [contextValidationErrors]);
+
+  // Scroll to field handler for validation errors
+  const handleScrollToField = React.useCallback((fieldName: string) => {
+    const element = document.querySelector(`[data-field-name="${fieldName}"]`) ||
+      document.getElementById(`legal-intake-${fieldName}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Try to focus the input
+      const focusable = element.querySelector('input, textarea, select, [tabindex]:not([tabindex="-1"])') as HTMLElement;
+      if (focusable) {
+        focusable.focus();
+      }
+    }
+  }, []);
 
   // Watch all fields for sync with store
   const attorneyValue = watch('attorney');
@@ -212,13 +271,17 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
 
   // Sync form changes to the legal intake store in a single batch update
   // This prevents multiple re-renders from separate store updates
+  // Skip in read-only mode - store sync is only needed for editable forms
   React.useEffect(() => {
+    // Skip in read-only mode - the summary view doesn't need store sync
+    if (readOnly) return;
+
     setLegalIntakeValues({
       selectedAttorney,
       assignmentNotes: notesValue,
       reviewAudience: reviewAudienceValue,
     });
-  }, [selectedAttorney, notesValue, reviewAudienceValue, setLegalIntakeValues]);
+  }, [selectedAttorney, notesValue, reviewAudienceValue, setLegalIntakeValues, readOnly]);
 
   // Get the loadRequest function from the store to refresh data after save
   const { loadRequest } = useRequestStore();
@@ -287,6 +350,63 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
     setIsEditMode(false);
   };
 
+  /**
+   * Handle Assign Attorney button click
+   */
+  const handleAssignAttorney = React.useCallback(async (): Promise<void> => {
+    if (!selectedAttorney) {
+      setMessageBarError('Please select an attorney to assign');
+      return;
+    }
+
+    setIsAssigning(true);
+    setMessageBarError(undefined);
+
+    try {
+      // Pass review audience to save Legal Admin's override
+      await storeAssignAttorney(selectedAttorney, notesValue, reviewAudienceValue);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to assign attorney';
+      setMessageBarError(errorMessage);
+    } finally {
+      setIsAssigning(false);
+    }
+  }, [selectedAttorney, notesValue, reviewAudienceValue, storeAssignAttorney]);
+
+  /**
+   * Handle Send to Committee button click
+   */
+  const handleSendToCommittee = React.useCallback(async (): Promise<void> => {
+    setIsSendingToCommittee(true);
+    setMessageBarError(undefined);
+
+    try {
+      // Pass review audience to save Legal Admin's override
+      await storeSendToCommittee(notesValue, reviewAudienceValue);
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to send to committee';
+      setMessageBarError(errorMessage);
+    } finally {
+      setIsSendingToCommittee(false);
+    }
+  }, [notesValue, reviewAudienceValue, storeSendToCommittee]);
+
+  /**
+   * Check if current user can perform legal intake actions
+   */
+  const canPerformLegalIntakeActions = React.useMemo(() => {
+    // Only show action buttons in Legal Intake status
+    if (currentRequest?.status !== RequestStatus.LegalIntake) {
+      return false;
+    }
+    // Legal Admin or Admin can perform actions
+    return permissions.isLegalAdmin || permissions.isAdmin;
+  }, [currentRequest?.status, permissions.isLegalAdmin, permissions.isAdmin]);
+
   if (!currentRequest) {
     return null;
   }
@@ -298,28 +418,7 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
     const completedDate = currentRequest.submittedForReviewOn;
 
     // In edit mode, show editable fields; otherwise show read-only summary
-    // Wait for form to be ready before rendering GroupUsersPicker to ensure it gets correct values
     if (isEditMode && canEditReviewAudience) {
-      if (!isFormReady) {
-        return (
-          <Card
-            id='legal-intake-loading-card'
-            className='legal-intake-card legal-intake-card--loading'
-            allowExpand={false}
-            defaultExpanded={true}
-          >
-            <Header size='regular'>
-              <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
-                <Spinner size={SpinnerSize.small} />
-                <Text variant='large' styles={{ root: { fontWeight: 600, color: '#323130' } }}>
-                  Loading Edit Form...
-                </Text>
-              </Stack>
-            </Header>
-          </Card>
-        );
-      }
-
       return (
         <FormProvider control={control as any} autoShowErrors={true}>
           <Card
@@ -531,106 +630,108 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
     }, [currentRequest.submittedOn, completedDate]);
 
     return (
-      <Card
-        id='legal-intake-summary-card'
-        className='legal-intake-card legal-intake-card--completed'
-        allowExpand={true}
-        defaultExpanded={defaultExpanded}
-      >
-        <Header size='regular'>
-          <WorkflowCardHeader
-            title='Legal Intake'
-            status='completed'
-            startedOn={currentRequest.submittedOn}
-            completedOn={completedDate}
-            completedBy={
-              completedBy?.title
-                ? { title: completedBy.title, email: completedBy.email }
-                : undefined
-            }
-            attorney={
-              assignedAttorney?.title
-                ? { title: assignedAttorney.title, email: assignedAttorney.email }
-                : undefined
-            }
-            durationMinutes={durationMinutes}
-            actions={
-              canEditReviewAudience ? (
-                <IconButton
-                  iconProps={{ iconName: 'Edit' }}
-                  title='Edit Legal Intake'
-                  ariaLabel='Edit Legal Intake'
-                  onClick={() => setIsEditMode(true)}
-                  styles={{
-                    root: {
-                      color: '#0078d4',
-                      backgroundColor: 'transparent',
-                      ':hover': {
-                        backgroundColor: '#f3f2f1',
+      <FormProvider control={control as any} autoShowErrors={false}>
+        <Card
+          id='legal-intake-summary-card'
+          className='legal-intake-card legal-intake-card--completed'
+          allowExpand={true}
+          defaultExpanded={defaultExpanded}
+        >
+          <Header size='regular'>
+            <WorkflowCardHeader
+              title='Legal Intake'
+              status='completed'
+              startedOn={currentRequest.submittedOn}
+              completedOn={completedDate}
+              completedBy={
+                completedBy?.title
+                  ? { title: completedBy.title, email: completedBy.email }
+                  : undefined
+              }
+              attorney={
+                assignedAttorney?.title
+                  ? { title: assignedAttorney.title, email: assignedAttorney.email }
+                  : undefined
+              }
+              durationMinutes={durationMinutes}
+              actions={
+                canEditReviewAudience ? (
+                  <IconButton
+                    iconProps={{ iconName: 'Edit' }}
+                    title='Edit Legal Intake'
+                    ariaLabel='Edit Legal Intake'
+                    onClick={() => setIsEditMode(true)}
+                    styles={{
+                      root: {
+                        color: '#0078d4',
+                        backgroundColor: 'transparent',
+                        ':hover': {
+                          backgroundColor: '#f3f2f1',
+                        },
                       },
-                    },
-                  }}
-                />
-              ) : undefined
-            }
-          />
-        </Header>
+                    }}
+                  />
+                ) : undefined
+              }
+            />
+          </Header>
 
-        <Content padding='comfortable'>
-          <Stack tokens={{ childrenGap: 16 }}>
-            <FormContainer labelWidth='180px'>
-              <FormItem>
-                <FormLabel>Assigned Attorney</FormLabel>
-                <FormValue>
-                  {assignedAttorney?.email ? (
-                    <UserPersona
-                      userIdentifier={assignedAttorney.email}
-                      displayName={assignedAttorney.title}
-                      email={assignedAttorney.email}
-                      size={32}
-                      displayMode='avatarAndName'
-                      showSecondaryText={false}
-                    />
-                  ) : (
-                    <Text styles={{ root: { color: '#605e5c', fontStyle: 'italic' } }}>
-                      Not assigned
-                    </Text>
-                  )}
-                </FormValue>
-              </FormItem>
+          <Content padding='comfortable'>
+            <Stack tokens={{ childrenGap: 16 }}>
+              <FormContainer labelWidth='180px'>
+                <FormItem>
+                  <FormLabel>Assigned Attorney</FormLabel>
+                  <FormValue>
+                    {assignedAttorney?.email ? (
+                      <UserPersona
+                        userIdentifier={assignedAttorney.email}
+                        displayName={assignedAttorney.title}
+                        email={assignedAttorney.email}
+                        size={32}
+                        displayMode='avatarAndName'
+                        showSecondaryText={false}
+                      />
+                    ) : (
+                      <Text styles={{ root: { color: '#605e5c', fontStyle: 'italic' } }}>
+                        Not assigned
+                      </Text>
+                    )}
+                  </FormValue>
+                </FormItem>
 
-              <FormItem>
-                <FormLabel>Review Audience</FormLabel>
-                <FormValue>
-                  <Text>{currentRequest.reviewAudience || 'Both'}</Text>
-                </FormValue>
-              </FormItem>
+                <FormItem>
+                  <FormLabel>Review Audience</FormLabel>
+                  <FormValue>
+                    <Text>{currentRequest.reviewAudience || 'Both'}</Text>
+                  </FormValue>
+                </FormItem>
 
-              <FormItem>
-                <FormLabel>Assignment Notes</FormLabel>
-                <SPTextField
-                  mode={SPTextFieldMode.MultiLine}
-                  rows={3}
-                  appendOnly
-                  itemId={currentRequest.id}
-                  listNameOrId='Requests'
-                  fieldInternalName='AttorneyAssignNotes'
-                  readOnly={true}
-                  stylingMode='outlined'
-                  historyConfig={{
-                    initialDisplayCount: 10,
-                    showUserPhoto: true,
-                    timeFormat: 'both',
-                    showLoadMore: true,
-                    historyTitle: 'Notes History',
-                    emptyHistoryMessage: 'No notes have been added yet',
-                  }}
-                />
-              </FormItem>
-            </FormContainer>
-          </Stack>
-        </Content>
-      </Card>
+                <FormItem>
+                  <FormLabel>Assignment Notes</FormLabel>
+                  <SPTextField
+                    mode={SPTextFieldMode.MultiLine}
+                    rows={3}
+                    appendOnly
+                    itemId={currentRequest.id}
+                    listNameOrId='Requests'
+                    fieldInternalName='AttorneyAssignNotes'
+                    readOnly={true}
+                    stylingMode='outlined'
+                    historyConfig={{
+                      initialDisplayCount: 10,
+                      showUserPhoto: true,
+                      timeFormat: 'both',
+                      showLoadMore: true,
+                      historyTitle: 'Notes History',
+                      emptyHistoryMessage: 'No notes have been added yet',
+                    }}
+                  />
+                </FormItem>
+              </FormContainer>
+            </Stack>
+          </Content>
+        </Card>
+      </FormProvider>
     );
   }
 
@@ -657,33 +758,6 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
 
         <Content padding='comfortable'>
           <Stack tokens={{ childrenGap: 20 }}>
-            {/* Success message */}
-            {showSuccess && (
-              <MessageBar
-                messageBarType={MessageBarType.success}
-                isMultiline={false}
-                onDismiss={() => setShowSuccess(false)}
-                styles={{ root: { borderRadius: '4px' } }}
-              >
-                <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
-                  <Icon iconName='Completed' />
-                  <Text>Changes saved successfully!</Text>
-                </Stack>
-              </MessageBar>
-            )}
-
-            {/* Error message */}
-            {messageBarError && (
-              <MessageBar
-                messageBarType={MessageBarType.error}
-                isMultiline={true}
-                onDismiss={() => setMessageBarError(undefined)}
-                styles={{ root: { borderRadius: '4px' } }}
-              >
-                {messageBarError}
-              </MessageBar>
-            )}
-
             {/* Attorney Assignment Form */}
             <FormContainer labelWidth='200px'>
               {/* Review Audience - editable by Legal Admin only */}
@@ -778,16 +852,118 @@ export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
               </FormItem>
             </FormContainer>
 
-            {/* Guidance text */}
-            <Text variant='small' styles={{ root: { color: '#605e5c', fontStyle: 'italic' } }}>
-              {selectedAttorney
-                ? 'Attorney selected. Use the action buttons below to proceed.'
-                : 'Select an attorney above, or use "Submit to Assign Attorney" below to send to committee.'}
-            </Text>
+            {/* Validation errors - at the end of content */}
+            <ValidationErrorContainer
+              errors={legalIntakeValidationErrors}
+              onScrollToField={handleScrollToField}
+              filterFields={legalIntakeFields}
+            />
           </Stack>
         </Content>
+
+        {/* Action buttons in footer - only shown for Legal Admin/Admin in Legal Intake status */}
+        {canPerformLegalIntakeActions && (
+          <Footer>
+            <Stack tokens={{ childrenGap: 12 }}>
+              {/* Success message - just above buttons */}
+              {showSuccess && (
+                <MessageBar
+                  messageBarType={MessageBarType.success}
+                  isMultiline={false}
+                  onDismiss={() => setShowSuccess(false)}
+                  styles={{ root: { borderRadius: '4px' } }}
+                >
+                  <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
+                    <Icon iconName='Completed' />
+                    <Text>Changes saved successfully!</Text>
+                  </Stack>
+                </MessageBar>
+              )}
+
+              {/* Local error message - just above buttons */}
+              {messageBarError && (
+                <MessageBar
+                  messageBarType={MessageBarType.error}
+                  isMultiline={true}
+                  onDismiss={() => setMessageBarError(undefined)}
+                  styles={{ root: { borderRadius: '4px' } }}
+                >
+                  {messageBarError}
+                </MessageBar>
+              )}
+
+              <Stack horizontal horizontalAlign='space-between' verticalAlign='center' styles={{ root: { width: '100%' } }}>
+              <Text variant='small' styles={{ root: { color: '#605e5c', fontStyle: 'italic' } }}>
+                {selectedAttorney
+                  ? 'Attorney selected. Click "Assign Attorney" to proceed.'
+                  : 'Select an attorney, or click "Submit to Assign Attorney" to send to committee.'}
+              </Text>
+              <Stack horizontal tokens={{ childrenGap: 8 }}>
+                <DefaultButton
+                  text={isSendingToCommittee ? 'Sending...' : 'Submit to Assign Attorney'}
+                  onClick={handleSendToCommittee}
+                  disabled={isAssigning || isSendingToCommittee || isLoading}
+                  iconProps={{ iconName: 'Group' }}
+                />
+                <PrimaryButton
+                  onClick={handleAssignAttorney}
+                  disabled={!selectedAttorney || isAssigning || isSendingToCommittee || isLoading}
+                  iconProps={{ iconName: 'AddFriend' }}
+                >
+                  {isAssigning && (
+                    <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />
+                  )}
+                  {isAssigning ? 'Assigning...' : 'Assign Attorney'}
+                </PrimaryButton>
+              </Stack>
+              </Stack>
+            </Stack>
+          </Footer>
+        )}
       </Card>
     </FormProvider>
+  );
+};
+
+/**
+ * LegalIntakeForm Component
+ *
+ * Main exported component that delegates to either:
+ * - LegalIntakeSummary (for read-only mode without edit)
+ * - LegalIntakeFormEditable (for editable mode or edit mode within read-only)
+ *
+ * This separation avoids React Error #300 by not calling form hooks
+ * when rendering in pure read-only mode inside WorkflowFormWrapper.
+ */
+export const LegalIntakeForm: React.FC<ILegalIntakeFormProps> = ({
+  defaultExpanded = true,
+  readOnly = false,
+}) => {
+  // For read-only mode, use the simplified LegalIntakeSummary component
+  // This avoids React Hook issues when rendering inside WorkflowFormWrapper
+  // The summary component doesn't use useForm or form-related hooks
+  const [isEditMode, setIsEditMode] = React.useState<boolean>(false);
+
+  // If read-only and NOT in edit mode, render the simplified summary component
+  // This early return avoids all the form-related hooks that cause React Error #300
+  if (readOnly && !isEditMode) {
+    return (
+      <LegalIntakeSummary
+        defaultExpanded={defaultExpanded}
+        onEditClick={() => setIsEditMode(true)}
+      />
+    );
+  }
+
+  // From here on, we're in editable mode (either !readOnly or isEditMode)
+  // Safe to use all form hooks
+  return (
+    <LegalIntakeFormEditable
+      defaultExpanded={defaultExpanded}
+      readOnly={readOnly}
+      isEditMode={isEditMode}
+      setIsEditMode={setIsEditMode}
+    />
   );
 };
 

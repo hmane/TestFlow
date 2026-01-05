@@ -80,7 +80,7 @@ export interface IRequestCacheOptions {
 /**
  * Request cache instance
  */
-class RequestCache {
+export class RequestCache {
   private cache: Map<string, ICachedRequest<unknown>> = new Map();
   private options: Required<IRequestCacheOptions>;
   private cleanupInterval: number | null = null;

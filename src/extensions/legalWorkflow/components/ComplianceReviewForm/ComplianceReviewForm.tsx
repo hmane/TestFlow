@@ -40,10 +40,12 @@ import {
 } from 'spfx-toolkit/lib/components/spFields';
 
 // App imports using path aliases
+import { ValidationErrorContainer } from '@components/ValidationErrorContainer';
 import {
   WorkflowCardHeader,
   type ReviewOutcome as HeaderReviewOutcome,
 } from '@components/WorkflowCardHeader';
+import { useRequestFormContextSafe } from '@contexts/RequestFormContext';
 import { useRequestStore, useRequestActions } from '@stores/requestStore';
 import { usePermissions } from '@hooks/usePermissions';
 import {
@@ -152,6 +154,39 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
   const [historyRefreshKey, setHistoryRefreshKey] = React.useState<number>(0);
   // State for resubmit action
   const [isResubmitting, setIsResubmitting] = React.useState<boolean>(false);
+  // Refs for tracking setTimeout IDs to prevent memory leaks
+  const timeoutRefs = React.useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+
+  // Get validation errors from RequestFormContext
+  const formContext = useRequestFormContextSafe();
+  const contextValidationErrors = formContext?.validationErrors ?? [];
+
+  // Filter validation errors to only show Compliance Review related fields
+  const complianceReviewFields = ['complianceReviewOutcome', 'complianceReviewNotes', 'isForesideReviewRequired', 'isRetailUse'];
+  const complianceReviewValidationErrors = React.useMemo(() => {
+    return contextValidationErrors.filter(err => complianceReviewFields.includes(err.field));
+  }, [contextValidationErrors]);
+
+  // Scroll to field handler for validation errors
+  const handleScrollToField = React.useCallback((fieldName: string) => {
+    const element = document.querySelector(`[data-field-name="${fieldName}"]`) ||
+      document.getElementById(`compliance-review-${fieldName}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const focusable = element.querySelector('input, textarea, select, [tabindex]:not([tabindex="-1"])') as HTMLElement;
+      if (focusable) {
+        focusable.focus();
+      }
+    }
+  }, []);
+
+  // Cleanup all pending timeouts on unmount
+  React.useEffect(() => {
+    return () => {
+      timeoutRefs.current.forEach((id) => clearTimeout(id));
+      timeoutRefs.current.clear();
+    };
+  }, []);
 
   // React Hook Form setup
   const {
@@ -235,12 +270,18 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
 
       // Increment key to force NoteHistory refresh after a short delay
       // Delay allows SharePoint to create the version before we fetch it
-      setTimeout(() => {
+      const refreshTimeoutId = setTimeout(() => {
+        timeoutRefs.current.delete(refreshTimeoutId);
         setHistoryRefreshKey((prev) => prev + 1);
       }, 500);
+      timeoutRefs.current.add(refreshTimeoutId);
 
       setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 5000);
+      const successTimeoutId = setTimeout(() => {
+        timeoutRefs.current.delete(successTimeoutId);
+        setShowSuccess(false);
+      }, 5000);
+      timeoutRefs.current.add(successTimeoutId);
       SPContext.logger.success('ComplianceReviewForm: Review submitted successfully');
     } catch (submitError: unknown) {
       const errorMessage = submitError instanceof Error ? submitError.message : 'Failed to submit review';
@@ -293,12 +334,18 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
 
       // Increment key to force NoteHistory refresh after a short delay
       // Delay allows SharePoint to create the version before we fetch it
-      setTimeout(() => {
+      const refreshTimeoutId2 = setTimeout(() => {
+        timeoutRefs.current.delete(refreshTimeoutId2);
         setHistoryRefreshKey((prev) => prev + 1);
       }, 500);
+      timeoutRefs.current.add(refreshTimeoutId2);
 
       setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
+      const successTimeoutId2 = setTimeout(() => {
+        timeoutRefs.current.delete(successTimeoutId2);
+        setShowSuccess(false);
+      }, 3000);
+      timeoutRefs.current.add(successTimeoutId2);
       SPContext.logger.success('ComplianceReviewForm: Progress saved');
     } catch (saveError: unknown) {
       const errorMessage = saveError instanceof Error ? saveError.message : 'Failed to save progress';
@@ -356,12 +403,18 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
 
       // Increment key to force NoteHistory refresh after a short delay
       // Delay allows SharePoint to create the version before we fetch it
-      setTimeout(() => {
+      const refreshTimeoutId3 = setTimeout(() => {
+        timeoutRefs.current.delete(refreshTimeoutId3);
         setHistoryRefreshKey((prev) => prev + 1);
       }, 500);
+      timeoutRefs.current.add(refreshTimeoutId3);
 
       setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 5000);
+      const successTimeoutId3 = setTimeout(() => {
+        timeoutRefs.current.delete(successTimeoutId3);
+        setShowSuccess(false);
+      }, 5000);
+      timeoutRefs.current.add(successTimeoutId3);
       SPContext.logger.success('ComplianceReviewForm: Request resubmitted for review');
     } catch (resubmitError: unknown) {
       const errorMessage =
@@ -774,6 +827,12 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                     />
                   </FormItem>
                 </FormContainer>
+              {/* Validation errors - at the end of content */}
+              <ValidationErrorContainer
+                errors={complianceReviewValidationErrors}
+                onScrollToField={handleScrollToField}
+                filterFields={complianceReviewFields}
+              />
               </Stack>
             </form>
           )}
@@ -782,13 +841,13 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
 
       {/* Card Footer with action buttons for all in-progress states */}
       <Footer borderTop padding='comfortable'>
-        <Stack
-          horizontal
-          tokens={{ childrenGap: 12 }}
-          horizontalAlign={reviewStatus === ComplianceReviewStatus.WaitingOnSubmitter ? 'space-between' : 'end'}
-          verticalAlign='center'
-          wrap
-        >
+          <Stack
+            horizontal
+            tokens={{ childrenGap: 12 }}
+            horizontalAlign={reviewStatus === ComplianceReviewStatus.WaitingOnSubmitter ? 'space-between' : 'end'}
+            verticalAlign='center'
+            wrap
+          >
           {/* Submitter actions - only for WaitingOnSubmitter state */}
           {reviewStatus === ComplianceReviewStatus.WaitingOnSubmitter && (
             <Stack horizontal tokens={{ childrenGap: 12 }}>
@@ -835,7 +894,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
               />
             </Stack>
           )}
-        </Stack>
+          </Stack>
       </Footer>
     </Card>
   );

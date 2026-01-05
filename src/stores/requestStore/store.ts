@@ -490,7 +490,7 @@ export const useRequestStore = create<IRequestState>()(
        * Assign attorney (direct assignment)
        * Uses dedicated workflow action - only updates attorney and status fields
        */
-      assignAttorney: async (attorney: IPrincipal, notes?: string): Promise<void> => {
+      assignAttorney: async (attorney: IPrincipal, notes?: string, reviewAudience?: ReviewAudience): Promise<void> => {
         const state = get();
 
         if (!state.itemId) {
@@ -500,6 +500,7 @@ export const useRequestStore = create<IRequestState>()(
         const result = await assignAttorneyAction(state.itemId, {
           attorney,
           notes,
+          reviewAudience,
         });
 
         set({
@@ -519,14 +520,14 @@ export const useRequestStore = create<IRequestState>()(
        * Send to committee for attorney assignment
        * Uses dedicated workflow action - only updates status and committee fields
        */
-      sendToCommittee: async (notes?: string): Promise<void> => {
+      sendToCommittee: async (notes?: string, reviewAudience?: ReviewAudience): Promise<void> => {
         const state = get();
 
         if (!state.itemId) {
           throw new Error('Cannot send to committee - no item ID');
         }
 
-        const result = await sendToCommitteeAction(state.itemId, { notes });
+        const result = await sendToCommitteeAction(state.itemId, { notes, reviewAudience });
 
         set({
           currentRequest: result.updatedRequest,

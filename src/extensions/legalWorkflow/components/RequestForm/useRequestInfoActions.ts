@@ -55,7 +55,7 @@ interface IRequestInfoActionsOptions {
 interface IRequestInfoActionsResult {
   onSubmit: (data: ILegalRequest) => Promise<void>;
   handleSubmitDirect: () => Promise<void>;
-  handleSaveDraft: () => Promise<void>;
+  handleSaveDraft: (successMessage?: string) => Promise<void>;
   handleClose: () => void;
   handleCancelRequest: (reason: string) => Promise<void>;
   handlePutOnHold: (reason: string) => Promise<void>;
@@ -280,7 +280,7 @@ export const useRequestInfoActions = ({
     return false;
   }, [documents, stagedFiles, filesToDelete]);
 
-  const completeSave = React.useCallback(async (): Promise<void> => {
+  const completeSave = React.useCallback(async (successMessage?: string): Promise<void> => {
     try {
       // Process document operations BEFORE save to avoid state being cleared by reload
       SPContext.logger.info('RequestInfo: Processing document operations before save');
@@ -304,7 +304,7 @@ export const useRequestInfoActions = ({
       // Now save the form - reload will show already-renamed files
       const savedItemId = await saveAsDraft();
 
-      showSuccessNotification?.('Draft saved successfully!');
+      showSuccessNotification?.(successMessage ?? 'Draft saved successfully!');
       SPContext.logger.success('RequestInfo: Draft saved', { itemId: savedItemId });
 
       // If this was a new request (no itemId before), redirect to edit mode immediately
@@ -500,7 +500,7 @@ export const useRequestInfoActions = ({
     [itemId, validateSubmission, updateMultipleFields, completeSubmit, setError, clearErrors]
   );
 
-  const handleSaveDraft = React.useCallback(async (): Promise<void> => {
+  const handleSaveDraft = React.useCallback(async (successMessage?: string): Promise<void> => {
     try {
       setValidationErrors([]);
       clearErrors();
@@ -517,7 +517,7 @@ export const useRequestInfoActions = ({
 
       updateMultipleFields(normalized);
 
-      await completeSave();
+      await completeSave(successMessage);
     } catch (error: unknown) {
       SPContext.logger.error('RequestInfo: Draft save failed', error);
     }

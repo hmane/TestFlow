@@ -1,6 +1,6 @@
 import * as React from 'react';
 import styles from './ReportDashboard.module.scss';
-import type { IReportDashboardProps, IUserGroups, ISearchConfig, ISearchResult, ProgressBarColor } from './IReportDashboardProps';
+import type { IReportDashboardProps, IUserGroups, ISearchConfig, ISearchResult, ProgressBarColor, ReviewAudienceType } from './IReportDashboardProps';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { CommandBarButton, PrimaryButton } from '@fluentui/react/lib/Button';
 import { Icon } from '@fluentui/react/lib/Icon';
@@ -158,6 +158,115 @@ const formatHours = (hours: number): string => {
     return `${hours}h`;
   }
   return `${hours.toFixed(1)}h`;
+};
+
+/**
+ * Get status icon name based on status
+ */
+const getStatusIcon = (status: string): string => {
+  const iconMap: Record<string, string> = {
+    'Draft': 'Edit',
+    'Legal Intake': 'Inbox',
+    'Assign Attorney': 'Contact',
+    'In Review': 'RedEye',
+    'Closeout': 'CheckMark',
+    'Completed': 'CompletedSolid',
+    'Cancelled': 'Cancel',
+    'On Hold': 'Pause',
+  };
+  return iconMap[status] || 'Document';
+};
+
+/**
+ * Get review status indicator for In Review status
+ */
+const getReviewStatusIndicator = (
+  legalStatus: string | null,
+  complianceStatus: string | null,
+  reviewAudience: string | null
+): { icon: string; text: string; className: string } | null => {
+  if (!reviewAudience) return null;
+
+  // Check for "Waiting On" statuses first
+  const isWaitingLegal = legalStatus === 'Waiting On Submitter';
+  const isWaitingCompliance = complianceStatus === 'Waiting On Submitter';
+
+  if (isWaitingLegal || isWaitingCompliance) {
+    return {
+      icon: 'Warning',
+      text: 'Action Needed',
+      className: styles.reviewActionNeeded,
+    };
+  }
+
+  // Check if review is in progress
+  const legalInProgress = legalStatus === 'In Progress' || legalStatus === 'Waiting On Attorney';
+  const complianceInProgress = complianceStatus === 'In Progress' || complianceStatus === 'Waiting On Compliance';
+  const legalCompleted = legalStatus === 'Completed';
+  const complianceCompleted = complianceStatus === 'Completed';
+
+  if (reviewAudience === 'Both') {
+    if (legalCompleted && complianceCompleted) {
+      return { icon: 'CheckMark', text: 'Both Complete', className: styles.reviewComplete };
+    }
+    if (legalCompleted && complianceInProgress) {
+      return { icon: 'RedEye', text: 'Compliance Review', className: styles.reviewInProgress };
+    }
+    if (complianceCompleted && legalInProgress) {
+      return { icon: 'RedEye', text: 'Legal Review', className: styles.reviewInProgress };
+    }
+    if (legalInProgress || complianceInProgress) {
+      return { icon: 'RedEye', text: 'In Review', className: styles.reviewInProgress };
+    }
+  } else if (reviewAudience === 'Legal') {
+    if (legalCompleted) {
+      return { icon: 'CheckMark', text: 'Legal Complete', className: styles.reviewComplete };
+    }
+    if (legalInProgress) {
+      return { icon: 'RedEye', text: 'Legal Review', className: styles.reviewInProgress };
+    }
+  } else if (reviewAudience === 'Compliance') {
+    if (complianceCompleted) {
+      return { icon: 'CheckMark', text: 'Compliance Complete', className: styles.reviewComplete };
+    }
+    if (complianceInProgress) {
+      return { icon: 'RedEye', text: 'Compliance Review', className: styles.reviewInProgress };
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Format target date with urgency
+ */
+const formatTargetDate = (targetDate: Date | null): { text: string; urgency: 'overdue' | 'urgent' | 'soon' | 'normal' } | null => {
+  if (!targetDate) return null;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(targetDate.getTime());
+  target.setHours(0, 0, 0, 0);
+
+  const diffTime = target.getTime() - today.getTime();
+  const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  const dateStr = target.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  if (daysRemaining < 0) {
+    const overdueDays = Math.abs(daysRemaining);
+    return { text: `${dateStr} (${overdueDays}d overdue)`, urgency: 'overdue' };
+  }
+  if (daysRemaining === 0) {
+    return { text: `${dateStr} (Due today)`, urgency: 'urgent' };
+  }
+  if (daysRemaining === 1) {
+    return { text: `${dateStr} (Tomorrow)`, urgency: 'urgent' };
+  }
+  if (daysRemaining <= 3) {
+    return { text: `${dateStr} (${daysRemaining}d)`, urgency: 'soon' };
+  }
+  return { text: dateStr, urgency: 'normal' };
 };
 
 /**
@@ -368,7 +477,12 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
           'PreviousStatus',
           'IsRushRequest',
           'TotalReviewerHours',
-          'TotalSubmitterHours'
+          'TotalSubmitterHours',
+          'ReviewAudience',
+          'LegalReviewStatus',
+          'ComplianceReviewStatus',
+          'LegalReviewOutcome',
+          'ComplianceReviewOutcome'
         )
         .expand('Author', 'Attorney')
         .filter(filter)
@@ -389,6 +503,11 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
         IsRushRequest?: boolean;
         TotalReviewerHours?: number;
         TotalSubmitterHours?: number;
+        ReviewAudience?: string | null;
+        LegalReviewStatus?: string | null;
+        ComplianceReviewStatus?: string | null;
+        LegalReviewOutcome?: string | null;
+        ComplianceReviewOutcome?: string | null;
       }) => {
         const targetDate = item.TargetReturnDate ? new Date(item.TargetReturnDate) : null;
         const assignAttorneyDate = item.SubmittedToAssignAttorneyOn
@@ -420,6 +539,11 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
           totalSteps,
           totalReviewerHours: item.TotalReviewerHours || 0,
           totalSubmitterHours: item.TotalSubmitterHours || 0,
+          reviewAudience: (item.ReviewAudience as ReviewAudienceType) || null,
+          legalReviewStatus: item.LegalReviewStatus || null,
+          complianceReviewStatus: item.ComplianceReviewStatus || null,
+          legalReviewOutcome: item.LegalReviewOutcome || null,
+          complianceReviewOutcome: item.ComplianceReviewOutcome || null,
         };
       });
 
@@ -599,56 +723,94 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
                   <div className={styles.dropdownHeader}>
                     {searchResults.length} Result{searchResults.length !== 1 ? 's' : ''}
                   </div>
-                  {searchResults.map((result) => (
-                    <div
-                      key={result.id}
-                      className={styles.resultItem}
-                      onClick={() => handleResultClick(result)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => e.key === 'Enter' && handleResultClick(result)}
-                    >
-                      <div className={styles.resultHeader}>
-                        <div className={styles.resultMain}>
-                          <span className={styles.resultId}>{result.requestId}</span>
-                          <span className={styles.resultTitle}>{result.requestTitle}</span>
-                        </div>
-                        {result.isRushRequest && (
-                          <span className={styles.rushBadge}>
-                            <Icon iconName="ReminderTime" className={styles.rushIcon} />
-                            Rush
-                          </span>
-                        )}
-                      </div>
+                  {searchResults.map((result) => {
+                    const reviewIndicator = getReviewStatusIndicator(
+                      result.legalReviewStatus,
+                      result.complianceReviewStatus,
+                      result.reviewAudience
+                    );
+                    const targetDateInfo = formatTargetDate(result.targetReturnDate);
 
-                      {/* Progress Bar */}
-                      <div className={styles.progressContainer}>
-                        <div className={styles.progressTrack}>
-                          <div
-                            className={`${styles.progressFill} ${getProgressColorClass(result.progressColor)}`}
-                            style={{ width: `${result.progress}%` }}
-                          />
+                    return (
+                      <div
+                        key={result.id}
+                        className={styles.resultItem}
+                        onClick={() => handleResultClick(result)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => e.key === 'Enter' && handleResultClick(result)}
+                      >
+                        <div className={styles.resultHeader}>
+                          <div className={styles.resultMain}>
+                            <span className={styles.resultId}>{result.requestId}</span>
+                            <span className={styles.resultTitle}>{result.requestTitle}</span>
+                          </div>
+                          <div className={styles.headerBadges}>
+                            {result.isRushRequest && (
+                              <span className={styles.rushBadge}>
+                                <Icon iconName="ReminderTime" className={styles.rushIcon} />
+                                Rush
+                              </span>
+                            )}
+                            {result.reviewAudience && (
+                              <span className={styles.audienceBadge}>
+                                <Icon
+                                  iconName={result.reviewAudience === 'Both' ? 'People' : 'Contact'}
+                                  className={styles.audienceIcon}
+                                />
+                                {result.reviewAudience}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <span className={styles.progressLabel}>
-                          Step {result.currentStep}/{result.totalSteps}
-                        </span>
-                      </div>
 
-                      <div className={styles.resultMeta}>
-                        <span className={`${styles.statusBadge} ${getStatusClass(result.status)}`}>
-                          {result.status}
-                        </span>
-                        {result.submittedBy && <span className={styles.metaItem}>By: {result.submittedBy}</span>}
-                        {result.attorney && <span className={styles.metaItem}>Attorney: {result.attorney}</span>}
-                        {(result.totalReviewerHours > 0 || result.totalSubmitterHours > 0) && (
-                          <span className={styles.metaItem}>
-                            <Icon iconName="Clock" style={{ fontSize: '10px', marginRight: '4px' }} />
-                            {formatHours(result.totalReviewerHours + result.totalSubmitterHours)}
+                        {/* Progress Bar */}
+                        <div className={styles.progressContainer}>
+                          <div className={styles.progressTrack}>
+                            <div
+                              className={`${styles.progressFill} ${getProgressColorClass(result.progressColor)}`}
+                              style={{ width: `${result.progress}%` }}
+                            />
+                          </div>
+                          <span className={styles.progressLabel}>
+                            Step {result.currentStep}/{result.totalSteps}
                           </span>
-                        )}
+                        </div>
+
+                        <div className={styles.resultMeta}>
+                          <span className={`${styles.statusBadge} ${getStatusClass(result.status)}`}>
+                            <Icon iconName={getStatusIcon(result.status)} className={styles.statusIcon} />
+                            {result.status}
+                          </span>
+                          {/* Review status sub-indicator for In Review */}
+                          {result.status === 'In Review' && reviewIndicator && (
+                            <span className={`${styles.reviewIndicator} ${reviewIndicator.className}`}>
+                              <Icon iconName={reviewIndicator.icon} className={styles.reviewIndicatorIcon} />
+                              {reviewIndicator.text}
+                            </span>
+                          )}
+                          {/* Target date with urgency */}
+                          {targetDateInfo && result.status !== 'Completed' && result.status !== 'Cancelled' && (
+                            <span className={`${styles.targetDate} ${styles[targetDateInfo.urgency]}`}>
+                              <Icon iconName="Calendar" className={styles.targetDateIcon} />
+                              {targetDateInfo.text}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className={styles.resultMetaSecondary}>
+                          {result.submittedBy && <span className={styles.metaItem}>By: {result.submittedBy}</span>}
+                          {result.attorney && <span className={styles.metaItem}>Attorney: {result.attorney}</span>}
+                          {(result.totalReviewerHours > 0 || result.totalSubmitterHours > 0) && (
+                            <span className={styles.metaItem}>
+                              <Icon iconName="Clock" style={{ fontSize: '10px', marginRight: '4px' }} />
+                              {formatHours(result.totalReviewerHours + result.totalSubmitterHours)}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : searchQuery ? (
                 <div className={styles.noResults}>

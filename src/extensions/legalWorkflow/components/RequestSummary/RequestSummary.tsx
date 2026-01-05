@@ -35,6 +35,7 @@ import {
 } from '@appTypes/index';
 import { usePermissions } from '@hooks/usePermissions';
 import { useRequestStore } from '@stores/requestStore';
+import { RequestHoverCard } from '@components/RequestHoverCard/RequestHoverCard';
 
 import { UserPersona } from 'spfx-toolkit';
 import './RequestSummary.scss';
@@ -548,12 +549,30 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
                       <Icon iconName='Link' className='summary-field__icon' />
                       <span>Related Requests</span>
                     </div>
-                    <div className='summary-field__value'>
+                    <div className='summary-field__value summary-prior-submissions'>
                       {currentRequest.priorSubmissions.map((sub, idx) => (
-                        <span key={idx} className='summary-link'>
-                          {sub.title}
+                        <React.Fragment key={idx}>
+                          {sub.id ? (
+                            <RequestHoverCard
+                              requestId={sub.id}
+                              openDelay={400}
+                              dismissDelay={200}
+                            >
+                              <a
+                                href={`${SPContext.webAbsoluteUrl}/Lists/Requests/DispForm.aspx?ID=${sub.id}`}
+                                className='summary-prior-link'
+                                target='_blank'
+                                rel='noopener noreferrer'
+                                aria-label={`Open request ${sub.title} in new tab`}
+                              >
+                                {sub.title}
+                              </a>
+                            </RequestHoverCard>
+                          ) : (
+                            <span className='summary-link'>{sub.title}</span>
+                          )}
                           {idx < currentRequest.priorSubmissions!.length - 1 && ', '}
-                        </span>
+                        </React.Fragment>
                       ))}
                     </div>
                   </div>

@@ -220,6 +220,17 @@ export const RequestTypeSelector: React.FC<IRequestTypeSelectorProps> = ({
   const [showError, setShowError] = React.useState<boolean>(false);
   const [isAnimatingOut, setIsAnimatingOut] = React.useState<boolean>(false);
   const { updateField } = useRequestStore();
+  // Ref for tracking setTimeout IDs to prevent memory leaks
+  const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup pending timeout on unmount
+  React.useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleSelectType = React.useCallback((type: RequestType): void => {
     setSelectedType(type);
@@ -236,7 +247,8 @@ export const RequestTypeSelector: React.FC<IRequestTypeSelectorProps> = ({
     updateField('requestType', selectedType);
 
     // Small delay for exit animation
-    setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
+      timeoutRef.current = null;
       onContinue(selectedType);
     }, 300);
   }, [selectedType, updateField, onContinue]);
@@ -244,7 +256,8 @@ export const RequestTypeSelector: React.FC<IRequestTypeSelectorProps> = ({
   const handleCancel = React.useCallback((): void => {
     if (onCancel) {
       setIsAnimatingOut(true);
-      setTimeout(() => {
+      timeoutRef.current = setTimeout(() => {
+        timeoutRef.current = null;
         onCancel();
       }, 200);
     }

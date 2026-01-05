@@ -162,7 +162,10 @@ export function useItemPermissions(listName: string, itemId: number | undefined)
     return () => {
       isMounted = false;
     };
-  }, [listName, itemId, cachedPermissions, checkItemPermissions]);
+    // Note: cachedPermissions intentionally excluded - we check it at runtime but
+    // don't want to re-trigger the effect when cache updates (which would cause loops)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listName, itemId, checkItemPermissions]);
 
   return permissions;
 }

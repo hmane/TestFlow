@@ -21,6 +21,7 @@ import { useRequestStore } from '@stores/requestStore';
 import { useSubmissionItemsStore } from '@stores/submissionItemsStore';
 import { usePermissionsStore } from '@stores/permissionsStore';
 import { useDocumentsStore } from '@stores/documentsStore';
+import { RequestCache } from '@utils/requestCache';
 import type { RequestType } from '@appTypes/index';
 
 /**
@@ -292,12 +293,18 @@ export const ApplicationProvider: React.FC<IApplicationProviderProps> = ({
   }, [requestType, itemId, loadConfigs, loadItems, loadPermissions, loadRequest, loadAllDocuments, initializeNewRequest, onInitialized, onInitializationError]);
 
   /**
-   * Initialize on mount
+   * Initialize on mount and cleanup on unmount
    */
   React.useEffect(() => {
     initializeApplication().catch((error: unknown) => {
       SPContext.logger.error('ApplicationProvider: Initialization error', error);
     });
+
+    // Cleanup: Reset request cache to stop its interval timer
+    return () => {
+      SPContext.logger.info('ApplicationProvider: Cleaning up request cache');
+      RequestCache.resetInstance();
+    };
   }, [initializeApplication]);
 
   /**

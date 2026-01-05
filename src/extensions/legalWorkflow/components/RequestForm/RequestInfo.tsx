@@ -16,10 +16,13 @@
 import {
   ILegalRequest,
 } from '@appTypes/index';
+import { ValidationErrorContainer } from '@components/ValidationErrorContainer';
 import { useNotification } from '@contexts/NotificationContext';
 import { RequestFormProvider } from '@contexts/RequestFormContext';
+import { DefaultButton, PrimaryButton } from '@fluentui/react/lib/Button';
 import { Icon } from '@fluentui/react/lib/Icon';
 import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
+import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
 import { saveRequestSchema } from '@schemas/requestSchema';
@@ -54,7 +57,13 @@ const FORM_SECTIONS_TOKENS = { childrenGap: 20 };
 /**
  * RequestInfo Component
  */
-export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprovalsAndActions = true, children }) => {
+export const RequestInfo: React.FC<IRequestFormProps> = ({
+  itemId,
+  renderApprovalsAndActions = true,
+  children,
+  isEditMode = false,
+  onSaveComplete,
+}) => {
   const {
     currentRequest,
     saveAsDraft,
@@ -67,7 +76,9 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
 
   // Watch documents store for revalidation when documents change
   // This ensures approval document errors clear when documents are uploaded
-  const { documents, stagedFiles } = useDocumentsStore();
+  // Using selectors to only re-render when counts change, not on every store update
+  const documentsCount = useDocumentsStore((s) => s.documents.size);
+  const stagedFilesCount = useDocumentsStore((s) => s.stagedFiles.length);
 
   // React Hook Form setup
   const formMethods = useForm<ILegalRequest>({
@@ -176,6 +187,50 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
     showErrorNotification,
   });
 
+  // State for edit mode save operation
+  const [isEditModeSaving, setIsEditModeSaving] = React.useState(false);
+
+  /**
+   * Handle save in edit mode - validates and saves, then calls onSaveComplete
+   */
+  const handleEditModeSave = React.useCallback(async (): Promise<void> => {
+    if (!isEditMode) return;
+
+    setIsEditModeSaving(true);
+    try {
+      await handleSaveDraft('Changes saved successfully!');
+      // Only call onSaveComplete if save was successful (no throw)
+      onSaveComplete?.();
+    } catch (error: unknown) {
+      // handleSaveDraft shows error notification, just log here
+      SPContext.logger.error('RequestInfo: Edit mode save failed', error);
+    } finally {
+      setIsEditModeSaving(false);
+    }
+  }, [isEditMode, handleSaveDraft, onSaveComplete]);
+
+  /**
+   * Handle cancel in edit mode - just call onSaveComplete without saving
+   */
+  const handleEditModeCancel = React.useCallback((): void => {
+    onSaveComplete?.();
+  }, [onSaveComplete]);
+
+  /**
+   * Scroll to field handler for validation errors
+   */
+  const handleScrollToField = React.useCallback((fieldName: string) => {
+    const element = document.querySelector(`[data-field-name="${fieldName}"]`) ||
+      document.getElementById(`request-info-${fieldName}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const focusable = element.querySelector('input, textarea, select, [tabindex]:not([tabindex="-1"])') as HTMLElement;
+      if (focusable) {
+        focusable.focus();
+      }
+    }
+  }, []);
+
   // Watch all form values for revalidation on change
   const watchedValues = watch();
   const previousValuesRef = React.useRef<Partial<ILegalRequest>>({});
@@ -280,7 +335,7 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
     // The revalidateErrors function checks hasDocumentsForApprovalType and hasAttachments
     revalidateErrors(watchedValues);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [documents, stagedFiles]);
+  }, [documentsCount, stagedFilesCount]);
 
   const shouldRenderChildren = renderApprovalsAndActions || !!children;
 
@@ -577,7 +632,7 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
             <Card
               id='request-form-card'
               className='request-form-card'
-              allowExpand={!!itemId}
+              allowExpand={!!itemId && !isEditMode}
               defaultExpanded={true}
             >
               <Header size='regular'>
@@ -639,6 +694,37 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({ itemId, renderApprova
 
         {/* Render children (RequestApprovals, RequestActions) within context */}
         {shouldRenderChildren && children}
+
+        {/* Edit mode save/cancel buttons */}
+        {isEditMode && (
+          <Stack
+            tokens={{ childrenGap: 12 }}
+            styles={{ root: { marginTop: 16, padding: '0 16px 16px' } }}
+          >
+            {/* Validation errors - just above buttons */}
+            <ValidationErrorContainer
+              errors={combinedValidationErrors}
+              onScrollToField={handleScrollToField}
+            />
+
+            <Stack horizontal horizontalAlign='end' tokens={{ childrenGap: 8 }}>
+              <DefaultButton
+                text='Cancel'
+                onClick={handleEditModeCancel}
+                disabled={isEditModeSaving}
+              />
+              <PrimaryButton
+                onClick={handleEditModeSave}
+                disabled={isEditModeSaving}
+              >
+                {isEditModeSaving && (
+                  <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />
+                )}
+                {isEditModeSaving ? 'Saving...' : 'Save Changes'}
+              </PrimaryButton>
+            </Stack>
+          </Stack>
+        )}
         </SPFormProvider>
       </RequestFormProvider>
     </RHFFormProvider>

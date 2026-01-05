@@ -65,6 +65,15 @@ export const useRequestFormContext = (): IRequestFormContextValue => {
 };
 
 /**
+ * Hook to safely use RequestFormContext without throwing
+ * Returns undefined if context is not available
+ * Use this in components that may be rendered outside of RequestFormProvider
+ */
+export const useRequestFormContextSafe = (): IRequestFormContextValue | undefined => {
+  return React.useContext(RequestFormContext);
+};
+
+/**
  * Provider props
  */
 export interface IRequestFormProviderProps {

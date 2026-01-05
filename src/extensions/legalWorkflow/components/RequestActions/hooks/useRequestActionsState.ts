@@ -26,7 +26,7 @@ import {
 } from '@schemas/workflowSchema';
 import type { IValidationError } from '@contexts/RequestFormContext';
 
-import { FIELD_LABELS, FIELD_ORDER, CUSTOM_SECTION_MAP, type ActiveAction } from '../constants';
+import { FIELD_LABELS, FIELD_ORDER, CUSTOM_SECTION_MAP, SECTION_HANDLED_FIELDS, type ActiveAction } from '../constants';
 
 /**
  * Return type for the useRequestActionsState hook
@@ -171,6 +171,17 @@ export function useRequestActionsState(props: {
   // Ref for error container
   const errorContainerRef = React.useRef<HTMLDivElement>(null);
 
+  // Refs for tracking setTimeout IDs to prevent memory leaks
+  const timeoutRefs = React.useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+
+  // Cleanup all pending timeouts on unmount
+  React.useEffect(() => {
+    return () => {
+      timeoutRefs.current.forEach((id) => clearTimeout(id));
+      timeoutRefs.current.clear();
+    };
+  }, []);
+
   /**
    * Get field order for sorting
    */
@@ -180,17 +191,21 @@ export function useRequestActionsState(props: {
   }, []);
 
   /**
-   * Sort validation errors to match form field order
+   * Sort and filter validation errors to match form field order.
+   * Excludes fields that have their own ValidationErrorContainer in section cards
+   * to avoid duplicate error messages.
    */
   const sortedValidationErrors = React.useMemo(() => {
     if (!validationErrors || validationErrors.length === 0) {
       return [];
     }
-    return [...validationErrors].sort((a, b) => {
-      const orderA = getFieldOrder(a.field);
-      const orderB = getFieldOrder(b.field);
-      return orderA - orderB;
-    });
+    return [...validationErrors]
+      .filter(error => !SECTION_HANDLED_FIELDS.includes(error.field))
+      .sort((a, b) => {
+        const orderA = getFieldOrder(a.field);
+        const orderB = getFieldOrder(b.field);
+        return orderA - orderB;
+      });
   }, [validationErrors, getFieldOrder]);
 
   // Track previous error count
@@ -202,7 +217,8 @@ export function useRequestActionsState(props: {
     const prevCount = prevErrorCountRef.current;
 
     if (prevCount === 0 && currentCount > 0 && errorContainerRef.current) {
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
+        timeoutRefs.current.delete(timeoutId);
         if (errorContainerRef.current) {
           errorContainerRef.current.scrollIntoView({
             behavior: 'smooth',
@@ -211,6 +227,7 @@ export function useRequestActionsState(props: {
           errorContainerRef.current.focus();
         }
       }, 100);
+      timeoutRefs.current.add(timeoutId);
     }
 
     prevErrorCountRef.current = currentCount;
@@ -246,7 +263,8 @@ export function useRequestActionsState(props: {
             block: 'start',
           });
 
-          setTimeout(() => {
+          const sectionTimeoutId = setTimeout(() => {
+            timeoutRefs.current.delete(sectionTimeoutId);
             const firstInput = sectionElement.querySelector(
               'input, textarea, select, .dx-texteditor-input'
             ) as HTMLElement;
@@ -258,6 +276,7 @@ export function useRequestActionsState(props: {
               sectionId: customSectionId,
             });
           }, 300);
+          timeoutRefs.current.add(sectionTimeoutId);
           return;
         }
       }
@@ -267,12 +286,14 @@ export function useRequestActionsState(props: {
         const registeredField = spFormContext.registry.get(fieldName);
         if (registeredField?.ref?.current) {
           spFormContext.scrollToField(fieldName, { behavior: 'smooth', block: 'center' });
-          setTimeout(() => {
+          const formContextTimeoutId = setTimeout(() => {
+            timeoutRefs.current.delete(formContextTimeoutId);
             spFormContext.focusField(fieldName);
             SPContext.logger.info('RequestActions: Field scrolled/focused via FormContext', {
               fieldName,
             });
           }, 300);
+          timeoutRefs.current.add(formContextTimeoutId);
           return;
         }
       }
@@ -336,7 +357,8 @@ export function useRequestActionsState(props: {
           inline: 'nearest',
         });
 
-        setTimeout(() => {
+        const domTimeoutId = setTimeout(() => {
+          timeoutRefs.current.delete(domTimeoutId);
           const elementToFocus = focusElement || fieldElement;
           if (elementToFocus instanceof HTMLElement) {
             let actualInput = elementToFocus;
@@ -352,6 +374,7 @@ export function useRequestActionsState(props: {
             SPContext.logger.info('RequestActions: Field scrolled/focused via DOM', { fieldName });
           }
         }, 300);
+        timeoutRefs.current.add(domTimeoutId);
       } else {
         SPContext.logger.warn('RequestActions: Could not find field element', { fieldName });
       }

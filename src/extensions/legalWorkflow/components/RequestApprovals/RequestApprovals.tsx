@@ -38,6 +38,8 @@ export interface IRequestApprovalsProps {
   hideForStatuses?: RequestStatus[];
   /** Whether card is expanded by default */
   defaultExpanded?: boolean;
+  /** Force show regardless of status (e.g., for edit mode) */
+  forceShow?: boolean;
 }
 
 /**
@@ -94,6 +96,7 @@ const ApprovalBadge: React.FC<IApprovalBadgeProps> = ({ text, variant = 'default
 export const RequestApprovals: React.FC<IRequestApprovalsProps> = ({
   hideForStatuses = [],
   defaultExpanded,
+  forceShow = false,
 }) => {
   const { control, isLoading, itemId, status } = useRequestFormContext();
   const { currentRequest } = useRequestStore();
@@ -108,6 +111,11 @@ export const RequestApprovals: React.FC<IRequestApprovalsProps> = ({
    * Determine if approvals should be shown based on status
    */
   const shouldShow = React.useMemo(() => {
+    // Force show if explicitly requested (e.g., edit mode)
+    if (forceShow) {
+      return true;
+    }
+
     // Hide if status is in the hideForStatuses array
     if (status && hideForStatuses.indexOf(status) !== -1) {
       return false;
@@ -125,7 +133,7 @@ export const RequestApprovals: React.FC<IRequestApprovalsProps> = ({
 
     // Hide for later stages (In Review, Closeout, Completed, Cancelled, On Hold)
     return false;
-  }, [status, hideForStatuses, isNewRequest]);
+  }, [status, hideForStatuses, isNewRequest, forceShow]);
 
   /**
    * Get approval summary for header

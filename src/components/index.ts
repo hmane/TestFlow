@@ -28,3 +28,6 @@ export type { IRequestHoverCardProps, IRequestHoverCardData } from './RequestHov
 
 export { StatusBanner } from './StatusBanner';
 export type { IStatusBannerProps } from './StatusBanner';
+
+export { ValidationErrorContainer } from './ValidationErrorContainer';
+export type { IValidationErrorContainerProps } from './ValidationErrorContainer';

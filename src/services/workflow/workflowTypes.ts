@@ -6,7 +6,7 @@
 
 import type { IPrincipal } from 'spfx-toolkit/lib/types';
 import type { ILegalRequest } from '@appTypes/requestTypes';
-import { RequestStatus, ReviewOutcome } from '@appTypes/workflowTypes';
+import { RequestStatus, ReviewAudience, ReviewOutcome } from '@appTypes/workflowTypes';
 
 // ============================================
 // RESULT TYPES
@@ -45,6 +45,8 @@ export interface IAssignAttorneyPayload {
   attorney: IPrincipal;
   /** Assignment notes (optional) */
   notes?: string;
+  /** Review audience override (optional - Legal Admin can change from submitter's selection) */
+  reviewAudience?: ReviewAudience;
 }
 
 /**
@@ -53,6 +55,8 @@ export interface IAssignAttorneyPayload {
 export interface ISendToCommitteePayload {
   /** Notes for the committee (optional) */
   notes?: string;
+  /** Review audience override (optional - Legal Admin can change from submitter's selection) */
+  reviewAudience?: ReviewAudience;
 }
 
 /**

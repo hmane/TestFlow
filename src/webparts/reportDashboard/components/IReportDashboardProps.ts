@@ -26,6 +26,11 @@ export interface ISearchConfig {
 export type ProgressBarColor = 'green' | 'yellow' | 'red' | 'blue' | 'gray';
 
 /**
+ * Review audience type
+ */
+export type ReviewAudienceType = 'Legal' | 'Compliance' | 'Both';
+
+/**
  * Search result item with progress data
  */
 export interface ISearchResult {
@@ -49,6 +54,12 @@ export interface ISearchResult {
   // Time tracking
   totalReviewerHours: number;
   totalSubmitterHours: number;
+  // Review status fields for enhanced display
+  reviewAudience: ReviewAudienceType | null;
+  legalReviewStatus: string | null;
+  complianceReviewStatus: string | null;
+  legalReviewOutcome: string | null;
+  complianceReviewOutcome: string | null;
 }
 
 /**

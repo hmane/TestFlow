@@ -109,3 +109,25 @@ export const CUSTOM_SECTION_MAP: Record<string, string> = {
   trackingId: 'closeout-card',
   commentsAcknowledged: 'closeout-card',
 };
+
+/**
+ * Fields that have their own ValidationErrorContainer in section cards.
+ * These should be excluded from the global RequestActions error display
+ * to avoid duplicate error messages.
+ */
+export const SECTION_HANDLED_FIELDS: string[] = [
+  // Legal Intake fields - shown in LegalIntakeForm
+  'attorney',
+  'attorneyAssignNotes',
+  'reviewAudience',
+  // Legal Review fields - shown in LegalReviewForm
+  'legalReviewOutcome',
+  'legalReviewNotes',
+  // Compliance Review fields - shown in ComplianceReviewForm
+  'complianceReviewOutcome',
+  'complianceReviewNotes',
+  // Closeout fields - shown in CloseoutForm
+  'trackingId',
+  'commentsAcknowledged',
+  'closeoutNotes',
+];

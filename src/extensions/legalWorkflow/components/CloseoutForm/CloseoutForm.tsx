@@ -15,15 +15,18 @@ import * as React from 'react';
 import { useForm, FormProvider as RHFFormProvider } from 'react-hook-form';
 
 // Fluent UI - tree-shaken imports
-import { Stack } from '@fluentui/react/lib/Stack';
+import { PrimaryButton } from '@fluentui/react/lib/Button';
 import { Checkbox } from '@fluentui/react/lib/Checkbox';
-import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
-import { Text } from '@fluentui/react/lib/Text';
 import { Icon } from '@fluentui/react/lib/Icon';
+import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
 import { Separator } from '@fluentui/react/lib/Separator';
+import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
+import { Stack } from '@fluentui/react/lib/Stack';
+import { Text } from '@fluentui/react/lib/Text';
 
 // spfx-toolkit - tree-shaken imports
-import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
+import { Card, Content, Footer, Header } from 'spfx-toolkit/lib/components/Card';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import {
   FormContainer,
   FormItem,
@@ -36,6 +39,7 @@ import {
 } from 'spfx-toolkit/lib/components/spFields';
 
 // App imports using path aliases
+import { ValidationErrorContainer } from '@components/ValidationErrorContainer';
 import { WorkflowCardHeader } from '@components/WorkflowCardHeader';
 import { useRequestFormContext } from '@contexts/RequestFormContext';
 import { useRequestStore } from '@stores/requestStore';
@@ -83,9 +87,13 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
   defaultCollapsed = false,
   readOnly = false,
 }) => {
-  const { currentRequest } = useRequestStore();
+  const { currentRequest, closeoutRequest } = useRequestStore();
   const { setCloseoutValues, commentsAcknowledged, setCommentsAcknowledged } = useCloseoutStore();
   const { validationErrors, setValidationErrors } = useRequestFormContext();
+
+  // State for completing closeout
+  const [isCompleting, setIsCompleting] = React.useState<boolean>(false);
+  const [closeoutError, setCloseoutError] = React.useState<string | undefined>(undefined);
 
   // Check if there's a validation error for tracking ID
   const trackingIdError = React.useMemo(() => {
@@ -108,6 +116,26 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
     }
     return undefined;
   }, [validationErrors]);
+
+  // Filter validation errors to only show Closeout related fields
+  const closeoutFields = ['trackingId', 'commentsAcknowledged', 'closeoutNotes'];
+  const closeoutValidationErrors = React.useMemo(() => {
+    if (!validationErrors) return [];
+    return validationErrors.filter(err => closeoutFields.includes(err.field));
+  }, [validationErrors]);
+
+  // Scroll to field handler for validation errors
+  const handleScrollToField = React.useCallback((fieldName: string) => {
+    const element = document.querySelector(`[data-field-name="${fieldName}"]`) ||
+      document.getElementById(`closeout-${fieldName}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const focusable = element.querySelector('input, textarea, select, [tabindex]:not([tabindex="-1"])') as HTMLElement;
+      if (focusable) {
+        focusable.focus();
+      }
+    }
+  }, []);
 
   // React Hook Form setup
   const formMethods = useForm<ICloseoutFormData>({
@@ -166,6 +194,64 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
       clearErrors('trackingId');
     }
   }, [trackingIdError, setError, clearErrors]);
+
+  /**
+   * Handle Complete Request button click
+   */
+  const handleCompleteRequest = React.useCallback(async (): Promise<void> => {
+    setIsCompleting(true);
+    setCloseoutError(undefined);
+    setValidationErrors([]);
+
+    try {
+      // Validate tracking ID if required
+      const isTrackingIdRequired =
+        currentRequest?.reviewAudience !== ReviewAudience.Legal &&
+        (currentRequest?.complianceReview?.isForesideReviewRequired ||
+          currentRequest?.complianceReview?.isRetailUse);
+
+      const errors: { field: string; message: string }[] = [];
+
+      if (isTrackingIdRequired && (!trackingIdValue || trackingIdValue.trim() === '')) {
+        errors.push({
+          field: 'trackingId',
+          message: 'Tracking ID is required because Foreside Review or Retail Use was indicated during compliance review.',
+        });
+      }
+
+      // Check if "Approved with Comments" needs acknowledgment
+      const hasApprovedWithComments =
+        currentRequest?.legalReviewOutcome === ReviewOutcome.ApprovedWithComments ||
+        currentRequest?.complianceReviewOutcome === ReviewOutcome.ApprovedWithComments;
+
+      if (hasApprovedWithComments && !commentsAcknowledged) {
+        errors.push({
+          field: 'commentsAcknowledged',
+          message: 'You must acknowledge the review comments before completing closeout.',
+        });
+      }
+
+      if (errors.length > 0) {
+        setValidationErrors(errors);
+        SPContext.logger.warn('CloseoutForm: Validation failed', { errors: errors.map(e => e.field) });
+        return;
+      }
+
+      await closeoutRequest({
+        trackingId: trackingIdValue,
+        commentsAcknowledged,
+        closeoutNotes: closeoutNotesValue,
+      });
+
+      SPContext.logger.success('CloseoutForm: Request completed successfully');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to complete request';
+      setCloseoutError(errorMessage);
+      SPContext.logger.error('CloseoutForm: Complete request failed', error);
+    } finally {
+      setIsCompleting(false);
+    }
+  }, [currentRequest, trackingIdValue, closeoutNotesValue, commentsAcknowledged, closeoutRequest, setValidationErrors]);
 
   if (!currentRequest) {
     return null;
@@ -507,10 +593,42 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
                 </FormItem>
               </FormContainer>
             )}
+
+            {/* Validation errors - at the end of content (only in edit mode) */}
+            {!readOnly && (
+              <ValidationErrorContainer
+                errors={closeoutValidationErrors}
+                onScrollToField={handleScrollToField}
+                filterFields={closeoutFields}
+              />
+            )}
             </Stack>
           </FormProvider>
         </RHFFormProvider>
       </Content>
+
+      {/* Footer with Complete Request button - only show in edit mode */}
+      {!readOnly && (
+        <Footer>
+          <Stack tokens={{ childrenGap: 8 }}>
+            {closeoutError && (
+              <MessageBar messageBarType={MessageBarType.error} onDismiss={() => setCloseoutError(undefined)}>
+                {closeoutError}
+              </MessageBar>
+            )}
+            <Stack horizontal horizontalAlign='end' tokens={{ childrenGap: 8 }}>
+              <PrimaryButton
+                onClick={handleCompleteRequest}
+                disabled={isCompleting}
+                iconProps={{ iconName: 'Completed' }}
+              >
+                {isCompleting && <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />}
+                {isCompleting ? 'Completing...' : 'Complete Request'}
+              </PrimaryButton>
+            </Stack>
+          </Stack>
+        </Footer>
+      )}
     </Card>
   );
 };

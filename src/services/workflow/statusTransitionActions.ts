@@ -201,6 +201,7 @@ export async function assignAttorney(
     attorneyTitle: payload.attorney.title,
     attorneyLoginName: payload.attorney.loginName,
     hasNotes: !!payload.notes,
+    reviewAudience: payload.reviewAudience,
   });
 
   const currentUser = getCurrentUserPrincipal();
@@ -224,6 +225,11 @@ export async function assignAttorney(
   // Always set notes field - overwrites any previous value
   if (payload.notes) {
     updater.setText(RequestsFields.AttorneyAssignNotes, payload.notes);
+  }
+
+  // Set review audience override if provided (Legal Admin can change from submitter's selection)
+  if (payload.reviewAudience) {
+    updater.setChoice(RequestsFields.ReviewAudience, payload.reviewAudience);
   }
 
   const updatePayload = updater.getUpdates();
@@ -287,7 +293,11 @@ export async function sendToCommittee(
 ): Promise<IWorkflowActionResult> {
   const correlationId = generateCorrelationId('sendToCommittee');
 
-  SPContext.logger.info('WorkflowActionService: Sending to committee', { correlationId, itemId });
+  SPContext.logger.info('WorkflowActionService: Sending to committee', {
+    correlationId,
+    itemId,
+    reviewAudience: payload?.reviewAudience,
+  });
 
   const currentUser = getCurrentUserPrincipal();
   const now = new Date();
@@ -301,6 +311,11 @@ export async function sendToCommittee(
 
   if (payload?.notes) {
     updater.setText(RequestsFields.AttorneyAssignNotes, payload.notes);
+  }
+
+  // Set review audience override if provided (Legal Admin can change from submitter's selection)
+  if (payload?.reviewAudience) {
+    updater.setChoice(RequestsFields.ReviewAudience, payload.reviewAudience);
   }
 
   const updatePayload = updater.getUpdates();
