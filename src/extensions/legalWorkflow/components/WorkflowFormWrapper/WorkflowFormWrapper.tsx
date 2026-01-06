@@ -37,11 +37,11 @@ export interface IWorkflowFormWrapperProps {
   /** Custom save draft handler */
   onSaveDraft?: () => void | Promise<void>;
 
-  /** Custom put on hold handler */
-  onPutOnHold?: () => void | Promise<void>;
+  /** Custom put on hold handler (receives reason from dialog) */
+  onPutOnHold?: (reason: string) => void | Promise<void>;
 
-  /** Custom cancel handler */
-  onCancelRequest?: () => void | Promise<void>;
+  /** Custom cancel handler (receives reason from dialog) */
+  onCancelRequest?: (reason: string) => void | Promise<void>;
 
   /** Custom close handler */
   onClose?: () => void;
@@ -113,19 +113,25 @@ export const WorkflowFormWrapper: React.FC<IWorkflowFormWrapperProps> = ({
     }
   }, [customOnSaveDraft]);
 
-  const handleDefaultPutOnHold = React.useCallback(async (): Promise<void> => {
+  const handleDefaultPutOnHold = React.useCallback(async (reason: string): Promise<void> => {
     if (customOnPutOnHold) {
-      await customOnPutOnHold();
+      await customOnPutOnHold(reason);
     } else {
-      SPContext.logger.warn('WorkflowFormWrapper: No put on hold handler provided');
+      // Default: use store's holdRequest
+      const { holdRequest } = useRequestStore.getState();
+      await holdRequest(reason);
+      SPContext.logger.success('WorkflowFormWrapper: Request put on hold');
     }
   }, [customOnPutOnHold]);
 
-  const handleDefaultCancelRequest = React.useCallback(async (): Promise<void> => {
+  const handleDefaultCancelRequest = React.useCallback(async (reason: string): Promise<void> => {
     if (customOnCancelRequest) {
-      await customOnCancelRequest();
+      await customOnCancelRequest(reason);
     } else {
-      SPContext.logger.warn('WorkflowFormWrapper: No cancel request handler provided');
+      // Default: use store's cancelRequest
+      const { cancelRequest } = useRequestStore.getState();
+      await cancelRequest(reason);
+      SPContext.logger.success('WorkflowFormWrapper: Request cancelled');
     }
   }, [customOnCancelRequest]);
 
