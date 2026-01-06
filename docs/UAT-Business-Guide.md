@@ -381,7 +381,111 @@ Request is in "Awaiting Foreside Documents" status (Compliance review marked "Is
 
 ---
 
-## Scenario 13: Email Notifications
+## Scenario 13: Dashboard Navigation
+
+**Role Required:** All roles
+
+### Steps
+
+1. **Access Home Dashboard**
+   - Navigate to LRS application
+   - Verify your dashboard loads with request cards
+   - Note: Different roles see different dashboards
+
+2. **Navigate Using Toolbar**
+   - Click "Home" to return to main dashboard
+   - Click "My Requests" to see only your requests
+   - Click "New Request" to create a new request
+
+3. **Role-Specific Dashboards**
+   - **Legal Admin:** Click "Legal Admin" to see requests in Legal Intake
+   - **Attorney:** Click "My Assigned" to see your assigned requests
+   - **Compliance:** Click "Compliance" to see requests awaiting compliance review
+   - **Attorney Assigner:** Click "Assignment Queue" to see requests awaiting attorney assignment
+
+4. **View Request Cards**
+   - Each card shows: Title, Request ID, Status, Target Date
+   - Status is color-coded (blue = In Review, green = Completed, etc.)
+   - Progress bar shows workflow completion
+
+5. **Hover for Quick Details**
+   - Hover over any request card
+   - Quick preview shows: Submitter, Submitted Date, Review Audience
+   - Click card to open full request
+
+**Expected Outcome:** You can navigate between dashboards and quickly find requests.
+
+---
+
+## Scenario 14: Search for Requests
+
+**Role Required:** All roles
+
+### Steps
+
+1. **Open Search**
+   - Click the search icon in the toolbar
+   - Or use keyboard shortcut: Ctrl+K (Windows) or Cmd+K (Mac)
+
+2. **Search by Request ID**
+   - Enter a Request ID (e.g., "CRR-26-1")
+   - Results appear as you type
+   - Click a result to open the request
+
+3. **Search by Title**
+   - Enter part of a request title
+   - Matching requests appear in results
+   - Results show: Request ID, Title, Status
+
+4. **Use Recent Searches**
+   - Open search dialog
+   - Your recent searches appear below the input
+   - Click a recent search to repeat it
+
+5. **Close Search**
+   - Press Escape to close
+   - Or click outside the search dialog
+
+**Tips:**
+- Search looks at Request ID and Title
+- Results are limited to requests you can access
+- Recent searches are saved (up to 5)
+
+**Expected Outcome:** You can quickly find any request using search.
+
+---
+
+## Scenario 15: Filter and Sort Requests
+
+**Role Required:** All roles
+
+### Steps
+
+1. **Apply Quick Filters**
+   - On any dashboard, look for filter buttons
+   - Click a status filter (e.g., "In Review") to show only those requests
+   - Click again to remove the filter
+
+2. **Sort Requests**
+   - Click the sort dropdown
+   - Choose sort option: Target Date, Submitted Date, Status
+   - Toggle between ascending/descending order
+
+3. **Use Dashboard Tabs (My Requests)**
+   - Navigate to "My Requests"
+   - Use tabs: All, Active, Drafts, Completed
+   - Each tab filters to specific statuses
+
+4. **Change Views**
+   - Click the view selector
+   - Choose from available views
+   - Views show different columns/groupings
+
+**Expected Outcome:** You can filter and organize requests to find what you need.
+
+---
+
+## Scenario 16: Email Notifications
 
 **Role Required:** All roles
 
@@ -418,6 +522,14 @@ Request is in "Awaiting Foreside Documents" status (Compliance review marked "Is
 - **Error Messages:** Are they helpful when something goes wrong?
 - **Mobile:** Does it work on your phone/tablet?
 
+### Dashboard & Search Testing
+
+- **Dashboards:** Do the correct requests appear for your role?
+- **Search:** Does search find requests quickly and accurately?
+- **Filters:** Do filters show the correct subset of requests?
+- **Hover Cards:** Does hovering show useful preview information?
+- **Navigation:** Can you easily switch between different views?
+
 ### Common Issues to Report
 
 - Unable to complete an expected action
@@ -427,6 +539,9 @@ Request is in "Awaiting Foreside Documents" status (Compliance review marked "Is
 - Emails not received or incorrect content
 - Documents that won't upload or download
 - Unexpected error messages
+- Search not finding expected requests
+- Wrong requests showing in dashboard
+- Filters not working correctly
 
 ---
 

@@ -27,10 +27,12 @@
 12. [Notifications](#12-notifications)
 13. [Document Management](#13-document-management)
 14. [Validation & Business Rules](#14-validation--business-rules)
-15. [UI/UX & Accessibility](#15-uiux--accessibility)
-16. [Performance & Load](#16-performance--load)
-17. [Browser Compatibility](#17-browser-compatibility)
-18. [Error Handling](#18-error-handling)
+15. [Dashboard & Navigation](#15-dashboard--navigation)
+16. [Search & Filtering](#16-search--filtering)
+17. [UI/UX & Accessibility](#17-uiux--accessibility)
+18. [Performance & Load](#18-performance--load)
+19. [Browser Compatibility](#19-browser-compatibility)
+20. [Error Handling](#20-error-handling)
 
 ---
 
@@ -1482,7 +1484,256 @@
 
 ---
 
-## 15. UI/UX & Accessibility
+## 15. Dashboard & Navigation
+
+### TC-DSH-001: Home Dashboard Display
+| Field | Value |
+|-------|-------|
+| **Priority** | High |
+| **Preconditions** | User logged in |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Navigate to LRS application | Dashboard loads |
+| 2 | Verify request cards displayed | Cards show for accessible requests |
+| 3 | Verify card content | Each card shows: Title, Request ID, Status, Target Date |
+| 4 | Verify status badge colors | Colors match status (blue=In Review, green=Completed, etc.) |
+| 5 | Verify progress bar | Shows workflow progress percentage |
+
+---
+
+### TC-DSH-002: Role-Specific Dashboards
+| Field | Value |
+|-------|-------|
+| **Priority** | High |
+| **Preconditions** | User with specific role (Legal Admin, Attorney, Compliance) |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Log in as Legal Admin | Legal Admin dashboard visible in toolbar |
+| 2 | Click Legal Admin dashboard | Shows requests in Legal Intake status |
+| 3 | Log in as Attorney | Attorney dashboard visible |
+| 4 | Click Attorney dashboard | Shows assigned requests |
+| 5 | Log in as Compliance | Compliance dashboard visible |
+| 6 | Click Compliance dashboard | Shows requests requiring compliance review |
+
+---
+
+### TC-DSH-003: Dashboard Toolbar Navigation
+| Field | Value |
+|-------|-------|
+| **Priority** | High |
+| **Preconditions** | User logged in |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Verify toolbar buttons | Home, My Requests, New Request visible |
+| 2 | Click Home button | Returns to home dashboard |
+| 3 | Click My Requests | Shows only user's requests |
+| 4 | Click New Request | Opens new request form |
+| 5 | Verify role-specific buttons | Additional buttons based on user role |
+
+---
+
+### TC-DSH-004: My Requests Dashboard Tabs
+| Field | Value |
+|-------|-------|
+| **Priority** | Medium |
+| **Preconditions** | User has multiple requests in different statuses |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Navigate to My Requests | Dashboard loads |
+| 2 | Verify tabs present | All, Active, Drafts, Completed tabs visible |
+| 3 | Click "All" tab | Shows all user's requests |
+| 4 | Click "Active" tab | Shows only in-progress requests |
+| 5 | Click "Drafts" tab | Shows only Draft status requests |
+| 6 | Click "Completed" tab | Shows only Completed/Cancelled requests |
+
+---
+
+### TC-DSH-005: Request Card Click
+| Field | Value |
+|-------|-------|
+| **Priority** | High |
+| **Preconditions** | Dashboard with request cards |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | View dashboard with requests | Cards displayed |
+| 2 | Click on a request card | Request form opens |
+| 3 | Verify correct request | Request ID matches clicked card |
+
+---
+
+### TC-DSH-006: Request Hover Card
+| Field | Value |
+|-------|-------|
+| **Priority** | Medium |
+| **Preconditions** | Dashboard with request cards |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Hover over a request card | Hover card appears after brief delay |
+| 2 | Verify hover card content | Shows: Submitter, Submitted Date, Review Audience, Target Date |
+| 3 | Move mouse away | Hover card disappears |
+| 4 | Verify no flicker | Card appears/disappears smoothly |
+
+---
+
+## 16. Search & Filtering
+
+### TC-SRC-001: Spotlight Search Access
+| Field | Value |
+|-------|-------|
+| **Priority** | High |
+| **Preconditions** | User logged in |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Click search icon in toolbar | Search dialog opens |
+| 2 | Verify search input | Text input field focused |
+| 3 | Press Escape | Search dialog closes |
+| 4 | Use keyboard shortcut (Ctrl+K or Cmd+K) | Search dialog opens |
+
+---
+
+### TC-SRC-002: Search by Request ID
+| Field | Value |
+|-------|-------|
+| **Priority** | Critical |
+| **Preconditions** | Known request ID exists (e.g., CRR-26-1) |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open search | Search dialog opens |
+| 2 | Enter "CRR-26-1" | Search executes |
+| 3 | Verify results | Matching request appears in results |
+| 4 | Click result | Request form opens |
+
+---
+
+### TC-SRC-003: Search by Title
+| Field | Value |
+|-------|-------|
+| **Priority** | High |
+| **Preconditions** | Request with known title exists |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open search | Search dialog opens |
+| 2 | Enter partial title text | Search executes after debounce |
+| 3 | Verify results | Requests with matching titles appear |
+| 4 | Verify result display | Shows Request ID, Title, Status |
+
+---
+
+### TC-SRC-004: Search Debounce
+| Field | Value |
+|-------|-------|
+| **Priority** | Medium |
+| **Preconditions** | Search dialog open |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Type quickly "test request" | No search during typing |
+| 2 | Stop typing | Search executes after 300ms delay |
+| 3 | Verify no excessive API calls | Single search call (not per keystroke) |
+
+---
+
+### TC-SRC-005: Recent Searches
+| Field | Value |
+|-------|-------|
+| **Priority** | Medium |
+| **Preconditions** | User has performed searches |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Perform search for "marketing" | Results displayed |
+| 2 | Close and reopen search | Recent searches visible |
+| 3 | Verify recent search shown | "marketing" appears in recent list |
+| 4 | Click recent search | Search re-executes |
+| 5 | Verify limit | Maximum 5 recent searches stored |
+
+---
+
+### TC-SRC-006: Search No Results
+| Field | Value |
+|-------|-------|
+| **Priority** | Medium |
+| **Preconditions** | Search dialog open |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Enter search term with no matches | "xyz123nonexistent" |
+| 2 | Verify message | "No results found" message displayed |
+| 3 | Verify UI | No empty list, helpful message shown |
+
+---
+
+### TC-SRC-007: Search Keyboard Navigation
+| Field | Value |
+|-------|-------|
+| **Priority** | High |
+| **Preconditions** | Search results displayed |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Perform search with results | Results displayed |
+| 2 | Press Down Arrow | Focus moves to first result |
+| 3 | Press Down Arrow again | Focus moves to next result |
+| 4 | Press Enter | Selected request opens |
+| 5 | Press Escape | Search closes |
+
+---
+
+### TC-SRC-008: Quick Filters
+| Field | Value |
+|-------|-------|
+| **Priority** | High |
+| **Preconditions** | Dashboard with multiple requests |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | View dashboard | All requests visible |
+| 2 | Click status filter (e.g., "In Review") | Only In Review requests shown |
+| 3 | Click filter again | Filter removed, all requests shown |
+| 4 | Apply multiple filters | Filters combine (AND logic) |
+
+---
+
+### TC-SRC-009: Sort Requests
+| Field | Value |
+|-------|-------|
+| **Priority** | Medium |
+| **Preconditions** | Dashboard with multiple requests |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Click sort dropdown | Sort options appear |
+| 2 | Select "Target Date" | Requests sorted by target date |
+| 3 | Toggle sort direction | Ascending/Descending switches |
+| 4 | Select "Submitted Date" | Requests sorted by submission date |
+
+---
+
+### TC-SRC-010: View Selector
+| Field | Value |
+|-------|-------|
+| **Priority** | Medium |
+| **Preconditions** | Dashboard loaded |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Click view selector | View options appear |
+| 2 | Select different view | Dashboard updates to selected view |
+| 3 | Verify view-specific columns | Correct columns for selected view |
+| 4 | Change view again | Previous selection cleared |
+
+---
+
+## 17. UI/UX & Accessibility
 
 ### TC-UX-001: Form Layout - 70/30 Split
 | Field | Value |
@@ -1619,7 +1870,7 @@
 
 ---
 
-## 16. Performance & Load
+## 18. Performance & Load
 
 ### TC-PRF-001: Initial Page Load
 | Field | Value |
@@ -1694,7 +1945,7 @@
 
 ---
 
-## 17. Browser Compatibility
+## 19. Browser Compatibility
 
 ### TC-BRW-001: Chrome (Latest)
 | Field | Value |
@@ -1753,7 +2004,7 @@
 
 ---
 
-## 18. Error Handling
+## 20. Error Handling
 
 ### TC-ERR-001: Network Disconnection During Save
 | Field | Value |

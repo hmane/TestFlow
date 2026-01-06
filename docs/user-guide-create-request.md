@@ -249,6 +249,7 @@ The **Workflow Stepper** at the top of every request shows the current progress.
 | **Assign Attorney** | Committee assigns attorney (optional path) |
 | **In Review** | Legal and/or Compliance reviews in progress |
 | **Closeout** | Final steps before completion |
+| **Awaiting Foreside Documents** | Waiting for Foreside documents (if Foreside Review Required) |
 | **Completed** | Request fully processed |
 
 > **Note:** Requests can also be put **On Hold** or **Cancelled** at various stages.
@@ -425,16 +426,67 @@ When all required reviews are completed with Approved or Approved With Comments,
 | Field | Description | Required When |
 |-------|-------------|---------------|
 | **Tracking ID** | Unique identifier for the approved communication | Required if Foreside Review or Retail Use = Yes |
-| **Closeout Notes** | Final notes or comments (append-only) | Optional |
+| **Acknowledge Comments** | Checkbox to acknowledge reviewer comments | Required if any review outcome was "Approved With Comments" |
+| **Closeout Notes** | Final notes or comments | Optional |
 
 ### Available Actions
 
 | Action | Who Can Perform | Description |
 |--------|-----------------|-------------|
-| **Complete Closeout** | Admin, Owner (Submitter) | Finalizes the request, moves to Completed |
+| **Complete Request** | Admin, Owner (Submitter) | Finalizes the request |
 | **Close** | Everyone | Close the form |
 
+### What Happens After Complete Request
+
+When you click **Complete Request**, the system checks if Foreside Review was required:
+
+| Condition | Next Status |
+|-----------|-------------|
+| Foreside Review Required = **No** | → **Completed** |
+| Foreside Review Required = **Yes** | → **Awaiting Foreside Documents** |
+
 > **Note:** On Hold and Cancel are not available during Closeout.
+
+---
+
+## Stage 4A: Awaiting Foreside Documents
+
+If Compliance marked "Is Foreside Review Required" = Yes during their review, the request moves to this stage after Closeout instead of directly to Completed.
+
+**[SCREENSHOT: Awaiting Foreside Documents stage view]**
+
+### What You See
+
+1. **Request Summary Card** (Read-only)
+2. **Legal Intake Card** (Completed)
+3. **Legal Review Card** (Completed)
+4. **Compliance Review Card** (Completed)
+5. **Closeout Card** (Completed) - Shows Tracking ID entered
+6. **Foreside Documents Card** (In Progress)
+
+### Foreside Documents Form
+
+**[SCREENSHOT: Foreside Documents form with upload area]**
+
+| Field | Description | Required |
+|-------|-------------|----------|
+| **Foreside Documents** | Upload the Foreside letter/documents | At least one document required |
+| **Foreside Notes** | Notes about the Foreside documents | Optional |
+
+### Uploading Foreside Documents
+
+1. Click the upload area or drag and drop files
+2. Wait for upload to complete
+3. Verify document appears in the list
+
+### Available Actions
+
+| Action | Who Can Perform | Description |
+|--------|-----------------|-------------|
+| **Complete Request** | Admin, Owner (Submitter), users with Foreside permission | Moves request to Completed |
+| **Close** | Everyone | Close the form |
+
+> **Important:** At least one Foreside document must be uploaded before you can complete the request.
 
 ---
 
@@ -556,7 +608,7 @@ Time is calculated in **business hours** (8 AM - 5 PM PST, Monday-Friday).
 
 ## Quick Reference: Actions by Status
 
-| Status | Save Draft | Submit | Assign | Review | Closeout | Hold | Resume | Cancel |
+| Status | Save Draft | Submit | Assign | Review | Complete | Hold | Resume | Cancel |
 |--------|------------|--------|--------|--------|----------|------|--------|--------|
 | Draft | ✓ | ✓ | - | - | - | - | - | - |
 | Legal Intake | - | - | ✓ | - | - | ✓ | - | ✓ |
@@ -564,6 +616,7 @@ Time is calculated in **business hours** (8 AM - 5 PM PST, Monday-Friday).
 | In Review | - | - | - | ✓ | - | ✓ | - | ✓ |
 | On Hold | - | - | - | - | - | - | ✓ | ✓ |
 | Closeout | - | - | - | - | ✓ | - | - | - |
+| Awaiting Foreside Documents | - | - | - | - | ✓ | - | - | - |
 | Completed | - | - | - | - | - | - | - | - |
 | Cancelled | - | - | - | - | - | - | - | - |
 
@@ -632,8 +685,18 @@ This matrix shows exactly which roles can perform each action in the system.
 |--------|-----------|-------------|-------------------|----------|-----------------|-------|
 | **View Closeout Card** | ✓ | ✓ (read-only) | ✓ (read-only) | ✓ (read-only) | ✓ (read-only) | ✓ |
 | **Enter Tracking ID** | ○ (own request) | - | - | - | - | ✓ |
+| **Acknowledge Comments** | ○ (own request) | - | - | - | - | ✓ |
 | **Add Closeout Notes** | ○ (own request) | - | - | - | - | ✓ |
-| **Complete Closeout** | ○ (own request) | - | - | - | - | ✓ |
+| **Complete Request (Closeout)** | ○ (own request) | - | - | - | - | ✓ |
+
+### Foreside Documents Actions
+
+| Action | Submitter | Legal Admin | Attorney Assigner | Attorney | Compliance User | Admin |
+|--------|-----------|-------------|-------------------|----------|-----------------|-------|
+| **View Foreside Documents Card** | ✓ | ✓ (read-only) | ✓ (read-only) | ✓ (read-only) | ✓ (read-only) | ✓ |
+| **Upload Foreside Documents** | ○ (own request) | - | - | - | - | ✓ |
+| **Add Foreside Notes** | ○ (own request) | - | - | - | - | ✓ |
+| **Complete Request (Foreside)** | ○ (own request) | - | - | - | - | ✓ |
 
 ### Workflow Control Actions
 
@@ -663,3 +726,296 @@ This matrix shows exactly which roles can perform each action in the system.
 3. **Attorney Assigners** can only act during the "Assign Attorney" workflow status
 4. **Compliance Users** can only review requests with Review Audience = "Compliance" or "Both"
 5. **Admin** role has full access to all actions and can override normal workflow restrictions
+
+---
+
+# Dashboard & Navigation
+
+The Legal Review System provides role-based dashboards that show relevant requests and actions for each user type.
+
+## Dashboard Toolbar
+
+The toolbar appears at the top of every page and provides:
+
+**[SCREENSHOT: Dashboard toolbar with navigation and search]**
+
+### Navigation Buttons
+
+| Button | Description | Who Sees It |
+|--------|-------------|-------------|
+| **Home** | Main dashboard with overview | Everyone |
+| **My Requests** | Requests you created | Submitters |
+| **Legal Admin** | Legal intake and management | Legal Admin, Admin |
+| **Attorney Assignment** | Requests awaiting attorney assignment | Attorney Assigners, Admin |
+| **Attorney** | Assigned reviews | Attorneys, Admin |
+| **Compliance** | Compliance reviews | Compliance Users, Admin |
+| **New Request** | Create a new request | Submitters, Legal Admin, Admin |
+
+### Current Page Indicator
+
+The active dashboard is highlighted in the toolbar so you always know which view you're on.
+
+---
+
+## Home Dashboard
+
+The Home Dashboard is your starting point and shows an overview of your requests.
+
+**[SCREENSHOT: Home Dashboard overview]**
+
+### Request Cards
+
+Each request is displayed as a card showing:
+
+| Element | Description |
+|---------|-------------|
+| **Request ID** | Click to open the request (e.g., CRR-26-42) |
+| **Title** | Request title |
+| **Status Badge** | Current workflow status with color coding |
+| **Progress Bar** | Visual indicator of workflow progress |
+| **Target Date** | Due date with urgency indicator |
+| **Attorney** | Assigned attorney (if assigned) |
+| **Time Tracking** | Hours spent on the request |
+
+### Status Badge Colors
+
+| Status | Color |
+|--------|-------|
+| Draft | Gray |
+| Legal Intake | Blue |
+| Assign Attorney | Purple |
+| In Review | Orange |
+| Closeout | Teal |
+| Awaiting Foreside Documents | Amber |
+| Completed | Green |
+| On Hold | Blue (paused icon) |
+| Cancelled | Gray (strikethrough) |
+
+### Progress Bar Colors
+
+| Color | Meaning |
+|-------|---------|
+| **Green** | On track or completed |
+| **Yellow** | Due soon (within 1 day) |
+| **Red** | Overdue |
+| **Blue** | On Hold |
+| **Gray** | Cancelled or Draft |
+
+### Target Date Urgency
+
+The target date shows urgency indicators:
+
+- **Red text + "(X days overdue)"** - Past due
+- **Orange text + "(Due today)" or "(Tomorrow)"** - Urgent
+- **Yellow text + "(Xd)"** - Due within 3 days
+- **Normal text** - More than 3 days remaining
+
+---
+
+## My Requests Dashboard
+
+Shows all requests you have created, organized into tabs.
+
+**[SCREENSHOT: My Requests Dashboard with tabs]**
+
+### Tabs
+
+| Tab | Description |
+|-----|-------------|
+| **Open Requests** | Your active requests (Draft, Legal Intake, Assign Attorney, In Review, Closeout, On Hold) |
+| **Awaiting Foreside** | Your requests waiting for Foreside documents |
+| **Completed** | Your finished requests (Completed, Cancelled) |
+
+### Request List
+
+Each tab shows a list of requests with:
+- Request ID (clickable link)
+- Title
+- Status
+- Target Return Date
+- Attorney (if assigned)
+- Last Modified
+
+---
+
+## Role-Specific Dashboards
+
+### Legal Admin Dashboard
+
+**[SCREENSHOT: Legal Admin Dashboard]**
+
+| Section | Description |
+|---------|-------------|
+| **Legal Intake Queue** | New requests awaiting triage and attorney assignment |
+| **Pending Attorney Assignment** | Requests sent to committee |
+| **All In Review** | All requests currently being reviewed |
+
+### Attorney Assignment Dashboard
+
+**[SCREENSHOT: Attorney Assignment Dashboard]**
+
+Shows requests in "Assign Attorney" status that need an attorney assigned by the committee.
+
+### Attorney Dashboard
+
+**[SCREENSHOT: Attorney Dashboard]**
+
+| Section | Description |
+|---------|-------------|
+| **Pending My Review** | Requests assigned to you needing review action |
+| **My Assigned Requests** | All requests assigned to you (open) |
+| **My Completed Reviews** | Your finished reviews |
+
+#### Review Status Indicators
+
+When viewing requests in "In Review" status, you'll see indicators:
+
+| Indicator | Meaning |
+|-----------|---------|
+| **Action Needed** (warning icon) | Submitter response received, your review needed |
+| **Legal Review** | Legal review in progress |
+| **Compliance Review** | Compliance review in progress |
+| **In Review** | Both reviews in progress |
+| **Complete** | Review finished |
+
+### Compliance Dashboard
+
+**[SCREENSHOT: Compliance Dashboard]**
+
+| Section | Description |
+|---------|-------------|
+| **Pending Compliance Review** | Requests requiring your compliance review |
+| **Completed Compliance Reviews** | Your finished compliance reviews |
+
+---
+
+# Searching for Requests
+
+The Legal Review System includes a powerful spotlight search to quickly find any request.
+
+## Spotlight Search
+
+**[SCREENSHOT: Search bar in toolbar]**
+
+### Accessing Search
+
+1. Click the search icon in the toolbar, OR
+2. Use keyboard shortcut: **Ctrl+K** (Windows) / **Cmd+K** (Mac)
+
+### Search Features
+
+| Feature | Description |
+|---------|-------------|
+| **Request ID Search** | Type a full or partial Request ID (e.g., "CRR-26" or "42") |
+| **Title Search** | Search by request title keywords |
+| **Document Search** | Find requests by document names |
+| **Recent Searches** | Quick access to your recent search queries |
+
+### How to Search
+
+1. Click in the search box
+2. Type your search query (minimum 2 characters)
+3. Results appear automatically after a brief pause
+4. Click a result to open that request
+
+**[SCREENSHOT: Search results dropdown]**
+
+### Search Results
+
+Each search result shows:
+- Request ID
+- Title
+- Current Status (with badge)
+- Progress indicator
+- Match highlight (where the search term was found)
+
+### Recent Searches
+
+When you click the search box, your recent searches appear for quick access:
+
+**[SCREENSHOT: Recent searches dropdown]**
+
+- Click a recent search to run it again
+- Recent searches are stored locally in your browser
+- Up to 5 recent searches are saved (configurable)
+
+### Search Tips
+
+| Tip | Example |
+|-----|---------|
+| Search by exact ID | `CRR-26-42` |
+| Search by partial ID | `26-42` or just `42` |
+| Search by year | `CRR-26` finds all 2026 requests |
+| Search by title words | `marketing brochure` |
+| Search by document | `whitepaper.pdf` |
+
+### Keyboard Navigation
+
+| Key | Action |
+|-----|--------|
+| **↓** / **↑** | Navigate through results |
+| **Enter** | Open selected result |
+| **Escape** | Close search dropdown |
+
+---
+
+## Filtering Requests
+
+Within each dashboard view, you can filter and sort requests.
+
+### Quick Filters
+
+**[SCREENSHOT: Filter options]**
+
+| Filter | Description |
+|--------|-------------|
+| **Rush Requests** | Show only rush requests |
+| **Overdue** | Show only overdue requests |
+| **My Requests** | Show only requests you created |
+
+### Sorting
+
+Click column headers to sort by:
+- Request ID
+- Title
+- Status
+- Target Date
+- Modified Date
+- Attorney
+
+### View Selector
+
+Some dashboards offer multiple pre-defined views:
+
+| View | Description |
+|------|-------------|
+| **All Requests** | All requests you have access to |
+| **My Open Requests** | Your active requests |
+| **My Completed** | Your finished requests |
+| **Rush Requests** | All active rush requests |
+| **On Hold** | All requests currently on hold |
+
+---
+
+## Request Hover Cards
+
+Hover over a Request ID or Status column to see a quick preview without opening the request.
+
+**[SCREENSHOT: Request hover card]**
+
+### Hover Card Contents
+
+| Field | Description |
+|-------|-------------|
+| **Request ID** | Full request identifier |
+| **Title** | Request title |
+| **Status** | Current status with icon |
+| **Submitter** | Who created the request |
+| **Attorney** | Assigned attorney |
+| **Target Date** | Due date with remaining days |
+| **Progress** | Visual progress bar |
+
+### Quick Actions from Hover Card
+
+- **Click Request ID** - Open the full request
+- **Click Attorney name** - View attorney's profile
