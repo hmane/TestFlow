@@ -930,50 +930,64 @@ export function getStepsForStepper(
   // Convert base steps to StepData
   const stepDataArray = finalSteps.map((step) => convertToStepData(step, currentStatus, mode, requestMetadata));
 
-  // For Cancelled status: Add Cancelled step at the end
+  // For Cancelled status: Show only completed steps + Cancelled step
   if (currentStatus === RequestStatus.Cancelled) {
-    // Mark steps up to previousStatus as completed, rest as pending
     const previousStatus = requestMetadata?.previousStatus;
     const previousStepKey = previousStatus ? getStepKeyForStatus(previousStatus) : 'draft';
 
-    // Update step statuses based on previousStatus
+    // Filter to only keep steps up to and including previousStatus, mark them as completed
     let foundPreviousStep = false;
+    const filteredSteps: StepData[] = [];
+
     for (let i = 0; i < stepDataArray.length; i++) {
-      if (stepDataArray[i].id === previousStepKey) {
-        stepDataArray[i].status = 'completed';
+      const step = stepDataArray[i];
+      if (step.id === previousStepKey) {
+        // This is the step where cancellation happened - mark as completed
+        step.status = 'completed';
+        filteredSteps.push(step);
         foundPreviousStep = true;
       } else if (!foundPreviousStep) {
-        stepDataArray[i].status = 'completed';
-      } else {
-        stepDataArray[i].status = 'pending';
+        // Steps before previousStatus - mark as completed
+        step.status = 'completed';
+        filteredSteps.push(step);
       }
+      // Steps after previousStatus are excluded (not added to filteredSteps)
     }
 
     // Add the Cancelled step at the end
-    stepDataArray.push(convertTerminalStepToStepData(cancelledStep, 'error', requestMetadata));
+    filteredSteps.push(convertTerminalStepToStepData(cancelledStep, 'error', requestMetadata));
+
+    return filteredSteps;
   }
 
-  // For OnHold status: Add OnHold step at the end
+  // For OnHold status: Show only completed steps + current step + OnHold step
   if (currentStatus === RequestStatus.OnHold) {
-    // Mark steps up to previousStatus as completed, rest as pending
     const previousStatus = requestMetadata?.previousStatus;
     const previousStepKey = previousStatus ? getStepKeyForStatus(previousStatus) : 'draft';
 
-    // Update step statuses based on previousStatus
+    // Filter to only keep steps up to and including previousStatus
     let foundPreviousStep = false;
+    const filteredSteps: StepData[] = [];
+
     for (let i = 0; i < stepDataArray.length; i++) {
-      if (stepDataArray[i].id === previousStepKey) {
-        stepDataArray[i].status = 'completed';
+      const step = stepDataArray[i];
+      if (step.id === previousStepKey) {
+        // This is the step where hold happened - mark as current (paused)
+        step.status = 'warning';
+        filteredSteps.push(step);
         foundPreviousStep = true;
       } else if (!foundPreviousStep) {
-        stepDataArray[i].status = 'completed';
-      } else {
-        stepDataArray[i].status = 'pending';
+        // Steps before previousStatus - mark as completed
+        step.status = 'completed';
+        filteredSteps.push(step);
       }
+      // Steps after previousStatus are excluded (not added to filteredSteps)
     }
 
     // Add the OnHold step at the end
-    stepDataArray.push(convertTerminalStepToStepData(onHoldStep, 'blocked', requestMetadata));
+    filteredSteps.push(convertTerminalStepToStepData(onHoldStep, 'blocked', requestMetadata));
+
+    return filteredSteps;
   }
 
   return stepDataArray;
