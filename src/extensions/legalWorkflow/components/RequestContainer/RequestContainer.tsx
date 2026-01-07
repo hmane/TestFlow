@@ -37,7 +37,6 @@ import { RequestStatus } from '@appTypes/workflowTypes';
 import { LoadingFallback } from '@components/LoadingFallback';
 import { StatusBanner } from '@components/StatusBanner';
 import { useWorkflowStepper } from '@components/WorkflowStepper/useWorkflowStepper';
-import { shouldShowFormSection } from '@components/WorkflowStepper/workflowStepConfig';
 import { useRequestStore } from '@stores/requestStore';
 import { handleManageAccessChange, type IPermissionPrincipal } from '@services/azureFunctionService';
 import { RequestActions } from '../RequestActions';
@@ -600,14 +599,37 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
     const status = currentRequest?.status;
     const previousStatus = currentRequest?.previousStatus;
 
-    // Helper to check if section should be shown for Cancelled/OnHold
-    const showSection = (sectionStatus: RequestStatus): boolean => {
-      if (!status) return true;
-      return shouldShowFormSection(sectionStatus, status, previousStatus);
+    // Check if request is in terminal state (Cancelled or On Hold)
+    const isTerminalState = status === RequestStatus.Cancelled || status === RequestStatus.OnHold;
+
+    /**
+     * Workflow stage order for determining form visibility
+     * Higher number = later in workflow
+     */
+    const STAGE_ORDER: Record<string, number> = {
+      [RequestStatus.Draft]: 1,
+      [RequestStatus.LegalIntake]: 2,
+      [RequestStatus.AssignAttorney]: 2,
+      [RequestStatus.InReview]: 3,
+      [RequestStatus.Closeout]: 4,
+      [RequestStatus.AwaitingForesideDocuments]: 5,
+      [RequestStatus.Completed]: 6,
     };
 
-    // Check if request is in terminal state
-    const isTerminalState = status === RequestStatus.Cancelled || status === RequestStatus.OnHold;
+    /**
+     * Check if a form section should be shown based on workflow progress
+     * For terminal states: show if previousStatus reached or passed the required stage
+     * For normal flow: show if current status is at or past the required stage
+     */
+    const shouldShowForm = (requiredStage: RequestStatus): boolean => {
+      if (isTerminalState) {
+        // For Cancelled/OnHold: show forms for stages that were reached before terminal state
+        if (!previousStatus) return false;
+        return (STAGE_ORDER[previousStatus] || 0) >= (STAGE_ORDER[requiredStage] || 0);
+      }
+      // Normal flow: show if current status is at or past required stage
+      return (STAGE_ORDER[status || ''] || 0) >= (STAGE_ORDER[requiredStage] || 0);
+    };
 
     // Draft status: Full form with approvals and attachments
     if (!status || status === RequestStatus.Draft) {
@@ -667,57 +689,48 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
           {/* Request Summary Card - includes approvals with DocumentLink */}
           <RequestSummary onEditClick={isTerminalState ? undefined : handleEditRequestInfo} />
 
-          {/* Stage-specific forms - only show if status allows based on previousStatus */}
-
-          {/* Legal Intake form shows for LegalIntake/AssignAttorney status, or terminal states where previousStatus >= LegalIntake */}
-          {((status === RequestStatus.LegalIntake || status === RequestStatus.AssignAttorney) ||
-            (isTerminalState && showSection(RequestStatus.LegalIntake) && previousStatus && previousStatus !== RequestStatus.Draft)) && (
+          {/* Legal Intake form - shows when workflow reached Legal Intake stage */}
+          {shouldShowForm(RequestStatus.LegalIntake) && (
             <LazyFormWrapper formName="Legal Intake Form" fallbackMessage="Loading Legal Intake Form...">
               <LegalIntakeForm defaultExpanded={!isTerminalState} readOnly={isTerminalState} />
             </LazyFormWrapper>
           )}
 
-          {/* In Review forms - show for InReview status, or terminal states where previousStatus >= InReview */}
-          {(status === RequestStatus.InReview ||
-            (isTerminalState && showSection(RequestStatus.InReview))) && (
+          {/* Review forms - shows when workflow reached In Review stage */}
+          {shouldShowForm(RequestStatus.InReview) && (
             <>
-              {/* Legal Intake summary - collapsed, shows attorney info (if not already shown above) */}
+              {/* Legal Intake summary - only for active InReview (not terminal) */}
               {status === RequestStatus.InReview && (
                 <LazyFormWrapper formName="Legal Intake Summary" fallbackMessage="Loading intake summary...">
                   <LegalIntakeForm defaultExpanded={false} readOnly />
                 </LazyFormWrapper>
               )}
-              {/* Legal Review form with its own error boundary */}
               <LazyFormWrapper formName="Legal Review Form" fallbackMessage="Loading Legal Review Form...">
                 <LegalReviewForm collapsible defaultCollapsed={isTerminalState} />
               </LazyFormWrapper>
-              {/* Compliance Review form with its own error boundary */}
               <LazyFormWrapper formName="Compliance Review Form" fallbackMessage="Loading Compliance Review Form...">
                 <ComplianceReviewForm collapsible defaultCollapsed={isTerminalState} />
               </LazyFormWrapper>
             </>
           )}
 
-          {/* Closeout and beyond - show for Closeout/Completed/AwaitingForesideDocuments, or terminal states where previousStatus >= Closeout */}
-          {((status === RequestStatus.Closeout || status === RequestStatus.Completed || status === RequestStatus.AwaitingForesideDocuments) ||
-            (isTerminalState && showSection(RequestStatus.Closeout))) && (
+          {/* Closeout form - shows when workflow reached Closeout stage */}
+          {shouldShowForm(RequestStatus.Closeout) && (
             <>
-              {/* Legal Intake summary - collapsed, shows attorney info (if not already shown) */}
+              {/* Legal Intake summary - only for active closeout (not terminal) */}
               {!isTerminalState && (
                 <LazyFormWrapper formName="Legal Intake Summary" fallbackMessage="Loading intake summary...">
                   <LegalIntakeForm defaultExpanded={false} readOnly />
                 </LazyFormWrapper>
               )}
-              {/* Completed review forms - will show in collapsed/completed state */}
               <LazyFormWrapper formName="Legal Review Summary" fallbackMessage="Loading review summary...">
                 <LegalReviewForm collapsible defaultCollapsed />
               </LazyFormWrapper>
               <LazyFormWrapper formName="Compliance Review Summary" fallbackMessage="Loading review summary...">
                 <ComplianceReviewForm collapsible defaultCollapsed />
               </LazyFormWrapper>
-              {/* Closeout form - show for Closeout, Completed, AwaitingForesideDocuments, or terminal states at Closeout */}
               <LazyFormWrapper formName="Closeout Form" fallbackMessage="Loading Closeout Form...">
-                <CloseoutForm readOnly={status === RequestStatus.Completed || status === RequestStatus.AwaitingForesideDocuments || isTerminalState} />
+                <CloseoutForm readOnly={shouldShowForm(RequestStatus.AwaitingForesideDocuments) || isTerminalState} />
               </LazyFormWrapper>
             </>
           )}
@@ -741,9 +754,8 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
             <RequestDocuments itemId={itemId} />
           </ErrorBoundary>
 
-          {/* Foreside Documents - shown when AwaitingForesideDocuments, Completed, or terminal states at/after AwaitingForesideDocuments */}
-          {(status === RequestStatus.AwaitingForesideDocuments || status === RequestStatus.Completed ||
-            (isTerminalState && showSection(RequestStatus.AwaitingForesideDocuments))) && (
+          {/* Foreside Documents - shows when workflow reached Awaiting Foreside Documents stage */}
+          {shouldShowForm(RequestStatus.AwaitingForesideDocuments) && (
             <ErrorBoundary
               enableRetry={true}
               maxRetries={2}
