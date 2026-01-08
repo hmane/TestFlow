@@ -1,10 +1,10 @@
 /**
- * ForesideDocuments Component Styles
+ * FINRADocuments Component Styles
  *
  * Matches RequestDocuments styling for uniform look
  */
 
-.foreside-documents-card {
+.finra-documents-card {
   margin-bottom: 16px;
 }
 
@@ -25,7 +25,7 @@
 
 // Responsive design
 @media (max-width: 768px) {
-  .foreside-documents-card {
+  .finra-documents-card {
     .document-count-badge {
       min-width: 18px;
       height: 18px;
@@ -36,7 +36,7 @@
 
 // Print styles
 @media print {
-  .foreside-documents-card {
+  .finra-documents-card {
     box-shadow: none;
     border: 1px solid #000;
     page-break-inside: avoid;
@@ -51,7 +51,7 @@
 
 // High contrast mode support
 @media (prefers-contrast: high) {
-  .foreside-documents-card {
+  .finra-documents-card {
     border: 2px solid currentColor;
   }
 
@@ -62,7 +62,7 @@
 
 // Accessibility enhancements
 // NOTE: Exclude DevExtreme components (dx-*) which have their own focus styling
-.foreside-documents-card {
+.finra-documents-card {
   *:focus-visible:not([class*='dx-']) {
     outline: 2px solid #0078d4;
     outline-offset: 2px;

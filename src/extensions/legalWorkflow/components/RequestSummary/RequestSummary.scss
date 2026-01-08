@@ -357,7 +357,7 @@
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: 0;
+    gap: 4px 8px; // vertical gap 4px, horizontal gap 8px between items
   }
 
   // Clickable prior submission link with hover card

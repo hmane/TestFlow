@@ -176,15 +176,16 @@
       <Field Type="Boolean" Name="CommentsAcknowledged" DisplayName="Comments Acknowledged" Group="Closeout" ID="{8C9D4E5F-6A7B-4C8D-9E0F-1A2B3C4D5E6F}"><Default>0</Default></Field>
       <Field Type="DateTime" Name="CommentsAcknowledgedOn" DisplayName="Comments Acknowledged On" Format="DateTime" Group="Closeout" ID="{9D0E5F6A-7B8C-4D9E-0F1A-2B3C4D5E6F7A}" />
 
-      <!-- Foreside Documents (4) - tracks Foreside letter upload stage -->
-      <Field Type="User" Name="ForesideCompletedBy" DisplayName="Foreside Completed By" UserSelectionMode="PeopleOnly" Group="Foreside Documents" ID="{A0B1C2D3-7777-4E5F-9A1B-2C3D4E5F6A7B}" />
-      <Field Type="DateTime" Name="ForesideCompletedOn" DisplayName="Foreside Completed On" Format="DateTime" Group="Foreside Documents" ID="{B1C2D3E4-8888-4F6A-0B2C-3D4E5F6A7B8C}" />
-      <Field Type="Note" Name="ForesideNotes" DisplayName="Foreside Notes" RichText="FALSE" AppendOnly="TRUE" NumLines="6" Group="Foreside Documents" ID="{C2D3E4F5-9999-4A7B-1C3D-4E5F6A7B8C9D}" />
-      <Field Type="DateTime" Name="AwaitingForesideSince" DisplayName="Awaiting Foreside Since" Format="DateTime" Group="Foreside Documents" ID="{D3E4F5A6-AAAA-4B8C-2D4E-5F6A7B8C9D0E}" />
+      <!-- FINRA Documents (4) - tracks FINRA letter upload stage -->
+      <!-- Note: Internal names use "Foreside" for backward compatibility with existing SharePoint columns -->
+      <Field Type="User" Name="ForesideCompletedBy" DisplayName="FINRA Completed By" UserSelectionMode="PeopleOnly" Group="FINRA Documents" ID="{A0B1C2D3-7777-4E5F-9A1B-2C3D4E5F6A7B}" />
+      <Field Type="DateTime" Name="ForesideCompletedOn" DisplayName="FINRA Completed On" Format="DateTime" Group="FINRA Documents" ID="{B1C2D3E4-8888-4F6A-0B2C-3D4E5F6A7B8C}" />
+      <Field Type="Note" Name="ForesideNotes" DisplayName="FINRA Notes" RichText="FALSE" AppendOnly="TRUE" NumLines="6" Group="FINRA Documents" ID="{C2D3E4F5-9999-4A7B-1C3D-4E5F6A7B8C9D}" />
+      <Field Type="DateTime" Name="AwaitingForesideSince" DisplayName="Awaiting FINRA Since" Format="DateTime" Group="FINRA Documents" ID="{D3E4F5A6-AAAA-4B8C-2D4E-5F6A7B8C9D0E}" />
 
       <!-- System Tracking (18) -->
       <Field Type="Choice" Name="Status" DisplayName="Status" Required="TRUE" Group="System Tracking" ID="{9E390E5D-9D57-472F-B470-EDE7F1D5EB89}" Indexed="TRUE" ClientSideComponentId="e55dcdea-8fa3-4708-9fbe-35c866026289">
-        <CHOICES><CHOICE>Draft</CHOICE><CHOICE>Legal Intake</CHOICE><CHOICE>Assign Attorney</CHOICE><CHOICE>In Review</CHOICE><CHOICE>Closeout</CHOICE><CHOICE>Awaiting Foreside Documents</CHOICE><CHOICE>Completed</CHOICE><CHOICE>Cancelled</CHOICE><CHOICE>On Hold</CHOICE></CHOICES>
+        <CHOICES><CHOICE>Draft</CHOICE><CHOICE>Legal Intake</CHOICE><CHOICE>Assign Attorney</CHOICE><CHOICE>In Review</CHOICE><CHOICE>Closeout</CHOICE><CHOICE>Awaiting FINRA Documents</CHOICE><CHOICE>Completed</CHOICE><CHOICE>Cancelled</CHOICE><CHOICE>On Hold</CHOICE></CHOICES>
         <Default>Draft</Default>
       </Field>
       <Field Type="User" Name="SubmittedBy" DisplayName="Submitted By" UserSelectionMode="PeopleOnly" Group="System Tracking" ID="{DDA3A20E-6CBC-46E8-8AB2-5AAB744A46D8}" />
@@ -224,7 +225,7 @@
     <!--
       Open Status Definition: Draft, Legal Intake, Assign Attorney, In Review, Closeout, On Hold
       Closed Status Definition: Completed, Cancelled
-      Awaiting Foreside Documents: Separate view (not open, not closed)
+      Awaiting FINRA Documents: Separate view (not open, not closed)
       All views sort by Modified DESC unless a specific queue ordering is needed
     -->
     <pnp:Views RemoveExistingViews="true">
@@ -292,13 +293,13 @@
         <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
       </View>
 
-      <!-- My Awaiting Foreside Documents -->
-      <View DisplayName="My Awaiting Foreside Documents" DefaultView="FALSE" Type="HTML" Url="{site}/Lists/Requests/MyAwaitingForesideDocuments.aspx" Level="1" BaseViewID="4" ContentTypeID="0x">
+      <!-- My Awaiting FINRA Documents -->
+      <View DisplayName="My Awaiting FINRA Documents" DefaultView="FALSE" Type="HTML" Url="{site}/Lists/Requests/MyAwaitingFINRADocuments.aspx" Level="1" BaseViewID="4" ContentTypeID="0x">
         <Query>
           <Where>
             <And>
               <Eq><FieldRef Name="Author" /><Value Type="Integer"><UserID/></Value></Eq>
-              <Eq><FieldRef Name="Status" /><Value Type="Choice">Awaiting Foreside Documents</Value></Eq>
+              <Eq><FieldRef Name="Status" /><Value Type="Choice">Awaiting FINRA Documents</Value></Eq>
             </And>
           </Where>
           <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
@@ -661,11 +662,11 @@
       <!-- FORESIDE DOCUMENTS VIEWS -->
       <!-- ============================================ -->
 
-      <!-- Awaiting Foreside Documents -->
-      <View DisplayName="Awaiting Foreside Documents" DefaultView="FALSE" Type="HTML" Url="{site}/Lists/Requests/AwaitingForesideDocuments.aspx" Level="1" BaseViewID="17" ContentTypeID="0x">
+      <!-- Awaiting FINRA Documents -->
+      <View DisplayName="Awaiting FINRA Documents" DefaultView="FALSE" Type="HTML" Url="{site}/Lists/Requests/AwaitingFINRADocuments.aspx" Level="1" BaseViewID="17" ContentTypeID="0x">
         <Query>
           <Where>
-            <Eq><FieldRef Name="Status" /><Value Type="Choice">Awaiting Foreside Documents</Value></Eq>
+            <Eq><FieldRef Name="Status" /><Value Type="Choice">Awaiting FINRA Documents</Value></Eq>
           </Where>
           <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
         </Query>

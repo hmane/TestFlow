@@ -16,7 +16,7 @@ export type ActiveAction =
   | 'assignAttorney'
   | 'sendToCommittee'
   | 'closeout'
-  | 'completeForesideDocuments'
+  | 'completeFINRADocuments'
   | undefined;
 
 /**

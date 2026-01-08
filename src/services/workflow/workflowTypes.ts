@@ -112,10 +112,10 @@ export interface IHoldPayload {
 }
 
 /**
- * Complete Foreside documents payload
+ * Complete FINRA documents payload
  */
-export interface ICompleteForesideDocumentsPayload {
-  /** Optional notes about the Foreside document completion */
+export interface ICompleteFINRADocumentsPayload {
+  /** Optional notes about the FINRA document completion */
   notes?: string;
 }
 

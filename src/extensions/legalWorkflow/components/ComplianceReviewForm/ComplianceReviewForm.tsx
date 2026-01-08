@@ -259,6 +259,11 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
         }
       );
 
+      // Reload request to ensure store has latest data including review notes
+      if (itemId) {
+        await loadRequest(itemId);
+      }
+
       // Reset form with cleared notes for append-only field
       reset({
         complianceReviewStatus: ComplianceReviewStatus.Completed,
@@ -291,7 +296,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
     } finally {
       setIsSaving(false);
     }
-  }, [itemId, scrollToFirstError, reset]);
+  }, [itemId, scrollToFirstError, reset, loadRequest]);
 
   /**
    * Handle save progress (save without submitting)

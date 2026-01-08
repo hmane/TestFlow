@@ -510,19 +510,18 @@ export const fetchDashboardData = async (
       }
     });
 
-    const timeByStage: ITimeByStage[] = [];
-    for (const stage in stageHours) {
-      if (Object.prototype.hasOwnProperty.call(stageHours, stage)) {
-        const data = stageHours[stage];
-        timeByStage.push({
-          stage,
-          avgReviewerHours: data.count > 0 ? Math.round((data.reviewer / data.count) * 10) / 10 : 0,
-          avgSubmitterHours: data.count > 0 ? Math.round((data.submitter / data.count) * 10) / 10 : 0,
-          totalHours: data.count > 0 ? Math.round(((data.reviewer + data.submitter) / data.count) * 10) / 10 : 0,
-          color: STAGE_COLORS[stage] || '#8a8886',
-        });
-      }
-    }
+    // Build timeByStage in consistent order
+    const stageOrder = ['Legal Intake', 'Legal Review', 'Compliance Review', 'Closeout'];
+    const timeByStage: ITimeByStage[] = stageOrder.map(stage => {
+      const data = stageHours[stage];
+      return {
+        stage,
+        avgReviewerHours: data.count > 0 ? Math.round((data.reviewer / data.count) * 10) / 10 : 0,
+        avgSubmitterHours: data.count > 0 ? Math.round((data.submitter / data.count) * 10) / 10 : 0,
+        totalHours: data.count > 0 ? Math.round(((data.reviewer + data.submitter) / data.count) * 10) / 10 : 0,
+        color: STAGE_COLORS[stage] || '#8a8886',
+      };
+    });
 
     // Calculate review outcomes
     const legalOutcomes: Record<string, number> = {};

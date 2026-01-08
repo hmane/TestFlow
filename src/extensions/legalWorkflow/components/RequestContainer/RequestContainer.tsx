@@ -45,7 +45,7 @@ import { RequestDocuments } from '../RequestDocuments';
 import { RequestSummary } from '../RequestSummary';
 import { RequestTypeSelector } from '../RequestTypeSelector';
 import { WorkflowFormWrapper } from '../WorkflowFormWrapper';
-import { ForesideDocuments } from '../ForesideDocuments';
+import { FINRADocuments } from '../FINRADocuments';
 import './RequestContainer.scss';
 
 // Lazy load workflow stage forms - these are only loaded when needed
@@ -216,10 +216,10 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
       legalReviewStatus: currentRequest?.legalReview?.status,
       complianceReviewStatus: currentRequest?.complianceReview?.status,
       isCurrentUserSubmitter,
-      // Foreside Documents step fields
+      // FINRA Documents step fields
       isForesideReviewRequired: currentRequest?.complianceReview?.isForesideReviewRequired || currentRequest?.isForesideReviewRequired,
-      foresideCompletedOn: currentRequest?.foresideCompletedOn,
-      foresideCompletedBy: currentRequest?.foresideCompletedBy?.title,
+      finraCompletedOn: currentRequest?.finraCompletedOn,
+      finraCompletedBy: currentRequest?.finraCompletedBy?.title,
       // Terminal state fields (Cancelled/OnHold)
       previousStatus: currentRequest?.previousStatus,
       cancelledOn: currentRequest?.cancelledOn,
@@ -254,8 +254,8 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
       currentRequest?.closeoutBy,
       currentRequest?.trackingId,
       currentRequest?.isForesideReviewRequired,
-      currentRequest?.foresideCompletedOn,
-      currentRequest?.foresideCompletedBy,
+      currentRequest?.finraCompletedOn,
+      currentRequest?.finraCompletedBy,
       currentRequest?.previousStatus,
       currentRequest?.cancelledOn,
       currentRequest?.cancelledBy,
@@ -612,7 +612,7 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
       [RequestStatus.AssignAttorney]: 2,
       [RequestStatus.InReview]: 3,
       [RequestStatus.Closeout]: 4,
-      [RequestStatus.AwaitingForesideDocuments]: 5,
+      [RequestStatus.AwaitingFINRADocuments]: 5,
       [RequestStatus.Completed]: 6,
     };
 
@@ -690,21 +690,19 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
           <RequestSummary onEditClick={isTerminalState ? undefined : handleEditRequestInfo} />
 
           {/* Legal Intake form - shows when workflow reached Legal Intake stage */}
+          {/* Editable only during LegalIntake/AssignAttorney, read-only after that (InReview, Closeout, etc.) */}
           {shouldShowForm(RequestStatus.LegalIntake) && (
             <LazyFormWrapper formName="Legal Intake Form" fallbackMessage="Loading Legal Intake Form...">
-              <LegalIntakeForm defaultExpanded={!isTerminalState} readOnly={isTerminalState} />
+              <LegalIntakeForm
+                defaultExpanded={status === RequestStatus.LegalIntake || status === RequestStatus.AssignAttorney}
+                readOnly={status !== RequestStatus.LegalIntake && status !== RequestStatus.AssignAttorney}
+              />
             </LazyFormWrapper>
           )}
 
           {/* Review forms - shows when workflow reached In Review stage */}
           {shouldShowForm(RequestStatus.InReview) && (
             <>
-              {/* Legal Intake summary - only for active InReview (not terminal) */}
-              {status === RequestStatus.InReview && (
-                <LazyFormWrapper formName="Legal Intake Summary" fallbackMessage="Loading intake summary...">
-                  <LegalIntakeForm defaultExpanded={false} readOnly />
-                </LazyFormWrapper>
-              )}
               <LazyFormWrapper formName="Legal Review Form" fallbackMessage="Loading Legal Review Form...">
                 <LegalReviewForm collapsible defaultCollapsed={isTerminalState} />
               </LazyFormWrapper>
@@ -717,25 +715,13 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
           {/* Closeout form - shows when workflow reached Closeout stage */}
           {shouldShowForm(RequestStatus.Closeout) && (
             <>
-              {/* Legal Intake summary - only for active closeout (not terminal) */}
-              {!isTerminalState && (
-                <LazyFormWrapper formName="Legal Intake Summary" fallbackMessage="Loading intake summary...">
-                  <LegalIntakeForm defaultExpanded={false} readOnly />
-                </LazyFormWrapper>
-              )}
-              <LazyFormWrapper formName="Legal Review Summary" fallbackMessage="Loading review summary...">
-                <LegalReviewForm collapsible defaultCollapsed />
-              </LazyFormWrapper>
-              <LazyFormWrapper formName="Compliance Review Summary" fallbackMessage="Loading review summary...">
-                <ComplianceReviewForm collapsible defaultCollapsed />
-              </LazyFormWrapper>
               <LazyFormWrapper formName="Closeout Form" fallbackMessage="Loading Closeout Form...">
-                <CloseoutForm readOnly={shouldShowForm(RequestStatus.AwaitingForesideDocuments) || isTerminalState} />
+                <CloseoutForm readOnly={shouldShowForm(RequestStatus.AwaitingFINRADocuments) || isTerminalState} />
               </LazyFormWrapper>
             </>
           )}
 
-          {/* Attachments - always above action buttons (read-only when AwaitingForesideDocuments or terminal) */}
+          {/* Attachments - always above action buttons (read-only when AwaitingFINRADocuments or terminal) */}
           <ErrorBoundary
             enableRetry={true}
             maxRetries={2}
@@ -754,15 +740,15 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
             <RequestDocuments itemId={itemId} />
           </ErrorBoundary>
 
-          {/* Foreside Documents - shows when workflow reached Awaiting Foreside Documents stage */}
-          {shouldShowForm(RequestStatus.AwaitingForesideDocuments) && (
+          {/* FINRA Documents - shows when workflow reached Awaiting FINRA Documents stage */}
+          {shouldShowForm(RequestStatus.AwaitingFINRADocuments) && (
             <ErrorBoundary
               enableRetry={true}
               maxRetries={2}
-              onError={handleFormError('Foreside Documents')}
+              onError={handleFormError('FINRA Documents')}
               userFriendlyMessages={{
-                title: 'Unable to load Foreside Documents',
-                description: 'An error occurred while loading Foreside documents. Please try again.',
+                title: 'Unable to load FINRA Documents',
+                description: 'An error occurred while loading FINRA documents. Please try again.',
                 retryButtonText: 'Retry',
                 detailsButtonText: 'Show Details',
                 closeButtonText: 'Close',
@@ -771,7 +757,7 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
                 maxRetriesReached: 'Maximum retry attempts reached. Please refresh the page.',
               }}
             >
-              <ForesideDocuments itemId={itemId} readOnly={status === RequestStatus.Completed || isTerminalState} />
+              <FINRADocuments itemId={itemId} readOnly={status === RequestStatus.Completed || isTerminalState} />
             </ErrorBoundary>
           )}
 

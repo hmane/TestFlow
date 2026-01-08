@@ -22,7 +22,7 @@ import {
   submitLegalReview as submitLegalReviewAction,
   submitComplianceReview as submitComplianceReviewAction,
   closeoutRequest as closeoutRequestAction,
-  completeForesideDocuments as completeForesideDocumentsAction,
+  completeFINRADocuments as completeFINRADocumentsAction,
   cancelRequest as cancelRequestAction,
   holdRequest as holdRequestAction,
   resumeRequest as resumeRequestAction,
@@ -634,18 +634,18 @@ export const useRequestStore = create<IRequestState>()(
       },
 
       /**
-       * Complete Foreside documents
-       * Moves request from Awaiting Foreside Documents to Completed
-       * @param notes - Optional notes about the Foreside documents
+       * Complete FINRA documents
+       * Moves request from Awaiting FINRA Documents to Completed
+       * @param notes - Optional notes about the FINRA documents
        */
-      completeForesideDocuments: async (notes?: string): Promise<void> => {
+      completeFINRADocuments: async (notes?: string): Promise<void> => {
         const state = get();
 
         if (!state.itemId) {
-          throw new Error('Cannot complete Foreside documents - no item ID');
+          throw new Error('Cannot complete FINRA documents - no item ID');
         }
 
-        const result = await completeForesideDocumentsAction(state.itemId, notes ? { notes } : undefined);
+        const result = await completeFINRADocumentsAction(state.itemId, notes ? { notes } : undefined);
 
         set({
           currentRequest: result.updatedRequest,
@@ -653,7 +653,7 @@ export const useRequestStore = create<IRequestState>()(
           isDirty: false,
         });
 
-        SPContext.logger.info('Foreside documents completed', {
+        SPContext.logger.info('FINRA documents completed', {
           itemId: state.itemId,
           fieldsUpdated: result.fieldsUpdated,
         });

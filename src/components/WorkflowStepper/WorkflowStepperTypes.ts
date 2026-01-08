@@ -109,13 +109,13 @@ export interface IRequestMetadata {
   /** Whether the current user is the submitter (for contextual coloring) */
   isCurrentUserSubmitter?: boolean;
 
-  // Foreside Documents step fields
-  /** Whether Foreside review is required (determines if Foreside Documents step is shown) */
+  // FINRA Documents step fields
+  /** Whether Foreside review is required (determines if FINRA Documents step is shown) */
   isForesideReviewRequired?: boolean;
-  /** Date Foreside documents were completed */
-  foresideCompletedOn?: Date;
-  /** User who completed Foreside documents (display name) */
-  foresideCompletedBy?: string;
+  /** Date FINRA documents were completed */
+  finraCompletedOn?: Date;
+  /** User who completed FINRA documents (display name) */
+  finraCompletedBy?: string;
 
   // Terminal state fields (Cancelled/OnHold)
   /** Previous status before Cancelled or OnHold */

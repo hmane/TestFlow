@@ -1,8 +1,8 @@
 /**
- * Foreside Actions
+ * FINRA Actions
  *
- * Workflow actions for Foreside document handling:
- * - completeForesideDocuments: Complete the Foreside documents phase
+ * Workflow actions for FINRA document handling:
+ * - completeFINRADocuments: Complete the FINRA documents phase
  */
 
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
@@ -17,36 +17,36 @@ import { generateCorrelationId } from '../../utils/correlationId';
 import { RequestStatus } from '@appTypes/workflowTypes';
 
 import { getCurrentUserPrincipal, updateItem } from './workflowHelpers';
-import type { IWorkflowActionResult, ICompleteForesideDocumentsPayload } from './workflowTypes';
+import type { IWorkflowActionResult, ICompleteFINRADocumentsPayload } from './workflowTypes';
 
 /**
- * Complete Foreside documents phase
+ * Complete FINRA documents phase
  *
- * Transitions: Awaiting Foreside Documents → Completed
+ * Transitions: Awaiting FINRA Documents → Completed
  *
- * This is called by the Submitter or Super Admin when Foreside documents have been
- * uploaded and the request can be finalized. At least one Foreside document must
+ * This is called by the Submitter or Super Admin when FINRA documents have been
+ * uploaded and the request can be finalized. At least one FINRA document must
  * have been uploaded (validation done at the component level).
  *
  * Note: No time tracking is done for this phase as per requirements.
  *
  * Fields updated:
  * - Status → Completed
- * - ForesideCompletedBy → Current user
- * - ForesideCompletedOn → Current timestamp
- * - ForesideNotes → Notes (if provided, appended)
+ * - FINRACompletedBy → Current user
+ * - FINRACompletedOn → Current timestamp
+ * - FINRANotes → Notes (if provided, appended)
  *
  * @param itemId - Request item ID
  * @param payload - Optional payload with notes
  * @returns Workflow action result
  */
-export async function completeForesideDocuments(
+export async function completeFINRADocuments(
   itemId: number,
-  payload?: ICompleteForesideDocumentsPayload
+  payload?: ICompleteFINRADocumentsPayload
 ): Promise<IWorkflowActionResult> {
-  const correlationId = generateCorrelationId('completeForesideDocuments');
+  const correlationId = generateCorrelationId('completeFINRADocuments');
 
-  SPContext.logger.info('WorkflowActionService: Completing Foreside documents phase', {
+  SPContext.logger.info('WorkflowActionService: Completing FINRA documents phase', {
     correlationId,
     itemId,
     hasNotes: !!payload?.notes,
@@ -56,9 +56,9 @@ export async function completeForesideDocuments(
   const currentRequest = await loadRequestById(itemId);
 
   // Validate the request is in the correct state
-  if (currentRequest.status !== RequestStatus.AwaitingForesideDocuments) {
-    const errorMessage = `Cannot complete Foreside documents: Request status is "${currentRequest.status}", expected "Awaiting Foreside Documents"`;
-    SPContext.logger.error('WorkflowActionService: Invalid state for Foreside completion', {
+  if (currentRequest.status !== RequestStatus.AwaitingFINRADocuments) {
+    const errorMessage = `Cannot complete FINRA documents: Request status is "${currentRequest.status}", expected "Awaiting FINRA Documents"`;
+    SPContext.logger.error('WorkflowActionService: Invalid state for FINRA completion', {
       correlationId,
       itemId,
       currentStatus: currentRequest.status,
@@ -70,22 +70,22 @@ export async function completeForesideDocuments(
   const now = new Date();
 
   // Build update payload
-  // Note: No time tracking for Awaiting Foreside Documents phase per requirements
+  // Note: No time tracking for Awaiting FINRA Documents phase per requirements
   const updater = createSPUpdater();
   updater.set(RequestsFields.Status, RequestStatus.Completed);
-  updater.set(RequestsFields.ForesideCompletedBy, currentUser);
-  updater.set(RequestsFields.ForesideCompletedOn, now.toISOString());
+  updater.set(RequestsFields.FINRACompletedBy, currentUser);
+  updater.set(RequestsFields.FINRACompletedOn, now.toISOString());
 
   // Add notes if provided (append-only field)
   if (payload?.notes) {
-    updater.set(RequestsFields.ForesideNotes, payload.notes);
+    updater.set(RequestsFields.FINRANotes, payload.notes);
   }
 
   const updatePayload = updater.getUpdates();
   const fieldsUpdated = Object.keys(updatePayload);
 
   // Update SharePoint
-  await updateItem(itemId, updatePayload, 'completeForesideDocuments', correlationId);
+  await updateItem(itemId, updatePayload, 'completeFINRADocuments', correlationId);
 
   // Manage permissions for Completed status
   try {
@@ -97,7 +97,7 @@ export async function completeForesideDocuments(
   // Reload to get current state
   const updatedRequest = await loadRequestById(itemId);
 
-  SPContext.logger.success('WorkflowActionService: Foreside documents phase completed', {
+  SPContext.logger.success('WorkflowActionService: FINRA documents phase completed', {
     correlationId,
     itemId,
     requestId: updatedRequest.requestId,

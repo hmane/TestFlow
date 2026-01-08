@@ -232,15 +232,15 @@ communicationsApprover?: IPrincipal;
   /** When review comments were acknowledged */
   commentsAcknowledgedOn?: Date;
 
-  // Foreside Documents
-  /** User who completed the Foreside document upload phase */
-  foresideCompletedBy?: IPrincipal;
-  /** When the Foreside document upload phase was completed */
-  foresideCompletedOn?: Date;
-  /** Notes about Foreside document uploads */
-  foresideNotes?: string;
-  /** When the request entered Awaiting Foreside Documents status */
-  awaitingForesideSince?: Date;
+  // FINRA Documents
+  /** User who completed the FINRA document upload phase */
+  finraCompletedBy?: IPrincipal;
+  /** When the FINRA document upload phase was completed */
+  finraCompletedOn?: Date;
+  /** Notes about FINRA document uploads */
+  finraNotes?: string;
+  /** When the request entered Awaiting FINRA Documents status */
+  awaitingFINRASince?: Date;
 
   // Cancellation
   cancelledBy?: IPrincipal;
@@ -417,11 +417,11 @@ export interface IRequestListItem {
   TrackingId?: string;
   CloseoutNotes?: string;
 
-  // Foreside Documents
-  ForesideCompletedById?: number;
-  ForesideCompletedOn?: string;
-  ForesideNotes?: string;
-  AwaitingForesideSince?: string;
+  // FINRA Documents
+  FINRACompletedById?: number;
+  FINRACompletedOn?: string;
+  FINRANotes?: string;
+  AwaitingFINRASince?: string;
 
   // System tracking
   SubmittedById?: number;

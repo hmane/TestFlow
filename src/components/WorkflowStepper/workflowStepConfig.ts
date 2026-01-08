@@ -18,7 +18,7 @@ const STATUS_ORDER: Record<RequestStatus, number> = {
   [RequestStatus.AssignAttorney]: 2, // Same as LegalIntake (merged visually)
   [RequestStatus.InReview]: 3,
   [RequestStatus.Closeout]: 4,
-  [RequestStatus.AwaitingForesideDocuments]: 5,
+  [RequestStatus.AwaitingFINRADocuments]: 5,
   [RequestStatus.Completed]: 6,
   [RequestStatus.Cancelled]: 99, // Terminal - doesn't affect section visibility
   [RequestStatus.OnHold]: 99, // Terminal - doesn't affect section visibility
@@ -75,8 +75,8 @@ export function getStepKeyForStatus(status: RequestStatus): string {
       return 'inReview';
     case RequestStatus.Closeout:
       return 'closeout';
-    case RequestStatus.AwaitingForesideDocuments:
-      return 'foresideDocuments';
+    case RequestStatus.AwaitingFINRADocuments:
+      return 'finraDocuments';
     case RequestStatus.Completed:
       return 'closeout'; // Completed shows on closeout step
     default:
@@ -232,7 +232,7 @@ const stepContents: Record<string, IStepContent> = {
     description: 'Final steps and request completion',
     details: [
       'All required reviews have been completed',
-      'Tracking ID is assigned if required (Compliance + Foreside/Retail)',
+      'Tracking ID is assigned if required (Compliance + FINRA/Retail)',
       'Final documentation is prepared',
       'Request is marked as complete',
     ],
@@ -245,22 +245,22 @@ const stepContents: Record<string, IStepContent> = {
     estimatedDuration: '1 business day',
     whoIsInvolved: ['Submitter', 'Legal Admin'],
   },
-  foresideDocuments: {
-    title: 'Foreside Documents',
-    description: 'Awaiting Foreside documentation completion',
+  finraDocuments: {
+    title: 'FINRA Documents',
+    description: 'Awaiting FINRA documentation completion',
     details: [
-      'Request requires Foreside review documentation',
-      'Foreside team processes the documentation',
+      'Request requires FINRA review documentation',
+      'FINRA team processes the documentation',
       'Final compliance documentation is prepared',
-      'Request is marked as complete once Foreside documents are finalized',
+      'Request is marked as complete once FINRA documents are finalized',
     ],
     tips: [
-      'Monitor for updates from the Foreside team',
+      'Monitor for updates from the FINRA team',
       'Ensure all required documentation is available',
-      'Request will complete automatically when Foreside processing is done',
+      'Request will complete automatically when FINRA processing is done',
     ],
     estimatedDuration: 'Varies (typically 1-3 business days)',
-    whoIsInvolved: ['Foreside Team', 'Compliance'],
+    whoIsInvolved: ['FINRA Team', 'Compliance'],
   },
   cancelled: {
     title: 'Request Cancelled',
@@ -391,11 +391,11 @@ const WAITING_ON_SUBMITTER = 'Waiting On Submitter';
  * - Shows 'warning' (orange) when current user IS the submitter AND review is waiting on them
  * - Shows 'current' (blue) in all other cases when step is current
  *
- * Foreside Documents step:
+ * FINRA Documents step:
  * - Only shown when isForesideReviewRequired is true
  * - Appears after Closeout step
- * - Current when status is AwaitingForesideDocuments
- * - Completed when status is Completed (and Foreside was required)
+ * - Current when status is AwaitingFINRADocuments
+ * - Completed when status is Completed (and FINRA was required)
  */
 function determineStepStatus(
   step: IWorkflowStep,
@@ -411,12 +411,12 @@ function determineStepStatus(
     return 'warning';
   }
 
-  // Determine if Foreside Documents step is in the workflow
-  const hasForesideStep = requestMetadata?.isForesideReviewRequired === true;
+  // Determine if FINRA Documents step is in the workflow
+  const hasFINRAStep = requestMetadata?.isForesideReviewRequired === true;
 
   // Map statuses to visual step order
-  // Without Foreside: Draft=1, LegalIntake/AssignAttorney=2, InReview=3, Closeout/Completed=4
-  // With Foreside: Draft=1, LegalIntake/AssignAttorney=2, InReview=3, Closeout=4, ForesideDocuments/Completed=5
+  // Without FINRA: Draft=1, LegalIntake/AssignAttorney=2, InReview=3, Closeout/Completed=4
+  // With FINRA: Draft=1, LegalIntake/AssignAttorney=2, InReview=3, Closeout=4, FINRADocuments/Completed=5
   const getVisualOrder = (status: RequestStatus): number => {
     switch (status) {
       case RequestStatus.Draft:
@@ -428,11 +428,11 @@ function determineStepStatus(
         return 3;
       case RequestStatus.Closeout:
         return 4;
-      case RequestStatus.AwaitingForesideDocuments:
+      case RequestStatus.AwaitingFINRADocuments:
         return 5; // After Closeout
       case RequestStatus.Completed:
-        // Completed order depends on whether Foreside step exists
-        return hasForesideStep ? 5 : 4;
+        // Completed order depends on whether FINRA step exists
+        return hasFINRAStep ? 5 : 4;
       default:
         return 0;
     }
@@ -443,8 +443,8 @@ function determineStepStatus(
 
   // Special handling: When status is Completed
   if (currentStatus === RequestStatus.Completed) {
-    // If Foreside step exists and this is the Foreside step, show as completed
-    if (step.key === 'foresideDocuments') {
+    // If FINRA step exists and this is the FINRA step, show as completed
+    if (step.key === 'finraDocuments') {
       return 'completed';
     }
     // Closeout step should show as completed
@@ -453,14 +453,14 @@ function determineStepStatus(
     }
   }
 
-  // Special handling: When status is AwaitingForesideDocuments
-  if (currentStatus === RequestStatus.AwaitingForesideDocuments) {
+  // Special handling: When status is AwaitingFINRADocuments
+  if (currentStatus === RequestStatus.AwaitingFINRADocuments) {
     // Closeout step should show as completed
     if (step.key === 'closeout') {
       return 'completed';
     }
-    // Foreside Documents step is current
-    if (step.key === 'foresideDocuments') {
+    // FINRA Documents step is current
+    if (step.key === 'finraDocuments') {
       return 'current';
     }
   }
@@ -801,16 +801,16 @@ function convertToStepData(
 }
 
 /**
- * Foreside Documents step definition
+ * FINRA Documents step definition
  * This step is conditionally added when isForesideReviewRequired is true
  */
-const foresideDocumentsStep: IWorkflowStep = {
-  key: 'foresideDocuments',
-  label: 'Foreside',
+const finraDocumentsStep: IWorkflowStep = {
+  key: 'finraDocuments',
+  label: 'FINRA',
   description: 'Awaiting documents',
-  requestStatus: RequestStatus.AwaitingForesideDocuments,
+  requestStatus: RequestStatus.AwaitingFINRADocuments,
   isOptional: true, // Only shown when Foreside review is required
-  content: stepContents.foresideDocuments,
+  content: stepContents.finraDocuments,
   order: 5,
 };
 
@@ -903,7 +903,7 @@ function convertTerminalStepToStepData(
  * Get steps as StepData array for use with toolkit WorkflowStepper
  *
  * Conditionally includes:
- * - Foreside Documents step when isForesideReviewRequired is true
+ * - FINRA Documents step when isForesideReviewRequired is true
  * - Cancelled step when status is Cancelled (shown after previousStatus)
  * - OnHold step when status is OnHold (shown after previousStatus)
  */
@@ -915,16 +915,16 @@ export function getStepsForStepper(
 ): StepData[] {
   const steps = getWorkflowSteps(requestType);
 
-  // Determine if Foreside Documents step should be included
-  // Show it if: isForesideReviewRequired is true OR current status is AwaitingForesideDocuments
-  const shouldIncludeForesideStep =
+  // Determine if FINRA Documents step should be included
+  // Show it if: isForesideReviewRequired is true OR current status is AwaitingFINRADocuments
+  const shouldIncludeFINRAStep =
     requestMetadata?.isForesideReviewRequired === true ||
-    currentStatus === RequestStatus.AwaitingForesideDocuments;
+    currentStatus === RequestStatus.AwaitingFINRADocuments;
 
   // Build the base steps array
   let finalSteps = [...steps];
-  if (shouldIncludeForesideStep) {
-    finalSteps.push(foresideDocumentsStep);
+  if (shouldIncludeFINRAStep) {
+    finalSteps.push(finraDocumentsStep);
   }
 
   // Convert base steps to StepData

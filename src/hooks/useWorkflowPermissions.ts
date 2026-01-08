@@ -59,7 +59,7 @@ export interface IWorkflowPermissionsResult {
     isRetailUse: boolean
   ) => Promise<IPermissionCheckResult>;
   closeoutRequest: (options?: { trackingId?: string; commentsAcknowledged?: boolean; closeoutNotes?: string }) => Promise<IPermissionCheckResult>;
-  completeForesideDocuments: (notes?: string) => Promise<IPermissionCheckResult>;
+  completeFINRADocuments: (notes?: string) => Promise<IPermissionCheckResult>;
   cancelRequest: (reason: string) => Promise<IPermissionCheckResult>;
   holdRequest: (reason: string) => Promise<IPermissionCheckResult>;
   resumeRequest: () => Promise<IPermissionCheckResult>;
@@ -124,7 +124,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
         canSubmitLegalReview: false,
         canSubmitComplianceReview: false,
         canCloseout: false,
-        canCompleteForesideDocuments: false,
+        canCompleteFINRADocuments: false,
         canCancel: false,
         canHold: false,
         canResume: false,
@@ -143,7 +143,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
         canSubmitLegalReview: false,
         canSubmitComplianceReview: false,
         canCloseout: false,
-        canCompleteForesideDocuments: false,
+        canCompleteFINRADocuments: false,
         canCancel: false,
         canHold: false,
         canResume: false,
@@ -675,47 +675,47 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
   }, [actionContext, itemId, store]);
 
   /**
-   * Complete Foreside documents (move from Awaiting Foreside Documents to Completed)
+   * Complete FINRA documents (move from Awaiting FINRA Documents to Completed)
    */
-  const completeForesideDocuments = React.useCallback(
+  const completeFINRADocuments = React.useCallback(
     async (notes?: string): Promise<IPermissionCheckResult> => {
       if (!actionContext || !itemId) {
         return { allowed: false, reason: 'Request not loaded' };
       }
 
-      // Check permission - only owner or admin can complete Foreside documents
+      // Check permission - only owner or admin can complete FINRA documents
       const isOwner =
         actionContext.request.submittedBy?.id === currentUserId ||
         actionContext.request.author?.id === currentUserId;
 
       if (!isOwner && !permissions.isAdmin) {
-        const result = { allowed: false, reason: 'Only the submitter or admin can complete Foreside documents' };
-        logPermissionCheck('completeForesideDocuments', actionContext, result);
+        const result = { allowed: false, reason: 'Only the submitter or admin can complete FINRA documents' };
+        logPermissionCheck('completeFINRADocuments', actionContext, result);
         setError(result.reason);
         return result;
       }
 
       // Validate current status
-      if (actionContext.request.status !== 'Awaiting Foreside Documents') {
-        const result = { allowed: false, reason: 'Request is not in Awaiting Foreside Documents status' };
-        logPermissionCheck('completeForesideDocuments', actionContext, result);
+      if (actionContext.request.status !== 'Awaiting FINRA Documents') {
+        const result = { allowed: false, reason: 'Request is not in Awaiting FINRA Documents status' };
+        logPermissionCheck('completeFINRADocuments', actionContext, result);
         setError(result.reason);
         return result;
       }
 
-      logPermissionCheck('completeForesideDocuments', actionContext, { allowed: true });
+      logPermissionCheck('completeFINRADocuments', actionContext, { allowed: true });
 
       setIsProcessing(true);
       setError(undefined);
 
       try {
-        await store.completeForesideDocuments(notes);
-        SPContext.logger.success('Foreside documents completed', { requestId: itemId });
+        await store.completeFINRADocuments(notes);
+        SPContext.logger.success('FINRA documents completed', { requestId: itemId });
         return { allowed: true };
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         setError(message);
-        SPContext.logger.error('Failed to complete Foreside documents', err, { itemId });
+        SPContext.logger.error('Failed to complete FINRA documents', err, { itemId });
         return { allowed: false, reason: message };
       } finally {
         setIsProcessing(false);
@@ -732,7 +732,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
     submitLegalReview,
     submitComplianceReview,
     closeoutRequest,
-    completeForesideDocuments,
+    completeFINRADocuments,
     cancelRequest,
     holdRequest,
     resumeRequest,

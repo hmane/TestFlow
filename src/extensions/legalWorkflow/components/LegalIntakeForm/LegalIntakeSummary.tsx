@@ -53,11 +53,11 @@ export const LegalIntakeSummary: React.FC<ILegalIntakeSummaryProps> = ({
   const permissions = usePermissions();
 
   // Check if user can edit review audience (Legal Admin or Admin only)
-  // Disable editing after reviews are completed (Closeout, Completed, or AwaitingForesideDocuments)
+  // Disable editing after reviews are completed (Closeout, Completed, or AwaitingFINRADocuments)
   const isAfterReviewsCompleted =
     currentRequest?.status === RequestStatus.Closeout ||
     currentRequest?.status === RequestStatus.Completed ||
-    currentRequest?.status === RequestStatus.AwaitingForesideDocuments;
+    currentRequest?.status === RequestStatus.AwaitingFINRADocuments;
   const canEditReviewAudience =
     (permissions.isLegalAdmin || permissions.isAdmin) && !isAfterReviewsCompleted;
 

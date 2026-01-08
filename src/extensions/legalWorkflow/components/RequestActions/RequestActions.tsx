@@ -10,7 +10,7 @@
  * Features:
  * - Left section: Cancel Request, Put On Hold, Resume, Super Admin toggle
  * - Right section: Submit Request, Save as Draft (Draft mode), Save (in-progress),
- *   Complete Request (Foreside Documents), Close
+ *   Complete Request (FINRA Documents), Close
  * - Visual progress indicators during actions
  * - Confirmation dialogs with reason capture
  * - All buttons disabled during any action
@@ -86,7 +86,7 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
     showCancel,
     showOnHold,
     showResume,
-    showCompleteForesideDocuments,
+    showCompleteFINRADocuments,
 
     // Handlers
     getFieldLabel,
@@ -99,7 +99,7 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
     handleCancelRequestClick,
     handlePutOnHoldClick,
     handleResumeClick,
-    handleCompleteForesideDocumentsClick,
+    handleCompleteFINRADocumentsClick,
     handleReasonConfirm,
     handleReasonCancel,
   } = state;
@@ -206,14 +206,14 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
               />
             )}
 
-            {/* Complete Request button - AwaitingForesideDocuments status only */}
-            {showCompleteForesideDocuments && (
+            {/* Complete Request button - AwaitingFINRADocuments status only */}
+            {showCompleteFINRADocuments && (
               <PrimaryButton
                 text='Complete Request'
                 iconProps={{ iconName: 'Completed' }}
-                onClick={handleCompleteForesideDocumentsClick}
+                onClick={handleCompleteFINRADocumentsClick}
                 disabled={isAnyActionInProgress}
-                ariaLabel='Complete the request after Foreside documents are uploaded'
+                ariaLabel='Complete the request after FINRA documents are uploaded'
                 styles={{
                   root: {
                     minWidth: '160px',

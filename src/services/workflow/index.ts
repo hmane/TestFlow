@@ -33,7 +33,7 @@ export type {
   ICloseoutPayload,
   ICancelPayload,
   IHoldPayload,
-  ICompleteForesideDocumentsPayload,
+  ICompleteFINRADocumentsPayload,
   ILegalReviewSavePayload,
   IComplianceReviewSavePayload,
   IResubmitLegalReviewPayload,
@@ -90,8 +90,8 @@ export {
 } from './holdResumeActions';
 
 // ============================================
-// FORESIDE ACTIONS
+// FINRA ACTIONS
 // ============================================
 export {
-  completeForesideDocuments,
-} from './foresideActions';
+  completeFINRADocuments,
+} from './finraActions';

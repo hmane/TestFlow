@@ -235,6 +235,11 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
           data.legalReviewNotes || ''
         );
 
+        // Reload request to ensure store has latest data including review notes
+        if (itemId) {
+          await loadRequest(itemId);
+        }
+
         // Reset form with cleared notes for append-only field
         reset({
           legalReviewStatus: LegalReviewStatus.Completed,
@@ -267,7 +272,7 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
         setIsSaving(false);
       }
     },
-    [itemId, scrollToFirstError, reset]
+    [itemId, scrollToFirstError, reset, loadRequest]
   );
 
   /**

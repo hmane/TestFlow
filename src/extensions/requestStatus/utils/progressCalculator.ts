@@ -19,7 +19,7 @@ const STATUS_ORDER: Record<RequestStatus, number> = {
   [RequestStatus.AssignAttorney]: 3,
   [RequestStatus.InReview]: 4,
   [RequestStatus.Closeout]: 5,
-  [RequestStatus.AwaitingForesideDocuments]: 6, // After Closeout, before Completed
+  [RequestStatus.AwaitingFINRADocuments]: 6, // After Closeout, before Completed
   [RequestStatus.Completed]: 7,
   [RequestStatus.Cancelled]: 0, // Special
   [RequestStatus.OnHold]: 0, // Special
@@ -63,7 +63,7 @@ export function calculateProgress(itemData: IStatusListItemData): IStatusProgres
       [RequestStatus.AssignAttorney]: 3, // Shouldn't happen, but fallback
       [RequestStatus.InReview]: 3,
       [RequestStatus.Closeout]: 4,
-      [RequestStatus.AwaitingForesideDocuments]: 5, // After Closeout
+      [RequestStatus.AwaitingFINRADocuments]: 5, // After Closeout
       [RequestStatus.Completed]: 6,
       [RequestStatus.Cancelled]: 1,
       [RequestStatus.OnHold]: 1,
@@ -114,8 +114,8 @@ export function determineProgressColor(
     return 'green';
   }
 
-  // Awaiting Foreside Documents is near completion (green)
-  if (status === RequestStatus.AwaitingForesideDocuments) {
+  // Awaiting FINRA Documents is near completion (green)
+  if (status === RequestStatus.AwaitingFINRADocuments) {
     return 'green';
   }
 
@@ -188,7 +188,7 @@ export function calculateProgressForStatus(
       [RequestStatus.AssignAttorney]: 3,
       [RequestStatus.InReview]: 3,
       [RequestStatus.Closeout]: 4,
-      [RequestStatus.AwaitingForesideDocuments]: 5,
+      [RequestStatus.AwaitingFINRADocuments]: 5,
       [RequestStatus.Completed]: 6,
       [RequestStatus.Cancelled]: 1,
       [RequestStatus.OnHold]: 1,

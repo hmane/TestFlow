@@ -70,7 +70,7 @@ export interface IRequestState {
     flags?: { isForesideReviewRequired?: boolean; isRetailUse?: boolean }
   ) => Promise<void>;
   closeoutRequest: (options?: { trackingId?: string; commentsAcknowledged?: boolean; closeoutNotes?: string }) => Promise<void>;
-  completeForesideDocuments: (notes?: string) => Promise<void>;
+  completeFINRADocuments: (notes?: string) => Promise<void>;
   cancelRequest: (reason: string) => Promise<void>;
   holdRequest: (reason: string) => Promise<void>;
   resumeRequest: () => Promise<void>;

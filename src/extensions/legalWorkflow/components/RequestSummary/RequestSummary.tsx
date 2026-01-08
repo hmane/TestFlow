@@ -126,16 +126,16 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
   /**
    * Check if user can edit request information
    * Only submitter (author) or admin can edit request info
-   * Editing is disabled after Closeout, Completed, or AwaitingForesideDocuments status
+   * Editing is disabled after Closeout, Completed, or AwaitingFINRADocuments status
    */
   const canEditRequestInfo = React.useMemo((): boolean => {
     if (!currentRequest) return false;
 
-    // No editing allowed after Closeout, Completed, or AwaitingForesideDocuments
+    // No editing allowed after Closeout, Completed, or AwaitingFINRADocuments
     if (
       currentRequest.status === RequestStatus.Closeout ||
       currentRequest.status === RequestStatus.Completed ||
-      currentRequest.status === RequestStatus.AwaitingForesideDocuments
+      currentRequest.status === RequestStatus.AwaitingFINRADocuments
     ) {
       return false;
     }
@@ -571,7 +571,7 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
                           ) : (
                             <span className='summary-link'>{sub.title}</span>
                           )}
-                          {idx < currentRequest.priorSubmissions!.length - 1 && ', '}
+{/* Gap spacing handles separation */}
                         </React.Fragment>
                       ))}
                     </div>

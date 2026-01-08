@@ -51,12 +51,12 @@ const VALID_STATUS_TRANSITIONS: Record<RequestStatus, RequestStatus[]> = {
     RequestStatus.Cancelled,
   ],
   [RequestStatus.Closeout]: [
-    RequestStatus.AwaitingForesideDocuments, // If Foreside Review Required
+    RequestStatus.AwaitingFINRADocuments, // If Foreside Review Required
     RequestStatus.Completed,
     RequestStatus.OnHold,
     RequestStatus.Cancelled,
   ],
-  [RequestStatus.AwaitingForesideDocuments]: [
+  [RequestStatus.AwaitingFINRADocuments]: [
     RequestStatus.Completed, // Only transition is to Completed
   ],
   [RequestStatus.Completed]: [], // Terminal state - no transitions allowed
@@ -352,18 +352,18 @@ export function canCloseoutRequest(context: IActionContext): IPermissionCheckRes
 }
 
 /**
- * Check if user can complete Foreside documents phase
+ * Check if user can complete FINRA documents phase
  * Who can perform: Submitter (owner), Admin
- * Valid from status: Awaiting Foreside Documents
+ * Valid from status: Awaiting FINRA Documents
  */
-export function canCompleteForesideDocuments(context: IActionContext): IPermissionCheckResult {
+export function canCompleteFINRADocuments(context: IActionContext): IPermissionCheckResult {
   const { request, permissions, currentUserId } = context;
 
   // Check status
-  if (request.status !== RequestStatus.AwaitingForesideDocuments) {
+  if (request.status !== RequestStatus.AwaitingFINRADocuments) {
     return {
       allowed: false,
-      reason: `Can only complete Foreside documents when in Awaiting Foreside Documents status (current: ${request.status})`,
+      reason: `Can only complete FINRA documents when in Awaiting FINRA Documents status (current: ${request.status})`,
     };
   }
 
@@ -379,7 +379,7 @@ export function canCompleteForesideDocuments(context: IActionContext): IPermissi
   if (!isOwner) {
     return {
       allowed: false,
-      reason: 'Only the request submitter or Admin can complete Foreside documents',
+      reason: 'Only the request submitter or Admin can complete FINRA documents',
     };
   }
 
@@ -687,7 +687,7 @@ export interface IAvailableActions {
   canSubmitLegalReview: boolean;
   canSubmitComplianceReview: boolean;
   canCloseout: boolean;
-  canCompleteForesideDocuments: boolean;
+  canCompleteFINRADocuments: boolean;
   canCancel: boolean;
   canHold: boolean;
   canResume: boolean;
@@ -708,7 +708,7 @@ export function getAvailableActions(context: IActionContext): IAvailableActions 
     canSubmitLegalReview: canSubmitLegalReview(context).allowed,
     canSubmitComplianceReview: canSubmitComplianceReview(context).allowed,
     canCloseout: canCloseoutRequest(context).allowed,
-    canCompleteForesideDocuments: canCompleteForesideDocuments(context).allowed,
+    canCompleteFINRADocuments: canCompleteFINRADocuments(context).allowed,
     canCancel: canCancelRequest(context).allowed,
     canHold: canHoldRequest(context).allowed,
     canResume: canResumeRequest(context).allowed,

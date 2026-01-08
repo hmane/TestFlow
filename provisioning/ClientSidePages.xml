@@ -29,7 +29,7 @@
   </pnp:ClientSidePage>
 
   <!-- ========================================================================
-       1. Request Dashboard (Main Dashboard with Toolbar, Open, Foreside & Closed Requests)
+       1. Request Dashboard (Main Dashboard with Toolbar, Open, FINRA & Closed Requests)
        ======================================================================== -->
   <pnp:ClientSidePage PromoteAsNewsArticle="false"
                        PromoteAsTemplate="false"
@@ -59,11 +59,11 @@
         </pnp:Controls>
       </pnp:Section>
 
-      <!-- My Awaiting Foreside Documents -->
+      <!-- My Awaiting FINRA Documents -->
       <pnp:Section Order="3" Type="OneColumn">
         <pnp:Controls>
           <pnp:CanvasControl WebPartType="List" ControlId="f92bf067-bc19-489e-a556-7fe95f508720" Order="1" Column="1"
-            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000106&quot;,&quot;title&quot;:&quot;My Awaiting Foreside Documents&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,My Awaiting Foreside Documents}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;My Awaiting Foreside Documents&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000106&quot;,&quot;title&quot;:&quot;My Awaiting FINRA Documents&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,My Awaiting FINRA Documents}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;My Awaiting FINRA Documents&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
         </pnp:Controls>
       </pnp:Section>
 
@@ -158,11 +158,11 @@
         </pnp:Controls>
       </pnp:Section>
 
-      <!-- Awaiting Foreside Documents -->
+      <!-- Awaiting FINRA Documents -->
       <pnp:Section Order="6" Type="OneColumn">
         <pnp:Controls>
           <pnp:CanvasControl WebPartType="List" ControlId="f92bf067-bc19-489e-a556-7fe95f508720" Order="1" Column="1"
-            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000027&quot;,&quot;title&quot;:&quot;Awaiting Foreside Documents&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,Awaiting Foreside Documents}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;Awaiting Foreside Documents&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000027&quot;,&quot;title&quot;:&quot;Awaiting FINRA Documents&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,Awaiting FINRA Documents}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;Awaiting FINRA Documents&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
         </pnp:Controls>
       </pnp:Section>
 

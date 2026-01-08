@@ -432,11 +432,11 @@ export async function moveToCloseout(
  * - Closeout → Completed (if isForesideReviewRequired is false)
  *
  * Fields updated:
- * - Status → Awaiting Foreside Documents OR Completed (based on isForesideReviewRequired)
+ * - Status → Awaiting FINRA Documents OR Completed (based on isForesideReviewRequired)
  * - TrackingId → Tracking ID (if provided)
  * - CloseoutBy → Current user
  * - CloseoutOn → Current timestamp
- * - AwaitingForesideSince → Current timestamp (if routing to Awaiting Foreside Documents)
+ * - AwaitingFINRASince → Current timestamp (if routing to Awaiting FINRA Documents)
  *
  * @param itemId - Request item ID
  * @param payload - Closeout payload
@@ -484,11 +484,11 @@ export async function closeoutRequest(
   }
 
   // Determine the next status based on isForesideReviewRequired
-  // If Foreside Review is required, route to Awaiting Foreside Documents
+  // If Foreside Review is required, route to Awaiting FINRA Documents
   // Otherwise, route directly to Completed
   const isForesideRequired = currentRequest.isForesideReviewRequired === true;
   const nextStatus = isForesideRequired
-    ? RequestStatus.AwaitingForesideDocuments
+    ? RequestStatus.AwaitingFINRADocuments
     : RequestStatus.Completed;
 
   SPContext.logger.info('WorkflowActionService: Determined next status after closeout', {
@@ -519,9 +519,9 @@ export async function closeoutRequest(
     updater.set(RequestsFields.CommentsAcknowledgedOn, now.toISOString());
   }
 
-  // If routing to Awaiting Foreside Documents, set the timestamp
+  // If routing to Awaiting FINRA Documents, set the timestamp
   if (isForesideRequired) {
-    updater.set(RequestsFields.AwaitingForesideSince, now.toISOString());
+    updater.set(RequestsFields.AwaitingFINRASince, now.toISOString());
   }
 
   // Add time tracking fields to update

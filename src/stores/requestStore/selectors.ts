@@ -131,7 +131,7 @@ export const useRequestActions = (): {
   submitLegalReview: (outcome: string, notes: string) => Promise<void>;
   submitComplianceReview: (outcome: string, notes: string, flags?: { isForesideReviewRequired?: boolean; isRetailUse?: boolean }) => Promise<void>;
   closeoutRequest: (options?: { trackingId?: string; commentsAcknowledged?: boolean; closeoutNotes?: string }) => Promise<void>;
-  completeForesideDocuments: (notes?: string) => Promise<void>;
+  completeFINRADocuments: (notes?: string) => Promise<void>;
   cancelRequest: (reason: string) => Promise<void>;
   holdRequest: (reason: string) => Promise<void>;
   resumeRequest: () => Promise<void>;
@@ -152,7 +152,7 @@ export const useRequestActions = (): {
       submitLegalReview: state.submitLegalReview,
       submitComplianceReview: state.submitComplianceReview,
       closeoutRequest: state.closeoutRequest,
-      completeForesideDocuments: state.completeForesideDocuments,
+      completeFINRADocuments: state.completeFINRADocuments,
       cancelRequest: state.cancelRequest,
       holdRequest: state.holdRequest,
       resumeRequest: state.resumeRequest,

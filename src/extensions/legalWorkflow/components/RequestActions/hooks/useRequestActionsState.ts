@@ -61,7 +61,7 @@ export interface IUseRequestActionsStateReturn {
   loadingMessage: string;
   hasApprovedWithComments: boolean;
   isTrackingIdRequired: boolean;
-  hasForesideDocuments: boolean;
+  hasFINRADocuments: boolean;
 
   // Button visibility
   showSubmitRequest: boolean;
@@ -73,7 +73,7 @@ export interface IUseRequestActionsStateReturn {
   showAssignAttorney: boolean;
   showSendToCommittee: boolean;
   showCloseoutSubmit: boolean;
-  showCompleteForesideDocuments: boolean;
+  showCompleteFINRADocuments: boolean;
 
   // Handlers
   getFieldLabel: (fieldName: string) => string;
@@ -89,7 +89,7 @@ export interface IUseRequestActionsStateReturn {
   handleSendToCommitteeClick: () => Promise<void>;
   handleAssignAttorneyClick: () => Promise<void>;
   handleCloseoutClick: () => Promise<void>;
-  handleCompleteForesideDocumentsClick: () => Promise<void>;
+  handleCompleteFINRADocumentsClick: () => Promise<void>;
   handleReasonConfirm: (reason: string) => Promise<void>;
   handleReasonCancel: () => void;
 }
@@ -123,7 +123,7 @@ export function useRequestActionsState(props: {
     isLoading: permissionsLoading,
     sendToCommittee: workflowSendToCommittee,
     closeoutRequest: workflowCloseout,
-    completeForesideDocuments: workflowCompleteForesideDocuments,
+    completeFINRADocuments: workflowCompleteFINRADocuments,
   } = useWorkflowPermissions();
 
   // Get user permissions for role checks
@@ -138,7 +138,7 @@ export function useRequestActionsState(props: {
   // Get closeout form data
   const closeoutStore = useCloseoutStore();
 
-  // Get documents store for Foreside document validation
+  // Get documents store for FINRA document validation
   const { documents, stagedFiles } = useDocumentsStore();
 
   // Get spfx-toolkit form context for scroll/focus functionality
@@ -706,27 +706,27 @@ export function useRequestActionsState(props: {
   }, [workflowCloseout, closeoutStore, hasApprovedWithComments, isTrackingIdRequired, setValidationErrors]);
 
   /**
-   * Check if Foreside documents exist
+   * Check if FINRA documents exist
    */
-  const hasForesideDocuments = React.useMemo((): boolean => {
-    const existingCount = documents.get(DocumentType.Foreside)?.length || 0;
-    const stagedCount = stagedFiles.filter(f => f.documentType === DocumentType.Foreside).length;
+  const hasFINRADocuments = React.useMemo((): boolean => {
+    const existingCount = documents.get(DocumentType.FINRA)?.length || 0;
+    const stagedCount = stagedFiles.filter(f => f.documentType === DocumentType.FINRA).length;
     return (existingCount + stagedCount) > 0;
   }, [documents, stagedFiles]);
 
   /**
-   * Handle complete Foreside documents
+   * Handle complete FINRA documents
    * Shows confirmation dialog if no documents are uploaded
    */
-  const handleCompleteForesideDocumentsClick = React.useCallback(async (): Promise<void> => {
-    // If no Foreside documents, show confirmation dialog using spfx-toolkit
-    if (!hasForesideDocuments) {
-      SPContext.logger.info('RequestActions: No Foreside documents uploaded, showing confirmation dialog');
+  const handleCompleteFINRADocumentsClick = React.useCallback(async (): Promise<void> => {
+    // If no FINRA documents, show confirmation dialog using spfx-toolkit
+    if (!hasFINRADocuments) {
+      SPContext.logger.info('RequestActions: No FINRA documents uploaded, showing confirmation dialog');
 
       const confirmed = await confirm(
-        'You have not attached the Foreside document. Do you want to close the request anyway?',
+        'You have not attached the FINRA document. Do you want to close the request anyway?',
         {
-          title: 'No Foreside Document',
+          title: 'No FINRA Document',
           buttons: [
             { text: 'Yes, Complete Request', primary: true, value: true },
             { text: 'Cancel', value: false },
@@ -735,49 +735,49 @@ export function useRequestActionsState(props: {
       );
 
       if (!confirmed) {
-        SPContext.logger.info('RequestActions: User cancelled completing without Foreside documents');
+        SPContext.logger.info('RequestActions: User cancelled completing without FINRA documents');
         return;
       }
 
-      SPContext.logger.info('RequestActions: User confirmed completing without Foreside documents');
+      SPContext.logger.info('RequestActions: User confirmed completing without FINRA documents');
     }
 
     // Proceed with completion
     try {
-      setActiveAction('completeForesideDocuments');
+      setActiveAction('completeFINRADocuments');
       setValidationErrors([]);
 
-      SPContext.logger.info('RequestActions: Completing Foreside documents');
+      SPContext.logger.info('RequestActions: Completing FINRA documents');
 
       const hasStagedFiles = stagedFiles.length > 0;
       if (hasStagedFiles && itemId) {
-        SPContext.logger.info('RequestActions: Uploading staged Foreside documents before completing', {
+        SPContext.logger.info('RequestActions: Uploading staged FINRA documents before completing', {
           stagedCount: stagedFiles.length,
           itemId,
         });
 
         const { uploadPendingFiles, loadAllDocuments } = useDocumentsStore.getState();
         await uploadPendingFiles(itemId, (fileId, progress, status) => {
-          SPContext.logger.info('RequestActions: Foreside upload progress', { fileId, progress, status });
+          SPContext.logger.info('RequestActions: FINRA upload progress', { fileId, progress, status });
         });
 
         await loadAllDocuments(itemId, true);
 
-        SPContext.logger.success('RequestActions: Staged Foreside documents uploaded successfully');
+        SPContext.logger.success('RequestActions: Staged FINRA documents uploaded successfully');
       }
 
-      const result = await workflowCompleteForesideDocuments();
+      const result = await workflowCompleteFINRADocuments();
       if (result.allowed) {
-        SPContext.logger.success('RequestActions: Foreside documents completed, request is now Completed');
+        SPContext.logger.success('RequestActions: FINRA documents completed, request is now Completed');
       } else {
-        SPContext.logger.warn('RequestActions: Complete Foreside documents denied', { reason: result.reason });
+        SPContext.logger.warn('RequestActions: Complete FINRA documents denied', { reason: result.reason });
       }
     } catch (error: unknown) {
-      SPContext.logger.error('RequestActions: Complete Foreside documents failed', error);
+      SPContext.logger.error('RequestActions: Complete FINRA documents failed', error);
     } finally {
       setActiveAction(undefined);
     }
-  }, [workflowCompleteForesideDocuments, hasForesideDocuments, setValidationErrors, stagedFiles, itemId]);
+  }, [workflowCompleteFINRADocuments, hasFINRADocuments, setValidationErrors, stagedFiles, itemId]);
 
   /**
    * Handle reason dialog confirmation
@@ -847,7 +847,7 @@ export function useRequestActionsState(props: {
       status === RequestStatus.Completed ||
       status === RequestStatus.Cancelled ||
       status === RequestStatus.Closeout ||
-      status === RequestStatus.AwaitingForesideDocuments
+      status === RequestStatus.AwaitingFINRADocuments
     ) return false;
     if (!isDirty) return false;
     return permissions.isAdmin || isOwner;
@@ -860,7 +860,7 @@ export function useRequestActionsState(props: {
       status === RequestStatus.Completed ||
       status === RequestStatus.Cancelled ||
       status === RequestStatus.Closeout ||
-      status === RequestStatus.AwaitingForesideDocuments
+      status === RequestStatus.AwaitingFINRADocuments
     ) return false;
     return permissions.isAdmin || permissions.isLegalAdmin || isOwner;
   }, [permissionsLoading, isNewRequest, status, permissions.isAdmin, permissions.isLegalAdmin, isOwner]);
@@ -873,7 +873,7 @@ export function useRequestActionsState(props: {
       status === RequestStatus.Cancelled ||
       status === RequestStatus.Closeout ||
       status === RequestStatus.OnHold ||
-      status === RequestStatus.AwaitingForesideDocuments
+      status === RequestStatus.AwaitingFINRADocuments
     ) return false;
     return permissions.isAdmin || permissions.isLegalAdmin || isOwner;
   }, [permissionsLoading, isNewRequest, status, permissions.isAdmin, permissions.isLegalAdmin, isOwner]);
@@ -907,9 +907,9 @@ export function useRequestActionsState(props: {
     return permissions.isAdmin || isOwner;
   }, [permissionsLoading, status, permissions.isAdmin, isOwner]);
 
-  const showCompleteForesideDocuments = React.useMemo(() => {
+  const showCompleteFINRADocuments = React.useMemo(() => {
     if (permissionsLoading) return false;
-    if (status !== RequestStatus.AwaitingForesideDocuments) return false;
+    if (status !== RequestStatus.AwaitingFINRADocuments) return false;
     return permissions.isAdmin || isOwner;
   }, [permissionsLoading, status, permissions.isAdmin, isOwner]);
 
@@ -932,7 +932,7 @@ export function useRequestActionsState(props: {
         return 'Sending to committee...';
       case 'closeout':
         return 'Completing closeout...';
-      case 'completeForesideDocuments':
+      case 'completeFINRADocuments':
         return 'Completing request...';
       default:
         return 'Processing...';
@@ -968,7 +968,7 @@ export function useRequestActionsState(props: {
     loadingMessage,
     hasApprovedWithComments,
     isTrackingIdRequired,
-    hasForesideDocuments,
+    hasFINRADocuments,
 
     // Button visibility
     showSubmitRequest,
@@ -980,7 +980,7 @@ export function useRequestActionsState(props: {
     showAssignAttorney,
     showSendToCommittee,
     showCloseoutSubmit,
-    showCompleteForesideDocuments,
+    showCompleteFINRADocuments,
 
     // Handlers
     getFieldLabel,
@@ -996,7 +996,7 @@ export function useRequestActionsState(props: {
     handleSendToCommitteeClick,
     handleAssignAttorneyClick,
     handleCloseoutClick,
-    handleCompleteForesideDocumentsClick,
+    handleCompleteFINRADocumentsClick,
     handleReasonConfirm,
     handleReasonCancel,
   };

@@ -750,7 +750,7 @@ export const fullRequestSchema = z.object({
     RequestStatus.AssignAttorney,
     RequestStatus.InReview,
     RequestStatus.Closeout,
-    RequestStatus.AwaitingForesideDocuments,
+    RequestStatus.AwaitingFINRADocuments,
     RequestStatus.Completed,
     RequestStatus.Cancelled,
     RequestStatus.OnHold,

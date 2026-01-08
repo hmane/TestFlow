@@ -72,9 +72,9 @@ export function getDocumentFolderPath(itemId: number, documentType: DocumentType
     return `${itemId}`;
   }
 
-  // Foreside documents go to their own subfolder
-  if (normalizedType === DocumentType.Foreside || normalizedType === 'Foreside') {
-    return `${itemId}/ForesideDocuments`;
+  // FINRA documents go to their own subfolder
+  if (normalizedType === DocumentType.FINRA || normalizedType === 'FINRA') {
+    return `${itemId}/FINRADocuments`;
   }
 
   // Approvals go to subfolders

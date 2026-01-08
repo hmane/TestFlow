@@ -89,4 +89,72 @@
     max-width: none !important;
     width: 100% !important;
   }
+
+  // ============================================
+  // Document Preview Modal Overrides (spfx-toolkit)
+  // Prevents extra scroll and maximizes space utilization
+  // ============================================
+  .document-preview-modal {
+    // Override default modal sizing to use more screen space
+    &.ms-Modal {
+      .ms-Modal-scrollableContent {
+        height: 100%;
+        overflow: hidden; // Prevent scrollbar on modal content
+        display: flex;
+        flex-direction: column;
+      }
+    }
+
+    // Main modal container - maximize size
+    .ms-Dialog-main {
+      width: 95vw !important;
+      max-width: 1600px !important;
+      height: 95vh !important;
+      max-height: 95vh !important;
+      padding: 0 !important;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    // Modal content wrapper - fill available space
+    .document-preview-modal__content {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    // Header should not grow
+    .document-preview-modal__header {
+      flex-shrink: 0;
+    }
+
+    // Frame wrapper should take remaining space
+    .document-preview-modal__frameWrapper {
+      flex: 1;
+      min-height: 0; // Important for flex child to shrink properly
+      overflow: hidden;
+      position: relative;
+    }
+
+    // Iframe should fill the frame wrapper completely
+    .document-preview-modal__iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+    }
+
+    // Loading overlay
+    .document-preview-modal__loading {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+    }
+  }
 }

@@ -188,11 +188,11 @@ const QUERY2_FIELDS = [
   RequestsFields.CommentsAcknowledged,
   RequestsFields.CommentsAcknowledgedOn,
 
-  // Foreside Documents
-  RequestsFields.ForesideCompletedBy,
-  RequestsFields.ForesideCompletedOn,
-  RequestsFields.ForesideNotes,
-  RequestsFields.AwaitingForesideSince,
+  // FINRA Documents
+  RequestsFields.FINRACompletedBy,
+  RequestsFields.FINRACompletedOn,
+  RequestsFields.FINRANotes,
+  RequestsFields.AwaitingFINRASince,
 
   // Cancellation
   RequestsFields.CancelledBy,
@@ -536,11 +536,11 @@ export function mapRequestListItemToRequest(item: IRawSharePointItem): ILegalReq
     commentsAcknowledged: extractor.boolean(RequestsFields.CommentsAcknowledged, false),
     commentsAcknowledgedOn: extractor.date(RequestsFields.CommentsAcknowledgedOn),
 
-    // Foreside Documents
-    foresideCompletedBy: extractor.user(RequestsFields.ForesideCompletedBy),
-    foresideCompletedOn: extractor.date(RequestsFields.ForesideCompletedOn),
-    foresideNotes: extractor.string(RequestsFields.ForesideNotes),
-    awaitingForesideSince: extractor.date(RequestsFields.AwaitingForesideSince),
+    // FINRA Documents
+    finraCompletedBy: extractor.user(RequestsFields.FINRACompletedBy),
+    finraCompletedOn: extractor.date(RequestsFields.FINRACompletedOn),
+    finraNotes: extractor.string(RequestsFields.FINRANotes),
+    awaitingFINRASince: extractor.date(RequestsFields.AwaitingFINRASince),
 
     // Cancellation
     cancelledBy: extractor.user(RequestsFields.CancelledBy),

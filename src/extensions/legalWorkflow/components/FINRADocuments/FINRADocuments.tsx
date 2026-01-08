@@ -1,12 +1,12 @@
 /**
- * ForesideDocuments Component
+ * FINRADocuments Component
  *
- * Displays the Foreside documents section for uploading the Foreside letter.
- * Only shown when status is AwaitingForesideDocuments.
+ * Displays the FINRA documents section for uploading the FINRA letter.
+ * Only shown when status is AwaitingFINRADocuments.
  *
  * Features:
  * - Separate section from regular attachments
- * - Uses DocumentUpload in Approval mode with Foreside document type
+ * - Uses DocumentUpload in Approval mode with FINRA document type
  * - Only owner and admin can upload
  */
 
@@ -29,12 +29,12 @@ import { useDocumentsStore } from '@stores/documentsStore';
 import { useRequestStore } from '@stores/requestStore';
 import { DocumentType } from '@appTypes/documentTypes';
 
-import './ForesideDocuments.scss';
+import './FINRADocuments.scss';
 
 /**
- * ForesideDocuments Component Props
+ * FINRADocuments Component Props
  */
-export interface IForesideDocumentsProps {
+export interface IFINRADocumentsProps {
   itemId?: number;
   siteUrl?: string;
   documentLibraryTitle?: string;
@@ -47,9 +47,9 @@ export interface IForesideDocumentsProps {
 }
 
 /**
- * ForesideDocuments Component
+ * FINRADocuments Component
  */
-export const ForesideDocuments: React.FC<IForesideDocumentsProps> = ({
+export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
   itemId,
   siteUrl,
   documentLibraryTitle = Lists.RequestDocuments.Title,
@@ -81,7 +81,7 @@ export const ForesideDocuments: React.FC<IForesideDocumentsProps> = ({
   // Note: isOwner checks if user is the specific request owner (author/submittedBy)
   // isSubmitter checks if user has the "Submitter" role in permissions
   const isReadOnly = React.useMemo(() => {
-    SPContext.logger.info('🔍 ForesideDocuments isReadOnly check', {
+    SPContext.logger.info('🔍 FINRADocuments isReadOnly check', {
       readOnlyProp,
       isAdmin,
       isSubmitter,
@@ -93,31 +93,31 @@ export const ForesideDocuments: React.FC<IForesideDocumentsProps> = ({
     if (readOnlyProp) return true;
     if (isAdmin) return false;
     if (isOwner) return false;
-    if (isSubmitter) return false; // Allow submitters to upload Foreside documents
+    if (isSubmitter) return false; // Allow submitters to upload FINRA documents
     return true;
   }, [readOnlyProp, isAdmin, isSubmitter, isOwner, currentRequest]);
 
   /**
-   * Calculate Foreside document count (existing + staged)
+   * Calculate FINRA document count (existing + staged)
    */
-  const foresideDocumentCount = React.useMemo(() => {
-    const existingCount = documents.get(DocumentType.Foreside)?.length || 0;
-    const stagedCount = stagedFiles.filter(f => f.documentType === DocumentType.Foreside).length;
+  const finraDocumentCount = React.useMemo(() => {
+    const existingCount = documents.get(DocumentType.FINRA)?.length || 0;
+    const stagedCount = stagedFiles.filter(f => f.documentType === DocumentType.FINRA).length;
     return existingCount + stagedCount;
   }, [documents, stagedFiles]);
 
   // Notify parent of document count changes
   React.useEffect(() => {
     if (onDocumentCountChange) {
-      onDocumentCountChange(foresideDocumentCount);
+      onDocumentCountChange(finraDocumentCount);
     }
-  }, [foresideDocumentCount, onDocumentCountChange]);
+  }, [finraDocumentCount, onDocumentCountChange]);
 
   /**
    * Handle files change
    */
   const handleFilesChange = React.useCallback(() => {
-    SPContext.logger.info('Foreside documents changed', { itemId });
+    SPContext.logger.info('FINRA documents changed', { itemId });
   }, [itemId]);
 
   /**
@@ -125,25 +125,25 @@ export const ForesideDocuments: React.FC<IForesideDocumentsProps> = ({
    */
   const handleError = React.useCallback(
     (error: string) => {
-      SPContext.logger.error('Foreside document error', new Error(error), { itemId });
+      SPContext.logger.error('FINRA document error', new Error(error), { itemId });
     },
     [itemId]
   );
 
-  // Check if request was completed without Foreside documents
-  // (foresideCompletedOn is set, meaning the Foreside stage was completed)
-  const foresideCompletedWithoutDocuments = readOnlyProp && !isLoading && foresideDocumentCount === 0 && currentRequest?.foresideCompletedOn;
+  // Check if request was completed without FINRA documents
+  // (finraCompletedOn is set, meaning the FINRA stage was completed)
+  const finraCompletedWithoutDocuments = readOnlyProp && !isLoading && finraDocumentCount === 0 && currentRequest?.finraCompletedOn;
 
-  // Don't render if read-only, no documents, and request never went through Foreside completion
+  // Don't render if read-only, no documents, and request never went through FINRA completion
   // But wait for documents to finish loading before deciding
-  if (readOnlyProp && !isLoading && foresideDocumentCount === 0 && !currentRequest?.foresideCompletedOn) {
+  if (readOnlyProp && !isLoading && finraDocumentCount === 0 && !currentRequest?.finraCompletedOn) {
     return null;
   }
 
   return (
     <Card
-      id='foreside-documents-card'
-      className='foreside-documents-card'
+      id='finra-documents-card'
+      className='finra-documents-card'
       allowExpand={true}
       defaultExpanded={defaultExpanded}
     >
@@ -151,14 +151,14 @@ export const ForesideDocuments: React.FC<IForesideDocumentsProps> = ({
         <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
           <Icon iconName='Attach' styles={{ root: { fontSize: '20px', color: '#0078d4' } }} />
           <Text variant='large' styles={{ root: { fontWeight: 600 } }}>
-            Foreside Documents
+            FINRA Documents
           </Text>
-          {foresideDocumentCount > 0 && (
+          {finraDocumentCount > 0 && (
             <span className='document-count-badge'>
-              {foresideDocumentCount}
+              {finraDocumentCount}
             </span>
           )}
-          {foresideDocumentCount === 0 && !foresideCompletedWithoutDocuments && (
+          {finraDocumentCount === 0 && !finraCompletedWithoutDocuments && (
             <Text variant='small' styles={{ root: { color: '#a19f9d', fontStyle: 'italic' } }}>
               No documents uploaded
             </Text>
@@ -172,7 +172,7 @@ export const ForesideDocuments: React.FC<IForesideDocumentsProps> = ({
       </Header>
 
       <Content padding='comfortable'>
-        {foresideCompletedWithoutDocuments ? (
+        {finraCompletedWithoutDocuments ? (
           <Stack
             horizontal
             verticalAlign='center'
@@ -191,16 +191,16 @@ export const ForesideDocuments: React.FC<IForesideDocumentsProps> = ({
               styles={{ root: { fontSize: '16px', color: '#605e5c' } }}
             />
             <Text styles={{ root: { color: '#323130' } }}>
-              No Foreside documents were uploaded. The request was completed without attaching Foreside documents.
+              No FINRA documents were uploaded. The request was completed without attaching FINRA documents.
             </Text>
           </Stack>
         ) : (
           <DocumentUpload
             itemId={itemId}
-            documentType={DocumentType.Foreside}
+            documentType={DocumentType.FINRA}
             isReadOnly={isReadOnly}
             required={true}
-            hasError={foresideDocumentCount === 0}
+            hasError={finraDocumentCount === 0}
             siteUrl={siteUrl || SPContext.webAbsoluteUrl}
             documentLibraryTitle={documentLibraryTitle}
             maxFiles={10}
@@ -221,4 +221,4 @@ export const ForesideDocuments: React.FC<IForesideDocumentsProps> = ({
   );
 };
 
-export default ForesideDocuments;
+export default FINRADocuments;

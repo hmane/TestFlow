@@ -69,7 +69,7 @@ const STATUS_OPTIONS: IDropdownOption[] = [
   { key: RequestStatus.AssignAttorney, text: 'Assign Attorney' },
   { key: RequestStatus.InReview, text: 'In Review' },
   { key: RequestStatus.Closeout, text: 'Closeout' },
-  { key: RequestStatus.AwaitingForesideDocuments, text: 'Awaiting Foreside Documents' },
+  { key: RequestStatus.AwaitingFINRADocuments, text: 'Awaiting FINRA Documents' },
   { key: RequestStatus.Completed, text: 'Completed' },
   { key: RequestStatus.Cancelled, text: 'Cancelled' },
   { key: RequestStatus.OnHold, text: 'On Hold' },

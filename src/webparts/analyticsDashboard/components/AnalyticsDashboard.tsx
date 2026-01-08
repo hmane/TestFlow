@@ -509,30 +509,45 @@ const AnalyticsDashboard: React.FC<IAnalyticsDashboardProps> = (props) => {
           <div className={styles.chartCard}>
             <SectionHeader title="Average Time by Stage" icon="TimelineProgress" />
             <div className={styles.chartContainer}>
-              <Chart
-                id="timeByStageChart"
-                dataSource={timeByStage}
-                rotated={true}
-              >
-                <CommonSeriesSettings argumentField="stage" type="stackedBar" />
-                <ChartSeries
-                  valueField="avgReviewerHours"
-                  name="Reviewer Hours"
-                  color="#0078d4"
-                />
-                <ChartSeries
-                  valueField="avgSubmitterHours"
-                  name="Submitter Hours"
-                  color="#107c10"
-                />
-                <ArgumentAxis />
-                <ValueAxis title="Hours" />
-                <ChartLegend
-                  verticalAlignment="bottom"
-                  horizontalAlignment="center"
-                />
-                <ChartTooltip enabled={true} />
-              </Chart>
+              {timeByStage.length > 0 && timeByStage.some(s => s.avgReviewerHours > 0 || s.avgSubmitterHours > 0) ? (
+                <Chart
+                  id="timeByStageChart"
+                  dataSource={timeByStage.map(s => ({
+                    ...s,
+                    // Convert to minutes for better visibility of small values
+                    avgReviewerMinutes: Math.round(s.avgReviewerHours * 60),
+                    avgSubmitterMinutes: Math.round(s.avgSubmitterHours * 60),
+                  }))}
+                  rotated={true}
+                  size={{ height: 280 }}
+                >
+                  <CommonSeriesSettings argumentField="stage" type="bar" barPadding={0.3} />
+                  <ChartSeries
+                    valueField="avgReviewerMinutes"
+                    name="Reviewer Time"
+                    color="#0078d4"
+                  />
+                  <ChartSeries
+                    valueField="avgSubmitterMinutes"
+                    name="Submitter Time"
+                    color="#107c10"
+                  />
+                  <ArgumentAxis />
+                  <ValueAxis title="Minutes" />
+                  <ChartLegend
+                    verticalAlignment="bottom"
+                    horizontalAlignment="center"
+                  />
+                  <ChartTooltip enabled={true} customizeTooltip={(arg: { seriesName: string; value: number; argument: string }) => ({
+                    text: `${arg.argument} - ${arg.seriesName}: ${formatHours(arg.value / 60)}`,
+                  })} />
+                </Chart>
+              ) : (
+                <div className={styles.emptyState}>
+                  <Icon iconName="Clock" className={styles.emptyIcon} />
+                  <Text>No time tracking data available</Text>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -413,12 +413,12 @@ export function buildPartialUpdatePayload(data: Partial<ILegalRequest>): Record<
     updater.set(RequestsFields.OnHoldBy, data.onHoldBy, undefined);
   }
 
-  // Foreside Documents fields
-  setIfDefined(RequestsFields.AwaitingForesideSince, data.awaitingForesideSince);
-  setIfDefined(RequestsFields.ForesideNotes, data.foresideNotes);
-  setIfDefined(RequestsFields.ForesideCompletedOn, data.foresideCompletedOn);
-  if (data.foresideCompletedBy !== undefined) {
-    updater.set(RequestsFields.ForesideCompletedBy, data.foresideCompletedBy, undefined);
+  // FINRA Documents fields
+  setIfDefined(RequestsFields.AwaitingFINRASince, data.awaitingFINRASince);
+  setIfDefined(RequestsFields.FINRANotes, data.finraNotes);
+  setIfDefined(RequestsFields.FINRACompletedOn, data.finraCompletedOn);
+  if (data.finraCompletedBy !== undefined) {
+    updater.set(RequestsFields.FINRACompletedBy, data.finraCompletedBy, undefined);
   }
 
   // Time tracking fields

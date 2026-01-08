@@ -115,17 +115,17 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
    * Determine if attachments should be read-only
    *
    * Permissions for attachments:
-   * - Admin: can edit anytime (except Completed/Cancelled/AwaitingForesideDocuments)
+   * - Admin: can edit anytime (except Completed/Cancelled/AwaitingFINRADocuments)
    * - Legal Admin, Attorney, Compliance: can add/update anytime before Closeout
    * - Owner (creator/submitter): can edit in Draft or when waiting on submitter
    */
   const isReadOnly = React.useMemo(() => {
-    // Completed, Cancelled, and AwaitingForesideDocuments are always read-only for everyone
-    // (AwaitingForesideDocuments has its own separate ForesideDocuments section)
+    // Completed, Cancelled, and AwaitingFINRADocuments are always read-only for everyone
+    // (AwaitingFINRADocuments has its own separate FINRADocuments section)
     if (
       status === RequestStatus.Completed ||
       status === RequestStatus.Cancelled ||
-      status === RequestStatus.AwaitingForesideDocuments
+      status === RequestStatus.AwaitingFINRADocuments
     ) {
       return true;
     }
