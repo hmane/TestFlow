@@ -39,6 +39,16 @@ import * as strings from 'TurnAroundDateFieldCustomizerStrings';
 import { TurnAroundDateWrapper } from './components/TurnAroundDateWrapper';
 import type { ITurnAroundDateData } from './types';
 import { RequestStatus } from '../../types/workflowTypes';
+import { Lists } from '../../sp/Lists';
+import { SubmissionItemsFields } from '../../sp/listFields/SubmissionItemsFields';
+
+/**
+ * Cached submission item data for turnaround time lookup
+ */
+interface ISubmissionItemCache {
+  title: string;
+  turnAroundTimeInDays: number;
+}
 
 /**
  * Properties for the Turn Around Date Field Customizer
@@ -59,6 +69,12 @@ const LOG_SOURCE: string = 'TurnAroundDateFieldCustomizer';
 export default class TurnAroundDateFieldCustomizer
   extends BaseFieldCustomizer<ITurnAroundDateFieldCustomizerProperties> {
 
+  /** Cache of submission items keyed by lowercase title */
+  private submissionItemsCache: Map<string, ISubmissionItemCache> = new Map();
+
+  /** Flag to track if submission items have been loaded */
+  private submissionItemsLoaded: boolean = false;
+
   /**
    * Initialize the field customizer
    */
@@ -70,11 +86,81 @@ export default class TurnAroundDateFieldCustomizer
     Log.info(LOG_SOURCE, JSON.stringify(this.properties, undefined, 2));
     Log.info(LOG_SOURCE, `The following string should be equal: "TurnAroundDateFieldCustomizer" and "${strings.Title}"`);
 
+    // Load submission items for turnaround time lookup
+    await this.loadSubmissionItems();
+
     SPContext.logger.info('TurnAroundDateFieldCustomizer initialized', {
       listTitle: this.properties.listTitle,
+      submissionItemsCount: this.submissionItemsCache.size,
     });
+  }
 
-    return Promise.resolve();
+  /**
+   * Load submission items from SharePoint for turnaround time lookup
+   * Uses pessimistic caching - loaded once on init
+   */
+  private async loadSubmissionItems(): Promise<void> {
+    try {
+      const items = await SPContext.sp.web.lists
+        .getByTitle(Lists.SubmissionItems.Title)
+        .items.select(
+          SubmissionItemsFields.Title,
+          SubmissionItemsFields.TurnAroundTimeInDays
+        )
+        .top(100)();
+
+      // Build cache keyed by lowercase title for case-insensitive lookup
+      for (const item of items) {
+        const title = item[SubmissionItemsFields.Title] as string;
+        const turnAroundTimeInDays = item[SubmissionItemsFields.TurnAroundTimeInDays] as number;
+
+        if (title) {
+          this.submissionItemsCache.set(title.toLowerCase(), {
+            title,
+            turnAroundTimeInDays: turnAroundTimeInDays ?? 5, // Default to 5 if not set
+          });
+        }
+      }
+
+      this.submissionItemsLoaded = true;
+
+      SPContext.logger.info('Submission items loaded for turnaround lookup', {
+        count: this.submissionItemsCache.size,
+      });
+    } catch (error: unknown) {
+      SPContext.logger.error('Failed to load submission items', error, {
+        context: 'TurnAroundDateFieldCustomizer.loadSubmissionItems',
+      });
+      // Continue without submission items - turnaround info won't show
+      this.submissionItemsLoaded = false;
+    }
+  }
+
+  /**
+   * Look up submission item by title
+   * Falls back to "Other" if not found
+   */
+  private getSubmissionItem(submissionItemTitle: string | undefined): ISubmissionItemCache | undefined {
+    if (!submissionItemTitle || !this.submissionItemsLoaded) {
+      return undefined;
+    }
+
+    // Try exact match (case-insensitive)
+    const exactMatch = this.submissionItemsCache.get(submissionItemTitle.toLowerCase());
+    if (exactMatch) {
+      return exactMatch;
+    }
+
+    // Fall back to "Other" if no match found
+    const otherItem = this.submissionItemsCache.get('other');
+    if (otherItem) {
+      return {
+        title: submissionItemTitle, // Keep the original title for display
+        turnAroundTimeInDays: otherItem.turnAroundTimeInDays,
+      };
+    }
+
+    return undefined;
   }
 
   /**
@@ -89,6 +175,7 @@ export default class TurnAroundDateFieldCustomizer
    * - IsRushRequest: Boolean flag for rush requests
    * - RushRationale: Reason for rush request (displayed in hover card)
    * - Status: Used to determine if countdown should show
+   * - SubmissionItem: Used to look up turnaround time
    *
    * @param event - Contains the list item data and DOM element
    */
@@ -97,6 +184,10 @@ export default class TurnAroundDateFieldCustomizer
       const listItem = event.listItem;
       const targetReturnDate = event.fieldValue;
 
+      // Get submission item text and look up turnaround time
+      const submissionItemText = listItem.getValueByName('SubmissionItem') as string | undefined;
+      const submissionItem = this.getSubmissionItem(submissionItemText);
+
       // Build turnaround date data for the React component
       const itemData: ITurnAroundDateData = {
         targetReturnDate: this.parseDate(targetReturnDate),
@@ -104,10 +195,8 @@ export default class TurnAroundDateFieldCustomizer
         isRushRequest: listItem.getValueByName('IsRushRequest') as boolean || false,
         rushRationale: listItem.getValueByName('RushRationale') as string | undefined,
         status: listItem.getValueByName('Status') as RequestStatus,
-        // Note: TurnAroundTimeInDays and SubmissionItemTitle could be added
-        // if needed for displaying the standard turnaround comparison
-        turnAroundTimeInDays: undefined,
-        submissionItemTitle: undefined,
+        turnAroundTimeInDays: submissionItem?.turnAroundTimeInDays,
+        submissionItemTitle: submissionItem?.title ?? submissionItemText,
       };
 
       // Render the React component
