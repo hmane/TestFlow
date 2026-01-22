@@ -183,6 +183,13 @@ export default class RequestStatusFieldCustomizer
       // Style the cell for the status badge
       event.domElement.style.display = 'flex';
       event.domElement.style.alignItems = 'center';
+      event.domElement.style.overflow = 'visible';
+
+      // Ensure parent cell doesn't clip the progress bar
+      const parentCell = event.domElement.parentElement;
+      if (parentCell) {
+        parentCell.style.overflow = 'visible';
+      }
 
       // Render RequestStatusProgress component
       const progressBar = React.createElement(RequestStatusProgress, {

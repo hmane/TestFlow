@@ -50,9 +50,10 @@
   position: absolute;
   top: 0;
   left: 0;
-  height: 100%;
+  bottom: 0;
   /* Width set dynamically via inline style */
   transition: width 0.3s ease;
+  border-radius: inherit;
 }
 
 
