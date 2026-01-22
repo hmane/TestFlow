@@ -1,0 +1,221 @@
+# =============================================================================
+# SPFx Deployment Template
+# =============================================================================
+# Deploys SPFx solution to SharePoint App Catalog using PnP PowerShell
+# Supports pre/post deployment scripts from Deployments/{version}/ folder
+#
+# Required Variable Group Variables:
+# - spoTenant: SharePoint tenant (e.g., contoso.onmicrosoft.com)
+# - spoAppId: Azure AD App Registration Client ID
+# - spoAppCatalogUrl: App Catalog URL (e.g., https://contoso.sharepoint.com/sites/appcatalog)
+# - spoCertificateName: Name of certificate in ADO Secure Files
+# - spoCertificatePassword: Password for the certificate (if applicable)
+# =============================================================================
+
+parameters:
+  - name: environment
+    type: string
+    default: 'Dev'
+  - name: solutionVersion
+    type: string
+    default: '0.0.1'
+
+steps:
+  # Download SPFx package artifact
+  - download: current
+    artifact: spfx-package
+    displayName: 'Download SPFx package'
+
+  # Download deployment scripts artifact (if exists)
+  - download: current
+    artifact: deployments
+    displayName: 'Download deployment scripts'
+    continueOnError: true
+
+  # Download certificate from Secure Files
+  - task: DownloadSecureFile@1
+    name: certificate
+    displayName: 'Download certificate'
+    inputs:
+      secureFile: '$(spoCertificateName)'
+
+  # Install PnP PowerShell module
+  - task: PowerShell@2
+    displayName: 'Install PnP.PowerShell module'
+    inputs:
+      targetType: 'inline'
+      script: |
+        Write-Host "Installing PnP.PowerShell module..."
+        Install-Module -Name PnP.PowerShell -Force -AllowClobber -Scope CurrentUser
+        Write-Host "PnP.PowerShell module installed successfully"
+
+  # Connect to SharePoint, run pre-deploy, deploy, run post-deploy
+  - task: PowerShell@2
+    displayName: 'Deploy to SharePoint App Catalog'
+    inputs:
+      targetType: 'inline'
+      script: |
+        $certificatePath = "$(certificate.secureFilePath)"
+        $tenant = "$(spoTenant)"
+        $appId = "$(spoAppId)"
+        $appCatalogUrl = "$(spoAppCatalogUrl)"
+        $sppkgPath = "$(Pipeline.Workspace)/spfx-package/legal-workflow.sppkg"
+        $version = "${{ parameters.solutionVersion }}"
+        $environment = "${{ parameters.environment }}"
+        $deploymentsPath = "$(Pipeline.Workspace)/deployments"
+
+        Write-Host "=========================================="
+        Write-Host "SPFx Deployment - $environment"
+        Write-Host "=========================================="
+        Write-Host "Tenant: $tenant"
+        Write-Host "App Catalog: $appCatalogUrl"
+        Write-Host "Package: $sppkgPath"
+        Write-Host "Version: $version"
+        Write-Host "=========================================="
+
+        # Connect to SharePoint using certificate authentication
+        Write-Host ""
+        Write-Host "Connecting to SharePoint..."
+        try {
+          # Check if certificate password is provided
+          if ("$(spoCertificatePassword)" -ne "") {
+            $securePassword = ConvertTo-SecureString "$(spoCertificatePassword)" -AsPlainText -Force
+            Connect-PnPOnline -Url $appCatalogUrl -ClientId $appId -Tenant $tenant -CertificatePath $certificatePath -CertificatePassword $securePassword
+          } else {
+            Connect-PnPOnline -Url $appCatalogUrl -ClientId $appId -Tenant $tenant -CertificatePath $certificatePath
+          }
+          Write-Host "Connected successfully!"
+        }
+        catch {
+          Write-Host "##vso[task.logissue type=error]Failed to connect to SharePoint: $_"
+          exit 1
+        }
+
+        # ==========================================
+        # PRE-DEPLOYMENT SCRIPT
+        # ==========================================
+        Write-Host ""
+        Write-Host "=========================================="
+        Write-Host "PRE-DEPLOYMENT"
+        Write-Host "=========================================="
+
+        $preScriptPath = "$deploymentsPath/$version/pre.deploy.ps1"
+
+        # Check if deployments folder exists
+        if (-not (Test-Path $deploymentsPath)) {
+          Write-Host "Deployments folder not found. Skipping pre-deployment script."
+        }
+        # Check if version folder exists
+        elseif (-not (Test-Path "$deploymentsPath/$version")) {
+          Write-Host "Version folder '$version' not found in Deployments. Skipping pre-deployment script."
+        }
+        # Check if pre.deploy.ps1 exists
+        elseif (Test-Path $preScriptPath) {
+          Write-Host "Found pre-deployment script. Executing..."
+          Write-Host "----------------------------------------"
+
+          try {
+            # Execute the script with environment context
+            & $preScriptPath `
+              -Environment $environment `
+              -Tenant $tenant `
+              -SiteUrl $appCatalogUrl `
+              -Version $version
+
+            Write-Host "----------------------------------------"
+            Write-Host "Pre-deployment script completed."
+          }
+          catch {
+            Write-Host "##vso[task.logissue type=error]Pre-deployment script failed: $_"
+            Disconnect-PnPOnline
+            exit 1
+          }
+        }
+        else {
+          Write-Host "No pre-deployment script found at: $preScriptPath"
+        }
+
+        # ==========================================
+        # DEPLOY SPFX PACKAGE
+        # ==========================================
+        Write-Host ""
+        Write-Host "=========================================="
+        Write-Host "DEPLOYING SPFX PACKAGE"
+        Write-Host "=========================================="
+
+        # Add the app to the App Catalog
+        Write-Host "Uploading SPFx package to App Catalog..."
+        try {
+          $app = Add-PnPApp -Path $sppkgPath -Scope Tenant -Overwrite -Publish
+          Write-Host "Package uploaded successfully!"
+          Write-Host "App ID: $($app.Id)"
+        }
+        catch {
+          Write-Host "##vso[task.logissue type=error]Failed to upload package: $_"
+          Disconnect-PnPOnline
+          exit 1
+        }
+
+        # Deploy the app
+        Write-Host "Deploying app..."
+        try {
+          Publish-PnPApp -Identity $app.Id -Scope Tenant
+          Write-Host "App deployed successfully!"
+        }
+        catch {
+          Write-Host "##vso[task.logissue type=warning]Publish-PnPApp warning (app may already be deployed): $_"
+        }
+
+        # ==========================================
+        # POST-DEPLOYMENT SCRIPT
+        # ==========================================
+        Write-Host ""
+        Write-Host "=========================================="
+        Write-Host "POST-DEPLOYMENT"
+        Write-Host "=========================================="
+
+        $postScriptPath = "$deploymentsPath/$version/post.deploy.ps1"
+
+        # Check if deployments folder exists
+        if (-not (Test-Path $deploymentsPath)) {
+          Write-Host "Deployments folder not found. Skipping post-deployment script."
+        }
+        # Check if version folder exists
+        elseif (-not (Test-Path "$deploymentsPath/$version")) {
+          Write-Host "Version folder '$version' not found in Deployments. Skipping post-deployment script."
+        }
+        # Check if post.deploy.ps1 exists
+        elseif (Test-Path $postScriptPath) {
+          Write-Host "Found post-deployment script. Executing..."
+          Write-Host "----------------------------------------"
+
+          try {
+            # Execute the script with environment context
+            & $postScriptPath `
+              -Environment $environment `
+              -Tenant $tenant `
+              -SiteUrl $appCatalogUrl `
+              -Version $version
+
+            Write-Host "----------------------------------------"
+            Write-Host "Post-deployment script completed."
+          }
+          catch {
+            Write-Host "##vso[task.logissue type=error]Post-deployment script failed: $_"
+            Disconnect-PnPOnline
+            exit 1
+          }
+        }
+        else {
+          Write-Host "No post-deployment script found at: $postScriptPath"
+        }
+
+        # ==========================================
+        # CLEANUP
+        # ==========================================
+        Write-Host ""
+        Write-Host "=========================================="
+        Write-Host "DEPLOYMENT COMPLETE"
+        Write-Host "=========================================="
+        Disconnect-PnPOnline
+        Write-Host "Legal Workflow v$version deployed successfully to $environment!"

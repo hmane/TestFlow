@@ -8,32 +8,32 @@
                           Url="/SitePages/Home.aspx"
                           IsExternal="false" />
 
-      <!-- Dashboards Node -->
-      <pnp:NavigationNode Title="Dashboards" Url="" IsExternal="false">
+      <!-- My Requests Dashboard - For Submitters -->
+      <pnp:NavigationNode Title="My Requests"
+                          Url="/SitePages/RequestDashboard.aspx"
+                          IsExternal="false" />
 
-        <pnp:NavigationNode Title="My Requests"
-                            Url="/SitePages/MyRequestsDashboard.aspx"
-                            IsExternal="false" />
+      <!-- Legal Admin Dashboard -->
+      <pnp:NavigationNode Title="Legal Admin"
+                          Url="/SitePages/LegalAdminDashboard.aspx"
+                          IsExternal="false" />
 
-        <pnp:NavigationNode Title="Legal Admin"
-                            Url="/SitePages/LegalAdminDashboard.aspx"
-                            IsExternal="false" />
+      <!-- Attorney Assignment Dashboard -->
+      <pnp:NavigationNode Title="Attorney Assignment"
+                          Url="/SitePages/AttorneyAssignmentDashboard.aspx"
+                          IsExternal="false" />
 
-        <pnp:NavigationNode Title="Attorney Assignment"
-                            Url="/SitePages/AttorneyAssignmentDashboard.aspx"
-                            IsExternal="false" />
+      <!-- Attorney Dashboard -->
+      <pnp:NavigationNode Title="Attorney Reviews"
+                          Url="/SitePages/AttorneyDashboard.aspx"
+                          IsExternal="false" />
 
-        <pnp:NavigationNode Title="Attorney Reviews"
-                            Url="/SitePages/AttorneyDashboard.aspx"
-                            IsExternal="false" />
+      <!-- Compliance Dashboard -->
+      <pnp:NavigationNode Title="Compliance"
+                          Url="/SitePages/ComplianceDashboard.aspx"
+                          IsExternal="false" />
 
-        <pnp:NavigationNode Title="Compliance Reviews"
-                            Url="/SitePages/ComplianceDashboard.aspx"
-                            IsExternal="false" />
-
-      </pnp:NavigationNode>
-
-      <!-- Requests List -->
+      <!-- All Requests - Direct link to list for admin operations -->
       <pnp:NavigationNode Title="All Requests"
                           Url="/Lists/Requests/AllItems.aspx"
                           IsExternal="false" />

@@ -162,8 +162,9 @@ additionalParty?: IPrincipal[];
 
   // Approvals - Communications
   requiresCommunicationsApproval: boolean;
+  communicationsOnly: boolean;
   communicationsApprovalDate?: Date;
-communicationsApprover?: IPrincipal;
+  communicationsApprover?: IPrincipal;
 
   // Approvals - Portfolio Manager
   hasPortfolioManagerApproval: boolean;

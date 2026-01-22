@@ -181,6 +181,7 @@ export const useRequestStore = create<IRequestState>()(
           isRushRequest: false,
           reviewAudience: 'Legal' as ReviewAudience,
           requiresCommunicationsApproval: false,
+          communicationsOnly: false,
           hasPortfolioManagerApproval: false,
           hasResearchAnalystApproval: false,
           hasSMEApproval: false,
@@ -197,6 +198,8 @@ export const useRequestStore = create<IRequestState>()(
           ucits: [],
           separateAcctStrategies: [],
           separateAcctStrategiesIncl: [],
+          // Set department from current user for prior submissions search
+          department: SPContext.currentUser?.department,
         };
 
         set({

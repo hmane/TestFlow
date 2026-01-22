@@ -101,6 +101,7 @@ export const requestInformationSchema = z.object({
     message: 'Review audience is required',
   }),
   requiresCommunicationsApproval: z.boolean(),
+  communicationsOnly: z.boolean(),
   department: z.string().max(DEPARTMENT_MAX_LENGTH).optional(),
   distributionMethod: z
     .array(
@@ -191,6 +192,7 @@ export const requestInformationSchema = z.object({
  */
 export const approvalsSchema = z.object({
   requiresCommunicationsApproval: z.boolean(),
+  communicationsOnly: z.boolean(),
   approvals: approvalsArraySchema,
 });
 
@@ -237,6 +239,7 @@ export const saveRequestSchema = z
       .enum([ReviewAudience.Legal, ReviewAudience.Compliance, ReviewAudience.Both])
       .optional(),
     requiresCommunicationsApproval: z.boolean().optional(),
+    communicationsOnly: z.boolean().optional(),
     approvals: z.array(z.any()).optional(),
     department: z.string().max(DEPARTMENT_MAX_LENGTH).optional(),
     distributionMethod: z.array(z.any()).optional(),
@@ -284,6 +287,7 @@ export const submitRequestSchema = z
     targetReturnDate: z.any(),
     reviewAudience: z.any(),
     requiresCommunicationsApproval: z.boolean().optional(),
+    communicationsOnly: z.boolean().optional(),
     approvals: z.array(
       z.object({
         type: z.enum([
@@ -505,18 +509,21 @@ export const submitRequestSchema = z
     }
 
     // At least 1 additional (non-Communications) approval required
-    let additionalCount = 0;
-    for (let i = 0; i < approvals.length; i++) {
-      if (approvals[i].type !== ApprovalType.Communications) {
-        additionalCount++;
+    // Skip this check if communicationsOnly is true (only Communications approval needed)
+    if (!data.communicationsOnly) {
+      let additionalCount = 0;
+      for (let i = 0; i < approvals.length; i++) {
+        if (approvals[i].type !== ApprovalType.Communications) {
+          additionalCount++;
+        }
       }
-    }
-    if (additionalCount < 1) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'At least one additional approval (non-Communications) is required',
-        path: ['approvals'],
-      });
+      if (additionalCount < 1) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'At least one additional approval (non-Communications) is required',
+          path: ['approvals'],
+        });
+      }
     }
 
     // Communications approval validation (if required)
@@ -766,6 +773,7 @@ export const fullRequestSchema = z.object({
   rushRationale: z.string().max(RUSH_RATIONALE_MAX_LENGTH).optional(),
   reviewAudience: z.enum([ReviewAudience.Legal, ReviewAudience.Compliance, ReviewAudience.Both]),
   requiresCommunicationsApproval: z.boolean(),
+  communicationsOnly: z.boolean(),
   hasPortfolioManagerApproval: z.boolean().optional(),
   hasResearchAnalystApproval: z.boolean().optional(),
   hasSMEApproval: z.boolean().optional(),

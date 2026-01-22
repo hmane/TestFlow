@@ -6,6 +6,7 @@
 
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { Lists } from '@sp/Lists';
+import { RequestIdsFields } from '@sp/listFields';
 
 /**
  * Request ID prefix mapping based on request type
@@ -43,18 +44,18 @@ async function getNextSequenceNumber(prefix: string, year: number): Promise<numb
     // Query RequestIds list for the last sequence number for this prefix/year
     const items = await SPContext.sp.web.lists
       .getByTitle(Lists.RequestIds.Title)
-      .items.select('Sequence')
-      .filter(`Prefix eq '${prefix}' and Year eq ${year}`)
-      .orderBy('Sequence', false)
+      .items.select(RequestIdsFields.Sequence)
+      .filter(`${RequestIdsFields.Prefix} eq '${prefix}' and ${RequestIdsFields.Year} eq ${year}`)
+      .orderBy(RequestIdsFields.Sequence, false)
       .top(1)();
 
     if (items.length > 0) {
       // Ensure we get a number - SharePoint may return string for Number fields
-      const lastSequence = Number(items[0].Sequence);
+      const lastSequence = Number(items[0][RequestIdsFields.Sequence]);
       if (!isNaN(lastSequence)) {
         return lastSequence + 1;
       }
-      SPContext.logger.warn('RequestSaveService: Invalid sequence value, starting at 1', { sequence: items[0].Sequence });
+      SPContext.logger.warn('RequestSaveService: Invalid sequence value, starting at 1', { sequence: items[0][RequestIdsFields.Sequence] });
     }
 
     return 1;
@@ -85,10 +86,10 @@ async function registerRequestId(
     await SPContext.sp.web.lists
       .getByTitle(Lists.RequestIds.Title)
       .items.add({
-        Title: requestId,
-        Prefix: prefix,
-        Year: year,
-        Sequence: sequence,
+        [RequestIdsFields.Title]: requestId,
+        [RequestIdsFields.Prefix]: prefix,
+        [RequestIdsFields.Year]: year,
+        [RequestIdsFields.Sequence]: sequence,
       });
 
     SPContext.logger.info('RequestSaveService: Request ID registered', { requestId, prefix, year, sequence });

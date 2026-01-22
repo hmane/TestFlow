@@ -426,6 +426,14 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
     name: 'requiresCommunicationsApproval',
   });
 
+  // Controller for communicationsOnly toggle
+  const {
+    field: { value: communicationsOnly, onChange: onCommOnlyChange },
+  } = useController({
+    control,
+    name: 'communicationsOnly',
+  });
+
   // Watch all approvals to track which types are selected
   const approvals = useWatch({
     control,
@@ -697,6 +705,41 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
     [communicationsApprovalIndex]
   );
 
+  /**
+   * Handle communications only toggle change
+   * When enabled, removes all additional (non-Communications) approvals
+   */
+  const handleCommOnlyToggle = React.useCallback(
+    (_event: React.MouseEvent<HTMLElement>, checked?: boolean) => {
+      const newValue = checked || false;
+      onCommOnlyChange(newValue);
+
+      if (newValue) {
+        // Remove all non-Communications approvals when enabling "Communications Only"
+        // We need to iterate backwards to avoid index shifting issues
+        const indicesToRemove: number[] = [];
+        if (approvals && Array.isArray(approvals)) {
+          for (let i = 0; i < approvals.length; i++) {
+            const approval = approvals[i] as any;
+            if (approval.type !== ApprovalType.Communications) {
+              indicesToRemove.push(i);
+            }
+          }
+        }
+
+        // Remove in reverse order to maintain correct indices
+        for (let i = indicesToRemove.length - 1; i >= 0; i--) {
+          remove(indicesToRemove[i]);
+        }
+
+        SPContext.logger.info('ApprovalSection: Communications Only enabled, removed additional approvals', {
+          removedCount: indicesToRemove.length,
+        });
+      }
+    },
+    [onCommOnlyChange, approvals, remove]
+  );
+
   return (
     <Stack tokens={{ childrenGap: 16 }}>
       {/* Communications Approval Section */}
@@ -725,6 +768,38 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
               <Icon iconName='CheckMark' styles={CHECKMARK_ICON_STYLES} />
               <Text variant='medium' styles={APPROVAL_TITLE_STYLES}>
                 Communications Approval
+              </Text>
+            </Stack>
+
+            {/* Communications Only Toggle - Shown at top of Communications Approval section */}
+            <Stack
+              tokens={{ childrenGap: 8 }}
+              styles={{
+                root: {
+                  padding: '12px',
+                  backgroundColor: '#ffffff',
+                  borderRadius: '4px',
+                  border: '1px solid #d1e5ff',
+                },
+              }}
+            >
+              <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
+                <Icon iconName='Filter' styles={{ root: { fontSize: '16px', color: '#0078d4' } }} />
+                <Label styles={{ root: { fontWeight: 600, color: '#323130', fontSize: '13px' } }}>
+                  Is this a Communications Only request?
+                </Label>
+              </Stack>
+              <Toggle
+                label=''
+                onText='Yes'
+                offText='No'
+                checked={communicationsOnly || false}
+                onChange={handleCommOnlyToggle}
+                disabled={disabled}
+                styles={TOGGLE_STYLES}
+              />
+              <Text variant='small' styles={DESC_TEXT_STYLES}>
+                Enable this if only Communications approval is needed. When disabled, at least one additional approval (Portfolio Manager, Research Analyst, etc.) is required.
               </Text>
             </Stack>
 
@@ -811,74 +886,76 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
         )}
       </Stack>
 
-      {/* Additional Approvals Section */}
-      <Stack tokens={{ childrenGap: 12 }}>
-        <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
-          <Icon iconName='AddTo' styles={{ root: { fontSize: '18px', color: '#0078d4' } }} />
-          <Label styles={COMM_APPROVAL_LABEL_STYLES}>Additional Approvals</Label>
-        </Stack>
-
-        <Text variant='small' styles={DESC_TEXT_STYLES}>
-          Select additional approval types as needed. Each can only be added once.
-        </Text>
-
-        {/* Additional Approval Items */}
-        {fields.map((field, index) => {
-          const approval = approvals?.[index];
-          // Only render non-communications approvals
-          if (approval?.type === ApprovalType.Communications) return null;
-          if (!approval?.type) return null; // Skip if no type defined
-
-          return (
-            <AdditionalApprovalItem
-              key={field.id}
-              control={control}
-              index={index}
-              approvalType={approval.type}
-              onRemove={() => handleRemoveAdditionalApproval(index)}
-              disabled={disabled}
-              isNewRequest={isNewRequest}
-              requestId={requestId}
-            />
-          );
-        })}
-
-        {/* Dropdown for adding additional approvals */}
-        <Stack tokens={{ childrenGap: 8 }} styles={DROPDOWN_CONTAINER_STYLES}>
-          <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
-            <Icon iconName='Add' styles={{ root: { fontSize: '14px', color: '#0078d4' } }} />
-            <Text variant='small' styles={{ root: { fontWeight: 600 } }}>
-              Add Additional Approval
-            </Text>
+      {/* Additional Approvals Section - Hidden when Communications Only is enabled */}
+      {!communicationsOnly && (
+        <Stack tokens={{ childrenGap: 12 }}>
+          <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
+            <Icon iconName='AddTo' styles={{ root: { fontSize: '18px', color: '#0078d4' } }} />
+            <Label styles={COMM_APPROVAL_LABEL_STYLES}>Additional Approvals</Label>
           </Stack>
 
-          {availableApprovalOptions.length > 0 ? (
-            <SelectBox
-              dataSource={availableApprovalOptions}
-              displayExpr='text'
-              valueExpr='id'
-              value={selectedAdditionalType}
-              onValueChanged={(e) => {
-                const value = e.value;
-                if (value) {
-                  handleAddAdditionalApproval(value);
-                }
-              }}
-              placeholder='Select an approval type to add...'
-              searchEnabled={false}
-              showClearButton={false}
-              stylingMode='outlined'
-              disabled={disabled}
-              isValid={!hasApprovalDropdownError}
-              validationError={hasApprovalDropdownError ? { message: 'At least one additional approval is required' } : undefined}
-            />
-          ) : (
-            <MessageBar messageBarType={MessageBarType.success} isMultiline={false}>
-              All available approval types have been added
-            </MessageBar>
-          )}
+          <Text variant='small' styles={DESC_TEXT_STYLES}>
+            Select additional approval types as needed. Each can only be added once.
+          </Text>
+
+          {/* Additional Approval Items */}
+          {fields.map((field, index) => {
+            const approval = approvals?.[index];
+            // Only render non-communications approvals
+            if (approval?.type === ApprovalType.Communications) return null;
+            if (!approval?.type) return null; // Skip if no type defined
+
+            return (
+              <AdditionalApprovalItem
+                key={field.id}
+                control={control}
+                index={index}
+                approvalType={approval.type}
+                onRemove={() => handleRemoveAdditionalApproval(index)}
+                disabled={disabled}
+                isNewRequest={isNewRequest}
+                requestId={requestId}
+              />
+            );
+          })}
+
+          {/* Dropdown for adding additional approvals */}
+          <Stack tokens={{ childrenGap: 8 }} styles={DROPDOWN_CONTAINER_STYLES}>
+            <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
+              <Icon iconName='Add' styles={{ root: { fontSize: '14px', color: '#0078d4' } }} />
+              <Text variant='small' styles={{ root: { fontWeight: 600 } }}>
+                Add Additional Approval
+              </Text>
+            </Stack>
+
+            {availableApprovalOptions.length > 0 ? (
+              <SelectBox
+                dataSource={availableApprovalOptions}
+                displayExpr='text'
+                valueExpr='id'
+                value={selectedAdditionalType}
+                onValueChanged={(e) => {
+                  const value = e.value;
+                  if (value) {
+                    handleAddAdditionalApproval(value);
+                  }
+                }}
+                placeholder='Select an approval type to add...'
+                searchEnabled={false}
+                showClearButton={false}
+                stylingMode='outlined'
+                disabled={disabled}
+                isValid={!hasApprovalDropdownError}
+                validationError={hasApprovalDropdownError ? { message: 'At least one additional approval is required' } : undefined}
+              />
+            ) : (
+              <MessageBar messageBarType={MessageBarType.success} isMultiline={false}>
+                All available approval types have been added
+              </MessageBar>
+            )}
+          </Stack>
         </Stack>
-      </Stack>
+      )}
 
       {/* Summary info */}
       {fields.length > 0 && (

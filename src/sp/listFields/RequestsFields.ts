@@ -89,6 +89,7 @@ export const RequestsFields = {
   SubmittedToAssignAttorneyBy: 'SubmittedToAssignAttorneyBy',
   SubmittedToAssignAttorneyOn: 'SubmittedToAssignAttorneyOn',
   RequiresCommunicationsApproval: 'RequiresCommunicationsApproval',
+  CommunicationsOnly: 'CommunicationsOnly',
   Created: 'Created',
   Author: 'Author',
   Modified: 'Modified',

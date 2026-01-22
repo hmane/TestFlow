@@ -1,0 +1,127 @@
+# =============================================================================
+# SPFx Build Template
+# =============================================================================
+# Builds, tests, and packages the SPFx solution
+# =============================================================================
+
+parameters:
+  - name: nodeVersion
+    type: string
+    default: '22.x'
+  - name: isProduction
+    type: boolean
+    default: false
+
+steps:
+  # Checkout code
+  - checkout: self
+    displayName: 'Checkout repository'
+    fetchDepth: 1
+
+  # Setup Node.js
+  - task: NodeTool@0
+    displayName: 'Setup Node.js ${{ parameters.nodeVersion }}'
+    inputs:
+      versionSpec: ${{ parameters.nodeVersion }}
+
+  # Cache npm dependencies
+  - task: Cache@2
+    displayName: 'Cache npm packages'
+    inputs:
+      key: 'npm | "$(Agent.OS)" | package-lock.json'
+      restoreKeys: |
+        npm | "$(Agent.OS)"
+      path: $(System.DefaultWorkingDirectory)/node_modules
+      cacheHitVar: CACHE_RESTORED
+
+  # Install dependencies
+  - script: npm ci
+    displayName: 'Install dependencies'
+    condition: ne(variables.CACHE_RESTORED, 'true')
+
+  # TypeScript type checking
+  - script: npm run type-check
+    displayName: 'TypeScript type check'
+    continueOnError: false
+
+  # Run unit tests with coverage
+  - script: npm run test:coverage -- --ci --reporters=default --reporters=jest-junit
+    displayName: 'Run unit tests'
+    env:
+      JEST_JUNIT_OUTPUT_DIR: $(System.DefaultWorkingDirectory)/test-results
+      JEST_JUNIT_OUTPUT_NAME: junit.xml
+
+  # Publish test results
+  - task: PublishTestResults@2
+    displayName: 'Publish test results'
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFormat: 'JUnit'
+      testResultsFiles: '**/test-results/junit.xml'
+      mergeTestResults: true
+      testRunTitle: 'Jest Unit Tests'
+
+  # Publish code coverage
+  - task: PublishCodeCoverageResults@2
+    displayName: 'Publish code coverage'
+    condition: succeededOrFailed()
+    inputs:
+      summaryFileLocation: '$(System.DefaultWorkingDirectory)/coverage/cobertura-coverage.xml'
+      pathToSources: '$(System.DefaultWorkingDirectory)/src'
+
+  # Build development bundle (for PR validation)
+  - script: gulp bundle
+    displayName: 'Build development bundle'
+    condition: eq(${{ parameters.isProduction }}, false)
+
+  # Build production bundle (for CI builds)
+  - script: gulp bundle --ship
+    displayName: 'Build production bundle'
+    condition: eq(${{ parameters.isProduction }}, true)
+
+  # Package solution (production only)
+  - script: gulp package-solution --ship
+    displayName: 'Package SPFx solution'
+    condition: eq(${{ parameters.isProduction }}, true)
+
+  # Extract version from package-solution.json
+  - task: PowerShell@2
+    displayName: 'Extract solution version'
+    condition: eq(${{ parameters.isProduction }}, true)
+    inputs:
+      targetType: 'inline'
+      pwsh: true
+      script: |
+        $packageSolution = Get-Content -Path "config/package-solution.json" -Raw | ConvertFrom-Json
+        $version = $packageSolution.solution.version
+        Write-Host "Solution version: $version"
+        Write-Host "##vso[task.setvariable variable=SolutionVersion;isOutput=true]$version"
+    name: VersionExtract
+
+  # Publish .sppkg artifact
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish SPFx package'
+    condition: eq(${{ parameters.isProduction }}, true)
+    inputs:
+      PathtoPublish: 'sharepoint/solution/legal-workflow.sppkg'
+      ArtifactName: 'spfx-package'
+      publishLocation: 'Container'
+
+  # Publish provisioning templates
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish provisioning templates'
+    condition: eq(${{ parameters.isProduction }}, true)
+    inputs:
+      PathtoPublish: 'provisioning'
+      ArtifactName: 'provisioning'
+      publishLocation: 'Container'
+
+  # Publish deployment scripts (if exist)
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish deployment scripts'
+    condition: eq(${{ parameters.isProduction }}, true)
+    inputs:
+      PathtoPublish: 'Deployments'
+      ArtifactName: 'deployments'
+      publishLocation: 'Container'
+    continueOnError: true

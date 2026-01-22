@@ -6,6 +6,8 @@
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
 import { checkDashboardAccess } from '@services/userGroupsService';
+import { Lists } from '@sp/Lists';
+import { RequestsFields } from '@sp/listFields';
 import type {
   IDashboardData,
   IKPIMetrics,
@@ -15,6 +17,7 @@ import type {
   IRequestAtRisk,
   ITimeByStage,
   IReviewOutcome,
+  ICommunicationsOnlyData,
   IUserAccess,
   DateRangeOption,
 } from '../components/IAnalyticsDashboardProps';
@@ -230,6 +233,22 @@ export const generateMockData = (dateRange: DateRangeOption): IDashboardData => 
     },
   ];
 
+  // Generate Communications Only distribution
+  const commOnlyCount = Math.floor(Math.random() * 30) + 10;
+  const nonCommOnlyCount = kpiMetrics.totalRequests - commOnlyCount;
+  const communicationsOnlyDistribution: ICommunicationsOnlyData[] = [
+    {
+      category: 'Communications Only',
+      count: commOnlyCount,
+      color: '#0078d4',
+    },
+    {
+      category: 'With Additional Approvals',
+      count: nonCommOnlyCount,
+      color: '#8764b8',
+    },
+  ];
+
   return {
     kpiMetrics,
     statusDistribution,
@@ -238,6 +257,7 @@ export const generateMockData = (dateRange: DateRangeOption): IDashboardData => 
     requestsAtRisk,
     timeByStage,
     reviewOutcomes,
+    communicationsOnlyDistribution,
     lastUpdated: new Date(),
   };
 };
@@ -277,37 +297,38 @@ export const fetchDashboardData = async (
 
   try {
     // Fetch all requests within date range
-    const dateFilter = `Created ge datetime'${startDate.toISOString()}' and Created le datetime'${endDate.toISOString()}'`;
+    const dateFilter = `${RequestsFields.Created} ge datetime'${startDate.toISOString()}' and ${RequestsFields.Created} le datetime'${endDate.toISOString()}'`;
 
     const items = await SPContext.sp.web.lists
-      .getByTitle('Requests')
+      .getByTitle(Lists.Requests.Title)
       .items
       .select(
-        'Id',
-        'Title',
-        'RequestTitle',
-        'Status',
-        'TargetReturnDate',
-        'Created',
-        'IsRushRequest',
-        'Attorney/Id',
-        'Attorney/Title',
-        'LegalReviewOutcome',
-        'ComplianceReviewOutcome',
-        'LegalIntakeLegalAdminHours',
-        'LegalIntakeSubmitterHours',
-        'LegalReviewAttorneyHours',
-        'LegalReviewSubmitterHours',
-        'ComplianceReviewReviewerHours',
-        'ComplianceReviewSubmitterHours',
-        'CloseoutReviewerHours',
-        'CloseoutSubmitterHours',
-        'TotalReviewerHours',
-        'TotalSubmitterHours',
-        'CloseoutOn',
-        'SubmittedOn'
+        RequestsFields.ID,
+        RequestsFields.RequestId, // Title field stores RequestId
+        RequestsFields.RequestTitle,
+        RequestsFields.Status,
+        RequestsFields.TargetReturnDate,
+        RequestsFields.Created,
+        RequestsFields.IsRushRequest,
+        RequestsFields.CommunicationsOnly,
+        `${RequestsFields.Attorney}/ID`,
+        `${RequestsFields.Attorney}/Title`,
+        RequestsFields.LegalReviewOutcome,
+        RequestsFields.ComplianceReviewOutcome,
+        RequestsFields.LegalIntakeLegalAdminHours,
+        RequestsFields.LegalIntakeSubmitterHours,
+        RequestsFields.LegalReviewAttorneyHours,
+        RequestsFields.LegalReviewSubmitterHours,
+        RequestsFields.ComplianceReviewReviewerHours,
+        RequestsFields.ComplianceReviewSubmitterHours,
+        RequestsFields.CloseoutReviewerHours,
+        RequestsFields.CloseoutSubmitterHours,
+        RequestsFields.TotalReviewerHours,
+        RequestsFields.TotalSubmitterHours,
+        RequestsFields.CloseoutOn,
+        RequestsFields.SubmittedOn
       )
-      .expand('Attorney')
+      .expand(RequestsFields.Attorney)
       .filter(dateFilter)
       .top(5000)();
 
@@ -544,6 +565,22 @@ export const fetchDashboardData = async (
       color: OUTCOME_COLORS[outcome] || '#8a8886',
     }));
 
+    // Calculate Communications Only distribution
+    const commOnlyCount = items.filter((item: { CommunicationsOnly?: boolean }) => item.CommunicationsOnly === true).length;
+    const nonCommOnlyCount = totalRequests - commOnlyCount;
+    const communicationsOnlyDistribution: ICommunicationsOnlyData[] = [
+      {
+        category: 'Communications Only',
+        count: commOnlyCount,
+        color: '#0078d4',
+      },
+      {
+        category: 'With Additional Approvals',
+        count: nonCommOnlyCount,
+        color: '#8764b8',
+      },
+    ];
+
     return {
       kpiMetrics,
       statusDistribution,
@@ -552,6 +589,7 @@ export const fetchDashboardData = async (
       requestsAtRisk,
       timeByStage,
       reviewOutcomes,
+      communicationsOnlyDistribution,
       lastUpdated: new Date(),
     };
   } catch (error) {

@@ -76,9 +76,9 @@ cd scripts/sharepoint
 ```
 
 This creates:
-- **Requests** list (73 fields)
-- **SubmissionItems** list
-- **RequestDocuments** library
+- **Requests** list (79 fields including time tracking)
+- **SubmissionItems** list (submission types with turnaround times)
+- **RequestDocuments** library (with metadata)
 
 ### 3. Build & Deploy
 
@@ -174,6 +174,12 @@ npx tsc --noEmit
 ```bash
 # Run unit tests
 npm run test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run tests with coverage report
+npm run test:coverage
 ```
 
 ---
@@ -182,18 +188,35 @@ npm run test
 
 ```
 legal-workflow/
+├── .azure-pipelines/        # Azure DevOps CI/CD pipelines
+│   ├── azure-pipelines.yml  # Main pipeline (build, test, deploy)
+│   └── templates/           # Reusable pipeline templates
+│       └── deploy-spfx.yml  # SPFx deployment with PnP PowerShell
+├── Deployments/             # Version-specific deployment scripts
+│   └── 0.0.1/               # Scripts for version 0.0.1
+│       ├── pre.deploy.ps1   # Runs before deployment
+│       └── post.deploy.ps1  # Runs after deployment
 ├── docs/                    # Documentation (requirements, design, guides)
+├── provisioning/            # SharePoint provisioning schemas
+│   └── Lists/               # PnP list instance XML definitions
+│       ├── Requests.xml     # Main requests list (79 fields, 19 views)
+│       ├── SubmissionItems.xml
+│       └── RequestDocuments.xml
 ├── scripts/                 # PowerShell setup/deployment scripts
 │   ├── sharepoint/          # SharePoint list management
 │   └── dev/                 # Development utilities
 ├── src/                     # Source code
 │   ├── components/          # Shared React components
 │   ├── contexts/            # React Context providers
-│   ├── extensions/          # SPFx extensions (Form Customizers)
+│   ├── extensions/          # SPFx extensions
+│   │   ├── legalWorkflow/   # Form Customizer (main form)
+│   │   ├── requestId/       # Field Customizer (Request ID with hover card)
+│   │   ├── requestStatus/   # Field Customizer (Status progress bar)
+│   │   └── turnAroundDate/  # Field Customizer (Target date with rush indicator)
 │   ├── hooks/               # Custom React hooks
 │   ├── schemas/             # Zod validation schemas
 │   ├── services/            # Business logic layer
-│   ├── sp/                  # SharePoint constants
+│   ├── sp/                  # SharePoint constants (field names, list names)
 │   ├── stores/              # Zustand state stores
 │   ├── types/               # TypeScript types
 │   └── utils/               # Utility functions
@@ -211,8 +234,9 @@ legal-workflow/
 2. **Legal Intake** - Legal Admin triages
 3. **Assign Attorney** (optional) - Committee or direct assignment
 4. **In Review** - Legal and/or Compliance review
-5. **Closeout** - Final tracking (if required)
-6. **Completed** - Request finalized
+5. **Closeout** - Submitter enters tracking info, acknowledges comments
+6. **Awaiting FINRA Documents** - Pending FINRA letter upload (if required)
+7. **Completed** - Request finalized
 
 **Special Statuses**: Cancelled, On Hold
 
@@ -223,6 +247,34 @@ legal-workflow/
 - **LW - Attorneys**: Review assigned requests
 - **LW - Compliance Users**: Compliance reviews
 - **LW - Admin**: Full system administration
+
+### Dashboard Views (19 total)
+
+Views are organized by user role with appropriate fields and sorting:
+
+| Category | Views |
+|----------|-------|
+| **Home** | My Open Requests, My Completed Requests, My Awaiting FINRA Documents |
+| **Admin** | All Open Requests, All Completed Requests, All Requests |
+| **Legal Admin** | Legal Intake Queue, Pending Attorney Assignment, All In Review |
+| **Attorney** | My Assigned Requests, Pending My Review, My Completed Reviews |
+| **Attorney Assigner** | Awaiting Attorney Assignment |
+| **Compliance** | Pending Compliance Review, Completed Compliance Reviews |
+| **Closeout** | Closeout Queue |
+| **FINRA** | Awaiting FINRA Documents |
+| **Special** | On Hold Requests, Rush Requests |
+
+**Note**: Rush requests are visually indicated with a red left border (row formatter) instead of a separate column.
+
+### Field Customizers
+
+Custom column renderers for enhanced list view experience:
+
+| Extension | Column | Description |
+|-----------|--------|-------------|
+| **Request ID** | Title | Clickable link with hover card showing request details, "NEW" badge for items < 48 hours old |
+| **Request Status** | Status | Progress bar with color-coded fill based on workflow stage |
+| **Turnaround Date** | TargetReturnDate | Date display with rush indicator, shows expected turnaround from SubmissionItems |
 
 ---
 
@@ -317,6 +369,84 @@ npx tsc --noEmit
 - Hardcoded 1.5s delay for rename operations
 
 See [Sequences Documentation](./docs/technical-notes/sequences.md) for detailed performance analysis.
+
+---
+
+## CI/CD Pipeline (Azure DevOps)
+
+The project includes Azure Pipelines for automated build, test, and deployment.
+
+### Pipeline Location
+- **SPFx Solution**: `.azure-pipelines/azure-pipelines.yml`
+- **Deploy Template**: `.azure-pipelines/templates/deploy-spfx.yml`
+- **Azure Functions**: `docs/functions/.azure-pipelines/azure-pipelines.yml`
+
+### SPFx Pipeline Stages
+
+| Stage | Trigger | Actions |
+|-------|---------|---------|
+| **Build & Test** | All branches, PRs | Type check, unit tests, build, package |
+| **Deploy Dev** | `develop` branch | Deploy to Dev App Catalog |
+| **Deploy Prod** | `main` branch | Deploy to Prod App Catalog |
+
+### Pipeline Features
+- **npm caching** for faster builds
+- **TypeScript type checking** as quality gate
+- **Jest unit tests** with JUnit reporting
+- **Code coverage** with Cobertura reports
+- **Automatic .sppkg packaging** for releases
+- **PnP PowerShell deployment** with certificate authentication
+- **Pre/post deployment scripts** for custom deployment logic
+
+### Prerequisites for Deployment
+
+1. **Variable Groups** in Azure DevOps:
+   - `LegalWorkflow-SPFx-Dev` (development)
+   - `LegalWorkflow-SPFx-Prod` (production)
+
+2. **Required Variables**:
+   | Variable | Description |
+   |----------|-------------|
+   | `spoTenant` | SharePoint tenant (e.g., `contoso.onmicrosoft.com`) |
+   | `spoAppId` | Azure AD App Registration Client ID |
+   | `spoAppCatalogUrl` | App Catalog URL |
+   | `spoCertificateName` | Name of certificate in ADO Secure Files |
+   | `spoCertificatePassword` | Certificate password (if applicable) |
+
+3. **Azure AD App Registration** with:
+   - `Sites.FullControl.All` application permission
+   - Certificate authentication
+
+4. **Secure Files** in ADO Library:
+   - Upload the .pfx certificate file
+
+### Deployment Scripts
+
+The pipeline supports pre/post deployment scripts located in `Deployments/{version}/`:
+
+```
+Deployments/
+└── 0.0.1/
+    ├── pre.deploy.ps1   # Runs before deployment
+    └── post.deploy.ps1  # Runs after deployment
+```
+
+Scripts receive parameters: `-Environment`, `-Tenant`, `-SiteUrl`, `-Version`
+
+Use cases:
+- **pre.deploy.ps1**: Backup config, validate prerequisites, provision lists
+- **post.deploy.ps1**: Apply PnP templates, send notifications, validate deployment
+
+### Manual Deployment
+
+If not using automated deployment:
+```bash
+# Build and package
+npm run release
+
+# Output: sharepoint/solution/legal-workflow.sppkg
+# Upload manually to SharePoint App Catalog
+```
 
 ---
 

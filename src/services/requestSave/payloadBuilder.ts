@@ -154,6 +154,7 @@ export function buildRequestUpdatePayload(
     updater.set(RequestsFields.RushRationale, request.rushRationale, originalRequest.rushRationale);
     updater.set(RequestsFields.Status, request.status, originalRequest.status);
     updater.set(RequestsFields.Department, request.department, originalRequest.department);
+    updater.set(RequestsFields.CommunicationsOnly, request.communicationsOnly, originalRequest.communicationsOnly);
 
     // Attorney fields - validate that attorney has id before saving
     const attorneyValue = request.attorney && request.attorney.id ? request.attorney : null;
@@ -231,6 +232,7 @@ export function buildRequestUpdatePayload(
     newUpdater.set(RequestsFields.SubmissionType, request.submissionType, undefined);
     newUpdater.set(RequestsFields.ReviewAudience, request.reviewAudience, undefined);
     newUpdater.set(RequestsFields.IsRushRequest, request.isRushRequest, undefined);
+    newUpdater.set(RequestsFields.CommunicationsOnly, request.communicationsOnly, undefined);
     newUpdater.set(RequestsFields.Status, request.status, undefined);
 
     // Optional fields - only set if they have values

@@ -85,6 +85,15 @@ export interface IReviewOutcome {
 }
 
 /**
+ * Communications Only distribution data
+ */
+export interface ICommunicationsOnlyData {
+  category: string;
+  count: number;
+  color: string;
+}
+
+/**
  * Complete dashboard data
  */
 export interface IDashboardData {
@@ -95,6 +104,7 @@ export interface IDashboardData {
   requestsAtRisk: IRequestAtRisk[];
   timeByStage: ITimeByStage[];
   reviewOutcomes: IReviewOutcome[];
+  communicationsOnlyDistribution: ICommunicationsOnlyData[];
   lastUpdated: Date;
 }
 

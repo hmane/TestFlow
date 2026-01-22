@@ -6,6 +6,8 @@ import { CommandBarButton, PrimaryButton } from '@fluentui/react/lib/Button';
 import { Icon } from '@fluentui/react/lib/Icon';
 import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
 import { getUserGroupMembership } from '@services/userGroupsService';
+import { Lists } from '@sp/Lists';
+import { ConfigurationFields } from '@sp/listFields';
 import {
   extractRequestIdFromPath,
   buildDocumentSearchCAML,
@@ -325,10 +327,10 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
     const loadSearchConfig = async (): Promise<void> => {
       try {
         const configItems = await SPContext.sp.web.lists
-          .getByTitle('Configuration')
+          .getByTitle(Lists.Configuration.Title)
           .items
-          .filter("Category eq 'Search' and IsActive eq 1")
-          .select('Title', 'ConfigValue')();
+          .filter(`${ConfigurationFields.Category} eq 'Search' and ${ConfigurationFields.IsActive} eq 1`)
+          .select(ConfigurationFields.Title, ConfigurationFields.ConfigValue)();
 
         const config: ISearchConfig = {
           searchResultLimit: DEFAULT_SEARCH_LIMIT,
@@ -336,10 +338,10 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
         };
 
         for (const item of configItems) {
-          if (item.Title === 'SearchResultLimit') {
-            config.searchResultLimit = parseInt(item.ConfigValue, 10) || DEFAULT_SEARCH_LIMIT;
-          } else if (item.Title === 'RecentSearchesLimit') {
-            config.recentSearchesLimit = parseInt(item.ConfigValue, 10) || DEFAULT_RECENT_LIMIT;
+          if (item[ConfigurationFields.Title] === 'SearchResultLimit') {
+            config.searchResultLimit = parseInt(item[ConfigurationFields.ConfigValue], 10) || DEFAULT_SEARCH_LIMIT;
+          } else if (item[ConfigurationFields.Title] === 'RecentSearchesLimit') {
+            config.recentSearchesLimit = parseInt(item[ConfigurationFields.ConfigValue], 10) || DEFAULT_RECENT_LIMIT;
           }
         }
 

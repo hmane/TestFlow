@@ -129,7 +129,11 @@ module.exports = {
   },
 
   // Coverage reporters
-  coverageReporters: ['text', 'lcov', 'html'],
+  // - text: Console output
+  // - lcov: For local HTML reports
+  // - cobertura: For Azure DevOps code coverage
+  // - html: Standalone HTML report
+  coverageReporters: ['text', 'lcov', 'cobertura', 'html'],
 
   // Coverage output directory
   coverageDirectory: 'coverage',

@@ -1,0 +1,123 @@
+# =============================================================================
+# Legal Workflow SPFx Solution - CI/CD Pipeline
+# =============================================================================
+# This pipeline builds, tests, and packages the SPFx solution for deployment
+# to SharePoint Online App Catalog.
+#
+# Prerequisites:
+# 1. Variable groups: 'LegalWorkflow-SPFx-Dev', 'LegalWorkflow-SPFx-Prod'
+#    Required variables: spoTenant, spoAppId, spoAppCatalogUrl, spoCertificateName
+# 2. Secure file: Certificate (.pfx) uploaded to ADO Library
+# 3. SharePoint App Catalog configured
+# 4. Azure AD App Registration with Sites.FullControl.All permission
+#
+# Deployment Scripts:
+# - Pre/post deployment scripts can be placed in Deployments/{version}/ folder
+# - Scripts: pre.deploy.ps1 (runs before deployment), post.deploy.ps1 (runs after)
+# - Version is read from package-solution.json
+# =============================================================================
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+      - feature/*
+  paths:
+    include:
+      - src/**
+      - config/**
+      - provisioning/**
+      - package.json
+      - tsconfig.json
+      - gulpfile.js
+    exclude:
+      - docs/**
+      - '*.md'
+
+pr:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    include:
+      - src/**
+      - config/**
+      - provisioning/**
+      - package.json
+      - tsconfig.json
+
+# Pipeline variables
+variables:
+  nodeVersion: '22.x'
+
+# Build stages
+stages:
+  # =============================================================================
+  # Build & Test Stage
+  # =============================================================================
+  - stage: BuildAndTest
+    displayName: 'Build, Test & Package'
+    jobs:
+      - job: BuildJob
+        displayName: 'Build SPFx Solution'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - template: templates/build-spfx.yml
+            parameters:
+              nodeVersion: $(nodeVersion)
+              isProduction: ${{ ne(variables['Build.Reason'], 'PullRequest') }}
+
+  # =============================================================================
+  # Deploy to Development
+  # =============================================================================
+  - stage: DeployDev
+    displayName: 'Deploy to Development'
+    dependsOn: BuildAndTest
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+    variables:
+      - group: LegalWorkflow-SPFx-Dev
+      - name: SolutionVersion
+        value: $[ stageDependencies.BuildAndTest.BuildJob.outputs['VersionExtract.SolutionVersion'] ]
+    jobs:
+      - deployment: DeployDevJob
+        displayName: 'Deploy to Dev App Catalog'
+        pool:
+          vmImage: 'windows-latest'
+        environment: 'LegalWorkflow-SPFx-Dev'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: templates/deploy-spfx.yml
+                  parameters:
+                    environment: 'Dev'
+                    solutionVersion: $(SolutionVersion)
+
+  # =============================================================================
+  # Deploy to Production
+  # =============================================================================
+  - stage: DeployProd
+    displayName: 'Deploy to Production'
+    dependsOn: BuildAndTest
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    variables:
+      - group: LegalWorkflow-SPFx-Prod
+      - name: SolutionVersion
+        value: $[ stageDependencies.BuildAndTest.BuildJob.outputs['VersionExtract.SolutionVersion'] ]
+    jobs:
+      - deployment: DeployProdJob
+        displayName: 'Deploy to Prod App Catalog'
+        pool:
+          vmImage: 'windows-latest'
+        environment: 'LegalWorkflow-SPFx-Production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: templates/deploy-spfx.yml
+                  parameters:
+                    environment: 'Prod'
+                    solutionVersion: $(SolutionVersion)

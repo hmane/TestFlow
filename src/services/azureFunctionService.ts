@@ -20,6 +20,8 @@
 
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import type { RequestStatus } from '@appTypes/workflowTypes';
+import { Lists } from '@sp/Lists';
+import { ConfigurationFields } from '@sp/listFields';
 
 /**
  * Request payload for Azure Function permission management
@@ -130,13 +132,13 @@ let apimConfigPromise: Promise<IApimConfig> | undefined;
 async function loadApimConfig(): Promise<IApimConfig> {
   // Load from SharePoint Configuration list
   const items = await SPContext.sp.web.lists
-    .getByTitle('Configuration')
-    .items.select('Title', 'ConfigValue')
-    .filter(`(Title eq 'ApimBaseUrl' or Title eq 'ApimApiClientId') and IsActive eq true`)();
+    .getByTitle(Lists.Configuration.Title)
+    .items.select(ConfigurationFields.Title, ConfigurationFields.ConfigValue)
+    .filter(`(${ConfigurationFields.Title} eq 'ApimBaseUrl' or ${ConfigurationFields.Title} eq 'ApimApiClientId') and ${ConfigurationFields.IsActive} eq true`)();
 
   const configMap = new Map<string, string>();
   for (const item of items) {
-    configMap.set(item.Title, item.ConfigValue);
+    configMap.set(item[ConfigurationFields.Title], item[ConfigurationFields.ConfigValue]);
   }
 
   const baseUrl = configMap.get('ApimBaseUrl');

@@ -338,7 +338,7 @@ const AnalyticsDashboard: React.FC<IAnalyticsDashboardProps> = (props) => {
     );
   }
 
-  const { kpiMetrics, statusDistribution, volumeTrends, attorneyWorkload, requestsAtRisk, timeByStage, reviewOutcomes } = dashboardData;
+  const { kpiMetrics, statusDistribution, volumeTrends, attorneyWorkload, requestsAtRisk, timeByStage, reviewOutcomes, communicationsOnlyDistribution } = dashboardData;
 
   return (
     <div className={styles.container}>
@@ -633,6 +633,34 @@ const AnalyticsDashboard: React.FC<IAnalyticsDashboardProps> = (props) => {
                 />
                 <ChartTooltip enabled={true} />
               </Chart>
+            </div>
+          </div>
+
+          {/* Communications Only Distribution */}
+          <div className={styles.chartCard}>
+            <SectionHeader title="Approval Type Distribution" icon="Filter" />
+            <div className={styles.chartContainerSmall}>
+              <PieChart
+                id="commOnlyPieChart"
+                dataSource={communicationsOnlyDistribution}
+                palette={['#0078d4', '#8764b8']}
+                size={{ height: 200 }}
+              >
+                <Series argumentField="category" valueField="count">
+                  <Label visible={true} format="fixedPoint" customizeText={(arg: { valueText: string; percentText: string }) => `${arg.valueText} (${arg.percentText})`}>
+                    <Connector visible={true} width={1} />
+                  </Label>
+                </Series>
+                <Legend
+                  orientation="horizontal"
+                  itemTextPosition="right"
+                  horizontalAlignment="center"
+                  verticalAlignment="bottom"
+                />
+                <Tooltip enabled={true} customizeTooltip={(arg: { valueText: string; argument: string; percent: number }) => ({
+                  text: `${arg.argument}: ${arg.valueText} (${(arg.percent * 100).toFixed(1)}%)`,
+                })} />
+              </PieChart>
             </div>
           </div>
         </div>

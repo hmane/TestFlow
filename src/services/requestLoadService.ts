@@ -108,6 +108,7 @@ const QUERY1_FIELDS = [
 
   // Approval fields - boolean flags
   RequestsFields.RequiresCommunicationsApproval,
+  RequestsFields.CommunicationsOnly,
   RequestsFields.HasPortfolioManagerApproval,
   RequestsFields.HasResearchAnalystApproval,
   RequestsFields.HasSMEApproval,
@@ -477,6 +478,7 @@ export function mapRequestListItemToRequest(item: IRawSharePointItem): ILegalReq
 
     // Approvals - Communications
     requiresCommunicationsApproval: extractor.boolean(RequestsFields.RequiresCommunicationsApproval, false),
+    communicationsOnly: extractor.boolean(RequestsFields.CommunicationsOnly, false),
     communicationsApprovalDate: extractor.date(RequestsFields.CommunicationsApprovalDate),
     communicationsApprover: extractor.user(RequestsFields.CommunicationsApprover),
 

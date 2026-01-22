@@ -1,10 +1,12 @@
 /**
  * StatusProgressBar Component
  *
- * Renders a full-width colored container showing workflow status
- * - Full background color based on urgency (green/yellow/red/blue/gray)
+ * Renders a progress bar showing workflow status with:
+ * - Light gray background for unfilled portion
+ * - Colored progress fill based on urgency (green/yellow/red/blue/gray)
+ * - Progress width based on workflow stage
  * - Status name centered with white text
- * - No progress bar fill - just solid color background
+ * - Subtle border for cleaner appearance in list cells
  */
 
 import * as React from 'react';
@@ -18,17 +20,30 @@ import styles from './RequestStatusProgress.module.scss';
  */
 export const StatusProgressBar: React.FC<IStatusProgressBarProps> = React.memo(({
   status,
+  progress,
   color,
 }) => {
-  // Get color class name
+  // Get color class name for the progress fill
   const colorClass = styles[color] || styles.gray;
+
+  // Ensure progress is a valid number between 0 and 100
+  const safeProgress = Math.max(0, Math.min(100, progress || 0));
 
   return (
     <div
-      className={`${styles.statusContainer} ${colorClass}`}
+      className={styles.statusContainer}
       role="status"
-      aria-label={`Status: ${getStatusDisplayName(status)}`}
+      aria-label={`Status: ${getStatusDisplayName(status)}, ${Math.round(safeProgress)}% complete`}
+      aria-valuenow={safeProgress}
+      aria-valuemin={0}
+      aria-valuemax={100}
     >
+      {/* Progress fill bar */}
+      <div
+        className={`${styles.progressFill} ${colorClass}`}
+        style={{ width: `${safeProgress}%` }}
+      />
+      {/* Status text (above progress fill) */}
       <Text className={styles.statusLabel}>
         {getStatusDisplayName(status)}
       </Text>

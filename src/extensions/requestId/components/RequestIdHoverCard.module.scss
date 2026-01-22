@@ -198,6 +198,24 @@
   }
 }
 
+/* NEW Indicator Badge - Similar to SharePoint's native indicator */
+.newIndicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  background-color: #0078d4;
+  color: #ffffff;
+  line-height: 1.3;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
 /* Divider between basic info and status-specific content */
 .divider {
   height: 1px;

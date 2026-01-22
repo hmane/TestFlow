@@ -105,8 +105,9 @@
         </CHOICES>
       </Field>
 
-      <!-- Approvals (24 - 18 original + 6 notes fields) -->
+      <!-- Approvals (25 - 18 original + 6 notes fields + 1 CommunicationsOnly) -->
       <Field Type="Boolean" Name="RequiresCommunicationsApproval" DisplayName="Requires Communications Approval" Group="Approvals" ID="{8D5CBDB8-930F-4A35-9CF0-63C7BC3AC94A}"><Default>0</Default></Field>
+      <Field Type="Boolean" Name="CommunicationsOnly" DisplayName="Communications Only" Group="Approvals" ID="{7A8B9C0D-1E2F-4A5B-8C9D-E0F1A2B3C4D6}"><Default>0</Default></Field>
       <Field Type="DateTime" Name="CommunicationsApprovalDate" DisplayName="Communications Approval Date" Format="DateOnly" Group="Approvals" ID="{63D2BA75-0AB7-4DB9-BAA9-FF4915EF881C}" />
       <Field Type="User" Name="CommunicationsApprover" DisplayName="Communications Approver" UserSelectionMode="PeopleOnly" Group="Approvals" ID="{248D6D64-6FCA-4468-AA0C-6CF516F4659F}" />
       <Field Type="Note" Name="CommunicationsApprovalNotes" DisplayName="Communications Approval Notes" RichText="FALSE" NumLines="4" Group="Approvals" ID="{A1B2C3D4-1111-4A5B-8C9D-E0F1A2B3C4D5}" />
@@ -252,7 +253,7 @@
               </In>
             </And>
           </Where>
-          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="Created" Ascending="FALSE" /></OrderBy>
         </Query>
         <ViewFields>
           <FieldRef Name="LinkTitle" />
@@ -260,10 +261,9 @@
           <FieldRef Name="Status" />
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="Attorney" />
-          <FieldRef Name="Modified" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
-        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+        <CustomFormatter>{"rowFormatter":{"elmType":"div","style":{"display":"flex","align-items":"center","min-height":"32px","border-left-width":"3px","border-left-style":"solid","border-left-color":{"operator":"?","operands":[{"operator":"==","operands":["[$IsRushRequest]",true]},"#d13438","transparent"]},"padding-left":"8px"}},"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
       </View>
 
       <!-- My Completed Requests - Requests created by current user that are Completed OR Cancelled -->
@@ -278,16 +278,15 @@
               </Or>
             </And>
           </Where>
-          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="CloseoutOn" Ascending="FALSE" /></OrderBy>
         </Query>
         <ViewFields>
           <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Status" />
-          <FieldRef Name="TargetReturnDate" />
+          <FieldRef Name="Attorney" />
           <FieldRef Name="CloseoutOn" />
           <FieldRef Name="TrackingId" />
-          <FieldRef Name="Modified" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
         <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
@@ -302,14 +301,13 @@
               <Eq><FieldRef Name="Status" /><Value Type="Choice">Awaiting FINRA Documents</Value></Eq>
             </And>
           </Where>
-          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="AwaitingForesideSince" Ascending="TRUE" /></OrderBy>
         </Query>
         <ViewFields>
           <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="AwaitingForesideSince" />
           <FieldRef Name="TrackingId" />
-          <FieldRef Name="Modified" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
         <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
@@ -331,7 +329,7 @@
               </Values>
             </In>
           </Where>
-          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="Created" Ascending="FALSE" /></OrderBy>
         </Query>
         <ViewFields>
           <FieldRef Name="LinkTitle" />
@@ -340,10 +338,9 @@
           <FieldRef Name="Author" />
           <FieldRef Name="Attorney" />
           <FieldRef Name="TargetReturnDate" />
-          <FieldRef Name="Modified" />
         </ViewFields>
         <RowLimit Paged="TRUE">100</RowLimit>
-        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+        <CustomFormatter>{"rowFormatter":{"elmType":"div","style":{"display":"flex","align-items":"center","min-height":"32px","border-left-width":"3px","border-left-style":"solid","border-left-color":{"operator":"?","operands":[{"operator":"==","operands":["[$IsRushRequest]",true]},"#d13438","transparent"]},"padding-left":"8px"}},"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
       </View>
 
       <!-- All Completed Requests - For Admins -->
@@ -355,16 +352,16 @@
               <Eq><FieldRef Name="Status" /><Value Type="Choice">Cancelled</Value></Eq>
             </Or>
           </Where>
-          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="CloseoutOn" Ascending="FALSE" /></OrderBy>
         </Query>
         <ViewFields>
           <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Status" />
           <FieldRef Name="Author" />
+          <FieldRef Name="Attorney" />
           <FieldRef Name="CloseoutOn" />
           <FieldRef Name="TrackingId" />
-          <FieldRef Name="Modified" />
         </ViewFields>
         <RowLimit Paged="TRUE">100</RowLimit>
         <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
@@ -380,20 +377,19 @@
           <Where>
             <Eq><FieldRef Name="Status" /><Value Type="Choice">Legal Intake</Value></Eq>
           </Where>
-          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="SubmittedOn" Ascending="TRUE" /></OrderBy>
         </Query>
         <ViewFields>
           <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Author" />
           <FieldRef Name="SubmittedOn" />
+          <FieldRef Name="SubmissionItem" />
           <FieldRef Name="ReviewAudience" />
           <FieldRef Name="TargetReturnDate" />
-          <FieldRef Name="IsRushRequest" />
-          <FieldRef Name="Modified" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
-        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+        <CustomFormatter>{"rowFormatter":{"elmType":"div","style":{"display":"flex","align-items":"center","min-height":"32px","border-left-width":"3px","border-left-style":"solid","border-left-color":{"operator":"?","operands":[{"operator":"==","operands":["[$IsRushRequest]",true]},"#d13438","transparent"]},"padding-left":"8px"}},"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
       </View>
 
       <!-- Pending Attorney Assignment -->
@@ -402,20 +398,19 @@
           <Where>
             <Eq><FieldRef Name="Status" /><Value Type="Choice">Assign Attorney</Value></Eq>
           </Where>
-          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="SubmittedToAssignAttorneyOn" Ascending="TRUE" /></OrderBy>
         </Query>
         <ViewFields>
           <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Author" />
+          <FieldRef Name="SubmissionItem" />
           <FieldRef Name="ReviewAudience" />
           <FieldRef Name="TargetReturnDate" />
-          <FieldRef Name="IsRushRequest" />
           <FieldRef Name="SubmittedToAssignAttorneyOn" />
-          <FieldRef Name="Modified" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
-        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+        <CustomFormatter>{"rowFormatter":{"elmType":"div","style":{"display":"flex","align-items":"center","min-height":"32px","border-left-width":"3px","border-left-style":"solid","border-left-color":{"operator":"?","operands":[{"operator":"==","operands":["[$IsRushRequest]",true]},"#d13438","transparent"]},"padding-left":"8px"}},"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
       </View>
 
       <!-- All In Review -->
@@ -424,19 +419,19 @@
           <Where>
             <Eq><FieldRef Name="Status" /><Value Type="Choice">In Review</Value></Eq>
           </Where>
-          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="SubmittedForReviewOn" Ascending="TRUE" /></OrderBy>
         </Query>
         <ViewFields>
           <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
+          <FieldRef Name="Author" />
           <FieldRef Name="Attorney" />
           <FieldRef Name="LegalReviewStatus" />
           <FieldRef Name="ComplianceReviewStatus" />
           <FieldRef Name="TargetReturnDate" />
-          <FieldRef Name="Modified" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
-        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+        <CustomFormatter>{"rowFormatter":{"elmType":"div","style":{"display":"flex","align-items":"center","min-height":"32px","border-left-width":"3px","border-left-style":"solid","border-left-color":{"operator":"?","operands":[{"operator":"==","operands":["[$IsRushRequest]",true]},"#d13438","transparent"]},"padding-left":"8px"}},"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
       </View>
 
       <!-- ============================================ -->
@@ -462,7 +457,7 @@
               </In>
             </And>
           </Where>
-          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="Created" Ascending="FALSE" /></OrderBy>
         </Query>
         <ViewFields>
           <FieldRef Name="LinkTitle" />
@@ -471,11 +466,9 @@
           <FieldRef Name="LegalReviewStatus" />
           <FieldRef Name="Author" />
           <FieldRef Name="TargetReturnDate" />
-          <FieldRef Name="IsRushRequest" />
-          <FieldRef Name="Modified" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
-        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+        <CustomFormatter>{"rowFormatter":{"elmType":"div","style":{"display":"flex","align-items":"center","min-height":"32px","border-left-width":"3px","border-left-style":"solid","border-left-color":{"operator":"?","operands":[{"operator":"==","operands":["[$IsRushRequest]",true]},"#d13438","transparent"]},"padding-left":"8px"}},"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
       </View>
 
       <!-- Pending My Review (Attorney) -->
@@ -496,19 +489,18 @@
               </And>
             </And>
           </Where>
-          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="SubmittedForReviewOn" Ascending="TRUE" /></OrderBy>
         </Query>
         <ViewFields>
           <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="LegalReviewStatus" />
           <FieldRef Name="Author" />
+          <FieldRef Name="SubmissionItem" />
           <FieldRef Name="TargetReturnDate" />
-          <FieldRef Name="IsRushRequest" />
-          <FieldRef Name="Modified" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
-        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+        <CustomFormatter>{"rowFormatter":{"elmType":"div","style":{"display":"flex","align-items":"center","min-height":"32px","border-left-width":"3px","border-left-style":"solid","border-left-color":{"operator":"?","operands":[{"operator":"==","operands":["[$IsRushRequest]",true]},"#d13438","transparent"]},"padding-left":"8px"}},"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
       </View>
 
       <!-- My Completed Reviews (Attorney) -->
@@ -523,15 +515,15 @@
               </Or>
             </And>
           </Where>
-          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="LegalReviewCompletedOn" Ascending="FALSE" /></OrderBy>
         </Query>
         <ViewFields>
           <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
+          <FieldRef Name="Author" />
           <FieldRef Name="Status" />
           <FieldRef Name="LegalReviewOutcome" />
           <FieldRef Name="LegalReviewCompletedOn" />
-          <FieldRef Name="Modified" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
         <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
@@ -547,20 +539,19 @@
           <Where>
             <Eq><FieldRef Name="Status" /><Value Type="Choice">Assign Attorney</Value></Eq>
           </Where>
-          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="SubmittedToAssignAttorneyOn" Ascending="TRUE" /></OrderBy>
         </Query>
         <ViewFields>
           <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Author" />
+          <FieldRef Name="SubmissionItem" />
           <FieldRef Name="ReviewAudience" />
           <FieldRef Name="TargetReturnDate" />
-          <FieldRef Name="IsRushRequest" />
-          <FieldRef Name="SubmissionItem" />
-          <FieldRef Name="Modified" />
+          <FieldRef Name="SubmittedToAssignAttorneyOn" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
-        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+        <CustomFormatter>{"rowFormatter":{"elmType":"div","style":{"display":"flex","align-items":"center","min-height":"32px","border-left-width":"3px","border-left-style":"solid","border-left-color":{"operator":"?","operands":[{"operator":"==","operands":["[$IsRushRequest]",true]},"#d13438","transparent"]},"padding-left":"8px"}},"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
       </View>
 
       <!-- ============================================ -->
@@ -588,19 +579,19 @@
               </And>
             </And>
           </Where>
-          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="SubmittedForReviewOn" Ascending="TRUE" /></OrderBy>
         </Query>
         <ViewFields>
           <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="ComplianceReviewStatus" />
+          <FieldRef Name="LegalReviewStatus" />
           <FieldRef Name="Author" />
+          <FieldRef Name="SubmissionItem" />
           <FieldRef Name="TargetReturnDate" />
-          <FieldRef Name="IsRushRequest" />
-          <FieldRef Name="Modified" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
-        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+        <CustomFormatter>{"rowFormatter":{"elmType":"div","style":{"display":"flex","align-items":"center","min-height":"32px","border-left-width":"3px","border-left-style":"solid","border-left-color":{"operator":"?","operands":[{"operator":"==","operands":["[$IsRushRequest]",true]},"#d13438","transparent"]},"padding-left":"8px"}},"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
       </View>
 
       <!-- Completed Compliance Reviews -->
@@ -618,15 +609,15 @@
               </Or>
             </And>
           </Where>
-          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="ComplianceReviewCompletedOn" Ascending="FALSE" /></OrderBy>
         </Query>
         <ViewFields>
           <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
+          <FieldRef Name="Author" />
           <FieldRef Name="Status" />
           <FieldRef Name="ComplianceReviewOutcome" />
           <FieldRef Name="ComplianceReviewCompletedOn" />
-          <FieldRef Name="Modified" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
         <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
@@ -642,7 +633,7 @@
           <Where>
             <Eq><FieldRef Name="Status" /><Value Type="Choice">Closeout</Value></Eq>
           </Where>
-          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="SubmittedForReviewOn" Ascending="TRUE" /></OrderBy>
         </Query>
         <ViewFields>
           <FieldRef Name="LinkTitle" />
@@ -650,12 +641,11 @@
           <FieldRef Name="Author" />
           <FieldRef Name="LegalReviewOutcome" />
           <FieldRef Name="ComplianceReviewOutcome" />
-          <FieldRef Name="IsForesideReviewRequired" />
-          <FieldRef Name="IsRetailUse" />
-          <FieldRef Name="Modified" />
+          <FieldRef Name="TargetReturnDate" />
+          <FieldRef Name="TrackingId" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
-        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+        <CustomFormatter>{"rowFormatter":{"elmType":"div","style":{"display":"flex","align-items":"center","min-height":"32px","border-left-width":"3px","border-left-style":"solid","border-left-color":{"operator":"?","operands":[{"operator":"==","operands":["[$IsRushRequest]",true]},"#d13438","transparent"]},"padding-left":"8px"}},"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
       </View>
 
       <!-- ============================================ -->
@@ -668,7 +658,7 @@
           <Where>
             <Eq><FieldRef Name="Status" /><Value Type="Choice">Awaiting FINRA Documents</Value></Eq>
           </Where>
-          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="AwaitingForesideSince" Ascending="TRUE" /></OrderBy>
         </Query>
         <ViewFields>
           <FieldRef Name="LinkTitle" />
@@ -676,7 +666,7 @@
           <FieldRef Name="Author" />
           <FieldRef Name="AwaitingForesideSince" />
           <FieldRef Name="TrackingId" />
-          <FieldRef Name="Modified" />
+          <FieldRef Name="ComplianceReviewOutcome" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
         <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
@@ -686,10 +676,10 @@
       <!-- GENERAL VIEWS -->
       <!-- ============================================ -->
 
-      <!-- All Requests (Default) -->
+      <!-- All Requests (Default) - Command buttons visible for admin operations -->
       <View DisplayName="All Requests" DefaultView="TRUE" MobileView="TRUE" MobileDefaultView="TRUE" Type="HTML" Url="{site}/Lists/Requests/AllItems.aspx" Level="1" BaseViewID="1" ContentTypeID="0x">
         <Query>
-          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="Created" Ascending="FALSE" /></OrderBy>
         </Query>
         <ViewFields>
           <FieldRef Name="LinkTitle" />
@@ -698,10 +688,9 @@
           <FieldRef Name="Author" />
           <FieldRef Name="Attorney" />
           <FieldRef Name="TargetReturnDate" />
-          <FieldRef Name="Modified" />
         </ViewFields>
         <RowLimit Paged="TRUE">100</RowLimit>
-        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+        <CustomFormatter>{"rowFormatter":{"elmType":"div","style":{"display":"flex","align-items":"center","min-height":"32px","border-left-width":"3px","border-left-style":"solid","border-left-color":{"operator":"?","operands":[{"operator":"==","operands":["[$IsRushRequest]",true]},"#d13438","transparent"]},"padding-left":"8px"}}}</CustomFormatter>
       </View>
 
       <!-- On Hold Requests -->
@@ -710,16 +699,16 @@
           <Where>
             <Eq><FieldRef Name="Status" /><Value Type="Choice">On Hold</Value></Eq>
           </Where>
-          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="OnHoldSince" Ascending="TRUE" /></OrderBy>
         </Query>
         <ViewFields>
           <FieldRef Name="LinkTitle" />
           <FieldRef Name="RequestTitle" />
+          <FieldRef Name="Author" />
+          <FieldRef Name="Attorney" />
           <FieldRef Name="OnHoldBy" />
           <FieldRef Name="OnHoldSince" />
-          <FieldRef Name="OnHoldReason" />
           <FieldRef Name="PreviousStatus" />
-          <FieldRef Name="Modified" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
         <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
@@ -744,7 +733,7 @@
               </In>
             </And>
           </Where>
-          <OrderBy><FieldRef Name="Modified" Ascending="FALSE" /></OrderBy>
+          <OrderBy><FieldRef Name="TargetReturnDate" Ascending="TRUE" /></OrderBy>
         </Query>
         <ViewFields>
           <FieldRef Name="LinkTitle" />
@@ -753,8 +742,8 @@
           <FieldRef Name="Author" />
           <FieldRef Name="Attorney" />
           <FieldRef Name="TargetReturnDate" />
-          <FieldRef Name="RushRationale" />
-          <FieldRef Name="Modified" />
+          <FieldRef Name="LegalReviewStatus" />
+          <FieldRef Name="ComplianceReviewStatus" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
         <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>

@@ -21,6 +21,8 @@ import * as React from 'react';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import type { SPLookup } from 'spfx-toolkit/lib/types';
 import { RequestHoverCard } from '@components/RequestHoverCard';
+import { Lists } from '@sp/Lists';
+import { RequestsFields } from '@sp/listFields';
 import './PriorSubmissionPicker.scss';
 
 export interface IPriorSubmission {
@@ -29,6 +31,7 @@ export interface IPriorSubmission {
   requestTitle: string; // RequestTitle field
   purpose?: string;
   submissionItem?: string; // Text field, not lookup
+  status?: string; // Request status
   created: string;
   createdBy?: string;
   department?: string;
@@ -104,33 +107,33 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
 
         // Build filter for search on Text fields only (Note fields like Purpose cannot be filtered)
         // Title = Request ID (CRR-25-1), RequestTitle = actual title, SubmissionItem = text field
-        let filter = `(substringof('${escapedSearch}',Title) or ` +
-          `substringof('${escapedSearch}',RequestTitle) or ` +
-          `substringof('${escapedSearch}',SubmissionItem))`;
+        let filter = `(substringof('${escapedSearch}',${RequestsFields.RequestId}) or ` +
+          `substringof('${escapedSearch}',${RequestsFields.RequestTitle}) or ` +
+          `substringof('${escapedSearch}',${RequestsFields.SubmissionItem}))`;
 
         // Add department filter if available
         if (currentUserDepartment) {
-          filter += ` and Department eq '${currentUserDepartment.replace(/'/g, "''")}'`;
+          filter += ` and ${RequestsFields.Department} eq '${currentUserDepartment.replace(/'/g, "''")}'`;
         }
 
-        // Only get completed requests
-        filter += ` and Status eq 'Completed'`;
+        // Search all requests regardless of status (not just completed)
 
         const items = await SPContext.sp.web.lists
-          .getByTitle('Requests')
+          .getByTitle(Lists.Requests.Title)
           .items.select(
-            'Id',
-            'Title', // Request ID (CRR-25-1)
-            'RequestTitle', // Actual title
-            'Purpose',
-            'SubmissionItem', // Text field
-            'Created',
-            'Author/Title',
-            'Department'
+            RequestsFields.ID,
+            RequestsFields.RequestId, // Request ID (CRR-25-1)
+            RequestsFields.RequestTitle, // Actual title
+            RequestsFields.Purpose,
+            RequestsFields.SubmissionItem, // Text field
+            RequestsFields.Status,
+            RequestsFields.Created,
+            `${RequestsFields.Author}/Title`,
+            RequestsFields.Department
           )
-          .expand('Author')
+          .expand(RequestsFields.Author)
           .filter(filter)
-          .orderBy('Created', false)
+          .orderBy(RequestsFields.Created, false)
           .top(20)();
 
         const submissions: IPriorSubmission[] = items.map((item: any) => ({
@@ -139,6 +142,7 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
           requestTitle: item.RequestTitle || '',
           purpose: item.Purpose,
           submissionItem: item.SubmissionItem,
+          status: item.Status,
           created: item.Created,
           createdBy: item.Author?.Title,
           department: item.Department,
@@ -218,25 +222,26 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
         // Only fetch uncached items
         const filterParts: string[] = [];
         for (let i = 0; i < uncachedIds.length; i++) {
-          filterParts.push(`Id eq ${uncachedIds[i]}`);
+          filterParts.push(`${RequestsFields.ID} eq ${uncachedIds[i]}`);
         }
         const filter = filterParts.join(' or ');
 
         const items = await SPContext.sp.web.lists
-          .getByTitle('Requests')
+          .getByTitle(Lists.Requests.Title)
           .items.select(
-            'Id',
-            'Title', // Request ID
-            'RequestTitle',
-            'Purpose',
-            'SubmissionItem', // Text field
-            'Created',
-            'Author/Title',
-            'Department'
+            RequestsFields.ID,
+            RequestsFields.RequestId, // Request ID
+            RequestsFields.RequestTitle,
+            RequestsFields.Purpose,
+            RequestsFields.SubmissionItem, // Text field
+            RequestsFields.Status,
+            RequestsFields.Created,
+            `${RequestsFields.Author}/Title`,
+            RequestsFields.Department
           )
-          .expand('Author')
+          .expand(RequestsFields.Author)
           .filter(filter)
-          .orderBy('Created', false)();
+          .orderBy(RequestsFields.Created, false)();
 
         const fetchedSubmissions: IPriorSubmission[] = items.map((item: any) => ({
           id: item.Id,
@@ -244,6 +249,7 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
           requestTitle: item.RequestTitle || '',
           purpose: item.Purpose,
           submissionItem: item.SubmissionItem,
+          status: item.Status,
           created: item.Created,
           createdBy: item.Author?.Title,
           department: item.Department,
@@ -333,11 +339,33 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
   }, []);
 
   /**
+   * Get status badge color based on status
+   */
+  const getStatusColor = (status?: string): { bg: string; text: string } => {
+    switch (status) {
+      case 'Completed':
+        return { bg: '#dff6dd', text: '#107c10' };
+      case 'In Review':
+        return { bg: '#deecf9', text: '#0078d4' };
+      case 'Closeout':
+        return { bg: '#fff4ce', text: '#797600' };
+      case 'On Hold':
+        return { bg: '#deecf9', text: '#0078d4' };
+      case 'Cancelled':
+        return { bg: '#fde7e9', text: '#a4262c' };
+      default:
+        return { bg: '#f3f2f1', text: '#605e5c' };
+    }
+  };
+
+  /**
    * Custom item template for dropdown
    * Using inline styles because DevExtreme renders the dropdown in a portal
    * outside our component's DOM, so scoped CSS classes won't apply
    */
   const renderItem = (item: IPriorSubmission): JSX.Element => {
+    const statusColor = getStatusColor(item.status);
+
     return (
       <div
         style={{
@@ -371,9 +399,26 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
             <Icon iconName="DocumentSet" styles={{ root: { fontSize: 14, color: '#0078d4' } }} />
             {item.requestId}
           </span>
-          <span style={{ fontSize: '11px', color: '#a19f9d', flexShrink: 0 }}>
-            {formatDate(item.created)}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {item.status && (
+              <span
+                style={{
+                  fontSize: '10px',
+                  fontWeight: 600,
+                  padding: '2px 6px',
+                  borderRadius: '10px',
+                  backgroundColor: statusColor.bg,
+                  color: statusColor.text,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {item.status}
+              </span>
+            )}
+            <span style={{ fontSize: '11px', color: '#a19f9d', flexShrink: 0 }}>
+              {formatDate(item.created)}
+            </span>
+          </div>
         </div>
         {item.requestTitle && (
           <div
