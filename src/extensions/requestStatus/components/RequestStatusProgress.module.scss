@@ -2,37 +2,34 @@
  * RequestStatusProgress Styles
  *
  * Styles for status field customizer
- * - Full-width colored container (fills entire cell)
- * - Status label centered with white text
+ * - Clean progress bar with no inner padding
+ * - Status label centered with text shadow for readability
  * - Hover card content
  * - Responsive design
  */
 
 /* ============================================
-   STATUS CONTAINER (With progress fill)
+   STATUS CONTAINER (Progress bar wrapper)
    ============================================ */
 
 .statusContainer {
   position: relative;
   width: calc(100% - 8px);
   margin: 4px;
-  min-height: 24px;
+  height: 22px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  padding: 4px 12px;
   box-sizing: border-box;
-  border-radius: 3px;
+  border-radius: 4px;
   overflow: hidden;
-  border: 1px solid rgba(0, 0, 0, 0.15);
-  background-color: #e8e8e8; /* Light gray unfilled background */
+  /* Unfilled portion - subtle gray track */
+  background-color: #e1dfdd;
 
   &:hover {
-    border-color: rgba(0, 0, 0, 0.25);
-
     .progressFill {
-      filter: brightness(1.08);
+      filter: brightness(1.05);
     }
   }
 
@@ -41,10 +38,15 @@
       filter: brightness(0.95);
     }
   }
+
+  &:focus-visible {
+    outline: 2px solid #0078d4;
+    outline-offset: 1px;
+  }
 }
 
 /* ============================================
-   PROGRESS FILL (Animated bar behind text)
+   PROGRESS FILL (Colored bar - edge to edge)
    ============================================ */
 
 .progressFill {
@@ -52,8 +54,10 @@
   top: 0;
   left: 0;
   height: 100%;
-  transition: width 0.4s ease-out;
+  transition: width 0.3s ease-out;
   z-index: 1;
+  /* Subtle inner shadow for depth */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 /* ============================================
@@ -62,47 +66,48 @@
 
 /* Green - On track */
 .green {
-  background: linear-gradient(90deg, #107c10 0%, #13a10e 100%);
+  background: linear-gradient(180deg, #16a34a 0%, #15803d 100%);
 }
 
 /* Yellow - Due soon */
 .yellow {
-  background: linear-gradient(90deg, #c19c00 0%, #d4a800 100%);
+  background: linear-gradient(180deg, #ca8a04 0%, #a16207 100%);
 }
 
 /* Red - Overdue */
 .red {
-  background: linear-gradient(90deg, #d13438 0%, #c42b2b 100%);
+  background: linear-gradient(180deg, #dc2626 0%, #b91c1c 100%);
 }
 
 /* Blue - On Hold */
 .blue {
-  background: linear-gradient(90deg, #0078d4 0%, #106ebe 100%);
+  background: linear-gradient(180deg, #2563eb 0%, #1d4ed8 100%);
 }
 
 /* Gray - Cancelled or No Target Date */
 .gray {
-  background: linear-gradient(90deg, #6e6e6e 0%, #5a5a5a 100%);
+  background: linear-gradient(180deg, #6b7280 0%, #4b5563 100%);
 }
 
 /* ============================================
-   STATUS LABEL (Above progress fill with pill background)
+   STATUS LABEL (Centered text with shadow)
    ============================================ */
 
 .statusLabel {
   position: relative;
-  z-index: 2; /* Above progress fill */
+  z-index: 2;
   color: #ffffff;
   font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  /* Semi-transparent dark pill for readability over both colors */
-  background-color: rgba(0, 0, 0, 0.35);
-  padding: 2px 10px;
-  border-radius: 10px;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+  padding: 0 8px;
+  /* Text shadow for readability over both filled and unfilled areas */
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 0 1px rgba(0, 0, 0, 0.3);
 }
 
 /* ============================================
@@ -229,15 +234,14 @@
 
 @media (max-width: 480px) {
   .statusContainer {
-    min-height: 22px;
+    height: 20px;
     margin: 3px;
     width: calc(100% - 6px);
-    padding: 2px 6px;
   }
 
   .statusLabel {
     font-size: 10px;
-    padding: 2px 8px;
+    padding: 0 6px;
   }
 
   .statusHoverCard {
@@ -264,12 +268,13 @@
   .statusBadge {
     border: 2px solid currentColor;
   }
-}
 
-/* Focus Visible */
-.statusContainer:focus-visible {
-  outline: 2px solid #0078d4;
-  outline-offset: 2px;
+  .statusLabel {
+    text-shadow: none;
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 2px 8px;
+    border-radius: 2px;
+  }
 }
 
 /* ============================================
