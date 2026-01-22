@@ -180,21 +180,9 @@ export default class RequestStatusFieldCustomizer
         cancelReason: listItem.getValueByName('CancelReason') as string | undefined,
       };
 
-      // Remove padding from parent cell so status fills entire cell
-      const parentCell = event.domElement.closest('.ms-DetailsRow-cell') as HTMLElement;
-      if (parentCell) {
-        parentCell.style.padding = '0';
-        parentCell.style.overflow = 'hidden';
-        parentCell.style.display = 'flex';
-        parentCell.style.alignItems = 'stretch';
-      }
-
-      // Ensure domElement fills the entire cell
-      event.domElement.style.width = '100%';
-      event.domElement.style.height = '100%';
-      event.domElement.style.minHeight = '32px';
+      // Style the cell for the status badge
       event.domElement.style.display = 'flex';
-      event.domElement.style.alignItems = 'stretch';
+      event.domElement.style.alignItems = 'center';
 
       // Render RequestStatusProgress component
       const progressBar = React.createElement(RequestStatusProgress, {

@@ -31,18 +31,13 @@ export const StatusProgressBar: React.FC<IStatusProgressBarProps> = React.memo((
 
   return (
     <div
-      className={styles.statusContainer}
+      className={`${styles.statusContainer} ${colorClass}`}
       role="status"
       aria-label={`Status: ${getStatusDisplayName(status)}, ${Math.round(safeProgress)}% complete`}
       aria-valuenow={safeProgress}
       aria-valuemin={0}
       aria-valuemax={100}
     >
-      {/* Progress fill bar - width based on workflow completion */}
-      <div
-        className={`${styles.progressFill} ${colorClass}`}
-        style={{ width: `${safeProgress}%` }}
-      />
       {/* Status text */}
       <Text className={styles.statusLabel}>
         {getStatusDisplayName(status)}
