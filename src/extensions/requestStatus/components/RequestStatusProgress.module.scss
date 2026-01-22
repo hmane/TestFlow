@@ -14,14 +14,16 @@
 
 .statusContainer {
   position: relative;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: flex-start;
-  /* Match target date badge height */
+  /* Full width, badge height */
+  width: calc(100% + 24px);
+  margin-left: -12px;
+  margin-right: -12px;
   height: auto;
   min-height: 28px;
   padding: 4px 12px;
-  border-radius: 4px;
   border: 1px solid rgba(0, 0, 0, 0.1);
   cursor: pointer;
   box-sizing: border-box;
@@ -229,6 +231,9 @@
   .statusContainer {
     padding: 3px 8px;
     min-height: 24px;
+    width: calc(100% + 16px);
+    margin-left: -8px;
+    margin-right: -8px;
   }
 
   .statusLabel {

@@ -356,7 +356,8 @@ export const StatusHoverCard: React.FC<
       cardDismissDelay={100}
       styles={{
         host: {
-          display: 'inline-flex',
+          display: 'flex',
+          width: '100%',
           cursor: 'pointer',
         },
       }}
