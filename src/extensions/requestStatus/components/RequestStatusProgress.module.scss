@@ -14,23 +14,26 @@
 
 .statusContainer {
   position: relative;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: flex-start;
-  /* Badge/pill style to match Target Return Date */
-  height: auto;
-  min-height: unset;
+  /* Full width bar */
+  width: calc(100% + 24px);
+  margin-left: -12px;
+  margin-right: -12px;
+  height: calc(100% + 16px);
+  margin-top: -8px;
+  margin-bottom: -8px;
+  min-height: 32px;
   padding: 4px 12px;
-  border-radius: 4px;
-  border: 1px solid rgba(0, 0, 0, 0.1);
   cursor: pointer;
   box-sizing: border-box;
   overflow: hidden;
-  /* Default background - will be overridden by color class */
-  background-color: #6b7280;
+  /* Light background - will be overridden by color class */
+  background-color: #f3f4f6;
 
   &:hover {
-    filter: brightness(1.05);
+    filter: brightness(0.98);
   }
 
   &:active {
@@ -43,60 +46,64 @@
   }
 }
 
-/* ============================================
-   PROGRESS FILL (Hidden - using container bg)
-   ============================================ */
-
+/* Progress fill overlay */
 .progressFill {
-  display: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  /* Width set dynamically via inline style */
+  transition: width 0.3s ease;
 }
 
+
 /* ============================================
-   COLOR VARIANTS (Applied to progress fill)
+   COLOR VARIANTS (Light pastel backgrounds)
    ============================================ */
 
 /* Green - On track */
 .green {
-  background: #16a34a;
+  background: #dcfce7;
 }
 
 /* Yellow - Due soon */
 .yellow {
-  background: #d97706;
+  background: #fef3c7;
 }
 
 /* Red - Overdue */
 .red {
-  background: #dc2626;
+  background: #fee2e2;
 }
 
 /* Blue - On Hold */
 .blue {
-  background: #2563eb;
+  background: #dbeafe;
 }
 
 /* Light Blue - Draft (info color) */
 .lightBlue {
-  background: #0078d4;
+  background: #e0f2fe;
 }
 
 /* Gray - Cancelled or No Target Date */
 .gray {
-  background: #6b7280;
+  background: #f3f4f6;
 }
 
 /* ============================================
-   STATUS LABEL (Centered text with shadow)
+   STATUS LABEL (Dark text for light backgrounds)
    ============================================ */
 
 .statusLabel {
-  color: #ffffff;
+  position: relative;
+  z-index: 1;
+  color: #1f2937;
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.3px;
   text-transform: uppercase;
   white-space: nowrap;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.15);
 }
 
 /* ============================================
@@ -224,6 +231,9 @@
 @media (max-width: 480px) {
   .statusContainer {
     padding: 3px 8px;
+    width: calc(100% + 16px);
+    margin-left: -8px;
+    margin-right: -8px;
   }
 
   .statusLabel {
