@@ -18,12 +18,12 @@
   height: 24px;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   cursor: pointer;
   box-sizing: border-box;
   border-radius: 3px;
   overflow: hidden;
-  /* Fallback gray if progressFill doesn't render */
+  /* Track background - darker gray for white text contrast */
   background-color: #6b7280;
 
   &:hover {
@@ -45,16 +45,15 @@
 }
 
 /* ============================================
-   PROGRESS FILL (Colored bar - full width)
+   PROGRESS FILL (Colored bar - width varies)
    ============================================ */
 
 .progressFill {
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
   height: 100%;
-  transition: background 0.2s ease;
+  transition: width 0.3s ease-out, background 0.2s ease;
   z-index: 1;
 }
 

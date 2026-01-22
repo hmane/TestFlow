@@ -1,10 +1,11 @@
 /**
  * StatusProgressBar Component
  *
- * Renders a status badge with:
- * - Full-width colored background based on urgency (green/yellow/red/blue/gray)
+ * Renders a progress bar showing workflow status with:
+ * - Gray track background for unfilled portion
+ * - Colored progress fill based on urgency (green/yellow/red/blue/lightBlue/gray)
+ * - Progress width based on workflow stage completion
  * - Status name with white text
- * - Clean, modern appearance in list cells
  */
 
 import * as React from 'react';
@@ -21,11 +22,11 @@ export const StatusProgressBar: React.FC<IStatusProgressBarProps> = React.memo((
   progress,
   color,
 }) => {
-  // Get color class name for the background
+  // Get color class name for the progress fill
   // Type assertion needed because SCSS module types are auto-generated and may not include all colors
   const colorClass = (styles as Record<string, string>)[color] || styles.gray;
 
-  // Progress is still tracked for accessibility
+  // Ensure progress is a valid number between 0 and 100
   const safeProgress = Math.max(0, Math.min(100, progress || 0));
 
   return (
@@ -37,8 +38,11 @@ export const StatusProgressBar: React.FC<IStatusProgressBarProps> = React.memo((
       aria-valuemin={0}
       aria-valuemax={100}
     >
-      {/* Colored background - fills entire bar */}
-      <div className={`${styles.progressFill} ${colorClass}`} />
+      {/* Progress fill bar - width based on workflow completion */}
+      <div
+        className={`${styles.progressFill} ${colorClass}`}
+        style={{ width: `${safeProgress}%` }}
+      />
       {/* Status text */}
       <Text className={styles.statusLabel}>
         {getStatusDisplayName(status)}
