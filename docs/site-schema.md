@@ -175,16 +175,16 @@ This document provides a comprehensive reference for the SharePoint site schema 
 
 | Internal Name | Display Name | Type | Required | Notes |
 |---------------|--------------|------|----------|-------|
-| ForesideCompletedBy | Foreside Completed By | User | No | People only |
-| ForesideCompletedOn | Foreside Completed On | DateTime | No | - |
-| ForesideNotes | Foreside Notes | Note (Multi-line) | No | AppendOnly, 6 lines |
-| AwaitingForesideSince | Awaiting Foreside Since | DateTime | No | Set when status changes to Awaiting Foreside Documents |
+| ForesideCompletedBy | FINRA Completed By | User | No | People only |
+| ForesideCompletedOn | FINRA Completed On | DateTime | No | - |
+| ForesideNotes | FINRA Notes | Note (Multi-line) | No | AppendOnly, 6 lines |
+| AwaitingFINRASince | Awaiting FINRA Since | DateTime | No | Set when status changes to Awaiting FINRA Documents |
 
 #### System Tracking (18 fields)
 
 | Internal Name | Display Name | Type | Required | Default | Choices/Notes |
 |---------------|--------------|------|----------|---------|---------------|
-| Status | Status | Choice | Yes | Draft | `Draft`, `Legal Intake`, `Assign Attorney`, `In Review`, `Closeout`, `Awaiting Foreside Documents`, `Completed`, `Cancelled`, `On Hold` - Has field customizer |
+| Status | Status | Choice | Yes | Draft | `Draft`, `Legal Intake`, `Assign Attorney`, `In Review`, `Closeout`, `Awaiting FINRA Documents`, `Completed`, `Cancelled`, `On Hold` - Has field customizer |
 | SubmittedBy | Submitted By | User | No | - | People only |
 | SubmittedOn | Submitted On | DateTime | No | - | - |
 | SubmittedToAssignAttorneyBy | Submitted To Assign Attorney By | User | No | - | People only |

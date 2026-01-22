@@ -23,8 +23,8 @@
   box-sizing: border-box;
   border-radius: 3px;
   overflow: hidden;
-  /* Transparent - color comes from progressFill which covers 100% */
-  background-color: transparent;
+  /* Fallback gray if progressFill doesn't render */
+  background-color: #6b7280;
 
   &:hover {
     .progressFill {

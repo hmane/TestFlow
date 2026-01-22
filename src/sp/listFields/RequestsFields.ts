@@ -115,10 +115,10 @@ export const RequestsFields = {
   CloseoutNotes: 'CloseoutNotes',
   CommentsAcknowledged: 'CommentsAcknowledged',
   CommentsAcknowledgedOn: 'CommentsAcknowledgedOn',
-  // FINRA Documents (SharePoint columns still use old Foreside names)
+  // FINRA Documents
   FINRACompletedBy: 'ForesideCompletedBy',
   FINRACompletedOn: 'ForesideCompletedOn',
   FINRANotes: 'ForesideNotes',
-  AwaitingFINRASince: 'AwaitingForesideSince'
+  AwaitingFINRASince: 'AwaitingFINRASince'
 } as const;
 
