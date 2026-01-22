@@ -181,12 +181,23 @@ export default class RequestStatusFieldCustomizer
       };
 
       // Style the cell for the status bar to fill the entire cell
+      // Remove all padding and margin from the cell and its parent
       event.domElement.style.display = 'flex';
       event.domElement.style.alignItems = 'stretch';
       event.domElement.style.padding = '0';
+      event.domElement.style.margin = '0';
       event.domElement.style.width = '100%';
       event.domElement.style.height = '100%';
       event.domElement.style.minHeight = '32px';
+      event.domElement.style.overflow = 'visible';
+
+      // Try to style the parent cell container (SharePoint list cell)
+      const parentCell = event.domElement.parentElement;
+      if (parentCell) {
+        parentCell.style.padding = '0';
+        parentCell.style.margin = '0';
+        parentCell.style.overflow = 'visible';
+      }
 
       // Render RequestStatusProgress component
       const progressBar = React.createElement(RequestStatusProgress, {
