@@ -263,7 +263,7 @@
           <FieldRef Name="Attorney" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
-        <CustomFormatter>{"rowFormatter":{"elmType":"div","style":{"display":"flex","align-items":"center","min-height":"32px","border-left-width":"3px","border-left-style":"solid","border-left-color":{"operator":"?","operands":[{"operator":"==","operands":["[$IsRushRequest]",true]},"#d13438","transparent"]},"padding-left":"8px"}},"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
       </View>
 
       <!-- My Completed Requests - Requests created by current user that are Completed OR Cancelled -->
@@ -340,7 +340,7 @@
           <FieldRef Name="TargetReturnDate" />
         </ViewFields>
         <RowLimit Paged="TRUE">100</RowLimit>
-        <CustomFormatter>{"rowFormatter":{"elmType":"div","style":{"display":"flex","align-items":"center","min-height":"32px","border-left-width":"3px","border-left-style":"solid","border-left-color":{"operator":"?","operands":[{"operator":"==","operands":["[$IsRushRequest]",true]},"#d13438","transparent"]},"padding-left":"8px"}},"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
       </View>
 
       <!-- All Completed Requests - For Admins -->
@@ -389,7 +389,7 @@
           <FieldRef Name="TargetReturnDate" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
-        <CustomFormatter>{"rowFormatter":{"elmType":"div","style":{"display":"flex","align-items":"center","min-height":"32px","border-left-width":"3px","border-left-style":"solid","border-left-color":{"operator":"?","operands":[{"operator":"==","operands":["[$IsRushRequest]",true]},"#d13438","transparent"]},"padding-left":"8px"}},"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
       </View>
 
       <!-- Pending Attorney Assignment -->
@@ -410,7 +410,7 @@
           <FieldRef Name="SubmittedToAssignAttorneyOn" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
-        <CustomFormatter>{"rowFormatter":{"elmType":"div","style":{"display":"flex","align-items":"center","min-height":"32px","border-left-width":"3px","border-left-style":"solid","border-left-color":{"operator":"?","operands":[{"operator":"==","operands":["[$IsRushRequest]",true]},"#d13438","transparent"]},"padding-left":"8px"}},"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
       </View>
 
       <!-- All In Review -->
@@ -431,7 +431,7 @@
           <FieldRef Name="TargetReturnDate" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
-        <CustomFormatter>{"rowFormatter":{"elmType":"div","style":{"display":"flex","align-items":"center","min-height":"32px","border-left-width":"3px","border-left-style":"solid","border-left-color":{"operator":"?","operands":[{"operator":"==","operands":["[$IsRushRequest]",true]},"#d13438","transparent"]},"padding-left":"8px"}},"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
       </View>
 
       <!-- ============================================ -->
@@ -468,7 +468,7 @@
           <FieldRef Name="TargetReturnDate" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
-        <CustomFormatter>{"rowFormatter":{"elmType":"div","style":{"display":"flex","align-items":"center","min-height":"32px","border-left-width":"3px","border-left-style":"solid","border-left-color":{"operator":"?","operands":[{"operator":"==","operands":["[$IsRushRequest]",true]},"#d13438","transparent"]},"padding-left":"8px"}},"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
       </View>
 
       <!-- Pending My Review (Attorney) -->
@@ -500,7 +500,7 @@
           <FieldRef Name="TargetReturnDate" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
-        <CustomFormatter>{"rowFormatter":{"elmType":"div","style":{"display":"flex","align-items":"center","min-height":"32px","border-left-width":"3px","border-left-style":"solid","border-left-color":{"operator":"?","operands":[{"operator":"==","operands":["[$IsRushRequest]",true]},"#d13438","transparent"]},"padding-left":"8px"}},"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
       </View>
 
       <!-- My Completed Reviews (Attorney) -->
@@ -551,7 +551,7 @@
           <FieldRef Name="SubmittedToAssignAttorneyOn" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
-        <CustomFormatter>{"rowFormatter":{"elmType":"div","style":{"display":"flex","align-items":"center","min-height":"32px","border-left-width":"3px","border-left-style":"solid","border-left-color":{"operator":"?","operands":[{"operator":"==","operands":["[$IsRushRequest]",true]},"#d13438","transparent"]},"padding-left":"8px"}},"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
       </View>
 
       <!-- ============================================ -->
@@ -591,7 +591,7 @@
           <FieldRef Name="TargetReturnDate" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
-        <CustomFormatter>{"rowFormatter":{"elmType":"div","style":{"display":"flex","align-items":"center","min-height":"32px","border-left-width":"3px","border-left-style":"solid","border-left-color":{"operator":"?","operands":[{"operator":"==","operands":["[$IsRushRequest]",true]},"#d13438","transparent"]},"padding-left":"8px"}},"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
       </View>
 
       <!-- Completed Compliance Reviews -->
@@ -645,7 +645,7 @@
           <FieldRef Name="TrackingId" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
-        <CustomFormatter>{"rowFormatter":{"elmType":"div","style":{"display":"flex","align-items":"center","min-height":"32px","border-left-width":"3px","border-left-style":"solid","border-left-color":{"operator":"?","operands":[{"operator":"==","operands":["[$IsRushRequest]",true]},"#d13438","transparent"]},"padding-left":"8px"}},"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
       </View>
 
       <!-- ============================================ -->
@@ -690,7 +690,6 @@
           <FieldRef Name="TargetReturnDate" />
         </ViewFields>
         <RowLimit Paged="TRUE">100</RowLimit>
-        <CustomFormatter>{"rowFormatter":{"elmType":"div","style":{"display":"flex","align-items":"center","min-height":"32px","border-left-width":"3px","border-left-style":"solid","border-left-color":{"operator":"?","operands":[{"operator":"==","operands":["[$IsRushRequest]",true]},"#d13438","transparent"]},"padding-left":"8px"}}}</CustomFormatter>
       </View>
 
       <!-- On Hold Requests -->
