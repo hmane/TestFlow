@@ -14,7 +14,7 @@ import type { IPrincipal } from '../../types';
 /**
  * Progress bar color options
  */
-export type ProgressBarColor = 'green' | 'yellow' | 'red' | 'blue' | 'gray';
+export type ProgressBarColor = 'green' | 'yellow' | 'red' | 'blue' | 'lightBlue' | 'gray';
 
 /**
  * Type of entity being waited on

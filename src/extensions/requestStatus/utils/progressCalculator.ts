@@ -109,6 +109,11 @@ export function determineProgressColor(
     return 'blue';
   }
 
+  // Draft is always light blue (info - pending submission)
+  if (status === RequestStatus.Draft) {
+    return 'lightBlue';
+  }
+
   // Completed is always green (success)
   if (status === RequestStatus.Completed) {
     return 'green';

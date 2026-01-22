@@ -22,7 +22,8 @@ export const StatusProgressBar: React.FC<IStatusProgressBarProps> = React.memo((
   color,
 }) => {
   // Get color class name for the background
-  const colorClass = styles[color] || styles.gray;
+  // Type assertion needed because SCSS module types are auto-generated and may not include all colors
+  const colorClass = (styles as Record<string, string>)[color] || styles.gray;
 
   // Progress is still tracked for accessibility
   const safeProgress = Math.max(0, Math.min(100, progress || 0));
