@@ -180,9 +180,13 @@ export default class RequestStatusFieldCustomizer
         cancelReason: listItem.getValueByName('CancelReason') as string | undefined,
       };
 
-      // Style the cell for the status badge
+      // Style the cell for the status bar to fill the entire cell
       event.domElement.style.display = 'flex';
-      event.domElement.style.alignItems = 'center';
+      event.domElement.style.alignItems = 'stretch';
+      event.domElement.style.padding = '0';
+      event.domElement.style.width = '100%';
+      event.domElement.style.height = '100%';
+      event.domElement.style.minHeight = '32px';
 
       // Render RequestStatusProgress component
       const progressBar = React.createElement(RequestStatusProgress, {
