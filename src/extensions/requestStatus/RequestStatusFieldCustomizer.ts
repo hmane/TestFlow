@@ -185,12 +185,16 @@ export default class RequestStatusFieldCustomizer
       if (parentCell) {
         parentCell.style.padding = '0';
         parentCell.style.overflow = 'hidden';
+        parentCell.style.display = 'flex';
+        parentCell.style.alignItems = 'stretch';
       }
 
-      // Ensure domElement fills the cell
+      // Ensure domElement fills the entire cell
       event.domElement.style.width = '100%';
       event.domElement.style.height = '100%';
+      event.domElement.style.minHeight = '32px';
       event.domElement.style.display = 'flex';
+      event.domElement.style.alignItems = 'stretch';
 
       // Render RequestStatusProgress component
       const progressBar = React.createElement(RequestStatusProgress, {
