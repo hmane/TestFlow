@@ -105,9 +105,7 @@ export const RequestIdHoverCard: React.FC<IRequestIdHoverCardProps> = ({
         {requestId}
       </a>
       {showNewIndicator && (
-        <span className={styles.newIndicator} aria-label="New item">
-          NEW
-        </span>
+        <span className={styles.newIndicator} aria-label="New item" title="New" />
       )}
     </HoverCard>
   );
