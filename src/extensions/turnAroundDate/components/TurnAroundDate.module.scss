@@ -12,29 +12,29 @@
    ============================================ */
 
 .wrapper {
-  width: 100%;
-  height: 100%;
+  display: inline-flex;
 }
 
 /* ============================================
-   DATE CONTAINER (Full-width colored background)
+   DATE CONTAINER (Badge style with light colors)
    ============================================ */
 
 .dateContainer {
-  width: 100%;
-  height: 100%;
-  min-height: 28px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
+  height: auto;
+  min-height: 28px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
   overflow: hidden;
   cursor: pointer;
   transition: filter 0.2s ease;
-  padding: 4px 12px;
   box-sizing: border-box;
 
   &:hover {
-    filter: brightness(1.1);
+    filter: brightness(0.98);
   }
 
   &:active {
@@ -53,37 +53,36 @@
 }
 
 .dateText {
-  color: #ffffff;
+  color: #1f2937;
   font-size: 12px;
   font-weight: 600;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 /* ============================================
-   COLOR VARIANTS (Full container backgrounds)
+   COLOR VARIANTS (Light pastel backgrounds)
    ============================================ */
 
 /* Green - On track (2+ days remaining) */
 .green {
-  background: linear-gradient(135deg, #107c10 0%, #13a10e 100%);
+  background: #dcfce7;
 }
 
 /* Yellow - Due soon (today or tomorrow) */
 .yellow {
-  background: linear-gradient(135deg, #ffaa44 0%, #ffc83d 100%);
+  background: #fef3c7;
 }
 
 /* Red - Overdue */
 .red {
-  background: linear-gradient(135deg, #d13438 0%, #a4262c 100%);
+  background: #fee2e2;
 }
 
 /* Gray - No target date */
 .gray {
-  background: linear-gradient(135deg, #8a8886 0%, #605e5c 100%);
+  background: #f3f4f6;
 }
 
 /* ============================================

@@ -14,18 +14,15 @@
 
 .statusContainer {
   position: relative;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: flex-start;
-  /* Full width bar */
-  width: calc(100% + 24px);
-  margin-left: -12px;
-  margin-right: -12px;
-  height: calc(100% + 16px);
-  margin-top: -8px;
-  margin-bottom: -8px;
-  min-height: 32px;
+  /* Match target date badge height */
+  height: auto;
+  min-height: 28px;
   padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
   cursor: pointer;
   box-sizing: border-box;
   overflow: hidden;
@@ -231,9 +228,7 @@
 @media (max-width: 480px) {
   .statusContainer {
     padding: 3px 8px;
-    width: calc(100% + 16px);
-    margin-left: -8px;
-    margin-right: -8px;
+    min-height: 24px;
   }
 
   .statusLabel {
