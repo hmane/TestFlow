@@ -490,10 +490,11 @@ export const useRequestStore = create<IRequestState>()(
       },
 
       /**
-       * Assign attorney (direct assignment)
+       * Assign attorney (direct assignment) or send to compliance review
        * Uses dedicated workflow action - only updates attorney and status fields
+       * When attorney is undefined (Compliance Only), proceeds directly to compliance review
        */
-      assignAttorney: async (attorney: IPrincipal, notes?: string, reviewAudience?: ReviewAudience): Promise<void> => {
+      assignAttorney: async (attorney: IPrincipal | undefined, notes?: string, reviewAudience?: ReviewAudience): Promise<void> => {
         const state = get();
 
         if (!state.itemId) {
@@ -512,9 +513,10 @@ export const useRequestStore = create<IRequestState>()(
           isDirty: false,
         });
 
-        SPContext.logger.info('Attorney assigned', {
+        SPContext.logger.info(attorney ? 'Attorney assigned' : 'Sent to compliance review', {
           itemId: state.itemId,
-          attorney: attorney.title,
+          attorney: attorney?.title ?? 'None (Compliance Only)',
+          reviewAudience,
           fieldsUpdated: result.fieldsUpdated,
         });
       },

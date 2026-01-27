@@ -206,7 +206,7 @@ The Legal Review System (LRS) automates the review and approval process for mark
 | **Available Actions** | Submit Review, Request Changes, Place On Hold |
 | **Exit Conditions** | All reviews complete → Closeout or Completed |
 
-**Trigger Event:** Attorney Assigned
+**Trigger Event:** Attorney Assigned (when ReviewAudience = Legal or Both)
 
 **Notification:** `AttorneyAssigned`
 | Field | Value |
@@ -215,6 +215,24 @@ The Legal Review System (LRS) automates the review and approval process for mark
 | CC | Submitter |
 | Subject | [Action Required] Legal Review Assigned: {{RequestId}} - {{RequestTitle}} |
 | Attachments | Request documents |
+
+**Trigger Event:** Compliance Review Required (when ReviewAudience = Compliance Only)
+
+**Notification:** `ComplianceReviewRequired`
+| Field | Value |
+|-------|-------|
+| To | Compliance Group |
+| CC | Submitter |
+| Subject | [Action Required] Compliance Review Required: {{RequestId}} - {{RequestTitle}} |
+
+**Trigger Event:** Attorney Reassigned (attorney field changes during In Review)
+
+**Notification:** `AttorneyReassigned`
+| Field | Value |
+|-------|-------|
+| To | New Attorney |
+| CC | Submitter, Previous Attorney |
+| Subject | [Attorney Change] Legal Review Reassigned: {{RequestId}} - {{RequestTitle}} |
 
 #### 4.4.1 Legal Review Process
 
@@ -510,11 +528,14 @@ Time is tracked at each stage for SLA monitoring:
 | Rush Request Submitted | RushRequestAlert | Legal Admin Group | - | High |
 | Sent to Committee | ReadyForAttorneyAssignment | Attorney Assigner Group | - | Normal |
 | Attorney Assigned | AttorneyAssigned | Assigned Attorney | Submitter | Normal |
+| Attorney Reassigned | AttorneyReassigned | New Attorney | Submitter, Previous Attorney | Normal |
+| Compliance Review Required | ComplianceReviewRequired | Compliance Group | Submitter | Normal |
 | Legal Approved | LegalReviewApproved | Submitter | Additional Parties | Normal |
 | Legal Changes Requested | LegalChangesRequested | Submitter | Additional Parties | High |
 | Legal Not Approved | LegalReviewNotApproved | Submitter | Additional Parties | Normal |
 | Compliance Approved | ComplianceReviewApproved | Submitter | Additional Parties | Normal |
 | Compliance Changes Requested | ComplianceChangesRequested | Submitter | Additional Parties | High |
+| Compliance Not Approved | ComplianceReviewNotApproved | Submitter | Additional Parties | Normal |
 | Resubmitted (Legal) | ResubmissionReceivedLegal | Assigned Attorney | - | Normal |
 | Resubmitted (Compliance) | ResubmissionReceivedCompliance | Compliance Group | - | Normal |
 | Placed On Hold | RequestOnHold | Submitter | Additional Parties | Normal |
@@ -594,3 +615,4 @@ Time is tracked at each stage for SLA monitoring:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | January 2026 | Legal Operations | Initial document |
+| 1.1 | January 2026 | Legal Operations | Added AttorneyReassigned, ComplianceReviewRequired, ComplianceReviewNotApproved notifications |

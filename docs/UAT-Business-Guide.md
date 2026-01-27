@@ -495,13 +495,22 @@ Request is in "Awaiting Foreside Documents" status (Compliance review marked "Is
 |--------|--------------------------|
 | Submit new request | Legal Admin |
 | Submit rush request | Legal Admin (high priority) |
-| Assign attorney | Attorney + Submitter (CC) |
+| Send to attorney committee | Attorney Assigner Group |
+| Assign attorney (Legal or Both) | Attorney + Submitter (CC) |
+| Compliance review required (Compliance Only) | Compliance Group + Submitter (CC) |
+| Attorney reassigned | New Attorney + Submitter (CC) |
 | Attorney approves | Submitter |
 | Attorney requests changes | Submitter (high priority) |
-| Submitter resubmits | Attorney |
+| Attorney not approved | Submitter |
+| Submitter resubmits (legal) | Attorney |
+| Compliance approves | Submitter |
+| Compliance requests changes | Submitter (high priority) |
+| Compliance not approved | Submitter |
+| Submitter resubmits (compliance) | Compliance Group |
 | Request ready for closeout | Submitter |
 | Request completed | Submitter |
 | Request on hold | Submitter |
+| Request resumed | Submitter |
 | Request cancelled | Submitter + Attorney |
 
 ### Verify Email Content

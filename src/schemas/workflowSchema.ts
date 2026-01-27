@@ -4,7 +4,7 @@
  */
 
 import { z } from 'zod';
-import { RequestStatus, ReviewOutcome, LegalReviewStatus, ComplianceReviewStatus } from '@appTypes/workflowTypes';
+import { RequestStatus, ReviewOutcome, LegalReviewStatus, ComplianceReviewStatus, ReviewAudience } from '@appTypes/workflowTypes';
 import { NOTES_MAX_LENGTH, REASON_MAX_LENGTH, REVIEW_NOTES_MAX_LENGTH, STATUS_NOTES_MAX_LENGTH, FIELD_LIMIT_MESSAGES } from '@constants/fieldLimits';
 
 /**
@@ -34,17 +34,30 @@ const requiredAttorneySchema = principalSchema.refine(
 // ============================================
 
 /**
- * Schema for direct attorney assignment
+ * Schema for direct attorney assignment (or send to compliance for Compliance Only)
  * Who can perform: LegalAdmin, Admin
  * Valid from status: Legal Intake
+ * Note: Attorney is optional when ReviewAudience = Compliance (no attorney needed)
  */
 export const assignAttorneySchema = z.object({
-  attorney: requiredAttorneySchema,
+  attorney: principalSchema.optional(),
   assignmentNotes: z.string().max(NOTES_MAX_LENGTH, FIELD_LIMIT_MESSAGES.assignmentNotes).optional(),
   // Context fields for validation
   currentStatus: z.enum([RequestStatus.LegalIntake], {
     message: 'Attorney can only be assigned when request is in Legal Intake status',
   }),
+  reviewAudience: z.enum([ReviewAudience.Legal, ReviewAudience.Compliance, ReviewAudience.Both]).optional(),
+}).superRefine((data, ctx) => {
+  // Attorney is required only when ReviewAudience is Legal or Both
+  const requiresAttorney = data.reviewAudience !== ReviewAudience.Compliance;
+
+  if (requiresAttorney && (!data.attorney || !data.attorney.id || data.attorney.id === '0')) {
+    ctx.addIssue({
+      code: 'custom',
+      message: 'Please select an attorney to assign',
+      path: ['attorney'],
+    });
+  }
 });
 
 /**

@@ -266,6 +266,10 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
 
   const selectedAttorney = attorneyValue && attorneyValue.length > 0 ? attorneyValue[0] : undefined;
 
+  // Determine if attorney field should be shown based on review audience
+  // Hide attorney field when ReviewAudience = Compliance Only (no attorney needed)
+  const showAttorneyField = reviewAudienceValue !== ReviewAudience.Compliance;
+
   // Get legal intake store setters - use a single batch update function
   const { setLegalIntakeValues } = useLegalIntakeStore();
 
@@ -351,10 +355,12 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
   };
 
   /**
-   * Handle Assign Attorney button click
+   * Handle Assign Attorney button click (or Send to Compliance for Compliance Only)
    */
   const handleAssignAttorney = React.useCallback(async (): Promise<void> => {
-    if (!selectedAttorney) {
+    // For Legal or Both: require attorney selection
+    // For Compliance Only: no attorney needed, proceed directly to compliance review
+    if (showAttorneyField && !selectedAttorney) {
       setMessageBarError('Please select an attorney to assign');
       return;
     }
@@ -364,16 +370,17 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
 
     try {
       // Pass review audience to save Legal Admin's override
+      // For Compliance Only, selectedAttorney will be undefined which is correct
       await storeAssignAttorney(selectedAttorney, notesValue, reviewAudienceValue);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to assign attorney';
+      const errorMessage = error instanceof Error ? error.message : showAttorneyField ? 'Failed to assign attorney' : 'Failed to send to compliance';
       setMessageBarError(errorMessage);
     } finally {
       setIsAssigning(false);
     }
-  }, [selectedAttorney, notesValue, reviewAudienceValue, storeAssignAttorney]);
+  }, [selectedAttorney, notesValue, reviewAudienceValue, storeAssignAttorney, showAttorneyField]);
 
   /**
    * Handle Send to Committee button click
@@ -506,29 +513,31 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
                     </FormValue>
                   </FormItem>
 
-                  {/* Assign Attorney */}
-                  <FormItem fieldName='attorney'>
-                    <FormLabel infoText='Select an attorney from the LW - Attorneys group'>
-                      Assign Attorney
-                    </FormLabel>
-                    <FormValue>
-                      <GroupUsersPicker
-                        name='attorney'
-                        control={control as any}
-                        groupName='LW - Attorneys'
-                        maxUserCount={1}
-                        placeholder='Search for attorney to assign...'
-                        disabled={isLoading}
-                        showClearButton
-                        ensureUser
-                      />
-                    </FormValue>
-                  </FormItem>
+                  {/* Assign Attorney - hidden when ReviewAudience = Compliance Only */}
+                  {showAttorneyField && (
+                    <FormItem fieldName='attorney'>
+                      <FormLabel infoText='Select an attorney from the LW - Attorneys group'>
+                        Assign Attorney
+                      </FormLabel>
+                      <FormValue>
+                        <GroupUsersPicker
+                          name='attorney'
+                          control={control as any}
+                          groupName='LW - Attorneys'
+                          maxUserCount={1}
+                          placeholder='Search for attorney to assign...'
+                          disabled={isLoading}
+                          showClearButton
+                          ensureUser
+                        />
+                      </FormValue>
+                    </FormItem>
+                  )}
 
-                  {/* Assignment Notes */}
+                  {/* Notes - label changes based on review audience */}
                   <FormItem fieldName='attorneyAssignNotes'>
-                    <FormLabel infoText='Add any notes or instructions for the assigned attorney'>
-                      Assignment Notes
+                    <FormLabel infoText={showAttorneyField ? 'Add any notes or instructions for the assigned attorney' : 'Add any notes for the compliance team'}>
+                      {showAttorneyField ? 'Assignment Notes' : 'Notes'}
                     </FormLabel>
                     <SPTextField
                       name='attorneyAssignNotes'
@@ -800,29 +809,31 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
                 </FormValue>
               </FormItem>
 
-              {/* Assign Attorney using GroupUsersPicker */}
-              <FormItem fieldName='attorney'>
-                <FormLabel infoText='Select an attorney from the LW - Attorneys group to assign to this request'>
-                  Assign Attorney
-                </FormLabel>
-                <FormValue>
-                  <GroupUsersPicker
-                    name='attorney'
-                    control={control as any}
-                    groupName='LW - Attorneys'
-                    maxUserCount={1}
-                    placeholder='Search for attorney to assign...'
-                    disabled={isLoading}
-                    showClearButton
-                    ensureUser
-                  />
-                </FormValue>
-              </FormItem>
+              {/* Assign Attorney using GroupUsersPicker - hidden when ReviewAudience = Compliance Only */}
+              {showAttorneyField && (
+                <FormItem fieldName='attorney'>
+                  <FormLabel infoText='Select an attorney from the LW - Attorneys group to assign to this request'>
+                    Assign Attorney
+                  </FormLabel>
+                  <FormValue>
+                    <GroupUsersPicker
+                      name='attorney'
+                      control={control as any}
+                      groupName='LW - Attorneys'
+                      maxUserCount={1}
+                      placeholder='Search for attorney to assign...'
+                      disabled={isLoading}
+                      showClearButton
+                      ensureUser
+                    />
+                  </FormValue>
+                </FormItem>
+              )}
 
-              {/* Attorney Assign Notes */}
+              {/* Notes - label changes based on review audience */}
               <FormItem fieldName='attorneyAssignNotes'>
-                <FormLabel infoText='Add any notes or instructions for the assigned attorney'>
-                  Assignment Notes
+                <FormLabel infoText={showAttorneyField ? 'Add any notes or instructions for the assigned attorney' : 'Add any notes for the compliance team'}>
+                  {showAttorneyField ? 'Assignment Notes' : 'Notes'}
                 </FormLabel>
                 <SPTextField
                   name='attorneyAssignNotes'
@@ -894,26 +905,33 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
 
               <Stack horizontal horizontalAlign='space-between' verticalAlign='center' styles={{ root: { width: '100%' } }}>
               <Text variant='small' styles={{ root: { color: '#605e5c', fontStyle: 'italic' } }}>
-                {selectedAttorney
-                  ? 'Attorney selected. Click "Assign Attorney" to proceed.'
-                  : 'Select an attorney, or click "Submit to Assign Attorney" to send to committee.'}
+                {showAttorneyField
+                  ? (selectedAttorney
+                      ? 'Attorney selected. Click "Assign Attorney" to proceed.'
+                      : 'Select an attorney, or click "Submit to Assign Attorney" to send to committee.')
+                  : 'Compliance Only selected. Click "Send to Compliance" to proceed.'}
               </Text>
               <Stack horizontal tokens={{ childrenGap: 8 }}>
-                <DefaultButton
-                  text={isSendingToCommittee ? 'Sending...' : 'Submit to Assign Attorney'}
-                  onClick={handleSendToCommittee}
-                  disabled={isAssigning || isSendingToCommittee || isLoading}
-                  iconProps={{ iconName: 'Group' }}
-                />
+                {/* Submit to Assign Attorney - only shown when attorney field is visible */}
+                {showAttorneyField && (
+                  <DefaultButton
+                    text={isSendingToCommittee ? 'Sending...' : 'Submit to Assign Attorney'}
+                    onClick={handleSendToCommittee}
+                    disabled={isAssigning || isSendingToCommittee || isLoading}
+                    iconProps={{ iconName: 'Group' }}
+                  />
+                )}
                 <PrimaryButton
                   onClick={handleAssignAttorney}
-                  disabled={!selectedAttorney || isAssigning || isSendingToCommittee || isLoading}
-                  iconProps={{ iconName: 'AddFriend' }}
+                  disabled={(showAttorneyField && !selectedAttorney) || isAssigning || isSendingToCommittee || isLoading}
+                  iconProps={{ iconName: showAttorneyField ? 'AddFriend' : 'ComplianceAudit' }}
                 >
                   {isAssigning && (
                     <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />
                   )}
-                  {isAssigning ? 'Assigning...' : 'Assign Attorney'}
+                  {isAssigning
+                    ? (showAttorneyField ? 'Assigning...' : 'Sending...')
+                    : (showAttorneyField ? 'Assign Attorney' : 'Send to Compliance')}
                 </PrimaryButton>
               </Stack>
               </Stack>

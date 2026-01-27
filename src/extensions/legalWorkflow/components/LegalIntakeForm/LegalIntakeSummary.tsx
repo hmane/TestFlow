@@ -27,7 +27,7 @@ import { UserPersona } from 'spfx-toolkit/lib/components/UserPersona';
 import { WorkflowCardHeader } from '@components/WorkflowCardHeader';
 import { usePermissions } from '@hooks/usePermissions';
 import { useRequestStore } from '@stores/requestStore';
-import { RequestStatus } from '@appTypes/workflowTypes';
+import { RequestStatus, ReviewAudience } from '@appTypes/workflowTypes';
 import { calculateBusinessHours } from '@utils/businessHoursCalculator';
 
 import './LegalIntakeForm.scss';
@@ -67,6 +67,10 @@ export const LegalIntakeSummary: React.FC<ILegalIntakeSummaryProps> = ({
 
   const assignedAttorney = currentRequest.attorney;
   const completedDate = currentRequest.submittedForReviewOn;
+
+  // Determine if attorney field should be shown based on review audience
+  // Hide attorney field when ReviewAudience = Compliance Only (no attorney needed)
+  const showAttorneyField = currentRequest.reviewAudience !== ReviewAudience.Compliance;
 
   // Get the user who completed intake (submittedForReviewBy or attorney)
   const completedBy = currentRequest.submittedForReviewBy || assignedAttorney;
@@ -145,25 +149,28 @@ export const LegalIntakeSummary: React.FC<ILegalIntakeSummaryProps> = ({
       <Content padding='comfortable'>
         <Stack tokens={{ childrenGap: 16 }}>
           <FormContainer labelWidth='180px'>
-            <FormItem>
-              <FormLabel>Assigned Attorney</FormLabel>
-              <FormValue>
-                {assignedAttorney?.email ? (
-                  <UserPersona
-                    userIdentifier={assignedAttorney.email}
-                    displayName={assignedAttorney.title}
-                    email={assignedAttorney.email}
-                    size={32}
-                    displayMode='avatarAndName'
-                    showSecondaryText={false}
-                  />
-                ) : (
-                  <Text styles={{ root: { color: '#605e5c', fontStyle: 'italic' } }}>
-                    Not assigned
-                  </Text>
-                )}
-              </FormValue>
-            </FormItem>
+            {/* Assigned Attorney - hidden when ReviewAudience = Compliance Only */}
+            {showAttorneyField && (
+              <FormItem>
+                <FormLabel>Assigned Attorney</FormLabel>
+                <FormValue>
+                  {assignedAttorney?.email ? (
+                    <UserPersona
+                      userIdentifier={assignedAttorney.email}
+                      displayName={assignedAttorney.title}
+                      email={assignedAttorney.email}
+                      size={32}
+                      displayMode='avatarAndName'
+                      showSecondaryText={false}
+                    />
+                  ) : (
+                    <Text styles={{ root: { color: '#605e5c', fontStyle: 'italic' } }}>
+                      Not assigned
+                    </Text>
+                  )}
+                </FormValue>
+              </FormItem>
+            )}
 
             <FormItem>
               <FormLabel>Review Audience</FormLabel>
@@ -173,7 +180,7 @@ export const LegalIntakeSummary: React.FC<ILegalIntakeSummaryProps> = ({
             </FormItem>
 
             <FormItem>
-              <FormLabel>Assignment Notes</FormLabel>
+              <FormLabel>{showAttorneyField ? 'Assignment Notes' : 'Notes'}</FormLabel>
               <SPTextField
                 mode={SPTextFieldMode.MultiLine}
                 rows={3}

@@ -39,10 +39,11 @@ export interface ISubmitRequestPayload {
 
 /**
  * Assign attorney payload
+ * Note: attorney is optional - when ReviewAudience = Compliance Only, no attorney is needed
  */
 export interface IAssignAttorneyPayload {
-  /** Attorney to assign */
-  attorney: IPrincipal;
+  /** Attorney to assign (optional - not required for Compliance Only) */
+  attorney?: IPrincipal;
   /** Assignment notes (optional) */
   notes?: string;
   /** Review audience override (optional - Legal Admin can change from submitter's selection) */

@@ -171,11 +171,11 @@ export async function submitRequest(
 }
 
 /**
- * Assign attorney directly
+ * Assign attorney directly or send to compliance review
  *
  * Transitions: Legal Intake → In Review
  *
- * Fields updated:
+ * For Legal/Both ReviewAudience:
  * - Status → In Review
  * - Attorney → Assigned attorney
  * - AttorneyAssignNotes → Notes (if provided)
@@ -183,8 +183,15 @@ export async function submitRequest(
  * - SubmittedForReviewBy → Current user
  * - SubmittedForReviewOn → Current timestamp
  *
+ * For Compliance Only ReviewAudience (attorney is undefined):
+ * - Status → In Review
+ * - AttorneyAssignNotes → Notes (if provided)
+ * - SubmittedForReviewBy → Current user
+ * - SubmittedForReviewOn → Current timestamp
+ * - (No attorney assigned, no legal review status)
+ *
  * @param itemId - Request item ID
- * @param payload - Attorney assignment payload
+ * @param payload - Attorney assignment payload (attorney optional for Compliance Only)
  * @returns Workflow action result
  */
 export async function assignAttorney(
@@ -192,14 +199,16 @@ export async function assignAttorney(
   payload: IAssignAttorneyPayload
 ): Promise<IWorkflowActionResult> {
   const correlationId = generateCorrelationId('assignAttorney');
+  const isComplianceOnly = !payload.attorney;
 
-  SPContext.logger.info('WorkflowActionService: Assigning attorney', {
+  SPContext.logger.info(isComplianceOnly ? 'WorkflowActionService: Sending to compliance review' : 'WorkflowActionService: Assigning attorney', {
     correlationId,
     itemId,
-    attorneyId: payload.attorney.id,
-    attorneyEmail: payload.attorney.email,
-    attorneyTitle: payload.attorney.title,
-    attorneyLoginName: payload.attorney.loginName,
+    isComplianceOnly,
+    attorneyId: payload.attorney?.id,
+    attorneyEmail: payload.attorney?.email,
+    attorneyTitle: payload.attorney?.title,
+    attorneyLoginName: payload.attorney?.loginName,
     hasNotes: !!payload.notes,
     reviewAudience: payload.reviewAudience,
   });
@@ -217,10 +226,14 @@ export async function assignAttorney(
   // Use typed setters for proper SharePoint field formatting
   const updater = createSPUpdater();
   updater.setChoice(RequestsFields.Status, RequestStatus.InReview);
-  updater.setUser(RequestsFields.Attorney, payload.attorney);
-  updater.setChoice(RequestsFields.LegalReviewStatus, LegalReviewStatus.NotStarted);
   updater.setUser(RequestsFields.SubmittedForReviewBy, currentUser);
   updater.setDate(RequestsFields.SubmittedForReviewOn, now);
+
+  // Only set attorney and legal review status if attorney is provided (not Compliance Only)
+  if (payload.attorney) {
+    updater.setUser(RequestsFields.Attorney, payload.attorney);
+    updater.setChoice(RequestsFields.LegalReviewStatus, LegalReviewStatus.NotStarted);
+  }
 
   // Always set notes field - overwrites any previous value
   if (payload.notes) {
@@ -243,23 +256,23 @@ export async function assignAttorney(
   });
 
   // Update SharePoint
-  await updateItem(itemId, updatePayload, 'assignAttorney', correlationId);
+  await updateItem(itemId, updatePayload, isComplianceOnly ? 'sendToCompliance' : 'assignAttorney', correlationId);
 
-  // Manage permissions for In Review status (attorney gets access)
+  // Manage permissions for In Review status (attorney or compliance gets access)
   try {
     await manageRequestPermissions(itemId, RequestStatus.InReview);
   } catch (permError) {
-    SPContext.logger.warn('WorkflowActionService: Permission management failed (attorney was assigned)', permError);
+    SPContext.logger.warn('WorkflowActionService: Permission management failed', permError);
   }
 
   // Reload and return result
   const updatedRequest = await loadRequestById(itemId);
 
-  SPContext.logger.success('WorkflowActionService: Attorney assigned successfully', {
+  SPContext.logger.success(isComplianceOnly ? 'WorkflowActionService: Sent to compliance review successfully' : 'WorkflowActionService: Attorney assigned successfully', {
     correlationId,
     itemId,
     requestId: updatedRequest.requestId,
-    attorney: payload.attorney.title,
+    attorney: payload.attorney?.title ?? 'None (Compliance Only)',
   });
 
   return {
@@ -356,6 +369,7 @@ export async function sendToCommittee(
  * Transitions: Assign Attorney → In Review
  *
  * Uses the same fields as assignAttorney but from a different starting status.
+ * Note: Attorney is required for committee assignment (unlike direct assignment which allows Compliance Only)
  *
  * @param itemId - Request item ID
  * @param payload - Attorney assignment payload
@@ -367,7 +381,7 @@ export async function assignFromCommittee(
 ): Promise<IWorkflowActionResult> {
   SPContext.logger.info('WorkflowActionService: Committee assigning attorney', {
     itemId,
-    attorneyId: payload.attorney.id,
+    attorneyId: payload.attorney?.id,
   });
 
   // Reuse assignAttorney logic - same fields updated
