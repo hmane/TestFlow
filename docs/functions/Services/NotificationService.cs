@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using LegalWorkflow.Functions.Constants;
 using LegalWorkflow.Functions.Helpers;
 using LegalWorkflow.Functions.Models;
 
@@ -42,25 +43,6 @@ namespace LegalWorkflow.Functions.Services
         private readonly RequestService _requestService;
         private readonly Logger _logger;
         private readonly NotificationConfig _config;
-
-        // Notification template IDs (matching Notifications list Title field)
-        private const string NotificationRequestSubmitted = "RequestSubmitted";
-        private const string NotificationRushRequestAlert = "RushRequestAlert";
-        private const string NotificationReadyForAttorneyAssignment = "ReadyForAttorneyAssignment";
-        private const string NotificationAttorneyAssigned = "AttorneyAssigned";
-        private const string NotificationLegalReviewApproved = "LegalReviewApproved";
-        private const string NotificationLegalChangesRequested = "LegalChangesRequested";
-        private const string NotificationLegalReviewNotApproved = "LegalReviewNotApproved";
-        private const string NotificationComplianceReviewApproved = "ComplianceReviewApproved";
-        private const string NotificationComplianceChangesRequested = "ComplianceChangesRequested";
-        private const string NotificationComplianceReviewNotApproved = "ComplianceReviewNotApproved";
-        private const string NotificationLegalResubmission = "LegalResubmission";
-        private const string NotificationComplianceResubmission = "ComplianceResubmission";
-        private const string NotificationRequestOnHold = "RequestOnHold";
-        private const string NotificationRequestResumed = "RequestResumed";
-        private const string NotificationRequestCancelled = "RequestCancelled";
-        private const string NotificationReadyForCloseout = "ReadyForCloseout";
-        private const string NotificationRequestCompleted = "RequestCompleted";
 
         /// <summary>
         /// Creates a new NotificationService instance.
@@ -190,8 +172,8 @@ namespace LegalWorkflow.Functions.Services
                     // New request submitted directly
                     _logger.Debug("New request submitted directly to Legal Intake");
                     return current.IsRushRequest
-                        ? NotificationRushRequestAlert  // Rush takes priority
-                        : NotificationRequestSubmitted;
+                        ? NotificationTemplateIds.RushRequestAlert  // Rush takes priority
+                        : NotificationTemplateIds.RequestSubmitted;
                 }
                 // Draft save - no notification
                 return null;
@@ -203,34 +185,34 @@ namespace LegalWorkflow.Functions.Services
             if (!previous.IsOnHold && current.IsOnHold)
             {
                 _logger.Debug("Request put on hold");
-                return NotificationRequestOnHold;
+                return NotificationTemplateIds.RequestOnHold;
             }
 
             if (previous.IsOnHold && !current.IsOnHold)
             {
                 _logger.Debug("Request resumed from hold");
-                return NotificationRequestResumed;
+                return NotificationTemplateIds.RequestResumed;
             }
 
             // 2. Cancellation
             if (previous.Status != RequestStatus.Cancelled && current.Status == RequestStatus.Cancelled)
             {
                 _logger.Debug("Request cancelled");
-                return NotificationRequestCancelled;
+                return NotificationTemplateIds.RequestCancelled;
             }
 
             // 3. Completion
             if (previous.Status != RequestStatus.Completed && current.Status == RequestStatus.Completed)
             {
                 _logger.Debug("Request completed");
-                return NotificationRequestCompleted;
+                return NotificationTemplateIds.RequestCompleted;
             }
 
             // 4. Closeout
             if (previous.Status != RequestStatus.Closeout && current.Status == RequestStatus.Closeout)
             {
                 _logger.Debug("Request ready for closeout");
-                return NotificationReadyForCloseout;
+                return NotificationTemplateIds.ReadyForCloseout;
             }
 
             // 5. Request submitted (Draft → Legal Intake)
@@ -238,15 +220,15 @@ namespace LegalWorkflow.Functions.Services
             {
                 _logger.Debug("Request submitted (Draft → Legal Intake)");
                 return current.IsRushRequest
-                    ? NotificationRushRequestAlert
-                    : NotificationRequestSubmitted;
+                    ? NotificationTemplateIds.RushRequestAlert
+                    : NotificationTemplateIds.RequestSubmitted;
             }
 
             // 6. Ready for attorney assignment (Any → Assign Attorney)
             if (previous.Status != RequestStatus.AssignAttorney && current.Status == RequestStatus.AssignAttorney)
             {
                 _logger.Debug("Request ready for attorney assignment");
-                return NotificationReadyForAttorneyAssignment;
+                return NotificationTemplateIds.ReadyForAttorneyAssignment;
             }
 
             // 7. Attorney assigned ((Legal Intake OR Assign Attorney) → In Review)
@@ -254,7 +236,7 @@ namespace LegalWorkflow.Functions.Services
                 && current.Status == RequestStatus.InReview)
             {
                 _logger.Debug("Attorney assigned - moving to In Review");
-                return NotificationAttorneyAssigned;
+                return NotificationTemplateIds.AttorneyAssigned;
             }
 
             // 8. Legal review status changes
@@ -288,14 +270,14 @@ namespace LegalWorkflow.Functions.Services
                 if (current.LegalReviewOutcome == ReviewOutcome.NotApproved)
                 {
                     _logger.Debug("Legal review not approved");
-                    return NotificationLegalReviewNotApproved;
+                    return NotificationTemplateIds.LegalReviewNotApproved;
                 }
 
                 if (current.LegalReviewOutcome == ReviewOutcome.Approved ||
                     current.LegalReviewOutcome == ReviewOutcome.ApprovedWithComments)
                 {
                     _logger.Debug("Legal review approved");
-                    return NotificationLegalReviewApproved;
+                    return NotificationTemplateIds.LegalReviewApproved;
                 }
             }
 
@@ -304,7 +286,7 @@ namespace LegalWorkflow.Functions.Services
                 current.LegalReviewStatus == ReviewStatus.WaitingOnSubmitter)
             {
                 _logger.Debug("Legal review - changes requested");
-                return NotificationLegalChangesRequested;
+                return NotificationTemplateIds.LegalChangesRequested;
             }
 
             // Resubmission (Waiting On Submitter → Waiting On Attorney)
@@ -312,7 +294,7 @@ namespace LegalWorkflow.Functions.Services
                 current.LegalReviewStatus == ReviewStatus.WaitingOnAttorney)
             {
                 _logger.Debug("Legal review - resubmission");
-                return NotificationLegalResubmission;
+                return NotificationTemplateIds.LegalResubmission;
             }
 
             return null;
@@ -331,14 +313,14 @@ namespace LegalWorkflow.Functions.Services
                 if (current.ComplianceReviewOutcome == ReviewOutcome.NotApproved)
                 {
                     _logger.Debug("Compliance review not approved");
-                    return NotificationComplianceReviewNotApproved;
+                    return NotificationTemplateIds.ComplianceReviewNotApproved;
                 }
 
                 if (current.ComplianceReviewOutcome == ReviewOutcome.Approved ||
                     current.ComplianceReviewOutcome == ReviewOutcome.ApprovedWithComments)
                 {
                     _logger.Debug("Compliance review approved");
-                    return NotificationComplianceReviewApproved;
+                    return NotificationTemplateIds.ComplianceReviewApproved;
                 }
             }
 
@@ -347,7 +329,7 @@ namespace LegalWorkflow.Functions.Services
                 current.ComplianceReviewStatus == ReviewStatus.WaitingOnSubmitter)
             {
                 _logger.Debug("Compliance review - changes requested");
-                return NotificationComplianceChangesRequested;
+                return NotificationTemplateIds.ComplianceChangesRequested;
             }
 
             // Resubmission (Waiting On Submitter → Waiting On Compliance)
@@ -355,7 +337,7 @@ namespace LegalWorkflow.Functions.Services
                 current.ComplianceReviewStatus == ReviewStatus.WaitingOnCompliance)
             {
                 _logger.Debug("Compliance review - resubmission");
-                return NotificationComplianceResubmission;
+                return NotificationTemplateIds.ComplianceResubmission;
             }
 
             return null;
@@ -414,12 +396,14 @@ namespace LegalWorkflow.Functions.Services
             result = result.Replace("{{RequestTitle}}", request.Title);
             result = result.Replace("{{Status}}", FormatStatus(request.Status));
             result = result.Replace("{{SubmittedBy}}", request.SubmittedBy?.Title ?? "Unknown");
+            result = result.Replace("{{SubmitterName}}", request.SubmittedBy?.Title ?? "Unknown"); // Template alias
             result = result.Replace("{{SubmittedByEmail}}", request.SubmittedBy?.Email ?? string.Empty);
             result = result.Replace("{{SubmittedOn}}", request.SubmittedOn?.ToString("MMMM d, yyyy") ?? "N/A");
 
             // Request information
             result = result.Replace("{{RequestType}}", FormatRequestType(request.RequestType));
             result = result.Replace("{{SubmissionType}}", request.SubmissionType == SubmissionType.New ? "New Submission" : "Material Updates");
+            result = result.Replace("{{SubmissionItem}}", request.SubmissionItem ?? string.Empty); // Submission item name
             result = result.Replace("{{Purpose}}", request.Purpose);
             result = result.Replace("{{TargetReturnDate}}", request.TargetReturnDate?.ToString("MMMM d, yyyy") ?? "N/A");
             result = result.Replace("{{IsRushRequest}}", request.IsRushRequest ? "Yes" : "No");
@@ -434,14 +418,18 @@ namespace LegalWorkflow.Functions.Services
             result = result.Replace("{{SeparateAccountStrategies}}", request.SeparateAccountStrategies);
 
             // Distribution
-            result = result.Replace("{{DistributionMethods}}", string.Join(", ", request.DistributionMethods.Select(FormatDistributionMethod)));
+            var distributionMethodsFormatted = string.Join(", ", request.DistributionMethods.Select(FormatDistributionMethod));
+            result = result.Replace("{{DistributionMethods}}", distributionMethodsFormatted);
+            result = result.Replace("{{DistributionMethod}}", distributionMethodsFormatted); // Template alias (singular)
             result = result.Replace("{{ProposedFirstUseDate}}", request.ProposedFirstUseDate?.ToString("MMMM d, yyyy") ?? "N/A");
+            result = result.Replace("{{DateOfFirstUse}}", request.ProposedFirstUseDate?.ToString("MMMM d, yyyy") ?? "N/A"); // Template alias
             result = result.Replace("{{ProposedDiscontinueDate}}", request.ProposedDiscontinueDate?.ToString("MMMM d, yyyy") ?? "N/A");
 
             // Legal Intake
             result = result.Replace("{{Attorney}}", request.Attorney?.Title ?? "Not Assigned");
             result = result.Replace("{{AttorneyEmail}}", request.Attorney?.Email ?? string.Empty);
             result = result.Replace("{{AttorneyAssignNotes}}", request.AttorneyAssignNotes);
+            result = result.Replace("{{AssignmentNotes}}", request.AttorneyAssignNotes); // Template alias
 
             // Legal Review
             result = result.Replace("{{LegalReviewStatus}}", FormatReviewStatus(request.LegalReviewStatus));
@@ -468,8 +456,8 @@ namespace LegalWorkflow.Functions.Services
             result = result.Replace("{{CompletedOn}}", request.CompletedOn?.ToString("MMMM d, yyyy") ?? "N/A");
 
             // Request Link - generates full URL to the request
-            // Format: {SiteUrl}/Lists/Requests/EditForm.aspx?ID={RequestId}
-            var requestLink = $"{_config.SiteUrl.TrimEnd('/')}/Lists/Requests/EditForm.aspx?ID={request.Id}";
+            // Format: {SiteUrl}/Lists/{ListName}/EditForm.aspx?ID={RequestId}
+            var requestLink = $"{_config.SiteUrl.TrimEnd('/')}/Lists/{SharePointLists.Requests}/EditForm.aspx?ID={request.Id}";
             result = result.Replace("{{RequestLink}}", requestLink);
 
             // Submitter email for recipient resolution
@@ -484,6 +472,24 @@ namespace LegalWorkflow.Functions.Services
                 .Where(u => !string.IsNullOrEmpty(u.Email))
                 .Select(u => u.Email));
             result = result.Replace("{{AdditionalPartyEmails}}", additionalPartyEmails);
+
+            // Additional party names (comma-separated list for display)
+            var additionalPartyNames = string.Join(", ", request.AdditionalParties
+                .Where(u => !string.IsNullOrEmpty(u.Title))
+                .Select(u => u.Title));
+            result = result.Replace("{{AdditionalParties}}", additionalPartyNames);
+
+            // Approval count - count of non-null approvals
+            var approvalCount = new[]
+            {
+                request.CommunicationsApproval,
+                request.PortfolioManagerApproval,
+                request.ResearchAnalystApproval,
+                request.SubjectMatterExpertApproval,
+                request.PerformanceApproval,
+                request.OtherApproval
+            }.Count(a => a != null);
+            result = result.Replace("{{ApprovalCount}}", approvalCount > 0 ? approvalCount.ToString() : string.Empty);
 
             return result;
         }
@@ -534,15 +540,19 @@ namespace LegalWorkflow.Functions.Services
 
         /// <summary>
         /// Evaluates a condition field for template conditionals.
+        /// Supports both explicit boolean checks and "has value" checks for string/list fields.
         /// </summary>
         private bool EvaluateCondition(string fieldName, RequestModel request)
         {
             return fieldName switch
             {
+                // Boolean flags
                 "IsRushRequest" => request.IsRushRequest,
                 "IsOnHold" => request.IsOnHold,
                 "IsForesideReviewRequired" => request.IsForesideReviewRequired,
                 "IsRetailUse" => request.IsRetailUse,
+
+                // "Has" prefix conditions (explicit)
                 "HasAttorney" => request.Attorney != null,
                 "HasTrackingId" => !string.IsNullOrEmpty(request.TrackingId),
                 "HasLegalReviewNotes" => !string.IsNullOrEmpty(request.LegalReviewNotes),
@@ -550,6 +560,8 @@ namespace LegalWorkflow.Functions.Services
                 "HasAttorneyAssignNotes" => !string.IsNullOrEmpty(request.AttorneyAssignNotes),
                 "HasHoldReason" => !string.IsNullOrEmpty(request.HoldReason),
                 "HasCancellationReason" => !string.IsNullOrEmpty(request.CancellationReason),
+
+                // Review conditions
                 "RequiresLegalReview" => request.ReviewAudience == ReviewAudience.Legal || request.ReviewAudience == ReviewAudience.Both,
                 "RequiresComplianceReview" => request.ReviewAudience == ReviewAudience.Compliance || request.ReviewAudience == ReviewAudience.Both,
                 "LegalApproved" => request.LegalReviewOutcome == ReviewOutcome.Approved || request.LegalReviewOutcome == ReviewOutcome.ApprovedWithComments,
@@ -557,12 +569,49 @@ namespace LegalWorkflow.Functions.Services
                 "LegalHasComments" => request.LegalReviewOutcome == ReviewOutcome.ApprovedWithComments,
                 "ComplianceHasComments" => request.ComplianceReviewOutcome == ReviewOutcome.ApprovedWithComments,
                 "TrackingIdRequired" => request.IsForesideReviewRequired || request.IsRetailUse,
+
+                // Field "has value" conditions (used as {{#if FieldName}})
+                "Purpose" => !string.IsNullOrEmpty(request.Purpose),
+                "RushRationale" => !string.IsNullOrEmpty(request.RushRationale),
+                "FINRAAudienceCategory" => !string.IsNullOrEmpty(request.FINRAAudienceCategory),
+                "Audience" => !string.IsNullOrEmpty(request.Audience),
+                "USFunds" => request.USFunds.Count > 0,
+                "UCITS" => request.UCITS.Count > 0,
+                "SeparateAccountStrategies" => !string.IsNullOrEmpty(request.SeparateAccountStrategies),
+                "DistributionMethod" => request.DistributionMethods.Count > 0,
+                "DistributionMethods" => request.DistributionMethods.Count > 0,
+                "DateOfFirstUse" => request.ProposedFirstUseDate.HasValue,
+                "ApprovalCount" => CountApprovals(request) > 0,
+                "AdditionalParties" => request.AdditionalParties.Count > 0,
+                "AttorneyAssignNotes" => !string.IsNullOrEmpty(request.AttorneyAssignNotes),
+                "LegalReviewNotes" => !string.IsNullOrEmpty(request.LegalReviewNotes),
+                "ComplianceReviewNotes" => !string.IsNullOrEmpty(request.ComplianceReviewNotes),
+                "HoldReason" => !string.IsNullOrEmpty(request.HoldReason),
+                "CancellationReason" => !string.IsNullOrEmpty(request.CancellationReason),
+
                 _ => false
             };
         }
 
         /// <summary>
+        /// Counts the number of non-null approvals on a request.
+        /// </summary>
+        private static int CountApprovals(RequestModel request)
+        {
+            return new[]
+            {
+                request.CommunicationsApproval,
+                request.PortfolioManagerApproval,
+                request.ResearchAnalystApproval,
+                request.SubjectMatterExpertApproval,
+                request.PerformanceApproval,
+                request.OtherApproval
+            }.Count(a => a != null);
+        }
+
+        /// <summary>
         /// Resolves recipient identifiers to email addresses.
+        /// Supports both simple identifiers (e.g., "Submitter") and template tokens (e.g., "{{SubmitterEmail}}").
         /// </summary>
         private List<string> ResolveRecipients(string recipientConfig, RequestModel request)
         {
@@ -577,8 +626,17 @@ namespace LegalWorkflow.Functions.Services
 
             foreach (var recipient in recipients.Select(r => r.Trim()))
             {
-                switch (recipient)
+                // Handle template token format: {{TokenName}}
+                var resolvedRecipient = recipient;
+                if (recipient.StartsWith("{{") && recipient.EndsWith("}}"))
                 {
+                    resolvedRecipient = recipient.Substring(2, recipient.Length - 4); // Remove {{ and }}
+                }
+
+                switch (resolvedRecipient)
+                {
+                    // Email-based tokens (resolve to email address)
+                    case "SubmitterEmail":
                     case "Submitter":
                         if (!string.IsNullOrEmpty(request.SubmittedBy?.Email))
                         {
@@ -586,6 +644,8 @@ namespace LegalWorkflow.Functions.Services
                         }
                         break;
 
+                    case "AttorneyEmail":
+                    case "AssignedAttorneyEmail":
                     case "Attorney":
                         if (!string.IsNullOrEmpty(request.Attorney?.Email))
                         {
@@ -593,14 +653,16 @@ namespace LegalWorkflow.Functions.Services
                         }
                         break;
 
+                    // Group-based tokens (resolve to group distribution list email)
+                    case "LegalAdminGroup":
                     case "LegalAdmin":
-                        // Group email resolved from configuration
                         if (!string.IsNullOrEmpty(_config.LegalAdminEmail))
                         {
                             emails.Add(_config.LegalAdminEmail);
                         }
                         break;
 
+                    case "AttorneyAssignerGroup":
                     case "AttorneyAssigner":
                         if (!string.IsNullOrEmpty(_config.AttorneyAssignerEmail))
                         {
@@ -608,6 +670,7 @@ namespace LegalWorkflow.Functions.Services
                         }
                         break;
 
+                    case "ComplianceGroup":
                     case "Compliance":
                         if (!string.IsNullOrEmpty(_config.ComplianceEmail))
                         {
@@ -615,6 +678,8 @@ namespace LegalWorkflow.Functions.Services
                         }
                         break;
 
+                    // Multi-value tokens
+                    case "AdditionalPartyEmails":
                     case "AdditionalParties":
                         emails.AddRange(request.AdditionalParties
                             .Where(u => !string.IsNullOrEmpty(u.Email))
@@ -622,7 +687,7 @@ namespace LegalWorkflow.Functions.Services
                         break;
 
                     default:
-                        // Assume it's a direct email address
+                        // Assume it's a direct email address if it contains @
                         if (recipient.Contains("@"))
                         {
                             emails.Add(recipient);
@@ -726,23 +791,23 @@ namespace LegalWorkflow.Functions.Services
         {
             return notificationId switch
             {
-                NotificationRequestSubmitted => NotificationTrigger.StatusChange,
-                NotificationRushRequestAlert => NotificationTrigger.StatusChange,
-                NotificationReadyForAttorneyAssignment => NotificationTrigger.StatusChange,
-                NotificationAttorneyAssigned => NotificationTrigger.AttorneyAssigned,
-                NotificationLegalReviewApproved => NotificationTrigger.ReviewComplete,
-                NotificationLegalChangesRequested => NotificationTrigger.ReviewChangesRequested,
-                NotificationLegalReviewNotApproved => NotificationTrigger.ReviewComplete,
-                NotificationComplianceReviewApproved => NotificationTrigger.ReviewComplete,
-                NotificationComplianceChangesRequested => NotificationTrigger.ReviewChangesRequested,
-                NotificationComplianceReviewNotApproved => NotificationTrigger.ReviewComplete,
-                NotificationLegalResubmission => NotificationTrigger.Resubmission,
-                NotificationComplianceResubmission => NotificationTrigger.Resubmission,
-                NotificationRequestOnHold => NotificationTrigger.HoldResume,
-                NotificationRequestResumed => NotificationTrigger.HoldResume,
-                NotificationRequestCancelled => NotificationTrigger.Cancellation,
-                NotificationReadyForCloseout => NotificationTrigger.StatusChange,
-                NotificationRequestCompleted => NotificationTrigger.StatusChange,
+                NotificationTemplateIds.RequestSubmitted => NotificationTrigger.StatusChange,
+                NotificationTemplateIds.RushRequestAlert => NotificationTrigger.StatusChange,
+                NotificationTemplateIds.ReadyForAttorneyAssignment => NotificationTrigger.StatusChange,
+                NotificationTemplateIds.AttorneyAssigned => NotificationTrigger.AttorneyAssigned,
+                NotificationTemplateIds.LegalReviewApproved => NotificationTrigger.ReviewComplete,
+                NotificationTemplateIds.LegalChangesRequested => NotificationTrigger.ReviewChangesRequested,
+                NotificationTemplateIds.LegalReviewNotApproved => NotificationTrigger.ReviewComplete,
+                NotificationTemplateIds.ComplianceReviewApproved => NotificationTrigger.ReviewComplete,
+                NotificationTemplateIds.ComplianceChangesRequested => NotificationTrigger.ReviewChangesRequested,
+                NotificationTemplateIds.ComplianceReviewNotApproved => NotificationTrigger.ReviewComplete,
+                NotificationTemplateIds.LegalResubmission => NotificationTrigger.Resubmission,
+                NotificationTemplateIds.ComplianceResubmission => NotificationTrigger.Resubmission,
+                NotificationTemplateIds.RequestOnHold => NotificationTrigger.HoldResume,
+                NotificationTemplateIds.RequestResumed => NotificationTrigger.HoldResume,
+                NotificationTemplateIds.RequestCancelled => NotificationTrigger.Cancellation,
+                NotificationTemplateIds.ReadyForCloseout => NotificationTrigger.StatusChange,
+                NotificationTemplateIds.RequestCompleted => NotificationTrigger.StatusChange,
                 _ => NotificationTrigger.StatusChange
             };
         }
@@ -754,23 +819,23 @@ namespace LegalWorkflow.Functions.Services
 
             return notificationId switch
             {
-                NotificationRequestSubmitted => $"Status changed from {previousStatus} to {currentStatus}",
-                NotificationRushRequestAlert => $"Rush request submitted (Status: {previousStatus} → {currentStatus})",
-                NotificationReadyForAttorneyAssignment => $"Status changed to Assign Attorney",
-                NotificationAttorneyAssigned => $"Attorney assigned, moving to In Review",
-                NotificationLegalReviewApproved => "Legal review completed with approval",
-                NotificationLegalChangesRequested => "Legal reviewer requested changes",
-                NotificationLegalReviewNotApproved => "Legal review not approved",
-                NotificationComplianceReviewApproved => "Compliance review completed with approval",
-                NotificationComplianceChangesRequested => "Compliance reviewer requested changes",
-                NotificationComplianceReviewNotApproved => "Compliance review not approved",
-                NotificationLegalResubmission => "Submitter resubmitted for legal review",
-                NotificationComplianceResubmission => "Submitter resubmitted for compliance review",
-                NotificationRequestOnHold => "Request placed on hold",
-                NotificationRequestResumed => "Request resumed from hold",
-                NotificationRequestCancelled => "Request cancelled",
-                NotificationReadyForCloseout => "All reviews complete, ready for closeout",
-                NotificationRequestCompleted => "Request workflow completed",
+                NotificationTemplateIds.RequestSubmitted => $"Status changed from {previousStatus} to {currentStatus}",
+                NotificationTemplateIds.RushRequestAlert => $"Rush request submitted (Status: {previousStatus} → {currentStatus})",
+                NotificationTemplateIds.ReadyForAttorneyAssignment => $"Status changed to Assign Attorney",
+                NotificationTemplateIds.AttorneyAssigned => $"Attorney assigned, moving to In Review",
+                NotificationTemplateIds.LegalReviewApproved => "Legal review completed with approval",
+                NotificationTemplateIds.LegalChangesRequested => "Legal reviewer requested changes",
+                NotificationTemplateIds.LegalReviewNotApproved => "Legal review not approved",
+                NotificationTemplateIds.ComplianceReviewApproved => "Compliance review completed with approval",
+                NotificationTemplateIds.ComplianceChangesRequested => "Compliance reviewer requested changes",
+                NotificationTemplateIds.ComplianceReviewNotApproved => "Compliance review not approved",
+                NotificationTemplateIds.LegalResubmission => "Submitter resubmitted for legal review",
+                NotificationTemplateIds.ComplianceResubmission => "Submitter resubmitted for compliance review",
+                NotificationTemplateIds.RequestOnHold => "Request placed on hold",
+                NotificationTemplateIds.RequestResumed => "Request resumed from hold",
+                NotificationTemplateIds.RequestCancelled => "Request cancelled",
+                NotificationTemplateIds.ReadyForCloseout => "All reviews complete, ready for closeout",
+                NotificationTemplateIds.RequestCompleted => "Request workflow completed",
                 _ => $"Status changed from {previousStatus} to {currentStatus}"
             };
         }

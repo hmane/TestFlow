@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using PnP.Core.Model.SharePoint;
 using PnP.Core.Model.Security;
 using PnP.Core.Services;
+using LegalWorkflow.Functions.Constants;
 using LegalWorkflow.Functions.Helpers;
 using LegalWorkflow.Functions.Models;
 
@@ -45,10 +46,6 @@ namespace LegalWorkflow.Functions.Services
         private readonly IPnPContextFactory _contextFactory;
         private readonly Logger _logger;
         private readonly PermissionGroupConfig _groupConfig;
-
-        // SharePoint list/library names
-        private const string RequestsListTitle = "Requests";
-        private const string DocumentsLibraryTitle = "RequestDocuments";
 
         /// <summary>
         /// Creates a new PermissionService instance.
@@ -136,7 +133,7 @@ namespace LegalWorkflow.Functions.Services
                 using var context = await _contextFactory.CreateAsync("Default");
 
                 // Get Read role definition
-                var readRole = await context.Web.RoleDefinitions.FirstOrDefaultAsync(r => r.Name == "Read");
+                var readRole = await context.Web.RoleDefinitions.FirstOrDefaultAsync(r => r.Name == RoleDefinitions.Read);
                 if (readRole == null)
                 {
                     throw new InvalidOperationException("Read role definition not found");
@@ -150,7 +147,7 @@ namespace LegalWorkflow.Functions.Services
                 }
 
                 // 1. Add permission on request item
-                var requestsList = await context.Web.Lists.GetByTitleAsync(RequestsListTitle);
+                var requestsList = await context.Web.Lists.GetByTitleAsync(SharePointLists.Requests);
                 var requestItem = await requestsList.Items.GetByIdAsync(request.RequestId);
 
                 await requestItem.AddRoleAssignmentsAsync(user.Id, readRole.Name);
@@ -228,7 +225,7 @@ namespace LegalWorkflow.Functions.Services
                 }
 
                 // 1. Remove permission from request item
-                var requestsList = await context.Web.Lists.GetByTitleAsync(RequestsListTitle);
+                var requestsList = await context.Web.Lists.GetByTitleAsync(SharePointLists.Requests);
                 var requestItem = await requestsList.Items.GetByIdAsync(request.RequestId);
 
                 await requestItem.RemoveRoleAssignmentsAsync(user.Id);
@@ -297,8 +294,8 @@ namespace LegalWorkflow.Functions.Services
                 using var context = await _contextFactory.CreateAsync("Default");
 
                 // Get role definitions
-                var readRole = await context.Web.RoleDefinitions.FirstOrDefaultAsync(r => r.Name == "Read");
-                var fullControlRole = await context.Web.RoleDefinitions.FirstOrDefaultAsync(r => r.Name == "Full Control");
+                var readRole = await context.Web.RoleDefinitions.FirstOrDefaultAsync(r => r.Name == RoleDefinitions.Read);
+                var fullControlRole = await context.Web.RoleDefinitions.FirstOrDefaultAsync(r => r.Name == RoleDefinitions.FullControl);
 
                 if (readRole == null || fullControlRole == null)
                 {
@@ -359,7 +356,7 @@ namespace LegalWorkflow.Functions.Services
         {
             _logger.Info($"Initializing item permissions for request {requestId}");
 
-            var requestsList = await context.Web.Lists.GetByTitleAsync(RequestsListTitle);
+            var requestsList = await context.Web.Lists.GetByTitleAsync(SharePointLists.Requests);
             var requestItem = await requestsList.Items.GetByIdAsync(requestId);
 
             // Break inheritance (copy existing = false to start fresh)
@@ -375,10 +372,10 @@ namespace LegalWorkflow.Functions.Services
             _logger.LogPermissionChange("BreakInheritance", $"Requests item {requestId}", "System");
 
             // Get role definitions we need
-            var fullControlRole = roleDefinitions.FirstOrDefault(r => r.Name == "Full Control");
-            var contributeNoDeleteRole = roleDefinitions.FirstOrDefault(r => r.Name == "Contribute Without Delete")
-                ?? roleDefinitions.FirstOrDefault(r => r.Name == "Contribute"); // Fallback
-            var readRole = roleDefinitions.FirstOrDefault(r => r.Name == "Read");
+            var fullControlRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.FullControl);
+            var contributeNoDeleteRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.ContributeWithoutDelete)
+                ?? roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.Contribute); // Fallback
+            var readRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.Read);
 
             // Add Admin group with Full Control
             await AddGroupPermissionAsync(context, requestItem, _groupConfig.AdminGroup, fullControlRole, response, $"Requests item {requestId}");
@@ -432,9 +429,9 @@ namespace LegalWorkflow.Functions.Services
             _logger.LogPermissionChange("BreakInheritance", $"RequestDocuments/{requestTitle}", "System");
 
             // Get role definitions
-            var fullControlRole = roleDefinitions.FirstOrDefault(r => r.Name == "Full Control");
-            var contributeRole = roleDefinitions.FirstOrDefault(r => r.Name == "Contribute");
-            var readRole = roleDefinitions.FirstOrDefault(r => r.Name == "Read");
+            var fullControlRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.FullControl);
+            var contributeRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.Contribute);
+            var readRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.Read);
 
             // Add Admin group with Full Control
             await AddGroupPermissionToFolderAsync(context, docsFolder, _groupConfig.AdminGroup, fullControlRole, response, $"RequestDocuments/{requestTitle}");
@@ -554,7 +551,7 @@ namespace LegalWorkflow.Functions.Services
         {
             try
             {
-                var docsLibrary = await context.Web.Lists.GetByTitleAsync(DocumentsLibraryTitle);
+                var docsLibrary = await context.Web.Lists.GetByTitleAsync(SharePointLists.RequestDocuments);
                 var folderPath = $"{docsLibrary.RootFolder.ServerRelativeUrl}/{requestTitle}";
                 var folder = await context.Web.GetFolderByServerRelativeUrlAsync(folderPath);
                 return folder;
@@ -573,7 +570,7 @@ namespace LegalWorkflow.Functions.Services
         {
             try
             {
-                var docsLibrary = await context.Web.Lists.GetByTitleAsync(DocumentsLibraryTitle);
+                var docsLibrary = await context.Web.Lists.GetByTitleAsync(SharePointLists.RequestDocuments);
                 var folderPath = $"{docsLibrary.RootFolder.ServerRelativeUrl}/{requestTitle}";
 
                 try
@@ -610,7 +607,7 @@ namespace LegalWorkflow.Functions.Services
         {
             _logger.Info($"Updating item {requestId} to read-only");
 
-            var requestsList = await context.Web.Lists.GetByTitleAsync(RequestsListTitle);
+            var requestsList = await context.Web.Lists.GetByTitleAsync(SharePointLists.Requests);
             var requestItem = await requestsList.Items.GetByIdAsync(requestId);
 
             // Load current role assignments
@@ -688,14 +685,15 @@ namespace LegalWorkflow.Functions.Services
         /// </summary>
         private PermissionLevel MapRoleToPermissionLevel(string roleName)
         {
-            return roleName switch
-            {
-                "Full Control" => PermissionLevel.FullControl,
-                "Contribute" => PermissionLevel.Contribute,
-                "Contribute Without Delete" => PermissionLevel.ContributeWithoutDelete,
-                "Read" => PermissionLevel.Read,
-                _ => PermissionLevel.Read
-            };
+            if (roleName == RoleDefinitions.FullControl)
+                return PermissionLevel.FullControl;
+            if (roleName == RoleDefinitions.Contribute)
+                return PermissionLevel.Contribute;
+            if (roleName == RoleDefinitions.ContributeWithoutDelete)
+                return PermissionLevel.ContributeWithoutDelete;
+            if (roleName == RoleDefinitions.Read)
+                return PermissionLevel.Read;
+            return PermissionLevel.Read;
         }
 
         #endregion

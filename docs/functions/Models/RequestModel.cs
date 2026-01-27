@@ -42,6 +42,9 @@ namespace LegalWorkflow.Functions.Models
         /// <summary>New submission or Material Updates</summary>
         public SubmissionType SubmissionType { get; set; }
 
+        /// <summary>Submission item type from SubmissionItems list (e.g., "Marketing Material", "Fact Sheet")</summary>
+        public string SubmissionItem { get; set; } = string.Empty;
+
         /// <summary>Purpose/description of the communication</summary>
         public string Purpose { get; set; } = string.Empty;
 

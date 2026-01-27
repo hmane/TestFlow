@@ -9,6 +9,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using PnP.Core.Model.SharePoint;
 using PnP.Core.Services;
+using LegalWorkflow.Functions.Constants;
+using LegalWorkflow.Functions.Constants.SharePointFields;
 using LegalWorkflow.Functions.Helpers;
 using LegalWorkflow.Functions.Models;
 
@@ -22,10 +24,6 @@ namespace LegalWorkflow.Functions.Services
     {
         private readonly IPnPContextFactory _contextFactory;
         private readonly Logger _logger;
-
-        // SharePoint list titles
-        private const string RequestsListTitle = "Requests";
-        private const string NotificationsListTitle = "Notifications";
 
         /// <summary>
         /// Creates a new RequestService instance.
@@ -53,7 +51,7 @@ namespace LegalWorkflow.Functions.Services
                 using var context = await _contextFactory.CreateAsync("Default");
 
                 // Get the Requests list
-                var list = await context.Web.Lists.GetByTitleAsync(RequestsListTitle);
+                var list = await context.Web.Lists.GetByTitleAsync(SharePointLists.Requests);
 
                 // Load the item with all required fields
                 var item = await list.Items.GetByIdAsync(requestId,
@@ -99,7 +97,7 @@ namespace LegalWorkflow.Functions.Services
             {
                 using var context = await _contextFactory.CreateAsync("Default");
 
-                var list = await context.Web.Lists.GetByTitleAsync(RequestsListTitle);
+                var list = await context.Web.Lists.GetByTitleAsync(SharePointLists.Requests);
                 var item = await list.Items.GetByIdAsync(requestId);
 
                 // Load version history
@@ -157,7 +155,7 @@ namespace LegalWorkflow.Functions.Services
             {
                 using var context = await _contextFactory.CreateAsync("Default");
 
-                var list = await context.Web.Lists.GetByTitleAsync(NotificationsListTitle);
+                var list = await context.Web.Lists.GetByTitleAsync(SharePointLists.Notifications);
 
                 // Query for the notification by Title
                 var items = await list.Items.Where(i => i.Title == notificationId).ToListAsync();
@@ -173,14 +171,14 @@ namespace LegalWorkflow.Functions.Services
                 var template = new NotificationTemplate
                 {
                     Id = notificationId,
-                    Subject = GetFieldValue<string>(item, "Subject") ?? string.Empty,
-                    Body = GetFieldValue<string>(item, "Body") ?? string.Empty,
-                    Recipients = GetFieldValue<string>(item, "Recipients") ?? string.Empty,
-                    CcRecipients = GetFieldValue<string>(item, "CcRecipients") ?? string.Empty,
-                    Importance = ParseEnum<EmailImportance>(GetFieldValue<string>(item, "Importance"), EmailImportance.Normal),
-                    Category = ParseEnum<NotificationCategory>(GetFieldValue<string>(item, "Category"), NotificationCategory.System),
-                    TriggerEvent = GetFieldValue<string>(item, "TriggerEvent") ?? string.Empty,
-                    IsActive = GetFieldValue<bool>(item, "IsActive")
+                    Subject = GetFieldValue<string>(item, NotificationsFields.Subject) ?? string.Empty,
+                    Body = GetFieldValue<string>(item, NotificationsFields.Body) ?? string.Empty,
+                    Recipients = GetFieldValue<string>(item, NotificationsFields.Recipients) ?? string.Empty,
+                    CcRecipients = GetFieldValue<string>(item, NotificationsFields.CcRecipients) ?? string.Empty,
+                    Importance = ParseEnum<EmailImportance>(GetFieldValue<string>(item, NotificationsFields.Importance), EmailImportance.Normal),
+                    Category = ParseEnum<NotificationCategory>(GetFieldValue<string>(item, NotificationsFields.Category), NotificationCategory.System),
+                    TriggerEvent = GetFieldValue<string>(item, NotificationsFields.TriggerEvent) ?? string.Empty,
+                    IsActive = GetFieldValue<bool>(item, NotificationsFields.IsActive)
                 };
 
                 _logger.Info($"Notification template loaded: {notificationId}", new { IsActive = template.IsActive });
@@ -206,80 +204,81 @@ namespace LegalWorkflow.Functions.Services
             {
                 // System fields
                 Id = item.Id,
-                Title = GetFieldValue<string>(item, "Title") ?? string.Empty,
-                Version = item.Values.ContainsKey("_UIVersionString")
-                    ? item.Values["_UIVersionString"]?.ToString() ?? "1.0"
+                Title = GetFieldValue<string>(item, RequestsFields.Title) ?? string.Empty,
+                Version = item.Values.ContainsKey(RequestsFields.UIVersionString)
+                    ? item.Values[RequestsFields.UIVersionString]?.ToString() ?? "1.0"
                     : "1.0",
-                Created = GetFieldValue<DateTime>(item, "Created"),
-                Modified = GetFieldValue<DateTime>(item, "Modified"),
+                Created = GetFieldValue<DateTime>(item, RequestsFields.Created),
+                Modified = GetFieldValue<DateTime>(item, RequestsFields.Modified),
 
                 // Request Information
-                RequestType = ParseEnum<RequestType>(GetFieldValue<string>(item, "RequestType"), RequestType.Communication),
-                SubmissionType = ParseEnum<SubmissionType>(GetFieldValue<string>(item, "SubmissionType"), SubmissionType.New),
-                Purpose = GetFieldValue<string>(item, "Purpose") ?? string.Empty,
-                TargetReturnDate = GetFieldValueNullable<DateTime>(item, "TargetReturnDate"),
-                RequestedDate = GetFieldValueNullable<DateTime>(item, "RequestedDate"),
-                IsRushRequest = GetFieldValue<bool>(item, "IsRushRequest"),
-                RushRationale = GetFieldValue<string>(item, "RushRationale") ?? string.Empty,
-                ReviewAudience = ParseEnum<ReviewAudience>(GetFieldValue<string>(item, "ReviewAudience"), ReviewAudience.Both),
+                RequestType = ParseEnum<RequestType>(GetFieldValue<string>(item, RequestsFields.RequestType), RequestType.Communication),
+                SubmissionType = ParseEnum<SubmissionType>(GetFieldValue<string>(item, RequestsFields.SubmissionType), SubmissionType.New),
+                SubmissionItem = GetFieldValue<string>(item, RequestsFields.SubmissionItem) ?? string.Empty,
+                Purpose = GetFieldValue<string>(item, RequestsFields.Purpose) ?? string.Empty,
+                TargetReturnDate = GetFieldValueNullable<DateTime>(item, RequestsFields.TargetReturnDate),
+                RequestedDate = GetFieldValueNullable<DateTime>(item, RequestsFields.SubmittedOn), // RequestedDate maps to SubmittedOn
+                IsRushRequest = GetFieldValue<bool>(item, RequestsFields.IsRushRequest),
+                RushRationale = GetFieldValue<string>(item, RequestsFields.RushRationale) ?? string.Empty,
+                ReviewAudience = ParseEnum<ReviewAudience>(GetFieldValue<string>(item, RequestsFields.ReviewAudience), ReviewAudience.Both),
 
                 // FINRA & Audience
-                FINRAAudienceCategory = GetFieldValue<string>(item, "FINRAAudienceCategory") ?? string.Empty,
-                Audience = GetFieldValue<string>(item, "Audience") ?? string.Empty,
-                USFunds = ParseMultiChoice(GetFieldValue<object>(item, "USFunds")),
-                UCITS = ParseMultiChoice(GetFieldValue<object>(item, "UCITS")),
-                SeparateAccountStrategies = GetFieldValue<string>(item, "SeparateAccountStrategies") ?? string.Empty,
-                SeparateAccountStrategiesIncludes = GetFieldValue<string>(item, "SeparateAccountStrategiesIncludes") ?? string.Empty,
+                FINRAAudienceCategory = GetFieldValue<string>(item, RequestsFields.FINRAAudienceCategory) ?? string.Empty,
+                Audience = GetFieldValue<string>(item, RequestsFields.Audience) ?? string.Empty,
+                USFunds = ParseMultiChoice(GetFieldValue<object>(item, RequestsFields.USFunds)),
+                UCITS = ParseMultiChoice(GetFieldValue<object>(item, RequestsFields.UCITS)),
+                SeparateAccountStrategies = GetFieldValue<string>(item, RequestsFields.SeparateAcctStrategies) ?? string.Empty,
+                SeparateAccountStrategiesIncludes = GetFieldValue<string>(item, RequestsFields.SeparateAcctStrategiesIncl) ?? string.Empty,
 
                 // Distribution
-                DistributionMethods = ParseDistributionMethods(GetFieldValue<object>(item, "DistributionMethods")),
-                ProposedFirstUseDate = GetFieldValueNullable<DateTime>(item, "ProposedFirstUseDate"),
-                ProposedDiscontinueDate = GetFieldValueNullable<DateTime>(item, "ProposedDiscontinueDate"),
+                DistributionMethods = ParseDistributionMethods(GetFieldValue<object>(item, RequestsFields.DistributionMethod)),
+                ProposedFirstUseDate = GetFieldValueNullable<DateTime>(item, RequestsFields.DateOfFirstUse),
+                ProposedDiscontinueDate = null, // Field not in current schema
 
                 // Legal Intake
-                Attorney = ParseUserField(item, "Attorney"),
-                AttorneyAssignNotes = GetFieldValue<string>(item, "AttorneyAssignNotes") ?? string.Empty,
+                Attorney = ParseUserField(item, RequestsFields.Attorney),
+                AttorneyAssignNotes = GetFieldValue<string>(item, RequestsFields.AttorneyAssignNotes) ?? string.Empty,
 
                 // Legal Review
-                LegalReviewStatus = ParseEnum<ReviewStatus>(GetFieldValue<string>(item, "LegalReviewStatus"), ReviewStatus.NotStarted),
-                LegalReviewOutcome = ParseEnum<ReviewOutcome>(GetFieldValue<string>(item, "LegalReviewOutcome"), ReviewOutcome.None),
-                LegalReviewNotes = GetFieldValue<string>(item, "LegalReviewNotes") ?? string.Empty,
-                LegalStatusUpdatedOn = GetFieldValueNullable<DateTime>(item, "LegalStatusUpdatedOn"),
-                LegalReviewTime = GetFieldValueNullable<double>(item, "LegalReviewTime"),
+                LegalReviewStatus = ParseEnum<ReviewStatus>(GetFieldValue<string>(item, RequestsFields.LegalReviewStatus), ReviewStatus.NotStarted),
+                LegalReviewOutcome = ParseEnum<ReviewOutcome>(GetFieldValue<string>(item, RequestsFields.LegalReviewOutcome), ReviewOutcome.None),
+                LegalReviewNotes = GetFieldValue<string>(item, RequestsFields.LegalReviewNotes) ?? string.Empty,
+                LegalStatusUpdatedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.LegalStatusUpdatedOn),
+                LegalReviewTime = GetFieldValueNullable<double>(item, RequestsFields.LegalReviewAttorneyHours),
 
                 // Compliance Review
-                ComplianceReviewStatus = ParseEnum<ReviewStatus>(GetFieldValue<string>(item, "ComplianceReviewStatus"), ReviewStatus.NotStarted),
-                ComplianceReviewOutcome = ParseEnum<ReviewOutcome>(GetFieldValue<string>(item, "ComplianceReviewOutcome"), ReviewOutcome.None),
-                ComplianceReviewNotes = GetFieldValue<string>(item, "ComplianceReviewNotes") ?? string.Empty,
-                ComplianceStatusUpdatedOn = GetFieldValueNullable<DateTime>(item, "ComplianceStatusUpdatedOn"),
-                ComplianceReviewTime = GetFieldValueNullable<double>(item, "ComplianceReviewTime"),
-                IsForesideReviewRequired = GetFieldValue<bool>(item, "IsForesideReviewRequired"),
-                IsRetailUse = GetFieldValue<bool>(item, "IsRetailUse"),
+                ComplianceReviewStatus = ParseEnum<ReviewStatus>(GetFieldValue<string>(item, RequestsFields.ComplianceReviewStatus), ReviewStatus.NotStarted),
+                ComplianceReviewOutcome = ParseEnum<ReviewOutcome>(GetFieldValue<string>(item, RequestsFields.ComplianceReviewOutcome), ReviewOutcome.None),
+                ComplianceReviewNotes = GetFieldValue<string>(item, RequestsFields.ComplianceReviewNotes) ?? string.Empty,
+                ComplianceStatusUpdatedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.ComplianceStatusUpdatedOn),
+                ComplianceReviewTime = GetFieldValueNullable<double>(item, RequestsFields.ComplianceReviewReviewerHours),
+                IsForesideReviewRequired = GetFieldValue<bool>(item, RequestsFields.IsForesideReviewRequired),
+                IsRetailUse = GetFieldValue<bool>(item, RequestsFields.IsRetailUse),
 
                 // Closeout
-                TrackingId = GetFieldValue<string>(item, "TrackingId") ?? string.Empty,
+                TrackingId = GetFieldValue<string>(item, RequestsFields.TrackingId) ?? string.Empty,
 
                 // System Tracking
-                Status = ParseEnum<RequestStatus>(GetFieldValue<string>(item, "Status"), RequestStatus.Draft),
-                SubmittedBy = ParseUserField(item, "SubmittedBy"),
-                SubmittedOn = GetFieldValueNullable<DateTime>(item, "SubmittedOn"),
-                IsOnHold = GetFieldValue<bool>(item, "IsOnHold"),
-                HoldReason = GetFieldValue<string>(item, "HoldReason") ?? string.Empty,
-                HoldDate = GetFieldValueNullable<DateTime>(item, "HoldDate"),
-                CompletedOn = GetFieldValueNullable<DateTime>(item, "CompletedOn"),
-                CancelledOn = GetFieldValueNullable<DateTime>(item, "CancelledOn"),
-                CancellationReason = GetFieldValue<string>(item, "CancellationReason") ?? string.Empty,
+                Status = ParseEnum<RequestStatus>(GetFieldValue<string>(item, RequestsFields.Status), RequestStatus.Draft),
+                SubmittedBy = ParseUserField(item, RequestsFields.SubmittedBy),
+                SubmittedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.SubmittedOn),
+                IsOnHold = GetFieldValue<bool>(item, RequestsFields.IsOnHold),
+                HoldReason = GetFieldValue<string>(item, RequestsFields.OnHoldReason) ?? string.Empty,
+                HoldDate = GetFieldValueNullable<DateTime>(item, RequestsFields.OnHoldSince),
+                CompletedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.CloseoutOn),
+                CancelledOn = GetFieldValueNullable<DateTime>(item, RequestsFields.CancelledOn),
+                CancellationReason = GetFieldValue<string>(item, RequestsFields.CancelReason) ?? string.Empty,
 
                 // Additional Parties
-                AdditionalParties = ParseMultiUserField(item, "AdditionalParties"),
+                AdditionalParties = ParseMultiUserField(item, RequestsFields.AdditionalParty),
 
                 // Approvals
-                CommunicationsApproval = ParseApproval(item, "Communications"),
-                PortfolioManagerApproval = ParseApproval(item, "PortfolioManager"),
-                ResearchAnalystApproval = ParseApproval(item, "ResearchAnalyst"),
-                SubjectMatterExpertApproval = ParseApproval(item, "SubjectMatterExpert"),
-                PerformanceApproval = ParseApproval(item, "Performance"),
-                OtherApproval = ParseApproval(item, "Other")
+                CommunicationsApproval = ParseApprovalCommunications(item),
+                PortfolioManagerApproval = ParseApprovalPortfolioManager(item),
+                ResearchAnalystApproval = ParseApprovalResearchAnalyst(item),
+                SubjectMatterExpertApproval = ParseApprovalSME(item),
+                PerformanceApproval = ParseApprovalPerformance(item),
+                OtherApproval = ParseApprovalOther(item)
             };
         }
 
@@ -292,13 +291,13 @@ namespace LegalWorkflow.Functions.Services
             {
                 Id = requestId,
                 Version = version.VersionLabel ?? "0.0",
-                Status = ParseEnum<RequestStatus>(GetVersionFieldValue<string>(version, "Status"), RequestStatus.Draft),
-                IsOnHold = GetVersionFieldValue<bool>(version, "IsOnHold"),
-                LegalReviewStatus = ParseEnum<ReviewStatus>(GetVersionFieldValue<string>(version, "LegalReviewStatus"), ReviewStatus.NotStarted),
-                LegalReviewOutcome = ParseEnum<ReviewOutcome>(GetVersionFieldValue<string>(version, "LegalReviewOutcome"), ReviewOutcome.None),
-                ComplianceReviewStatus = ParseEnum<ReviewStatus>(GetVersionFieldValue<string>(version, "ComplianceReviewStatus"), ReviewStatus.NotStarted),
-                ComplianceReviewOutcome = ParseEnum<ReviewOutcome>(GetVersionFieldValue<string>(version, "ComplianceReviewOutcome"), ReviewOutcome.None),
-                Attorney = ParseVersionUserField(version, "Attorney")
+                Status = ParseEnum<RequestStatus>(GetVersionFieldValue<string>(version, RequestsFields.Status), RequestStatus.Draft),
+                IsOnHold = GetVersionFieldValue<bool>(version, RequestsFields.IsOnHold),
+                LegalReviewStatus = ParseEnum<ReviewStatus>(GetVersionFieldValue<string>(version, RequestsFields.LegalReviewStatus), ReviewStatus.NotStarted),
+                LegalReviewOutcome = ParseEnum<ReviewOutcome>(GetVersionFieldValue<string>(version, RequestsFields.LegalReviewOutcome), ReviewOutcome.None),
+                ComplianceReviewStatus = ParseEnum<ReviewStatus>(GetVersionFieldValue<string>(version, RequestsFields.ComplianceReviewStatus), ReviewStatus.NotStarted),
+                ComplianceReviewOutcome = ParseEnum<ReviewOutcome>(GetVersionFieldValue<string>(version, RequestsFields.ComplianceReviewOutcome), ReviewOutcome.None),
+                Attorney = ParseVersionUserField(version, RequestsFields.Attorney)
             };
         }
 
@@ -533,14 +532,13 @@ namespace LegalWorkflow.Functions.Services
         }
 
         /// <summary>
-        /// Parses approval information for a specific approval type.
+        /// Parses Communications approval information.
         /// </summary>
-        private ApprovalInfo? ParseApproval(IListItem item, string approvalPrefix)
+        private ApprovalInfo? ParseApprovalCommunications(IListItem item)
         {
-            var approvedBy = ParseUserField(item, $"{approvalPrefix}ApprovedBy");
-            var approvedOn = GetFieldValueNullable<DateTime>(item, $"{approvalPrefix}ApprovedOn");
+            var approvedBy = ParseUserField(item, RequestsFields.CommunicationsApprover);
+            var approvedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.CommunicationsApprovalDate);
 
-            // If no approval data exists, return null
             if (approvedBy == null && !approvedOn.HasValue)
             {
                 return null;
@@ -548,10 +546,120 @@ namespace LegalWorkflow.Functions.Services
 
             return new ApprovalInfo
             {
-                Type = ParseEnum<ApprovalType>(approvalPrefix, ApprovalType.Other),
+                Type = ApprovalType.Communications,
                 ApprovedBy = approvedBy,
                 ApprovedOn = approvedOn,
-                HasDocument = GetFieldValue<bool>(item, $"{approvalPrefix}HasDocument")
+                HasDocument = GetFieldValue<bool>(item, RequestsFields.RequiresCommunicationsApproval)
+            };
+        }
+
+        /// <summary>
+        /// Parses Portfolio Manager approval information.
+        /// </summary>
+        private ApprovalInfo? ParseApprovalPortfolioManager(IListItem item)
+        {
+            var approvedBy = ParseUserField(item, RequestsFields.PortfolioManager);
+            var approvedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.PortfolioManagerApprovalDate);
+
+            if (approvedBy == null && !approvedOn.HasValue)
+            {
+                return null;
+            }
+
+            return new ApprovalInfo
+            {
+                Type = ApprovalType.PortfolioManager,
+                ApprovedBy = approvedBy,
+                ApprovedOn = approvedOn,
+                HasDocument = GetFieldValue<bool>(item, RequestsFields.HasPortfolioManagerApproval)
+            };
+        }
+
+        /// <summary>
+        /// Parses Research Analyst approval information.
+        /// </summary>
+        private ApprovalInfo? ParseApprovalResearchAnalyst(IListItem item)
+        {
+            var approvedBy = ParseUserField(item, RequestsFields.ResearchAnalyst);
+            var approvedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.ResearchAnalystApprovalDate);
+
+            if (approvedBy == null && !approvedOn.HasValue)
+            {
+                return null;
+            }
+
+            return new ApprovalInfo
+            {
+                Type = ApprovalType.ResearchAnalyst,
+                ApprovedBy = approvedBy,
+                ApprovedOn = approvedOn,
+                HasDocument = GetFieldValue<bool>(item, RequestsFields.HasResearchAnalystApproval)
+            };
+        }
+
+        /// <summary>
+        /// Parses Subject Matter Expert approval information.
+        /// </summary>
+        private ApprovalInfo? ParseApprovalSME(IListItem item)
+        {
+            var approvedBy = ParseUserField(item, RequestsFields.SubjectMatterExpert);
+            var approvedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.SMEApprovalDate);
+
+            if (approvedBy == null && !approvedOn.HasValue)
+            {
+                return null;
+            }
+
+            return new ApprovalInfo
+            {
+                Type = ApprovalType.SubjectMatterExpert,
+                ApprovedBy = approvedBy,
+                ApprovedOn = approvedOn,
+                HasDocument = GetFieldValue<bool>(item, RequestsFields.HasSMEApproval)
+            };
+        }
+
+        /// <summary>
+        /// Parses Performance approval information.
+        /// </summary>
+        private ApprovalInfo? ParseApprovalPerformance(IListItem item)
+        {
+            var approvedBy = ParseUserField(item, RequestsFields.PerformanceApprover);
+            var approvedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.PerformanceApprovalDate);
+
+            if (approvedBy == null && !approvedOn.HasValue)
+            {
+                return null;
+            }
+
+            return new ApprovalInfo
+            {
+                Type = ApprovalType.Performance,
+                ApprovedBy = approvedBy,
+                ApprovedOn = approvedOn,
+                HasDocument = GetFieldValue<bool>(item, RequestsFields.HasPerformanceApproval)
+            };
+        }
+
+        /// <summary>
+        /// Parses Other approval information.
+        /// </summary>
+        private ApprovalInfo? ParseApprovalOther(IListItem item)
+        {
+            var approvedBy = ParseUserField(item, RequestsFields.OtherApproval);
+            var approvedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.OtherApprovalDate);
+
+            if (approvedBy == null && !approvedOn.HasValue)
+            {
+                return null;
+            }
+
+            return new ApprovalInfo
+            {
+                Type = ApprovalType.Other,
+                ApprovedBy = approvedBy,
+                ApprovedOn = approvedOn,
+                HasDocument = GetFieldValue<bool>(item, RequestsFields.HasOtherApproval)
             };
         }
 

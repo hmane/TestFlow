@@ -6,6 +6,10 @@ export const Lists = {
     Title: 'Configuration',
     Url: '/Lists/Configuration',
   },
+  Notifications: {
+    Title: 'Notifications',
+    Url: '/Lists/Notifications',
+  },
   RequestDocuments: {
     Title: 'RequestDocuments',
     Url: '/RequestDocuments',  // Document library, not in /Lists/

@@ -20,8 +20,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Caching.Memory;
 using PnP.Core.Model.SharePoint;
 using PnP.Core.Services;
+using LegalWorkflow.Functions.Constants;
+using LegalWorkflow.Functions.Constants.SharePointFields;
 using LegalWorkflow.Functions.Helpers;
 using LegalWorkflow.Functions.Models;
 
@@ -36,9 +39,14 @@ namespace LegalWorkflow.Functions.Services
         private readonly IPnPContextFactory _contextFactory;
         private readonly Logger _logger;
         private readonly PermissionGroupConfig _groupConfig;
+        private readonly IMemoryCache _membershipCache;
 
-        // Cache for group membership checks (per user, per request)
-        private readonly Dictionary<string, UserGroupMembership> _membershipCache = new();
+        /// <summary>
+        /// Cache expiration time for group membership (5 minutes).
+        /// This allows for reasonable performance while ensuring group membership
+        /// changes are reflected within a reasonable time frame.
+        /// </summary>
+        private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(5);
 
         /// <summary>
         /// Creates a new SharePointAuthorizationService instance.
@@ -46,14 +54,17 @@ namespace LegalWorkflow.Functions.Services
         /// <param name="contextFactory">PnP Core context factory for SharePoint access</param>
         /// <param name="logger">Logger instance for logging operations</param>
         /// <param name="groupConfig">SharePoint group name configuration</param>
+        /// <param name="memoryCache">Memory cache for caching group membership (optional, creates internal cache if not provided)</param>
         public SharePointAuthorizationService(
             IPnPContextFactory contextFactory,
             Logger logger,
-            PermissionGroupConfig groupConfig)
+            PermissionGroupConfig groupConfig,
+            IMemoryCache? memoryCache = null)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _groupConfig = groupConfig ?? throw new ArgumentNullException(nameof(groupConfig));
+            _membershipCache = memoryCache ?? new MemoryCache(new MemoryCacheOptions());
         }
 
         /// <summary>
@@ -118,10 +129,10 @@ namespace LegalWorkflow.Functions.Services
         /// </summary>
         private async Task<UserGroupMembership?> GetUserGroupMembershipAsync(UserAuthInfo userInfo)
         {
-            var cacheKey = userInfo.Email.ToLowerInvariant();
+            var cacheKey = $"membership:{userInfo.Email.ToLowerInvariant()}";
 
             // Check cache first
-            if (_membershipCache.TryGetValue(cacheKey, out var cachedMembership))
+            if (_membershipCache.TryGetValue(cacheKey, out UserGroupMembership? cachedMembership) && cachedMembership != null)
             {
                 _logger.Info($"Using cached group membership for {userInfo.Email}");
                 return cachedMembership;
@@ -172,8 +183,11 @@ namespace LegalWorkflow.Functions.Services
                     }
                 }
 
-                // Cache the result
-                _membershipCache[cacheKey] = membership;
+                // Cache the result with sliding expiration
+                var cacheEntryOptions = new MemoryCacheEntryOptions()
+                    .SetSlidingExpiration(CacheExpiration)
+                    .SetAbsoluteExpiration(TimeSpan.FromMinutes(15)); // Maximum cache time
+                _membershipCache.Set(cacheKey, membership, cacheEntryOptions);
 
                 _logger.Info($"Group membership resolved for {userInfo.Email}", new
                 {
@@ -323,7 +337,7 @@ namespace LegalWorkflow.Functions.Services
             {
                 using var context = await _contextFactory.CreateAsync("Default");
 
-                var list = await context.Web.Lists.GetByTitleAsync("Requests");
+                var list = await context.Web.Lists.GetByTitleAsync(SharePointLists.Requests);
                 var item = await list.Items.GetByIdAsync(requestId,
                     i => i.All,
                     i => i.FieldValuesAsText);
@@ -336,7 +350,7 @@ namespace LegalWorkflow.Functions.Services
                 }
 
                 // Check SubmittedBy field
-                if (item.Values.TryGetValue("SubmittedBy", out var submittedByValue) && submittedByValue != null)
+                if (item.Values.TryGetValue(RequestsFields.SubmittedBy, out var submittedByValue) && submittedByValue != null)
                 {
                     if (submittedByValue is IFieldUserValue userValue)
                     {
@@ -355,7 +369,7 @@ namespace LegalWorkflow.Functions.Services
                 }
 
                 // Also check the Created By (Author) field as fallback
-                if (item.Values.TryGetValue("Author", out var authorValue) && authorValue != null)
+                if (item.Values.TryGetValue(RequestsFields.Author, out var authorValue) && authorValue != null)
                 {
                     if (authorValue is IFieldUserValue userValue)
                     {

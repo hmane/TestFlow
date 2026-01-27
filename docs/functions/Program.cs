@@ -4,12 +4,14 @@
 // =============================================================================
 
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using PnP.Core.Auth.Services.Builder.Configuration;
 using PnP.Core.Services.Builder.Configuration;
+using LegalWorkflow.Functions.Helpers;
 using LegalWorkflow.Functions.Models;
 using LegalWorkflow.Functions.Services;
 
@@ -81,6 +83,16 @@ namespace LegalWorkflow.Functions
                         builder.AddFilter("System", LogLevel.Warning);
                         builder.AddFilter("LegalWorkflow", LogLevel.Debug);
                     });
+
+                    // Add Memory Cache for authorization caching
+                    services.AddMemoryCache();
+
+                    // Register services
+                    services.AddScoped<Logger>();
+                    services.AddScoped<RequestService>();
+                    services.AddScoped<PermissionService>();
+                    services.AddScoped<NotificationService>();
+                    services.AddScoped<SharePointAuthorizationService>();
                 })
                 .Build();
 
@@ -99,7 +111,7 @@ namespace LegalWorkflow.Functions
             var certThumbprint = configuration["AzureAd:CertificateThumbprint"];
             var siteUrl = configuration["SharePoint:SiteUrl"];
 
-            // Configure PnP Core
+            // Configure PnP Core with retry/resilience settings
             services.AddPnPCore(options =>
             {
                 options.DefaultAuthenticationProvider = new PnPCoreAuthenticationCredentialConfigurationOptions
@@ -112,6 +124,50 @@ namespace LegalWorkflow.Functions
                 {
                     SiteUrl = siteUrl
                 });
+
+                // Configure PnP Core global settings for retry and performance
+                options.PnPContext = new PnPCoreContextOptions
+                {
+                    // GraphFirst: Use Microsoft Graph when possible (better performance)
+                    GraphFirst = true,
+                    // GraphCanUseBeta: Allow beta endpoints for features not in v1.0
+                    GraphCanUseBeta = true,
+                    // GraphAlwaysUseBeta: Don't force beta for everything
+                    GraphAlwaysUseBeta = false
+                };
+
+                // Configure HTTP retry settings for SharePoint REST API
+                options.HttpRequests = new PnPCoreHttpRequestsOptions
+                {
+                    // Timeout for individual HTTP requests (2 minutes)
+                    Timeout = 120,
+                    // User agent for tracking
+                    UserAgent = "LegalWorkflow/1.0",
+                    // SharePoint REST API throttling settings
+                    SharePointRest = new PnPCoreHttpRequestsSharePointRestOptions
+                    {
+                        // Use retry-after header when throttled
+                        UseRetryAfterHeader = true,
+                        // Maximum retries for throttled requests (429, 503)
+                        MaxRetries = 10,
+                        // Delay between retries (in seconds) - uses exponential backoff
+                        DelayInSeconds = 3,
+                        // Use incremental delay (exponential backoff)
+                        UseIncrementalDelay = true
+                    },
+                    // Microsoft Graph retry settings
+                    MicrosoftGraph = new PnPCoreHttpRequestsMicrosoftGraphOptions
+                    {
+                        // Use retry-after header when throttled
+                        UseRetryAfterHeader = true,
+                        // Maximum retries for throttled requests
+                        MaxRetries = 10,
+                        // Delay between retries (in seconds)
+                        DelayInSeconds = 3,
+                        // Use incremental delay (exponential backoff)
+                        UseIncrementalDelay = true
+                    }
+                };
             });
 
             // Add PnP Core authentication

@@ -1,6 +1,7 @@
 // Auto-generated fields index
 
 export { ConfigurationFields } from './ConfigurationFields';
+export { NotificationsFields } from './NotificationsFields';
 export { RequestDocumentsFields } from './RequestDocumentsFields';
 export { RequestIdsFields } from './RequestIdsFields';
 export { RequestsFields } from './RequestsFields';
