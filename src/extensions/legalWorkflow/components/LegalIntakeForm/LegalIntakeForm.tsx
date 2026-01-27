@@ -15,7 +15,7 @@
  */
 
 import * as React from 'react';
-import { Controller, useForm, useWatch } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 
 // Context imports for validation error syncing
 import { useRequestFormContextSafe } from '@contexts/RequestFormContext';
@@ -262,15 +262,18 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
   // Watch all fields for sync with store
   const attorneyValue = watch('attorney');
   const notesValue = watch('attorneyAssignNotes');
-  // Use useWatch for reviewAudience to ensure reactive re-renders when the value changes
+
+  // Local state for review audience to ensure immediate UI updates when ChoiceGroup changes
   // This is needed because the UI conditionally shows/hides the attorney field based on this value
-  const reviewAudienceValue = useWatch({ control, name: 'reviewAudience' });
+  const [localReviewAudience, setLocalReviewAudience] = React.useState<ReviewAudience>(
+    currentRequest?.reviewAudience || ReviewAudience.Both
+  );
 
   const selectedAttorney = attorneyValue && attorneyValue.length > 0 ? attorneyValue[0] : undefined;
 
   // Determine if attorney field should be shown based on review audience
   // Hide attorney field when ReviewAudience = Compliance Only (no attorney needed)
-  const showAttorneyField = reviewAudienceValue !== ReviewAudience.Compliance;
+  const showAttorneyField = localReviewAudience !== ReviewAudience.Compliance;
 
   // Get legal intake store setters - use a single batch update function
   const { setLegalIntakeValues } = useLegalIntakeStore();
@@ -285,9 +288,9 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
     setLegalIntakeValues({
       selectedAttorney,
       assignmentNotes: notesValue,
-      reviewAudience: reviewAudienceValue,
+      reviewAudience: localReviewAudience,
     });
-  }, [selectedAttorney, notesValue, reviewAudienceValue, setLegalIntakeValues, readOnly]);
+  }, [selectedAttorney, notesValue, localReviewAudience, setLegalIntakeValues, readOnly]);
 
   // Get the loadRequest function from the store to refresh data after save
   const { loadRequest } = useRequestStore();
@@ -311,8 +314,8 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
       }
 
       // Update review audience if changed
-      if (reviewAudienceValue && reviewAudienceValue !== currentRequest.reviewAudience) {
-        updatePayload.reviewAudience = reviewAudienceValue;
+      if (localReviewAudience && localReviewAudience !== currentRequest.reviewAudience) {
+        updatePayload.reviewAudience = localReviewAudience;
       }
 
       // Update assignment notes if provided
@@ -373,7 +376,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
     try {
       // Pass review audience to save Legal Admin's override
       // For Compliance Only, selectedAttorney will be undefined which is correct
-      await storeAssignAttorney(selectedAttorney, notesValue, reviewAudienceValue);
+      await storeAssignAttorney(selectedAttorney, notesValue, localReviewAudience);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (error: unknown) {
@@ -382,7 +385,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
     } finally {
       setIsAssigning(false);
     }
-  }, [selectedAttorney, notesValue, reviewAudienceValue, storeAssignAttorney, showAttorneyField]);
+  }, [selectedAttorney, notesValue, localReviewAudience, storeAssignAttorney, showAttorneyField]);
 
   /**
    * Handle Send to Committee button click
@@ -393,7 +396,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
 
     try {
       // Pass review audience to save Legal Admin's override
-      await storeSendToCommittee(notesValue, reviewAudienceValue);
+      await storeSendToCommittee(notesValue, localReviewAudience);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 3000);
     } catch (error: unknown) {
@@ -402,7 +405,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
     } finally {
       setIsSendingToCommittee(false);
     }
-  }, [notesValue, reviewAudienceValue, storeSendToCommittee]);
+  }, [notesValue, localReviewAudience, storeSendToCommittee]);
 
   /**
    * Check if current user can perform legal intake actions
@@ -498,7 +501,9 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
                             options={reviewAudienceOptions}
                             onChange={(_, option) => {
                               if (option) {
-                                field.onChange(option.key as ReviewAudience);
+                                const newValue = option.key as ReviewAudience;
+                                field.onChange(newValue);
+                                setLocalReviewAudience(newValue);
                               }
                             }}
                             disabled={isLoading}
@@ -786,7 +791,9 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
                         options={reviewAudienceOptions}
                         onChange={(_, option) => {
                           if (option) {
-                            field.onChange(option.key as ReviewAudience);
+                            const newValue = option.key as ReviewAudience;
+                            field.onChange(newValue);
+                            setLocalReviewAudience(newValue);
                           }
                         }}
                         disabled={isLoading || !canEditReviewAudience}
