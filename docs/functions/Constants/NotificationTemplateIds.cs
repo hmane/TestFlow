@@ -69,7 +69,7 @@ namespace LegalWorkflow.Functions.Constants
         /// Notification when submitter resubmits for legal review.
         /// Triggered when LegalReviewStatus changes from Waiting On Submitter to Waiting On Attorney.
         /// </summary>
-        public const string LegalResubmission = "LegalResubmission";
+        public const string ResubmissionReceivedLegal = "ResubmissionReceivedLegal";
 
         // =================================================================
         // Compliance Review Notifications
@@ -95,7 +95,7 @@ namespace LegalWorkflow.Functions.Constants
         /// Notification when submitter resubmits for compliance review.
         /// Triggered when ComplianceReviewStatus changes from Waiting On Submitter to Waiting On Compliance.
         /// </summary>
-        public const string ComplianceResubmission = "ComplianceResubmission";
+        public const string ResubmissionReceivedCompliance = "ResubmissionReceivedCompliance";
 
         // =================================================================
         // Status Change Notifications

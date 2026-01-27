@@ -242,8 +242,8 @@ Notifications are triggered based on specific field value transitions:
 | ComplianceReviewApproved | ComplianceReviewStatus → Completed AND Outcome = Approved/ApprovedWithComments |
 | ComplianceChangesRequested | ComplianceReviewStatus → Waiting On Submitter |
 | ComplianceReviewNotApproved | ComplianceReviewStatus → Completed AND Outcome = Not Approved |
-| LegalResubmission | LegalReviewStatus: Waiting On Submitter → Waiting On Attorney |
-| ComplianceResubmission | ComplianceReviewStatus: Waiting On Submitter → Waiting On Compliance |
+| ResubmissionReceivedLegal | LegalReviewStatus: Waiting On Submitter → Waiting On Attorney |
+| ResubmissionReceivedCompliance | ComplianceReviewStatus: Waiting On Submitter → Waiting On Compliance |
 | RequestOnHold | IsOnHold: false → true |
 | RequestResumed | IsOnHold: true → false |
 | RequestCancelled | Status → Cancelled |

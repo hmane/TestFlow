@@ -30,8 +30,8 @@ namespace LegalWorkflow.Functions.Services
     /// - ComplianceReviewApproved: ComplianceReviewStatus → Completed AND Outcome = Approved/ApprovedWithComments
     /// - ComplianceChangesRequested: ComplianceReviewStatus → Waiting On Submitter
     /// - ComplianceReviewNotApproved: ComplianceReviewStatus → Completed AND Outcome = Not Approved
-    /// - LegalResubmission: LegalReviewStatus Waiting On Submitter → Waiting On Attorney
-    /// - ComplianceResubmission: ComplianceReviewStatus Waiting On Submitter → Waiting On Compliance
+    /// - ResubmissionReceivedLegal: LegalReviewStatus Waiting On Submitter → Waiting On Attorney
+    /// - ResubmissionReceivedCompliance: ComplianceReviewStatus Waiting On Submitter → Waiting On Compliance
     /// - RequestOnHold: IsOnHold false → true
     /// - RequestResumed: IsOnHold true → false
     /// - RequestCancelled: Status → Cancelled
@@ -294,7 +294,7 @@ namespace LegalWorkflow.Functions.Services
                 current.LegalReviewStatus == ReviewStatus.WaitingOnAttorney)
             {
                 _logger.Debug("Legal review - resubmission");
-                return NotificationTemplateIds.LegalResubmission;
+                return NotificationTemplateIds.ResubmissionReceivedLegal;
             }
 
             return null;
@@ -337,7 +337,7 @@ namespace LegalWorkflow.Functions.Services
                 current.ComplianceReviewStatus == ReviewStatus.WaitingOnCompliance)
             {
                 _logger.Debug("Compliance review - resubmission");
-                return NotificationTemplateIds.ComplianceResubmission;
+                return NotificationTemplateIds.ResubmissionReceivedCompliance;
             }
 
             return null;
@@ -801,8 +801,8 @@ namespace LegalWorkflow.Functions.Services
                 NotificationTemplateIds.ComplianceReviewApproved => NotificationTrigger.ReviewComplete,
                 NotificationTemplateIds.ComplianceChangesRequested => NotificationTrigger.ReviewChangesRequested,
                 NotificationTemplateIds.ComplianceReviewNotApproved => NotificationTrigger.ReviewComplete,
-                NotificationTemplateIds.LegalResubmission => NotificationTrigger.Resubmission,
-                NotificationTemplateIds.ComplianceResubmission => NotificationTrigger.Resubmission,
+                NotificationTemplateIds.ResubmissionReceivedLegal => NotificationTrigger.Resubmission,
+                NotificationTemplateIds.ResubmissionReceivedCompliance => NotificationTrigger.Resubmission,
                 NotificationTemplateIds.RequestOnHold => NotificationTrigger.HoldResume,
                 NotificationTemplateIds.RequestResumed => NotificationTrigger.HoldResume,
                 NotificationTemplateIds.RequestCancelled => NotificationTrigger.Cancellation,
@@ -829,8 +829,8 @@ namespace LegalWorkflow.Functions.Services
                 NotificationTemplateIds.ComplianceReviewApproved => "Compliance review completed with approval",
                 NotificationTemplateIds.ComplianceChangesRequested => "Compliance reviewer requested changes",
                 NotificationTemplateIds.ComplianceReviewNotApproved => "Compliance review not approved",
-                NotificationTemplateIds.LegalResubmission => "Submitter resubmitted for legal review",
-                NotificationTemplateIds.ComplianceResubmission => "Submitter resubmitted for compliance review",
+                NotificationTemplateIds.ResubmissionReceivedLegal => "Submitter resubmitted for legal review",
+                NotificationTemplateIds.ResubmissionReceivedCompliance => "Submitter resubmitted for compliance review",
                 NotificationTemplateIds.RequestOnHold => "Request placed on hold",
                 NotificationTemplateIds.RequestResumed => "Request resumed from hold",
                 NotificationTemplateIds.RequestCancelled => "Request cancelled",
