@@ -15,7 +15,7 @@
  */
 
 import * as React from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 
 // Context imports for validation error syncing
 import { useRequestFormContextSafe } from '@contexts/RequestFormContext';
@@ -262,7 +262,9 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
   // Watch all fields for sync with store
   const attorneyValue = watch('attorney');
   const notesValue = watch('attorneyAssignNotes');
-  const reviewAudienceValue = watch('reviewAudience');
+  // Use useWatch for reviewAudience to ensure reactive re-renders when the value changes
+  // This is needed because the UI conditionally shows/hides the attorney field based on this value
+  const reviewAudienceValue = useWatch({ control, name: 'reviewAudience' });
 
   const selectedAttorney = attorneyValue && attorneyValue.length > 0 ? attorneyValue[0] : undefined;
 
