@@ -45,6 +45,18 @@ namespace LegalWorkflow.Functions.Constants
         /// </summary>
         public const string AttorneyAssigned = "AttorneyAssigned";
 
+        /// <summary>
+        /// Notification when an attorney is reassigned to a different attorney.
+        /// Triggered when Attorney field changes from one user to another.
+        /// </summary>
+        public const string AttorneyReassigned = "AttorneyReassigned";
+
+        /// <summary>
+        /// Notification when compliance review is required.
+        /// Triggered when Status changes to In Review AND ReviewAudience includes Compliance.
+        /// </summary>
+        public const string ComplianceReviewRequired = "ComplianceReviewRequired";
+
         // =================================================================
         // Legal Review Notifications
         // =================================================================

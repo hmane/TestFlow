@@ -2,25 +2,66 @@
 
 This document defines all email notifications for the Legal Review System (LRS). Each notification includes the trigger event, recipients, subject line, and responsive HTML email body template.
 
+> **Implementation Note**: The actual notification templates are defined in [`/provisioning/Lists/Notifications.xml`](/provisioning/Lists/Notifications.xml). The templates in this document serve as design references. The Azure Functions service uses `NotificationTemplateIds.cs` constants that map to the template IDs in the Notifications list.
+
+---
+
+## Quick Reference: All 19 Notifications
+
+| Template ID | Trigger | Recipients |
+|-------------|---------|------------|
+| `RequestSubmitted` | Status: Draft → Legal Intake | To: Legal Admin, CC: Submitter |
+| `RushRequestAlert` | Status: Draft → Legal Intake AND IsRushRequest = true | To: Legal Admin, CC: Submitter |
+| `ReadyForAttorneyAssignment` | Status → Assign Attorney | To: Attorney Assigners, CC: Legal Admin, Submitter |
+| `AttorneyAssigned` | Status → In Review (when Legal or Both) | To: Attorney, CC: Submitter |
+| `AttorneyReassigned` | Attorney changes from one user to another | To: New Attorney, CC: Submitter, Legal Admin |
+| `ComplianceReviewRequired` | Status → In Review (when Compliance Only) | To: Compliance, CC: Submitter |
+| `LegalReviewApproved` | LegalReviewStatus → Completed (Approved/Approved With Comments) | To: Submitter, CC: Additional Parties |
+| `LegalChangesRequested` | LegalReviewStatus → Waiting On Submitter | To: Submitter, CC: Attorney |
+| `LegalReviewNotApproved` | LegalReviewStatus → Completed (Not Approved) | To: Submitter, CC: Legal Admin |
+| `ResubmissionReceivedLegal` | LegalReviewStatus: Waiting On Submitter → Waiting On Attorney | To: Attorney, CC: Legal Admin |
+| `ComplianceReviewApproved` | ComplianceReviewStatus → Completed (Approved/Approved With Comments) | To: Submitter, CC: Additional Parties |
+| `ComplianceChangesRequested` | ComplianceReviewStatus → Waiting On Submitter | To: Submitter, CC: Compliance |
+| `ComplianceReviewNotApproved` | ComplianceReviewStatus → Completed (Not Approved) | To: Submitter, CC: Legal Admin |
+| `ResubmissionReceivedCompliance` | ComplianceReviewStatus: Waiting On Submitter → Waiting On Compliance | To: Compliance, CC: Legal Admin |
+| `RequestOnHold` | IsOnHold: false → true | To: Submitter, Attorney, CC: Legal Admin |
+| `RequestResumed` | IsOnHold: true → false | To: Submitter, Attorney, CC: Legal Admin |
+| `RequestCancelled` | Status → Cancelled | To: Submitter, CC: Attorney, Legal Admin |
+| `ReadyForCloseout` | Status → Closeout | To: Submitter, CC: Legal Admin |
+| `RequestCompleted` | Status → Completed | To: Submitter, CC: Legal Admin, Attorney |
+
 ---
 
 ## Table of Contents
 
-1. [Request Submitted](#1-request-submitted)
-2. [Attorney Assigned (Direct)](#2-attorney-assigned-direct)
-3. [Sent to Committee](#3-sent-to-committee)
-4. [Attorney Assigned (Committee)](#4-attorney-assigned-committee)
-5. [Compliance Review Required](#5-compliance-review-required)
-6. [Attorney Reassigned](#6-attorney-reassigned)
-7. [Waiting on Submitter](#7-waiting-on-submitter)
-8. [Submitter Response Received](#8-submitter-response-received)
-9. [Review Completed](#9-review-completed)
-10. [Ready for Closeout](#10-ready-for-closeout)
-11. [Request Completed](#11-request-completed)
-12. [Request Cancelled](#12-request-cancelled)
-13. [Request On Hold](#13-request-on-hold)
-14. [Request Resumed](#14-request-resumed)
-15. [User Tagged in Comment](#15-user-tagged-in-comment)
+### Submission Notifications
+1. [Request Submitted](#1-request-submitted) - `RequestSubmitted`
+2. [Rush Request Alert](#2-rush-request-alert) - `RushRequestAlert`
+
+### Assignment Notifications
+3. [Ready for Attorney Assignment](#3-ready-for-attorney-assignment) - `ReadyForAttorneyAssignment`
+4. [Attorney Assigned](#4-attorney-assigned) - `AttorneyAssigned`
+5. [Attorney Reassigned](#5-attorney-reassigned) - `AttorneyReassigned`
+6. [Compliance Review Required](#6-compliance-review-required) - `ComplianceReviewRequired`
+
+### Legal Review Notifications
+7. [Legal Review Approved](#7-legal-review-approved) - `LegalReviewApproved`
+8. [Legal Changes Requested](#8-legal-changes-requested) - `LegalChangesRequested`
+9. [Legal Review Not Approved](#9-legal-review-not-approved) - `LegalReviewNotApproved`
+10. [Resubmission Received (Legal)](#10-resubmission-received-legal) - `ResubmissionReceivedLegal`
+
+### Compliance Review Notifications
+11. [Compliance Review Approved](#11-compliance-review-approved) - `ComplianceReviewApproved`
+12. [Compliance Changes Requested](#12-compliance-changes-requested) - `ComplianceChangesRequested`
+13. [Compliance Review Not Approved](#13-compliance-review-not-approved) - `ComplianceReviewNotApproved`
+14. [Resubmission Received (Compliance)](#14-resubmission-received-compliance) - `ResubmissionReceivedCompliance`
+
+### Status Change Notifications
+15. [Request On Hold](#15-request-on-hold) - `RequestOnHold`
+16. [Request Resumed](#16-request-resumed) - `RequestResumed`
+17. [Request Cancelled](#17-request-cancelled) - `RequestCancelled`
+18. [Ready for Closeout](#18-ready-for-closeout) - `ReadyForCloseout`
+19. [Request Completed](#19-request-completed) - `RequestCompleted`
 
 ---
 
@@ -1658,114 +1699,6 @@ Status changes from `On Hold` → Previous status
 
 ---
 
-## 15. User Tagged in Comment
-
-### Description
-Notifies user when they are @mentioned in a comment.
-
-### Trigger
-Comment added with @mention
-
-### Recipients
-| Field | Value |
-|-------|-------|
-| **To** | Tagged User |
-| **CC** | None |
-
-### Subject
-`[Legal Review] You were mentioned: {{RequestId}} - {{RequestTitle}}`
-
-### Email Body
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>You were mentioned</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f2f1;">
-  <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-    <!-- Header -->
-    <tr>
-      <td style="background-color: #0078d4; padding: 24px 32px;">
-        <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 600;">You were mentioned</h1>
-      </td>
-    </tr>
-
-    <!-- Content -->
-    <tr>
-      <td style="padding: 32px;">
-        <p style="margin: 0 0 24px 0; color: #605e5c; font-size: 14px;">
-          <strong>{{MentionedByName}}</strong> mentioned you in a comment on request <strong style="color: #0078d4;">{{RequestId}}</strong>
-        </p>
-
-        <!-- Comment Card -->
-        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f0f6ff; border-radius: 8px; border: 1px solid #c7e0f4;">
-          <tr>
-            <td style="padding: 20px;">
-              <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
-                <tr>
-                  <td>
-                    <!-- Avatar placeholder -->
-                    <div style="display: inline-block; width: 36px; height: 36px; background-color: #0078d4; border-radius: 50%; color: #ffffff; text-align: center; line-height: 36px; font-size: 14px; font-weight: 600; margin-right: 12px; vertical-align: top;">
-                      {{MentionedByInitials}}
-                    </div>
-                    <div style="display: inline-block; vertical-align: top;">
-                      <p style="margin: 0 0 4px 0; color: #323130; font-size: 14px; font-weight: 600;">{{MentionedByName}}</p>
-                      <p style="margin: 0; color: #605e5c; font-size: 12px;">{{CommentDate}}</p>
-                    </div>
-                  </td>
-                </tr>
-                <tr>
-                  <td style="padding-top: 12px;">
-                    <p style="margin: 0; color: #323130; font-size: 14px; line-height: 1.6;">{{CommentExcerpt}}</p>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-
-        <!-- Request Info -->
-        <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top: 20px; background-color: #faf9f8; border-radius: 8px; border: 1px solid #edebe9;">
-          <tr>
-            <td style="padding: 16px 20px;">
-              <span style="color: #605e5c; font-size: 12px; font-weight: 600;">Request</span><br>
-              <span style="color: #323130; font-size: 14px;">{{RequestTitle}}</span>
-            </td>
-          </tr>
-        </table>
-
-        <!-- CTA Button -->
-        <table role="presentation" cellpadding="0" cellspacing="0" style="margin: 28px 0;">
-          <tr>
-            <td style="background-color: #0078d4; border-radius: 4px;">
-              <a href="{{CommentUrl}}" target="_blank" style="display: inline-block; padding: 12px 32px; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600;">
-                View Comment
-              </a>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-
-    <!-- Footer -->
-    <tr>
-      <td style="background-color: #faf9f8; padding: 20px 32px; border-top: 1px solid #edebe9;">
-        <p style="margin: 0; color: #605e5c; font-size: 12px;">
-          This is an automated notification from the Legal Review System.
-        </p>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-```
-
----
-
 ## Template Variables Reference
 
 ### Common Variables (Available in all templates)
@@ -1816,23 +1749,24 @@ Comment added with @mention
 3. **Action**: Send email using Office 365 connector with HTML template
 4. **Dynamic Content**: Use Power Automate expressions to populate variables
 
-### Azure Function Integration (Optional)
+### Azure Function Integration
 
-For complex template rendering:
+The Legal Workflow Azure Functions project (`/docs/functions/`) handles notification generation:
+
+- **NotificationTemplateIds.cs**: Defines constants for all 19 notification template IDs
+- **NotificationService.cs**: Determines which notification to send based on request changes
+- **Templates**: Stored in SharePoint Notifications list, provisioned via `/provisioning/Lists/Notifications.xml`
 
 ```
-POST /api/notifications/generate
+POST /api/notifications/process
 Content-Type: application/json
 
 {
-  "templateId": "request-submitted",
-  "data": {
-    "requestId": "CER-25-0042",
-    "requestTitle": "Q1 Marketing Campaign",
-    ...
-  }
+  "requestId": 42
 }
 ```
+
+The service compares current vs. previous request versions to detect state changes and triggers appropriate notifications.
 
 ### Email Delivery Best Practices
 
@@ -1848,4 +1782,5 @@ Content-Type: application/json
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2026-01-27 | 1.2 | Updated to match 19 implemented notifications; removed User Tagged (handled by PnP); added Quick Reference table |
 | 2025-12-28 | 1.0 | Initial documentation created |

@@ -235,7 +235,9 @@ Notifications are triggered based on specific field value transitions:
 | RequestSubmitted | Status: Draft → Legal Intake |
 | RushRequestAlert | Status: Draft → Legal Intake AND IsRushRequest = true |
 | ReadyForAttorneyAssignment | Status → Assign Attorney |
-| AttorneyAssigned | Status: (Legal Intake OR Assign Attorney) → In Review |
+| AttorneyAssigned | Status: (Legal Intake OR Assign Attorney) → In Review (when ReviewAudience = Legal or Both) |
+| AttorneyReassigned | Attorney field changes from one user to another |
+| ComplianceReviewRequired | Status → In Review AND ReviewAudience = Compliance Only |
 | LegalReviewApproved | LegalReviewStatus → Completed AND Outcome = Approved/ApprovedWithComments |
 | LegalChangesRequested | LegalReviewStatus → Waiting On Submitter |
 | LegalReviewNotApproved | LegalReviewStatus → Completed AND Outcome = Not Approved |

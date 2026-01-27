@@ -23,7 +23,9 @@ namespace LegalWorkflow.Functions.Services
     /// - RequestSubmitted: Status Draft → Legal Intake
     /// - RushRequestAlert: Status Draft → Legal Intake AND IsRushRequest = true
     /// - ReadyForAttorneyAssignment: Status → Assign Attorney
-    /// - AttorneyAssigned: Status (Legal Intake OR Assign Attorney) → In Review
+    /// - AttorneyAssigned: Status (Legal Intake OR Assign Attorney) → In Review (when Legal or Both)
+    /// - AttorneyReassigned: Attorney field changes from one user to another
+    /// - ComplianceReviewRequired: Status → In Review AND ReviewAudience = Compliance Only
     /// - LegalReviewApproved: LegalReviewStatus → Completed AND Outcome = Approved/ApprovedWithComments
     /// - LegalChangesRequested: LegalReviewStatus → Waiting On Submitter
     /// - LegalReviewNotApproved: LegalReviewStatus → Completed AND Outcome = Not Approved
@@ -231,22 +233,45 @@ namespace LegalWorkflow.Functions.Services
                 return NotificationTemplateIds.ReadyForAttorneyAssignment;
             }
 
-            // 7. Attorney assigned ((Legal Intake OR Assign Attorney) → In Review)
+            // 7. Attorney reassigned (attorney changed from one user to another while in review)
+            // Check this BEFORE status change checks to catch reassignments during In Review
+            if (current.Status == RequestStatus.InReview &&
+                previous.Attorney != null && current.Attorney != null &&
+                previous.Attorney.Id != current.Attorney.Id)
+            {
+                _logger.Debug("Attorney reassigned", new
+                {
+                    PreviousAttorney = previous.Attorney.Title,
+                    NewAttorney = current.Attorney.Title
+                });
+                return NotificationTemplateIds.AttorneyReassigned;
+            }
+
+            // 8. Status change to In Review - determine appropriate notification based on ReviewAudience
             if ((previous.Status == RequestStatus.LegalIntake || previous.Status == RequestStatus.AssignAttorney)
                 && current.Status == RequestStatus.InReview)
             {
+                // Compliance Only - no attorney involved, notify compliance team directly
+                if (current.ReviewAudience == ReviewAudience.Compliance)
+                {
+                    _logger.Debug("Compliance review required (Compliance Only audience)");
+                    return NotificationTemplateIds.ComplianceReviewRequired;
+                }
+
+                // Legal Only or Both - attorney is assigned, notify them
+                // For "Both", compliance team will also see it in their dashboard
                 _logger.Debug("Attorney assigned - moving to In Review");
                 return NotificationTemplateIds.AttorneyAssigned;
             }
 
-            // 8. Legal review status changes
+            // 10. Legal review status changes
             var legalNotification = CheckLegalReviewChanges(current, previous);
             if (legalNotification != null)
             {
                 return legalNotification;
             }
 
-            // 9. Compliance review status changes
+            // 11. Compliance review status changes
             var complianceNotification = CheckComplianceReviewChanges(current, previous);
             if (complianceNotification != null)
             {
@@ -795,6 +820,8 @@ namespace LegalWorkflow.Functions.Services
                 NotificationTemplateIds.RushRequestAlert => NotificationTrigger.StatusChange,
                 NotificationTemplateIds.ReadyForAttorneyAssignment => NotificationTrigger.StatusChange,
                 NotificationTemplateIds.AttorneyAssigned => NotificationTrigger.AttorneyAssigned,
+                NotificationTemplateIds.AttorneyReassigned => NotificationTrigger.AttorneyAssigned,
+                NotificationTemplateIds.ComplianceReviewRequired => NotificationTrigger.StatusChange,
                 NotificationTemplateIds.LegalReviewApproved => NotificationTrigger.ReviewComplete,
                 NotificationTemplateIds.LegalChangesRequested => NotificationTrigger.ReviewChangesRequested,
                 NotificationTemplateIds.LegalReviewNotApproved => NotificationTrigger.ReviewComplete,
@@ -823,6 +850,8 @@ namespace LegalWorkflow.Functions.Services
                 NotificationTemplateIds.RushRequestAlert => $"Rush request submitted (Status: {previousStatus} → {currentStatus})",
                 NotificationTemplateIds.ReadyForAttorneyAssignment => $"Status changed to Assign Attorney",
                 NotificationTemplateIds.AttorneyAssigned => $"Attorney assigned, moving to In Review",
+                NotificationTemplateIds.AttorneyReassigned => $"Attorney reassigned to {current.Attorney?.Title ?? "new attorney"}",
+                NotificationTemplateIds.ComplianceReviewRequired => "Compliance review required",
                 NotificationTemplateIds.LegalReviewApproved => "Legal review completed with approval",
                 NotificationTemplateIds.LegalChangesRequested => "Legal reviewer requested changes",
                 NotificationTemplateIds.LegalReviewNotApproved => "Legal review not approved",
