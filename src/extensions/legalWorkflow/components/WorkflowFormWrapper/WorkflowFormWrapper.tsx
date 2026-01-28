@@ -19,6 +19,7 @@ import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { RequestFormProvider, type IValidationError } from '@contexts/RequestFormContext';
 import { fullRequestSchema } from '@schemas/requestSchema';
 import { useRequestStore } from '@stores/requestStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { ILegalRequest } from '@appTypes/index';
 
 /**
@@ -59,7 +60,12 @@ export const WorkflowFormWrapper: React.FC<IWorkflowFormWrapperProps> = ({
   onCancelRequest: customOnCancelRequest,
   onClose: customOnClose,
 }) => {
-  const { currentRequest, isLoading: storeLoading } = useRequestStore();
+  const { currentRequest, isLoading: storeLoading } = useRequestStore(
+    useShallow((s) => ({
+      currentRequest: s.currentRequest,
+      isLoading: s.isLoading,
+    }))
+  );
   const [validationErrors, setValidationErrors] = React.useState<IValidationError[]>([]);
 
   // Set up form for the current request data

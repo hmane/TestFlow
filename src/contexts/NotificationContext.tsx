@@ -54,6 +54,18 @@ export const NotificationProvider: React.FC<INotificationProviderProps> = ({
 }) => {
   const [notifications, setNotifications] = React.useState<INotification[]>([]);
 
+  // Track auto-dismiss timers for cleanup on unmount or early dismiss
+  const dismissTimersRef = React.useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  // Cleanup all timers on unmount
+  React.useEffect(() => {
+    const timers = dismissTimersRef.current;
+    return () => {
+      timers.forEach((timer) => clearTimeout(timer));
+      timers.clear();
+    };
+  }, []);
+
   /**
    * Show a notification
    */
@@ -73,9 +85,11 @@ export const NotificationProvider: React.FC<INotificationProviderProps> = ({
 
       // Auto-dismiss after duration (0 = don't auto-dismiss)
       if (duration > 0) {
-        setTimeout(() => {
+        const timer = setTimeout(() => {
+          dismissTimersRef.current.delete(id);
           setNotifications((prev) => prev.filter((n) => n.id !== id));
         }, duration);
+        dismissTimersRef.current.set(id, timer);
       }
     },
     [maxNotifications]
@@ -123,16 +137,23 @@ export const NotificationProvider: React.FC<INotificationProviderProps> = ({
   );
 
   /**
-   * Clear all notifications
+   * Clear all notifications and their auto-dismiss timers
    */
   const clearAll = React.useCallback(() => {
+    dismissTimersRef.current.forEach((timer) => clearTimeout(timer));
+    dismissTimersRef.current.clear();
     setNotifications([]);
   }, []);
 
   /**
-   * Dismiss a specific notification
+   * Dismiss a specific notification and clear its auto-dismiss timer
    */
   const dismissNotification = React.useCallback((id: string) => {
+    const timer = dismissTimersRef.current.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      dismissTimersRef.current.delete(id);
+    }
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   }, []);
 

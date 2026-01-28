@@ -6,6 +6,7 @@
 import * as React from 'react';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { useRequestStore } from '@stores/index';
+import { useShallow } from 'zustand/react/shallow';
 import { usePermissions } from '@hooks/usePermissions';
 import type { IPrincipal } from '@appTypes/index';
 import type { ReviewOutcome } from '@appTypes/workflowTypes';
@@ -80,11 +81,38 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [error, setError] = React.useState<string | undefined>(undefined);
 
-  const store = useRequestStore();
+  const {
+    currentRequest,
+    itemId,
+    isLoading: storeIsLoading,
+    assignAttorney: storeAssignAttorney,
+    sendToCommittee: storeSendToCommittee,
+    submitLegalReview: storeSubmitLegalReview,
+    submitComplianceReview: storeSubmitComplianceReview,
+    closeoutRequest: storeCloseoutRequest,
+    cancelRequest: storeCancelRequest,
+    holdRequest: storeHoldRequest,
+    resumeRequest: storeResumeRequest,
+    completeFINRADocuments: storeCompleteFINRADocuments,
+  } = useRequestStore(
+    useShallow((s) => ({
+      currentRequest: s.currentRequest,
+      itemId: s.itemId,
+      isLoading: s.isLoading,
+      assignAttorney: s.assignAttorney,
+      sendToCommittee: s.sendToCommittee,
+      submitLegalReview: s.submitLegalReview,
+      submitComplianceReview: s.submitComplianceReview,
+      closeoutRequest: s.closeoutRequest,
+      cancelRequest: s.cancelRequest,
+      holdRequest: s.holdRequest,
+      resumeRequest: s.resumeRequest,
+      completeFINRADocuments: s.completeFINRADocuments,
+    }))
+  );
   const permissions = usePermissions();
 
-  const currentRequest = store.currentRequest;
-  const itemId = store.itemId;
+  const request = currentRequest;
 
   // Get current user ID
   const currentUserId = React.useMemo(() => {
@@ -93,16 +121,16 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
 
   // Build action context
   const actionContext = React.useMemo((): IActionContext | undefined => {
-    if (!currentRequest || permissions.isLoading) {
+    if (!request || permissions.isLoading) {
       return undefined;
     }
 
     return {
-      request: currentRequest,
+      request,
       permissions,
       currentUserId,
     };
-  }, [currentRequest, permissions, currentUserId]);
+  }, [request, permissions, currentUserId]);
 
   // Determine if this is a new request (no itemId means not saved to SharePoint yet)
   const isNewRequest = !itemId;
@@ -231,7 +259,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
       setError(undefined);
 
       try {
-        await store.assignAttorney(attorney, notes);
+        await storeAssignAttorney(attorney, notes);
         SPContext.logger.success('Attorney assigned', {
           attorneyId: attorney.id,
           requestId: itemId,
@@ -246,7 +274,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
         setIsProcessing(false);
       }
     },
-    [actionContext, itemId, store]
+    [actionContext, itemId, storeAssignAttorney]
   );
 
   /**
@@ -283,7 +311,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
       setError(undefined);
 
       try {
-        await store.sendToCommittee(notes);
+        await storeSendToCommittee(notes);
         SPContext.logger.success('Sent to committee', { requestId: itemId });
         return { allowed: true };
       } catch (err: unknown) {
@@ -295,7 +323,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
         setIsProcessing(false);
       }
     },
-    [actionContext, itemId, store]
+    [actionContext, itemId, storeSendToCommittee]
   );
 
   /**
@@ -333,7 +361,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
       setError(undefined);
 
       try {
-        await store.assignAttorney(attorney, notes);
+        await storeAssignAttorney(attorney, notes);
         SPContext.logger.success('Attorney assigned by committee', {
           attorneyId: attorney.id,
           requestId: itemId,
@@ -348,7 +376,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
         setIsProcessing(false);
       }
     },
-    [actionContext, itemId, store]
+    [actionContext, itemId, storeAssignAttorney]
   );
 
   /**
@@ -390,7 +418,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
       setError(undefined);
 
       try {
-        await store.submitLegalReview(outcome, notes);
+        await storeSubmitLegalReview(outcome, notes);
         SPContext.logger.success('Legal review submitted', {
           outcome,
           requestId: itemId,
@@ -405,7 +433,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
         setIsProcessing(false);
       }
     },
-    [actionContext, itemId, store, currentUserId, permissions]
+    [actionContext, itemId, storeSubmitLegalReview, currentUserId, permissions]
   );
 
   /**
@@ -450,7 +478,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
       setError(undefined);
 
       try {
-        await store.submitComplianceReview(outcome, notes, { isForesideReviewRequired, isRetailUse });
+        await storeSubmitComplianceReview(outcome, notes, { isForesideReviewRequired, isRetailUse });
         SPContext.logger.success('Compliance review submitted', {
           outcome,
           requestId: itemId,
@@ -465,7 +493,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
         setIsProcessing(false);
       }
     },
-    [actionContext, itemId, store]
+    [actionContext, itemId, storeSubmitComplianceReview]
   );
 
   /**
@@ -506,7 +534,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
       setError(undefined);
 
       try {
-        await store.closeoutRequest(options);
+        await storeCloseoutRequest(options);
         SPContext.logger.success('Request closed out', {
           trackingId: options?.trackingId,
           commentsAcknowledged: options?.commentsAcknowledged,
@@ -522,7 +550,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
         setIsProcessing(false);
       }
     },
-    [actionContext, itemId, store]
+    [actionContext, itemId, storeCloseoutRequest]
   );
 
   /**
@@ -564,7 +592,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
       setError(undefined);
 
       try {
-        await store.cancelRequest(reason);
+        await storeCancelRequest(reason);
         SPContext.logger.success('Request cancelled', { requestId: itemId });
         return { allowed: true };
       } catch (err: unknown) {
@@ -576,7 +604,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
         setIsProcessing(false);
       }
     },
-    [actionContext, itemId, store, currentUserId, permissions]
+    [actionContext, itemId, storeCancelRequest, currentUserId, permissions]
   );
 
   /**
@@ -613,7 +641,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
       setError(undefined);
 
       try {
-        await store.holdRequest(reason);
+        await storeHoldRequest(reason);
         SPContext.logger.success('Request put on hold', { requestId: itemId });
         return { allowed: true };
       } catch (err: unknown) {
@@ -625,7 +653,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
         setIsProcessing(false);
       }
     },
-    [actionContext, itemId, store]
+    [actionContext, itemId, storeHoldRequest]
   );
 
   /**
@@ -661,7 +689,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
     setError(undefined);
 
     try {
-      await store.resumeRequest();
+      await storeResumeRequest();
       SPContext.logger.success('Request resumed', { requestId: itemId });
       return { allowed: true };
     } catch (err: unknown) {
@@ -672,7 +700,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
     } finally {
       setIsProcessing(false);
     }
-  }, [actionContext, itemId, store]);
+  }, [actionContext, itemId, storeResumeRequest]);
 
   /**
    * Complete FINRA documents (move from Awaiting FINRA Documents to Completed)
@@ -709,7 +737,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
       setError(undefined);
 
       try {
-        await store.completeFINRADocuments(notes);
+        await storeCompleteFINRADocuments(notes);
         SPContext.logger.success('FINRA documents completed', { requestId: itemId });
         return { allowed: true };
       } catch (err: unknown) {
@@ -721,7 +749,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
         setIsProcessing(false);
       }
     },
-    [actionContext, itemId, store, currentUserId, permissions]
+    [actionContext, itemId, storeCompleteFINRADocuments, currentUserId, permissions]
   );
 
   return {
@@ -739,6 +767,6 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
     checkPermission,
     isProcessing,
     error,
-    isLoading: permissions.isLoading || store.isLoading,
+    isLoading: permissions.isLoading || storeIsLoading,
   };
 }

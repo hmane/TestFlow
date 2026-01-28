@@ -58,7 +58,7 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
   onDocumentCountChange,
 }) => {
   const { isAdmin, isSubmitter } = usePermissions();
-  const { currentRequest } = useRequestStore();
+  const currentRequest = useRequestStore((s) => s.currentRequest);
 
   // Check if current user is the owner (creator/submitter of this specific request)
   const isOwner = React.useMemo((): boolean => {

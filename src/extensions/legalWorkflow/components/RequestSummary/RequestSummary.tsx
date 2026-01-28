@@ -120,7 +120,7 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
   onEditClick,
   defaultExpanded = true,
 }) => {
-  const { currentRequest } = useRequestStore();
+  const currentRequest = useRequestStore((s) => s.currentRequest);
   const permissions = usePermissions();
 
   /**

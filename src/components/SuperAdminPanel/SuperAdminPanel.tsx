@@ -24,6 +24,7 @@ import { Toggle } from '@fluentui/react/lib/Toggle';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { RequestStatus, ReviewOutcome, ReviewAudience, LegalReviewStatus, ComplianceReviewStatus } from '@appTypes/workflowTypes';
 import { useRequestStore } from '@stores/index';
+import { useShallow } from 'zustand/react/shallow';
 import { usePermissions } from '@hooks/usePermissions';
 import './SuperAdminPanel.scss';
 
@@ -129,9 +130,28 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
   onDismiss,
   onActionComplete,
 }) => {
-  const store = useRequestStore();
+  const {
+    currentRequest,
+    adminOverrideStatus,
+    adminClearAttorney,
+    adminOverrideReviewAudience,
+    adminOverrideLegalReview,
+    adminOverrideComplianceReview,
+    adminOverrideComplianceFlags,
+    adminReopenRequest,
+  } = useRequestStore(
+    useShallow((s) => ({
+      currentRequest: s.currentRequest,
+      adminOverrideStatus: s.adminOverrideStatus,
+      adminClearAttorney: s.adminClearAttorney,
+      adminOverrideReviewAudience: s.adminOverrideReviewAudience,
+      adminOverrideLegalReview: s.adminOverrideLegalReview,
+      adminOverrideComplianceReview: s.adminOverrideComplianceReview,
+      adminOverrideComplianceFlags: s.adminOverrideComplianceFlags,
+      adminReopenRequest: s.adminReopenRequest,
+    }))
+  );
   const permissions = usePermissions();
-  const currentRequest = store.currentRequest;
 
   // State
   const [isProcessing, setIsProcessing] = React.useState(false);
@@ -208,7 +228,7 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
       adminUser: SPContext.currentUser?.email,
     });
 
-    await store.adminOverrideStatus(status as RequestStatus, actionReason);
+    await adminOverrideStatus(status as RequestStatus, actionReason);
   };
 
   /**
@@ -224,7 +244,7 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
       adminUser: SPContext.currentUser?.email,
     });
 
-    await store.adminClearAttorney(actionReason);
+    await adminClearAttorney(actionReason);
   };
 
   /**
@@ -241,7 +261,7 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
       adminUser: SPContext.currentUser?.email,
     });
 
-    await store.adminOverrideReviewAudience(audience as ReviewAudience, actionReason);
+    await adminOverrideReviewAudience(audience as ReviewAudience, actionReason);
   };
 
   /**
@@ -258,7 +278,7 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
       adminUser: SPContext.currentUser?.email,
     });
 
-    await store.adminOverrideLegalReview(
+    await adminOverrideLegalReview(
       data?.outcome as string | undefined,
       data?.status as string | undefined,
       actionReason
@@ -279,7 +299,7 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
       adminUser: SPContext.currentUser?.email,
     });
 
-    await store.adminOverrideComplianceReview(
+    await adminOverrideComplianceReview(
       data?.outcome as string | undefined,
       data?.status as string | undefined,
       actionReason
@@ -300,7 +320,7 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
       adminUser: SPContext.currentUser?.email,
     });
 
-    await store.adminOverrideComplianceFlags(
+    await adminOverrideComplianceFlags(
       data?.isForesideRequired as boolean | undefined,
       data?.isRetailUse as boolean | undefined,
       actionReason
@@ -320,7 +340,7 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
       adminUser: SPContext.currentUser?.email,
     });
 
-    await store.adminReopenRequest(actionReason);
+    await adminReopenRequest(actionReason);
   };
 
   /**

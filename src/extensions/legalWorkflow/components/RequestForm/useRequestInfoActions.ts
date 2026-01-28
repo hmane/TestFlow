@@ -13,6 +13,7 @@ import { saveRequestSchema, submitRequestSchema } from '@schemas/requestSchema';
 import type { IValidationError } from '@contexts/RequestFormContext';
 import { useDocumentsStore } from '@stores/documentsStore';
 import { useRequestStore } from '@stores/requestStore';
+import { useShallow } from 'zustand/react/shallow';
 
 /**
  * Approval with validation metadata injected for Zod schema validation
@@ -209,7 +210,13 @@ export const useRequestInfoActions = ({
   } = useDocumentsStore();
 
   // Get workflow actions from request store
-  const { cancelRequest, holdRequest: putRequestOnHold, submitRequest } = useRequestStore();
+  const { cancelRequest, holdRequest: putRequestOnHold, submitRequest } = useRequestStore(
+    useShallow((s) => ({
+      cancelRequest: s.cancelRequest,
+      holdRequest: s.holdRequest,
+      submitRequest: s.submitRequest,
+    }))
+  );
 
   /**
    * Check if an approval type has documents in the documentsStore

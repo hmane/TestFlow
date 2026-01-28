@@ -64,7 +64,7 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
 }) => {
   const { status, validationErrors } = useRequestFormContext();
   const { isSubmitter, isLegalAdmin, isAttorney, isComplianceUser, isAdmin } = usePermissions();
-  const { currentRequest } = useRequestStore();
+  const currentRequest = useRequestStore((s) => s.currentRequest);
 
   // Check if current user is the owner (creator/submitter of this specific request)
   const isOwner = React.useMemo((): boolean => {

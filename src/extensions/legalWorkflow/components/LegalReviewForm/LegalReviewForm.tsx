@@ -41,6 +41,7 @@ import {
 } from '@components/WorkflowCardHeader';
 import { useRequestFormContextSafe } from '@contexts/RequestFormContext';
 import { useRequestStore, useRequestActions } from '@stores/requestStore';
+import { useShallow } from 'zustand/react/shallow';
 import { usePermissions } from '@hooks/usePermissions';
 import {
   saveLegalReviewProgress,
@@ -132,7 +133,13 @@ interface ILegalReviewFormProps {
  * LegalReviewForm Component
  */
 export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollapsed = false }) => {
-  const { currentRequest, isLoading, itemId } = useRequestStore();
+  const { currentRequest, isLoading, itemId } = useRequestStore(
+    useShallow((s) => ({
+      currentRequest: s.currentRequest,
+      isLoading: s.isLoading,
+      itemId: s.itemId,
+    }))
+  );
   const { submitLegalReview: submitLegalReviewAction, loadRequest } = useRequestActions();
   const { isAttorney, isAdmin, isLegalAdmin } = usePermissions();
 

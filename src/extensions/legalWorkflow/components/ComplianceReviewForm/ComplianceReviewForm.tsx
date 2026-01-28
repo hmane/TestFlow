@@ -47,6 +47,7 @@ import {
 } from '@components/WorkflowCardHeader';
 import { useRequestFormContextSafe } from '@contexts/RequestFormContext';
 import { useRequestStore, useRequestActions } from '@stores/requestStore';
+import { useShallow } from 'zustand/react/shallow';
 import { usePermissions } from '@hooks/usePermissions';
 import {
   saveComplianceReviewProgress,
@@ -141,7 +142,13 @@ interface IComplianceReviewFormProps {
 export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
   defaultCollapsed = false,
 }) => {
-  const { currentRequest, isLoading, itemId } = useRequestStore();
+  const { currentRequest, isLoading, itemId } = useRequestStore(
+    useShallow((s) => ({
+      currentRequest: s.currentRequest,
+      isLoading: s.isLoading,
+      itemId: s.itemId,
+    }))
+  );
   const { submitComplianceReview: submitComplianceReviewAction, loadRequest } = useRequestActions();
   const { isComplianceUser, isAdmin, isLegalAdmin } = usePermissions();
 

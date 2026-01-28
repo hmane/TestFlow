@@ -158,7 +158,7 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
   onRequestTypeSelected,
   requestFormComponent: RequestFormComponent,
 }) => {
-  const { currentRequest } = useRequestStore();
+  const currentRequest = useRequestStore((s) => s.currentRequest);
   const [isCommentsOpen, setIsCommentsOpen] = React.useState<boolean>(true);
   const [showTypeSelector, setShowTypeSelector] = React.useState<boolean>(false);
   const [isTypeLocked, setIsTypeLocked] = React.useState<boolean>(false);

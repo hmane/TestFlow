@@ -82,6 +82,7 @@ export interface IRequestCacheOptions {
  */
 export class RequestCache {
   private cache: Map<string, ICachedRequest<unknown>> = new Map();
+  private cleanupTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
   private options: Required<IRequestCacheOptions>;
   private cleanupInterval: number | null = null;
   private static instance: RequestCache | null = null;
@@ -162,14 +163,20 @@ export class RequestCache {
 
     const startedAt = Date.now();
 
-    // Helper to schedule cleanup after TTL
+    // Helper to schedule cleanup after TTL, tracked for disposal
     const scheduleCleanup = (): void => {
-      setTimeout(() => {
+      // Clear any existing cleanup timer for this key
+      const existing = this.cleanupTimers.get(key);
+      if (existing) clearTimeout(existing);
+
+      const timer = setTimeout(() => {
+        this.cleanupTimers.delete(key);
         const cached = this.cache.get(key);
         if (cached && cached.startedAt === startedAt) {
           this.cache.delete(key);
         }
       }, this.options.ttlMs);
+      this.cleanupTimers.set(key, timer);
     };
 
     const promise = requestFn()
@@ -252,12 +259,14 @@ export class RequestCache {
   }
 
   /**
-   * Clear all cached requests
+   * Clear all cached requests and their cleanup timers
    */
   clear(): void {
     if (this.options.enableLogging) {
       debugLog.info('Clearing all cached requests', { count: this.cache.size });
     }
+    this.cleanupTimers.forEach((timer) => clearTimeout(timer));
+    this.cleanupTimers.clear();
     this.cache.clear();
   }
 

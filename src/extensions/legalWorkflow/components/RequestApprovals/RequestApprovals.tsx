@@ -99,7 +99,7 @@ export const RequestApprovals: React.FC<IRequestApprovalsProps> = ({
   forceShow = false,
 }) => {
   const { control, isLoading, itemId, status } = useRequestFormContext();
-  const { currentRequest } = useRequestStore();
+  const currentRequest = useRequestStore((s) => s.currentRequest);
 
   const isNewRequest = !itemId;
 

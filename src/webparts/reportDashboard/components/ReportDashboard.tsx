@@ -16,7 +16,18 @@ import {
 } from '../utils/searchHelpers';
 
 // Constants
-const RECENT_SEARCHES_KEY = 'lrs_recent_searches';
+// Include site URL in the key so dev/uat/prod each get their own recent searches
+const RECENT_SEARCHES_PREFIX = 'lrs_recent_searches';
+const getRecentSearchesKey = (): string => {
+  try {
+    const siteUrl = SPContext.webAbsoluteUrl || '';
+    // Use a simple hash of the URL to keep the key short
+    const urlHash = siteUrl.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+    return `${RECENT_SEARCHES_PREFIX}_${urlHash}`;
+  } catch {
+    return RECENT_SEARCHES_PREFIX;
+  }
+};
 const DEFAULT_SEARCH_LIMIT = 10;
 const DEFAULT_RECENT_LIMIT = 5;
 const DEBOUNCE_DELAY = 300;
@@ -302,6 +313,15 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
   const searchContainerRef = React.useRef<HTMLDivElement>(null);
   const searchTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Cleanup search debounce timer on unmount
+  React.useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
   /**
    * Load user groups on mount
    * Uses centralized userGroupsService with caching and deduplication
@@ -353,7 +373,7 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
 
     const loadRecentSearches = (): void => {
       try {
-        const stored = localStorage.getItem(RECENT_SEARCHES_KEY);
+        const stored = localStorage.getItem(getRecentSearchesKey());
         if (stored) {
           setRecentSearches(JSON.parse(stored));
         }
@@ -583,7 +603,7 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
     const newRecent = [result.requestId, ...recentSearches.filter(s => s !== result.requestId)]
       .slice(0, searchConfig.recentSearchesLimit);
     setRecentSearches(newRecent);
-    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(newRecent));
+    localStorage.setItem(getRecentSearchesKey(), JSON.stringify(newRecent));
 
     const url = `${SPContext.webAbsoluteUrl}/Lists/Requests/DispForm.aspx?ID=${result.id}`;
     window.location.href = url;
@@ -604,7 +624,7 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
    */
   const clearRecentSearches = React.useCallback((): void => {
     setRecentSearches([]);
-    localStorage.removeItem(RECENT_SEARCHES_KEY);
+    localStorage.removeItem(getRecentSearchesKey());
   }, []);
 
   /**

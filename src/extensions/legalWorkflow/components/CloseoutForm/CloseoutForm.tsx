@@ -44,6 +44,7 @@ import { ValidationErrorContainer } from '@components/ValidationErrorContainer';
 import { WorkflowCardHeader } from '@components/WorkflowCardHeader';
 import { useRequestFormContext } from '@contexts/RequestFormContext';
 import { useRequestStore } from '@stores/requestStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useCloseoutStore } from '@stores/closeoutStore';
 import { ReviewAudience, ReviewOutcome } from '@appTypes/index';
 import { TRACKING_ID_MAX_LENGTH, CLOSEOUT_NOTES_MAX_LENGTH } from '@constants/fieldLimits';
@@ -88,7 +89,12 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
   defaultCollapsed = false,
   readOnly = false,
 }) => {
-  const { currentRequest, closeoutRequest } = useRequestStore();
+  const { currentRequest, closeoutRequest } = useRequestStore(
+    useShallow((s) => ({
+      currentRequest: s.currentRequest,
+      closeoutRequest: s.closeoutRequest,
+    }))
+  );
   const { setCloseoutValues, commentsAcknowledged, setCommentsAcknowledged } = useCloseoutStore();
   const { validationErrors, setValidationErrors } = useRequestFormContext();
 

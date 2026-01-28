@@ -28,6 +28,8 @@ const DEVEXTREME_COMMON_CSS_URL = 'https://cdn3.devexpress.com/jslib/22.2.3/css/
 const DEVEXTREME_LIGHT_CSS_URL = 'https://cdn3.devexpress.com/jslib/22.2.3/css/dx.light.css';
 
 export default class LegalWorkflowFormCustomizer extends BaseFormCustomizer<ILegalWorkflowFormCustomizerProperties> {
+  private _fullWidthApplied = false;
+  private _devExtremeCssLoaded = false;
   public async onInit(): Promise<void> {
     // Add your custom initialization to this method. The framework will wait
     // for the returned promise to resolve before rendering the form.
@@ -60,6 +62,8 @@ export default class LegalWorkflowFormCustomizer extends BaseFormCustomizer<ILeg
    * Both dx.common.css and dx.light.css are required for proper styling
    */
   private async loadDevExtremeCss(): Promise<void> {
+    if (this._devExtremeCssLoaded) return;
+
     try {
       // Load common styles first (base styles - required)
       await SPComponentLoader.loadCss(DEVEXTREME_COMMON_CSS_URL);
@@ -68,6 +72,8 @@ export default class LegalWorkflowFormCustomizer extends BaseFormCustomizer<ILeg
       // Then load theme styles (visual styling)
       await SPComponentLoader.loadCss(DEVEXTREME_LIGHT_CSS_URL);
       Log.info(LOG_SOURCE, 'DevExtreme light.css loaded successfully from CDN');
+
+      this._devExtremeCssLoaded = true;
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
       Log.error(LOG_SOURCE, new Error('Failed to load DevExtreme CSS from CDN: ' + message));
@@ -100,6 +106,10 @@ export default class LegalWorkflowFormCustomizer extends BaseFormCustomizer<ILeg
    * Apply full-width styles to break out of SharePoint's default form width constraints
    */
   private applyFullWidthStyles(): void {
+    // Only run once - DOM parent structure doesn't change between renders
+    if (this._fullWidthApplied) return;
+    this._fullWidthApplied = true;
+
     // Style the domElement itself
     if (this.domElement) {
       this.domElement.style.width = '100%';

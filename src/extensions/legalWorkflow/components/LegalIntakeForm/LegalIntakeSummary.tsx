@@ -49,7 +49,7 @@ export const LegalIntakeSummary: React.FC<ILegalIntakeSummaryProps> = ({
   defaultExpanded = false,
   onEditClick,
 }) => {
-  const { currentRequest } = useRequestStore();
+  const currentRequest = useRequestStore((s) => s.currentRequest);
   const permissions = usePermissions();
 
   // Check if user can edit review audience (Legal Admin or Admin only)

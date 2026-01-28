@@ -6,6 +6,7 @@
 import * as React from 'react';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { useRequestStore } from '@stores/index';
+import { useShallow } from 'zustand/react/shallow';
 import type { IPrincipal } from '@appTypes/index';
 
 /**
@@ -55,7 +56,27 @@ export function useWorkflowActions(itemId?: number): IWorkflowActionsResult {
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [error, setError] = React.useState<string | undefined>(undefined);
 
-  const store = useRequestStore();
+  const {
+    assignAttorney: storeAssignAttorney,
+    sendToCommittee: storeSendToCommittee,
+    submitLegalReview: storeSubmitLegalReview,
+    submitComplianceReview: storeSubmitComplianceReview,
+    closeoutRequest: storeCloseoutRequest,
+    cancelRequest: storeCancelRequest,
+    holdRequest: storeHoldRequest,
+    resumeRequest: storeResumeRequest,
+  } = useRequestStore(
+    useShallow((s) => ({
+      assignAttorney: s.assignAttorney,
+      sendToCommittee: s.sendToCommittee,
+      submitLegalReview: s.submitLegalReview,
+      submitComplianceReview: s.submitComplianceReview,
+      closeoutRequest: s.closeoutRequest,
+      cancelRequest: s.cancelRequest,
+      holdRequest: s.holdRequest,
+      resumeRequest: s.resumeRequest,
+    }))
+  );
 
   /**
    * Assign attorney (direct assignment)
@@ -70,7 +91,7 @@ export function useWorkflowActions(itemId?: number): IWorkflowActionsResult {
       setError(undefined);
 
       try {
-        await store.assignAttorney(attorney, notes);
+        await storeAssignAttorney(attorney, notes);
         SPContext.logger.success('Attorney assigned', {
           attorneyId: attorney.id,
           requestId: itemId,
@@ -84,7 +105,7 @@ export function useWorkflowActions(itemId?: number): IWorkflowActionsResult {
         setIsProcessing(false);
       }
     },
-    [itemId, store]
+    [itemId, storeAssignAttorney]
   );
 
   /**
@@ -100,7 +121,7 @@ export function useWorkflowActions(itemId?: number): IWorkflowActionsResult {
       setError(undefined);
 
       try {
-        await store.sendToCommittee(notes);
+        await storeSendToCommittee(notes);
         SPContext.logger.success('Sent to committee', { requestId: itemId });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
@@ -111,7 +132,7 @@ export function useWorkflowActions(itemId?: number): IWorkflowActionsResult {
         setIsProcessing(false);
       }
     },
-    [itemId, store]
+    [itemId, storeSendToCommittee]
   );
 
   /**
@@ -127,7 +148,7 @@ export function useWorkflowActions(itemId?: number): IWorkflowActionsResult {
       setError(undefined);
 
       try {
-        await store.submitLegalReview(outcome, notes);
+        await storeSubmitLegalReview(outcome, notes);
         SPContext.logger.success('Legal review submitted', {
           outcome,
           requestId: itemId,
@@ -141,7 +162,7 @@ export function useWorkflowActions(itemId?: number): IWorkflowActionsResult {
         setIsProcessing(false);
       }
     },
-    [itemId, store]
+    [itemId, storeSubmitLegalReview]
   );
 
   /**
@@ -161,7 +182,7 @@ export function useWorkflowActions(itemId?: number): IWorkflowActionsResult {
       setError(undefined);
 
       try {
-        await store.submitComplianceReview(outcome, notes, flags);
+        await storeSubmitComplianceReview(outcome, notes, flags);
         SPContext.logger.success('Compliance review submitted', {
           outcome,
           requestId: itemId,
@@ -175,7 +196,7 @@ export function useWorkflowActions(itemId?: number): IWorkflowActionsResult {
         setIsProcessing(false);
       }
     },
-    [itemId, store]
+    [itemId, storeSubmitComplianceReview]
   );
 
   /**
@@ -191,7 +212,7 @@ export function useWorkflowActions(itemId?: number): IWorkflowActionsResult {
       setError(undefined);
 
       try {
-        await store.closeoutRequest(options);
+        await storeCloseoutRequest(options);
         SPContext.logger.success('Request closed out', {
           trackingId: options?.trackingId,
           commentsAcknowledged: options?.commentsAcknowledged,
@@ -206,7 +227,7 @@ export function useWorkflowActions(itemId?: number): IWorkflowActionsResult {
         setIsProcessing(false);
       }
     },
-    [itemId, store]
+    [itemId, storeCloseoutRequest]
   );
 
   /**
@@ -222,7 +243,7 @@ export function useWorkflowActions(itemId?: number): IWorkflowActionsResult {
       setError(undefined);
 
       try {
-        await store.cancelRequest(reason);
+        await storeCancelRequest(reason);
         SPContext.logger.success('Request cancelled', { requestId: itemId });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
@@ -233,7 +254,7 @@ export function useWorkflowActions(itemId?: number): IWorkflowActionsResult {
         setIsProcessing(false);
       }
     },
-    [itemId, store]
+    [itemId, storeCancelRequest]
   );
 
   /**
@@ -249,7 +270,7 @@ export function useWorkflowActions(itemId?: number): IWorkflowActionsResult {
       setError(undefined);
 
       try {
-        await store.holdRequest(reason);
+        await storeHoldRequest(reason);
         SPContext.logger.success('Request put on hold', { requestId: itemId });
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
@@ -260,7 +281,7 @@ export function useWorkflowActions(itemId?: number): IWorkflowActionsResult {
         setIsProcessing(false);
       }
     },
-    [itemId, store]
+    [itemId, storeHoldRequest]
   );
 
   /**
@@ -275,7 +296,7 @@ export function useWorkflowActions(itemId?: number): IWorkflowActionsResult {
     setError(undefined);
 
     try {
-      await store.resumeRequest();
+      await storeResumeRequest();
       SPContext.logger.success('Request resumed', { requestId: itemId });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -285,7 +306,7 @@ export function useWorkflowActions(itemId?: number): IWorkflowActionsResult {
     } finally {
       setIsProcessing(false);
     }
-  }, [itemId, store]);
+  }, [itemId, storeResumeRequest]);
 
   return {
     assignAttorney,

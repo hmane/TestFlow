@@ -5,6 +5,7 @@
  */
 
 import * as React from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 
 import type { ILegalRequest } from '@appTypes/index';
@@ -15,8 +16,8 @@ import { useRequestStore } from './store';
  * Custom hook to use request store
  * Automatically initializes based on itemId parameter
  *
- * NOTE: This hook subscribes to the entire store state.
- * For optimized re-renders, use the individual selector hooks from selectors.ts.
+ * Uses shallow comparison to only re-render when the selected fields change.
+ * For even more granular control, use the individual selector hooks from selectors.ts.
  *
  * IMPORTANT: This hook does NOT reset the store on unmount to prevent data loss
  * when components remount. The store should be explicitly reset when navigating
@@ -47,7 +48,21 @@ export function useRequest(itemId?: number): {
     submitRequest,
     revertChanges,
     hasUnsavedChanges,
-  } = useRequestStore();
+  } = useRequestStore(
+    useShallow((s) => ({
+      currentRequest: s.currentRequest,
+      isLoading: s.isLoading,
+      isSaving: s.isSaving,
+      isDirty: s.isDirty,
+      error: s.error,
+      updateField: s.updateField,
+      updateMultipleFields: s.updateMultipleFields,
+      saveAsDraft: s.saveAsDraft,
+      submitRequest: s.submitRequest,
+      revertChanges: s.revertChanges,
+      hasUnsavedChanges: s.hasUnsavedChanges,
+    }))
+  );
 
   // Track if this effect has already run for this itemId to prevent duplicate loads
   const hasInitializedRef = React.useRef<number | undefined>(undefined);

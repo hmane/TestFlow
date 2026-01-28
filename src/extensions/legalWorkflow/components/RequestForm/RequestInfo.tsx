@@ -30,6 +30,7 @@ import { useDocumentsStore } from '@stores/documentsStore';
 import { useRequestStore } from '@stores/requestStore';
 import { useSubmissionItemsStore } from '@stores/submissionItemsStore';
 import * as React from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { FieldError, FormProvider as RHFFormProvider, useForm } from 'react-hook-form';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
@@ -70,7 +71,15 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({
     updateMultipleFields,
     isLoading,
     error,
-  } = useRequestStore();
+  } = useRequestStore(
+    useShallow((s) => ({
+      currentRequest: s.currentRequest,
+      saveAsDraft: s.saveAsDraft,
+      updateMultipleFields: s.updateMultipleFields,
+      isLoading: s.isLoading,
+      error: s.error,
+    }))
+  );
   const { items: submissionItems } = useSubmissionItemsStore();
   const { showSuccess: showSuccessNotification, showError: showErrorNotification } = useNotification();
 

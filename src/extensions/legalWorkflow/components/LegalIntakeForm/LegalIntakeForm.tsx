@@ -53,6 +53,7 @@ import { usePermissions } from '@hooks/usePermissions';
 import { saveRequest } from '@services/requestSaveService';
 import { useLegalIntakeStore } from '@stores/legalIntakeStore';
 import { useRequestStore } from '@stores/requestStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { IPrincipal } from '@appTypes/index';
 import { RequestStatus, ReviewAudience } from '@appTypes/workflowTypes';
 import { calculateBusinessHours } from '@utils/businessHoursCalculator';
@@ -112,7 +113,14 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
     isLoading,
     assignAttorney: storeAssignAttorney,
     sendToCommittee: storeSendToCommittee,
-  } = useRequestStore();
+  } = useRequestStore(
+    useShallow((s) => ({
+      currentRequest: s.currentRequest,
+      isLoading: s.isLoading,
+      assignAttorney: s.assignAttorney,
+      sendToCommittee: s.sendToCommittee,
+    }))
+  );
 
   const permissions = usePermissions();
 
@@ -327,7 +335,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
   }, [selectedAttorney, notesValue, localReviewAudience, setLegalIntakeValues, readOnly]);
 
   // Get the loadRequest function from the store to refresh data after save
-  const { loadRequest } = useRequestStore();
+  const loadRequest = useRequestStore((s) => s.loadRequest);
 
   /**
    * Handle saving Legal Intake changes in edit mode

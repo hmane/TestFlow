@@ -219,7 +219,7 @@ export const RequestTypeSelector: React.FC<IRequestTypeSelectorProps> = ({
   const [selectedType, setSelectedType] = React.useState<RequestType | undefined>(undefined);
   const [showError, setShowError] = React.useState<boolean>(false);
   const [isAnimatingOut, setIsAnimatingOut] = React.useState<boolean>(false);
-  const { updateField } = useRequestStore();
+  const updateField = useRequestStore((s) => s.updateField);
   // Ref for tracking setTimeout IDs to prevent memory leaks
   const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 

@@ -79,10 +79,16 @@ export const useComplianceReviewData = (): IComplianceReview | undefined =>
   useRequestStore(state => state.currentRequest?.complianceReview);
 
 /**
+ * Stable empty array to avoid creating a new reference on every render
+ * when no approvals exist
+ */
+const EMPTY_APPROVALS: Approval[] = [];
+
+/**
  * Selector for approvals array only
  */
 export const useApprovalsData = (): Approval[] =>
-  useRequestStore(state => state.currentRequest?.approvals || []);
+  useRequestStore(state => state.currentRequest?.approvals ?? EMPTY_APPROVALS);
 
 /**
  * Selector for review audience only

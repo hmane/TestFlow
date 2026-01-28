@@ -18,6 +18,7 @@ import { SpinnerLoading } from 'spfx-toolkit/lib/components/Card/components/Load
 import { ErrorBoundary } from 'spfx-toolkit/lib/components/ErrorBoundary';
 import { useConfigStore } from '@stores/configStore';
 import { useRequestStore } from '@stores/requestStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useSubmissionItemsStore } from '@stores/submissionItemsStore';
 import { usePermissionsStore } from '@stores/permissionsStore';
 import { useDocumentsStore } from '@stores/documentsStore';
@@ -107,7 +108,12 @@ export const ApplicationProvider: React.FC<IApplicationProviderProps> = ({
   const { loadConfigs } = useConfigStore();
   const { loadItems } = useSubmissionItemsStore();
   const { loadPermissions } = usePermissionsStore();
-  const { loadRequest, initializeNewRequest } = useRequestStore();
+  const { loadRequest, initializeNewRequest } = useRequestStore(
+    useShallow((s) => ({
+      loadRequest: s.loadRequest,
+      initializeNewRequest: s.initializeNewRequest,
+    }))
+  );
   const { loadAllDocuments } = useDocumentsStore();
 
   /**
@@ -467,7 +473,7 @@ export function useApplicationStatus(): {
   const { isLoaded: configLoaded } = useConfigStore();
   const { isLoaded: itemsLoaded } = useSubmissionItemsStore();
   const { isLoaded: permissionsLoaded } = usePermissionsStore();
-  const { currentRequest } = useRequestStore();
+  const currentRequest = useRequestStore((s) => s.currentRequest);
 
   return {
     isInitialized: configLoaded && itemsLoaded && permissionsLoaded,

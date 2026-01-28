@@ -15,6 +15,7 @@ import { useRequestFormContext } from '@contexts/RequestFormContext';
 import { usePermissions } from '@hooks/usePermissions';
 import { useWorkflowPermissions } from '@hooks/useWorkflowPermissions';
 import { useRequestStore } from '@stores/requestStore';
+import { useShallow } from 'zustand/react/shallow';
 import { useLegalIntakeStore } from '@stores/legalIntakeStore';
 import { useCloseoutStore } from '@stores/closeoutStore';
 import { useDocumentsStore } from '@stores/documentsStore';
@@ -130,7 +131,12 @@ export function useRequestActionsState(props: {
   const permissions = usePermissions();
 
   // Get current request for owner check
-  const { currentRequest, assignAttorney: storeAssignAttorney } = useRequestStore();
+  const { currentRequest, assignAttorney: storeAssignAttorney } = useRequestStore(
+    useShallow((s) => ({
+      currentRequest: s.currentRequest,
+      assignAttorney: s.assignAttorney,
+    }))
+  );
 
   // Get legal intake form data
   const legalIntakeStore = useLegalIntakeStore();
