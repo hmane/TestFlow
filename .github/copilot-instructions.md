@@ -42,7 +42,7 @@ Before using GitHub Copilot with SPFx development, ensure you have:
 
 - **GitHub Account**: Active GitHub account with Copilot subscription (individual, business, or enterprise)
 - **Visual Studio Code**: Version 1.85 or later
-- **Node.js**: Version 18.x LTS (required for SPFx 1.21.1)
+- **Node.js**: Version 22.x (>=22.14.0, required for SPFx 1.21.1)
 - **SPFx Development Environment**:
   - Yeoman generator (`yo`)
   - SPFx generator (`@microsoft/generator-sharepoint` version 1.21.1)

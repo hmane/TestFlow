@@ -15,7 +15,7 @@ This is a **Legal Review System (LRS)** built as a SharePoint Framework (SPFx) 1
 - **SPFx Version**: 1.21.1
 - **React**: 17.0.1
 - **TypeScript**: 5.3.3
-- **Node.js**: 18.x LTS (required)
+- **Node.js**: 22.x (>=22.14.0, required)
 
 ### Key Dependencies
 

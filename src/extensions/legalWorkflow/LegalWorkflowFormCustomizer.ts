@@ -36,7 +36,7 @@ export default class LegalWorkflowFormCustomizer extends BaseFormCustomizer<ILeg
 
     // Initialize SPContext using smart preset (auto-detects environment)
     try {
-      await SPContext.development(this.context, 'LegalWorkflowFormCustomizer');
+      await SPContext.smart(this.context, 'LegalWorkflowFormCustomizer');
 
       // Load DevExtreme CSS (both common and theme required)
       await this.loadDevExtremeCss();
