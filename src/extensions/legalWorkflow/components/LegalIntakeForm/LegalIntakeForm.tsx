@@ -126,6 +126,18 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
   const [isAssigning, setIsAssigning] = React.useState<boolean>(false);
   const [isSendingToCommittee, setIsSendingToCommittee] = React.useState<boolean>(false);
 
+  // Track mounted state and success toast timer for cleanup
+  const mountedRef = React.useRef(true);
+  const successTimerRef = React.useRef<ReturnType<typeof setTimeout>>();
+  React.useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      if (successTimerRef.current) {
+        clearTimeout(successTimerRef.current);
+      }
+    };
+  }, []);
+
   // Check if user can edit review audience (Legal Admin or Admin only)
   // Disable editing after reviews are completed (Closeout, Completed, or AwaitingFINRADocuments)
   const isAfterReviewsCompleted =
@@ -269,6 +281,14 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
     currentRequest?.reviewAudience || ReviewAudience.Both
   );
 
+  // Resync localReviewAudience when the underlying request changes (e.g., after loadRequest
+  // refreshes data, or when component is reused for a different request)
+  const currentRequestId = currentRequest?.id;
+  const currentRequestReviewAudience = currentRequest?.reviewAudience;
+  React.useEffect(() => {
+    setLocalReviewAudience(currentRequestReviewAudience || ReviewAudience.Both);
+  }, [currentRequestId, currentRequestReviewAudience]);
+
   const selectedAttorney = attorneyValue && attorneyValue.length > 0 ? attorneyValue[0] : undefined;
 
   // Determine if attorney field should be shown based on review audience
@@ -279,17 +299,31 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
   const { setLegalIntakeValues } = useLegalIntakeStore();
 
   // Sync form changes to the legal intake store in a single batch update
-  // This prevents multiple re-renders from separate store updates
+  // Debounced to avoid excessive store updates on every notes keystroke
   // Skip in read-only mode - store sync is only needed for editable forms
+  const storeSyncTimerRef = React.useRef<ReturnType<typeof setTimeout>>();
   React.useEffect(() => {
     // Skip in read-only mode - the summary view doesn't need store sync
     if (readOnly) return;
 
-    setLegalIntakeValues({
-      selectedAttorney,
-      assignmentNotes: notesValue,
-      reviewAudience: localReviewAudience,
-    });
+    // Clear any pending debounce
+    if (storeSyncTimerRef.current) {
+      clearTimeout(storeSyncTimerRef.current);
+    }
+
+    storeSyncTimerRef.current = setTimeout(() => {
+      setLegalIntakeValues({
+        selectedAttorney,
+        assignmentNotes: notesValue,
+        reviewAudience: localReviewAudience,
+      });
+    }, 300);
+
+    return () => {
+      if (storeSyncTimerRef.current) {
+        clearTimeout(storeSyncTimerRef.current);
+      }
+    };
   }, [selectedAttorney, notesValue, localReviewAudience, setLegalIntakeValues, readOnly]);
 
   // Get the loadRequest function from the store to refresh data after save
@@ -308,14 +342,23 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
       // Build the update payload from form values
       const updatePayload: Record<string, any> = {};
 
-      // Update attorney if changed
-      if (selectedAttorney) {
-        updatePayload.attorney = selectedAttorney;
-      }
-
       // Update review audience if changed
       if (localReviewAudience && localReviewAudience !== currentRequest.reviewAudience) {
         updatePayload.reviewAudience = localReviewAudience;
+      }
+
+      // Update attorney based on review audience:
+      // - Compliance Only: explicitly clear attorney (no attorney needed)
+      // - Legal/Both: include selected attorney if present
+      if (showAttorneyField) {
+        if (selectedAttorney) {
+          updatePayload.attorney = selectedAttorney;
+        }
+      } else {
+        // Compliance Only - clear attorney if one was previously assigned
+        if (currentRequest.attorney) {
+          updatePayload.attorney = null;
+        }
       }
 
       // Update assignment notes if provided
@@ -331,7 +374,9 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
         await loadRequest(currentRequest.id);
 
         setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 3000);
+        successTimerRef.current = setTimeout(() => {
+          if (mountedRef.current) setShowSuccess(false);
+        }, 3000);
       }
 
       // Exit edit mode
@@ -348,13 +393,15 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
    * Handle canceling edit mode
    */
   const handleCancelEdit = (): void => {
-    // Reset form to original values
+    // Reset form to original values, normalizing attorney ID for picker compatibility
     if (currentRequest) {
       reset({
-        attorney: currentRequest.attorney ? [currentRequest.attorney] : [],
+        attorney: normalizeAttorneyForPicker(currentRequest.attorney),
         attorneyAssignNotes: undefined,
         reviewAudience: currentRequest.reviewAudience || ReviewAudience.Both,
       });
+      // Resync local review audience state to match original request
+      setLocalReviewAudience(currentRequest.reviewAudience || ReviewAudience.Both);
     }
     setIsEditMode(false);
   };
@@ -378,7 +425,9 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
       // For Compliance Only, selectedAttorney will be undefined which is correct
       await storeAssignAttorney(selectedAttorney, notesValue, localReviewAudience);
       setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
+      successTimerRef.current = setTimeout(() => {
+        if (mountedRef.current) setShowSuccess(false);
+      }, 3000);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : showAttorneyField ? 'Failed to assign attorney' : 'Failed to send to compliance';
       setMessageBarError(errorMessage);
@@ -398,7 +447,9 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
       // Pass review audience to save Legal Admin's override
       await storeSendToCommittee(notesValue, localReviewAudience);
       setShowSuccess(true);
-      setTimeout(() => setShowSuccess(false), 3000);
+      successTimerRef.current = setTimeout(() => {
+        if (mountedRef.current) setShowSuccess(false);
+      }, 3000);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to send to committee';
       setMessageBarError(errorMessage);
