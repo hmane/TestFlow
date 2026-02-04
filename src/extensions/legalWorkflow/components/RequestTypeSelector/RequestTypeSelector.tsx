@@ -24,8 +24,24 @@ import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
 import { useWorkflowStepper } from '@components/WorkflowStepper/useWorkflowStepper';
 import { useRequestStore } from '@stores/requestStore';
 import { RequestType } from '@appTypes/requestTypes';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 
 import './RequestTypeSelector.scss';
+
+/**
+ * Get the Vendor Management site URL based on environment
+ */
+function getVendorManagementSiteUrl(): string {
+  const env = SPContext.environment;
+
+  if (env === 'dev') {
+    return '/sites/devVendorMgmt';
+  } else if (env === 'uat') {
+    return '/sites/uatVendorMgmt';
+  } else {
+    return '/sites/vendorMgmt';
+  }
+}
 
 // CSS class prefix for BEM naming
 const CSS_PREFIX = 'rts';
@@ -45,27 +61,25 @@ interface IRequestTypeOption {
 }
 
 /**
- * External application link configuration
+ * Vendor Management request type configuration
+ * URL path is relative to the vendor management site
  */
-interface IExternalAppOption {
+interface IVendorManagementOption {
   id: string;
   title: string;
   description: string;
   icon: string;
-  url: string;
+  urlPath: string; // Path relative to vendor management site
   accentColor: string;
 }
 
-/**
- * Vendor Management request types - external links
- */
-const VENDOR_MANAGEMENT_OPTIONS: IExternalAppOption[] = [
+const VENDOR_MANAGEMENT_OPTIONS: IVendorManagementOption[] = [
   {
     id: 'vm-nda',
     title: 'NDA',
     description: 'Non-Disclosure Agreement request',
     icon: 'ProtectedDocument',
-    url: '/sites/vendor-management/Lists/Requests/NewForm.aspx?RequestType=NDA',
+    urlPath: '/Lists/Requests/NewForm.aspx?RequestType=NDA',
     accentColor: '#0e7c86',
   },
   {
@@ -73,7 +87,7 @@ const VENDOR_MANAGEMENT_OPTIONS: IExternalAppOption[] = [
     title: 'New Vendor',
     description: 'Onboard a new vendor',
     icon: 'AddFriend',
-    url: '/sites/vendor-management/Lists/Requests/NewForm.aspx?RequestType=New',
+    urlPath: '/Lists/Requests/NewForm.aspx?RequestType=New',
     accentColor: '#0e7c86',
   },
   {
@@ -81,7 +95,7 @@ const VENDOR_MANAGEMENT_OPTIONS: IExternalAppOption[] = [
     title: 'Amendment',
     description: 'Modify existing vendor agreement',
     icon: 'PageEdit',
-    url: '/sites/vendor-management/Lists/Requests/NewForm.aspx?RequestType=Amendment',
+    urlPath: '/Lists/Requests/NewForm.aspx?RequestType=Amendment',
     accentColor: '#0e7c86',
   },
   {
@@ -89,7 +103,7 @@ const VENDOR_MANAGEMENT_OPTIONS: IExternalAppOption[] = [
     title: 'Notification',
     description: 'Vendor status notification',
     icon: 'Ringer',
-    url: '/sites/vendor-management/Lists/Requests/NewForm.aspx?RequestType=Notification',
+    urlPath: '/Lists/Requests/NewForm.aspx?RequestType=Notification',
     accentColor: '#0e7c86',
   },
 ];
@@ -181,24 +195,30 @@ interface IRequestTypeCardProps {
  * ExternalAppCard - Card for external application links
  */
 interface IExternalAppCardProps {
-  option: IExternalAppOption;
+  option: IVendorManagementOption;
   index: number;
 }
 
 const ExternalAppCard: React.FC<IExternalAppCardProps> = React.memo(
   ({ option, index }) => {
+    // Build full URL using environment-specific site URL
+    const fullUrl = React.useMemo(() => {
+      const siteUrl = getVendorManagementSiteUrl();
+      return `${siteUrl}${option.urlPath}`;
+    }, [option.urlPath]);
+
     const handleClick = React.useCallback((): void => {
-      window.open(option.url, '_blank', 'noopener,noreferrer');
-    }, [option.url]);
+      window.open(fullUrl, '_blank', 'noopener,noreferrer');
+    }, [fullUrl]);
 
     const handleKeyDown = React.useCallback(
       (e: React.KeyboardEvent): void => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          window.open(option.url, '_blank', 'noopener,noreferrer');
+          window.open(fullUrl, '_blank', 'noopener,noreferrer');
         }
       },
-      [option.url]
+      [fullUrl]
     );
 
     return (
@@ -450,7 +470,7 @@ export const RequestTypeSelector: React.FC<IRequestTypeSelectorProps> = ({
           </p>
 
           <div className={`${CSS_PREFIX}__external-cards-grid`}>
-            {VENDOR_MANAGEMENT_OPTIONS.map((option: IExternalAppOption, index: number) => (
+            {VENDOR_MANAGEMENT_OPTIONS.map((option: IVendorManagementOption, index: number) => (
               <ExternalAppCard
                 key={option.id}
                 option={option}
