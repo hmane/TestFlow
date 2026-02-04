@@ -79,6 +79,7 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
     stagedFiles,
     filesToDelete,
     filesToRename,
+    filesToChangeType,
     isUploading,
     uploadProgress,
     isTypeDialogOpen,
@@ -325,10 +326,33 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
       })),
     });
 
-    // Get documents and apply defensive filtering
+    // Get documents and apply defensive filtering (including pending type changes)
+    const pendingTypeById = new Map<string, DocumentType>();
+    for (let i = 0; i < filesToChangeType.length; i++) {
+      const change = filesToChangeType[i];
+      if (change && change.file && change.file.uniqueId) {
+        pendingTypeById.set(change.file.uniqueId, change.newType);
+      }
+    }
+
     const allReviewDocs = getDocumentsByType(DocumentType.Review);
-    const reviewDocs = allReviewDocs.filter(function(doc) {
+    const allSuppDocs = getDocumentsByType(DocumentType.Supplemental);
+    const attachmentDocs = allReviewDocs.concat(allSuppDocs).filter(function(doc) {
       return !isApprovalDocumentType(doc.documentType);
+    });
+
+    const docsWithPending = attachmentDocs.map(function(doc) {
+      const pendingType = pendingTypeById.get(doc.uniqueId);
+      const displayType = pendingType || doc.documentType;
+      return { doc, pendingType, displayType };
+    });
+
+    const reviewDocs = docsWithPending.filter(function(item) {
+      return item.displayType === DocumentType.Review;
+    });
+
+    const suppDocs = docsWithPending.filter(function(item) {
+      return item.displayType === DocumentType.Supplemental;
     });
 
     const allReviewStaged = stagedFiles.filter(function(sf) { return sf.documentType === DocumentType.Review; });
@@ -347,16 +371,14 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
     });
     const reviewPending = getPendingCounts(DocumentType.Review);
 
-    const allSuppDocs = getDocumentsByType(DocumentType.Supplemental);
-    const suppDocs = allSuppDocs.filter(function(doc) {
-      return !isApprovalDocumentType(doc.documentType);
-    });
-
     const allSuppStaged = stagedFiles.filter(function(sf) { return sf.documentType === DocumentType.Supplemental; });
     const suppStaged = allSuppStaged.filter(function(sf) {
       return !isApprovalDocumentType(sf.documentType);
     });
     const suppPending = getPendingCounts(DocumentType.Supplemental);
+
+    const allDocs = attachmentDocs;
+    const allStaged = reviewStaged.concat(suppStaged);
 
     const totalCount = reviewDocs.length + reviewStaged.length + suppDocs.length + suppStaged.length;
     const hasDocuments = totalCount > 0;
@@ -404,7 +426,7 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
     const renderDocumentSection = (
       title: string,
       sectionDocumentType: DocumentType,
-      docs: any[],
+      docs: Array<{ doc: any; pendingType?: DocumentType }>,
       staged: IStagedDocument[],
       pending: { newCount: number; modifiedCount: number; deletedCount: number },
       allDocs: any[],
@@ -468,7 +490,9 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
             )}
 
             {/* Existing documents */}
-            {docs.map(doc => {
+            {docs.map(item => {
+              const doc = item.doc;
+              const pendingType = item.pendingType;
               const isDeleted = filesToDelete.some(fd => fd.uniqueId === doc.uniqueId);
 
               let renameInfo: any = undefined;
@@ -478,14 +502,16 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
                   break;
                 }
               }
+              const isPending = !!renameInfo || !!pendingType;
 
               return (
                 <DocumentCard
                   key={doc.uniqueId}
                   document={doc}
                   isDeleted={isDeleted}
-                  isPending={!!renameInfo}
+                  isPending={isPending}
                   pendingName={renameInfo ? renameInfo.newName : undefined}
+                  pendingType={pendingType}
                   showTypeChange={true}
                   isReadOnly={isReadOnly}
                   isDragging={draggedDocId === doc.uniqueId}
@@ -591,8 +617,8 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
               reviewDocs,
               reviewStaged,
               reviewPending,
-              reviewDocs.concat(suppDocs),
-              reviewStaged.concat(suppStaged)
+              allDocs,
+              allStaged
             )}
 
             {/* Divider */}
@@ -607,8 +633,8 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
               suppDocs,
               suppStaged,
               suppPending,
-              reviewDocs.concat(suppDocs),
-              reviewStaged.concat(suppStaged)
+              allDocs,
+              allStaged
             )}
 
             {/* Drop hint overlay */}

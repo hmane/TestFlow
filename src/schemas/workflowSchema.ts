@@ -176,7 +176,7 @@ export const submitComplianceReviewSchema = z.object({
  * Schema for request closeout
  * Who can perform: LegalAdmin, Admin
  * Valid from status: Closeout
- * Tracking ID required if: Compliance reviewed AND (isForesideReviewRequired OR isRetailUse)
+ * Tracking ID required if: Compliance reviewed AND (isForesideReviewRequired AND isRetailUse)
  */
 export const closeoutRequestSchema = z.object({
   trackingId: z.string().optional(),
@@ -188,13 +188,13 @@ export const closeoutRequestSchema = z.object({
   isForesideReviewRequired: z.boolean(),
   isRetailUse: z.boolean(),
 }).superRefine((data, ctx) => {
-  // Tracking ID required if compliance reviewed AND (foreside OR retail)
-  const requiresTrackingId = data.complianceReviewed && (data.isForesideReviewRequired || data.isRetailUse);
+  // Tracking ID required if compliance reviewed AND (foreside AND retail)
+  const requiresTrackingId = data.complianceReviewed && data.isForesideReviewRequired && data.isRetailUse;
 
   if (requiresTrackingId && (!data.trackingId || data.trackingId.trim().length === 0)) {
     ctx.addIssue({
       code: 'custom',
-      message: 'Tracking ID is required when Compliance reviewed and (Foreside Review Required or Retail Use)',
+      message: 'Tracking ID is required when Compliance reviewed and both Foreside Review Required and Retail Use are true',
       path: ['trackingId'],
     });
   }

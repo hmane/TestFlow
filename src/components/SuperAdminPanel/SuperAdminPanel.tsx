@@ -38,8 +38,7 @@ export type SuperAdminAction =
   | 'overrideLegalReview'
   | 'overrideComplianceReview'
   | 'overrideComplianceFlags'
-  | 'reopenRequest'
-  | 'clearField';
+  | 'reopenRequest';
 
 /**
  * Props for SuperAdminPanel
@@ -132,6 +131,7 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
 }) => {
   const {
     currentRequest,
+    itemId,
     adminOverrideStatus,
     adminClearAttorney,
     adminOverrideReviewAudience,
@@ -142,6 +142,7 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
   } = useRequestStore(
     useShallow((s) => ({
       currentRequest: s.currentRequest,
+      itemId: s.itemId,
       adminOverrideStatus: s.adminOverrideStatus,
       adminClearAttorney: s.adminClearAttorney,
       adminOverrideReviewAudience: s.adminOverrideReviewAudience,
@@ -218,7 +219,10 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
    * Handle status change override
    */
   const handleStatusChange = async (status: string): Promise<void> => {
-    if (!currentRequest?.id) return;
+    if (!itemId || !currentRequest) {
+      setErrorMessage('No request loaded. Please refresh and try again.');
+      return;
+    }
 
     SPContext.logger.warn('ADMIN OVERRIDE: Status change', {
       requestId: currentRequest.requestId,
@@ -235,7 +239,10 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
    * Handle attorney override (clear)
    */
   const handleAttorneyOverride = async (): Promise<void> => {
-    if (!currentRequest?.id) return;
+    if (!itemId || !currentRequest) {
+      setErrorMessage('No request loaded. Please refresh and try again.');
+      return;
+    }
 
     SPContext.logger.warn('ADMIN OVERRIDE: Attorney cleared', {
       requestId: currentRequest.requestId,
@@ -251,7 +258,10 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
    * Handle review audience override
    */
   const handleReviewAudienceOverride = async (audience: string): Promise<void> => {
-    if (!currentRequest?.id) return;
+    if (!itemId || !currentRequest) {
+      setErrorMessage('No request loaded. Please refresh and try again.');
+      return;
+    }
 
     SPContext.logger.warn('ADMIN OVERRIDE: Review audience changed', {
       requestId: currentRequest.requestId,
@@ -268,7 +278,10 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
    * Handle legal review override
    */
   const handleLegalReviewOverride = async (data?: Record<string, unknown>): Promise<void> => {
-    if (!currentRequest?.id) return;
+    if (!itemId || !currentRequest) {
+      setErrorMessage('No request loaded. Please refresh and try again.');
+      return;
+    }
 
     SPContext.logger.warn('ADMIN OVERRIDE: Legal review modified', {
       requestId: currentRequest.requestId,
@@ -289,7 +302,10 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
    * Handle compliance review override
    */
   const handleComplianceReviewOverride = async (data?: Record<string, unknown>): Promise<void> => {
-    if (!currentRequest?.id) return;
+    if (!itemId || !currentRequest) {
+      setErrorMessage('No request loaded. Please refresh and try again.');
+      return;
+    }
 
     SPContext.logger.warn('ADMIN OVERRIDE: Compliance review modified', {
       requestId: currentRequest.requestId,
@@ -310,7 +326,10 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
    * Handle compliance flags override
    */
   const handleComplianceFlagsOverride = async (data?: Record<string, unknown>): Promise<void> => {
-    if (!currentRequest?.id) return;
+    if (!itemId || !currentRequest) {
+      setErrorMessage('No request loaded. Please refresh and try again.');
+      return;
+    }
 
     SPContext.logger.warn('ADMIN OVERRIDE: Compliance flags modified', {
       requestId: currentRequest.requestId,
@@ -331,7 +350,10 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
    * Handle reopen request
    */
   const handleReopenRequest = async (): Promise<void> => {
-    if (!currentRequest?.id) return;
+    if (!itemId || !currentRequest) {
+      setErrorMessage('No request loaded. Please refresh and try again.');
+      return;
+    }
 
     SPContext.logger.warn('ADMIN OVERRIDE: Request reopened', {
       requestId: currentRequest.requestId,
@@ -356,6 +378,7 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
       setErrorMessage('A reason is required for all administrative overrides');
       return;
     }
+    setErrorMessage(undefined);
     setConfirmation({ isOpen: true, action, title, message, data });
   };
 
@@ -364,15 +387,24 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
    */
   const handleConfirm = async (): Promise<void> => {
     const { action, data } = confirmation;
-    if (!action) return;
+    if (!action) {
+      setErrorMessage('No action selected. Please try again.');
+      return;
+    }
+    if (!actionReason.trim()) {
+      setErrorMessage('A reason is required for all administrative overrides');
+      return;
+    }
 
-    setConfirmation(prev => ({ ...prev, isOpen: false }));
     setIsProcessing(true);
     setErrorMessage(undefined);
 
     try {
       switch (action) {
         case 'changeStatus':
+          if (!data?.status) {
+            throw new Error('No status selected for override');
+          }
           await handleStatusChange(data?.status as string);
           break;
         case 'overrideAttorney':
@@ -398,6 +430,7 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
       setSuccessMessage(`Action completed successfully. Reason logged: "${actionReason}"`);
       setActionReason('');
       onActionComplete?.(action, true);
+      setConfirmation(prev => ({ ...prev, isOpen: false }));
 
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'An error occurred';
@@ -491,7 +524,7 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
         onRenderHeader={onRenderHeader}
         onRenderFooter={onRenderFooter}
         className="super-admin-panel"
-        isBlocking={true}
+        isBlocking={false}
         layerProps={{ eventBubblingEnabled: true }}
       >
         <div className="super-admin-panel__content">
@@ -849,6 +882,7 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
       <Dialog
         hidden={!confirmation.isOpen}
         onDismiss={() => setConfirmation(prev => ({ ...prev, isOpen: false }))}
+        className="super-admin-panel__dialog"
         dialogContentProps={{
           type: DialogType.normal,
           title: confirmation.title,
@@ -857,7 +891,7 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
         modalProps={{
           isBlocking: true,
           styles: { main: { maxWidth: 500 } },
-          className: 'super-admin-panel__dialog',
+          layerProps: { eventBubblingEnabled: true },
         }}
       >
         <div className="super-admin-panel__dialog-warning">
@@ -873,10 +907,12 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
             onClick={handleConfirm}
             text="Confirm Override"
             className="super-admin-panel__dialog-confirm"
+            disabled={isProcessing}
           />
           <DefaultButton
             onClick={() => setConfirmation(prev => ({ ...prev, isOpen: false }))}
             text="Cancel"
+            disabled={isProcessing}
           />
         </DialogFooter>
       </Dialog>

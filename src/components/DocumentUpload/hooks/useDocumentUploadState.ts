@@ -56,6 +56,7 @@ export interface IUseDocumentUploadStateReturn {
   stagedFiles: IStagedDocument[];
   filesToDelete: any[];
   filesToRename: any[];
+  filesToChangeType: any[];
   isUploading: boolean;
   uploadProgress: any;
 
@@ -97,6 +98,7 @@ export interface IUseDocumentUploadStateReturn {
   markForRename: (doc: any, newName: string) => void;
   cancelRename: (uniqueId: string) => void;
   markForTypeChange: (docs: any[], newType: DocumentType) => void;
+  cancelTypeChange: (fileIds: string[]) => void;
   getPendingCounts: (documentType: DocumentType) => { newCount: number; modifiedCount: number; deletedCount: number };
   retryUpload: (fileId: string) => Promise<void>;
   skipUpload: (fileId: string) => void;
@@ -185,6 +187,7 @@ export function useDocumentUploadState(props: IUseDocumentUploadStateProps): IUs
     stagedFiles,
     filesToDelete,
     filesToRename,
+    filesToChangeType,
     isUploading,
     uploadProgress,
     loadDocuments,
@@ -195,6 +198,7 @@ export function useDocumentUploadState(props: IUseDocumentUploadStateProps): IUs
     markForRename,
     cancelRename,
     markForTypeChange,
+    cancelTypeChange,
     getPendingCounts,
     retryUpload,
     skipUpload,
@@ -690,7 +694,12 @@ export function useDocumentUploadState(props: IUseDocumentUploadStateProps): IUs
 
         case 'changeType':
           if (action.data && typeof action.data === 'string') {
-            markForTypeChange([doc], action.data as DocumentType);
+            const newType = action.data as DocumentType;
+            if (newType === doc.documentType) {
+              cancelTypeChange([doc.uniqueId]);
+            } else {
+              markForTypeChange([doc], newType);
+            }
             if (onFilesChange) {
               onFilesChange();
             }
@@ -853,6 +862,7 @@ export function useDocumentUploadState(props: IUseDocumentUploadStateProps): IUs
     stagedFiles,
     filesToDelete,
     filesToRename,
+    filesToChangeType,
     isUploading,
     uploadProgress,
 
@@ -894,6 +904,7 @@ export function useDocumentUploadState(props: IUseDocumentUploadStateProps): IUs
     markForRename,
     cancelRename,
     markForTypeChange,
+    cancelTypeChange,
     getPendingCounts,
     retryUpload,
     skipUpload,

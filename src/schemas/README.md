@@ -135,7 +135,7 @@ const closeoutData = {
   complianceReviewed: true,
 };
 
-// Tracking ID required if compliance reviewed AND (foreside OR retail)
+// Tracking ID required if compliance reviewed AND (foreside AND retail)
 const closeoutResult = closeoutWithTrackingIdSchema.safeParse(closeoutData);
 ```
 
@@ -278,14 +278,14 @@ export const closeoutWithTrackingIdSchema = z
   })
   .refine(
     (data) => {
-      // Custom logic: Tracking ID required if specific conditions met
+      // Custom logic: Tracking ID required if specific conditions met (foreside AND retail)
       if (data.complianceReviewed && (data.isForesideReviewRequired || data.isRetailUse)) {
         return data.trackingId && data.trackingId.length > 0;
       }
       return true;
     },
     {
-      message: 'Tracking ID is required when Compliance reviewed and (Foreside or Retail Use)',
+      message: 'Tracking ID is required when Compliance reviewed and both Foreside Review Required and Retail Use are true',
       path: ['trackingId'],
     }
   );

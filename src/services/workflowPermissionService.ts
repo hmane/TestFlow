@@ -51,7 +51,7 @@ const VALID_STATUS_TRANSITIONS: Record<RequestStatus, RequestStatus[]> = {
     RequestStatus.Cancelled,
   ],
   [RequestStatus.Closeout]: [
-    RequestStatus.AwaitingFINRADocuments, // If Foreside Review Required
+    RequestStatus.AwaitingFINRADocuments, // If Foreside Review Required and Retail Use
     RequestStatus.Completed,
     RequestStatus.OnHold,
     RequestStatus.Cancelled,

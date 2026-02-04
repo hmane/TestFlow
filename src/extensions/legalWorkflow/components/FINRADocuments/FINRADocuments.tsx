@@ -205,13 +205,6 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
             documentLibraryTitle={documentLibraryTitle}
             maxFiles={10}
             maxFileSize={250 * 1024 * 1024}
-            allowedExtensions={[
-              'pdf',
-              'doc',
-              'docx',
-              'msg',
-              'eml',
-            ]}
             onFilesChange={handleFilesChange}
             onError={handleError}
           />

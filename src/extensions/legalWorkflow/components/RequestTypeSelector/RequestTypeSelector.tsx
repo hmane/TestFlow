@@ -45,6 +45,56 @@ interface IRequestTypeOption {
 }
 
 /**
+ * External application link configuration
+ */
+interface IExternalAppOption {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  url: string;
+  accentColor: string;
+}
+
+/**
+ * Vendor Management request types - external links
+ */
+const VENDOR_MANAGEMENT_OPTIONS: IExternalAppOption[] = [
+  {
+    id: 'vm-nda',
+    title: 'NDA',
+    description: 'Non-Disclosure Agreement request',
+    icon: 'ProtectedDocument',
+    url: '/sites/vendor-management/Lists/Requests/NewForm.aspx?RequestType=NDA',
+    accentColor: '#0e7c86',
+  },
+  {
+    id: 'vm-new',
+    title: 'New Vendor',
+    description: 'Onboard a new vendor',
+    icon: 'AddFriend',
+    url: '/sites/vendor-management/Lists/Requests/NewForm.aspx?RequestType=New',
+    accentColor: '#0e7c86',
+  },
+  {
+    id: 'vm-amendment',
+    title: 'Amendment',
+    description: 'Modify existing vendor agreement',
+    icon: 'PageEdit',
+    url: '/sites/vendor-management/Lists/Requests/NewForm.aspx?RequestType=Amendment',
+    accentColor: '#0e7c86',
+  },
+  {
+    id: 'vm-notification',
+    title: 'Notification',
+    description: 'Vendor status notification',
+    icon: 'Ringer',
+    url: '/sites/vendor-management/Lists/Requests/NewForm.aspx?RequestType=Notification',
+    accentColor: '#0e7c86',
+  },
+];
+
+/**
  * Request type options with rich metadata
  */
 const REQUEST_TYPE_OPTIONS: IRequestTypeOption[] = [
@@ -126,6 +176,58 @@ interface IRequestTypeCardProps {
   onSelect: (type: RequestType) => void;
   index: number;
 }
+
+/**
+ * ExternalAppCard - Card for external application links
+ */
+interface IExternalAppCardProps {
+  option: IExternalAppOption;
+  index: number;
+}
+
+const ExternalAppCard: React.FC<IExternalAppCardProps> = React.memo(
+  ({ option, index }) => {
+    const handleClick = React.useCallback((): void => {
+      window.open(option.url, '_blank', 'noopener,noreferrer');
+    }, [option.url]);
+
+    const handleKeyDown = React.useCallback(
+      (e: React.KeyboardEvent): void => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          window.open(option.url, '_blank', 'noopener,noreferrer');
+        }
+      },
+      [option.url]
+    );
+
+    return (
+      <div
+        className={`${CSS_PREFIX}__external-card`}
+        onClick={handleClick}
+        onKeyDown={handleKeyDown}
+        role="link"
+        tabIndex={0}
+        aria-label={`${option.title} - Opens in new tab`}
+        style={{
+          '--accent-color': option.accentColor,
+          '--animation-delay': `${index * 80}ms`,
+        } as React.CSSProperties}
+      >
+        <div className={`${CSS_PREFIX}__external-card-icon`}>
+          <Icon iconName={option.icon} />
+        </div>
+        <div className={`${CSS_PREFIX}__external-card-content`}>
+          <div className={`${CSS_PREFIX}__external-card-title`}>
+            {option.title}
+            <Icon iconName="OpenInNewTab" className={`${CSS_PREFIX}__external-link-icon`} />
+          </div>
+          <p className={`${CSS_PREFIX}__external-card-description`}>{option.description}</p>
+        </div>
+      </div>
+    );
+  }
+);
 
 const RequestTypeCard: React.FC<IRequestTypeCardProps> = React.memo(
   ({ option, isSelected, onSelect, index }) => {
@@ -308,6 +410,16 @@ export const RequestTypeSelector: React.FC<IRequestTypeSelectorProps> = ({
           </div>
         )}
 
+        {/* Section label for Legal Workflow */}
+        <div className={`${CSS_PREFIX}__section-label`}>
+          <div className={`${CSS_PREFIX}__section-label-line`} />
+          <span className={`${CSS_PREFIX}__section-label-text`}>
+            <Icon iconName="ComplianceAudit" />
+            Legal Review System
+          </span>
+          <div className={`${CSS_PREFIX}__section-label-line`} />
+        </div>
+
         {/* Request type cards grid */}
         <div className={`${CSS_PREFIX}__cards-grid`}>
           {REQUEST_TYPE_OPTIONS.map((option: IRequestTypeOption, index: number) => (
@@ -319,6 +431,33 @@ export const RequestTypeSelector: React.FC<IRequestTypeSelectorProps> = ({
               index={index}
             />
           ))}
+        </div>
+
+        {/* Vendor Management Section */}
+        <div className={`${CSS_PREFIX}__external-section`}>
+          <div className={`${CSS_PREFIX}__section-label ${CSS_PREFIX}__section-label--external`}>
+            <div className={`${CSS_PREFIX}__section-label-line ${CSS_PREFIX}__section-label-line--external`} />
+            <span className={`${CSS_PREFIX}__section-label-text ${CSS_PREFIX}__section-label-text--external`}>
+              <Icon iconName="BusinessCenterLogo" />
+              Vendor Management
+              <span className={`${CSS_PREFIX}__external-badge`}>Different App</span>
+            </span>
+            <div className={`${CSS_PREFIX}__section-label-line ${CSS_PREFIX}__section-label-line--external`} />
+          </div>
+
+          <p className={`${CSS_PREFIX}__external-section-hint`}>
+            Looking for vendor requests? Select an option below to open the Vendor Management application.
+          </p>
+
+          <div className={`${CSS_PREFIX}__external-cards-grid`}>
+            {VENDOR_MANAGEMENT_OPTIONS.map((option: IExternalAppOption, index: number) => (
+              <ExternalAppCard
+                key={option.id}
+                option={option}
+                index={index}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Workflow preview section */}

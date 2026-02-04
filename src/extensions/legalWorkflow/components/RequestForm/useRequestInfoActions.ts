@@ -200,10 +200,8 @@ export const useRequestInfoActions = ({
   // Track which schema was used for the last validation (save vs submit)
   const lastValidationSchemaRef = React.useRef<'save' | 'submit' | null>(null);
 
-  // Get document operations and state from store
+  // Get document state from store
   const {
-    renamePendingFiles,
-    deletePendingFiles,
     documents,
     stagedFiles,
     filesToDelete,
@@ -289,26 +287,7 @@ export const useRequestInfoActions = ({
 
   const completeSave = React.useCallback(async (successMessage?: string): Promise<void> => {
     try {
-      // Process document operations BEFORE save to avoid state being cleared by reload
-      SPContext.logger.info('RequestInfo: Processing document operations before save');
-
-      try {
-        await renamePendingFiles();
-        SPContext.logger.success('RequestInfo: Documents renamed successfully');
-      } catch (docError: unknown) {
-        SPContext.logger.error('RequestInfo: Document rename failed', docError);
-        // Don't fail the whole save if document operations fail
-      }
-
-      try {
-        await deletePendingFiles();
-        SPContext.logger.success('RequestInfo: Documents deleted successfully');
-      } catch (docError: unknown) {
-        SPContext.logger.error('RequestInfo: Document deletion failed', docError);
-        // Don't fail the whole save if document operations fail
-      }
-
-      // Now save the form - reload will show already-renamed files
+      // Save the form; document operations are processed after save in requestStore
       const savedItemId = await saveAsDraft();
 
       showSuccessNotification?.(successMessage ?? 'Draft saved successfully!');
@@ -337,29 +316,10 @@ export const useRequestInfoActions = ({
       showErrorNotification?.(errorMessage);
       throw error;
     }
-  }, [itemId, saveAsDraft, renamePendingFiles, deletePendingFiles, showSuccessNotification, showErrorNotification]);
+  }, [itemId, saveAsDraft, showSuccessNotification, showErrorNotification]);
 
   const completeSubmit = React.useCallback(async (): Promise<void> => {
     try {
-      // Process document operations BEFORE submit to avoid state being cleared by reload
-      SPContext.logger.info('RequestInfo: Processing document operations before submit');
-
-      try {
-        await renamePendingFiles();
-        SPContext.logger.success('RequestInfo: Documents renamed successfully');
-      } catch (docError: unknown) {
-        SPContext.logger.error('RequestInfo: Document rename failed', docError);
-        // Don't fail the whole submit if document operations fail
-      }
-
-      try {
-        await deletePendingFiles();
-        SPContext.logger.success('RequestInfo: Documents deleted successfully');
-      } catch (docError: unknown) {
-        SPContext.logger.error('RequestInfo: Document deletion failed', docError);
-        // Don't fail the whole submit if document operations fail
-      }
-
       // Submit the request - this changes status from Draft to Legal Intake
       // The submitRequest action saves any pending form changes first, then updates status
       SPContext.logger.info('RequestInfo: Calling submitRequest...');
@@ -392,7 +352,7 @@ export const useRequestInfoActions = ({
       showErrorNotification?.(errorMessage);
       throw error;
     }
-  }, [itemId, submitRequest, renamePendingFiles, deletePendingFiles, showSuccessNotification, showErrorNotification]);
+  }, [itemId, submitRequest, showSuccessNotification, showErrorNotification]);
 
 
   const validateSubmission = React.useCallback(

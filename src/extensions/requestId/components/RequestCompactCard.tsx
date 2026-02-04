@@ -39,10 +39,14 @@ import styles from './RequestIdHoverCard.module.scss';
 /**
  * Format date for display
  */
-const formatDate = (date: Date | undefined): string => {
+const formatDate = (date: Date | undefined | null): string => {
   if (!date) return 'Not set';
 
   const dateObj = typeof date === 'string' ? new Date(date) : date;
+
+  // Check for invalid date
+  if (isNaN(dateObj.getTime())) return 'Not set';
+
   return dateObj.toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -53,9 +57,15 @@ const formatDate = (date: Date | undefined): string => {
 /**
  * Get relative time string
  */
-const getRelativeTime = (date: Date): string => {
+const getRelativeTime = (date: Date | undefined | null): string => {
+  if (!date) return '';
+
   const now = new Date();
   const created = typeof date === 'string' ? new Date(date) : date;
+
+  // Check for invalid date
+  if (isNaN(created.getTime())) return '';
+
   const diffMs = now.getTime() - created.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
@@ -70,8 +80,14 @@ const getRelativeTime = (date: Date): string => {
 /**
  * Format date and time for tooltip display
  */
-const formatDateTime = (date: Date): string => {
+const formatDateTime = (date: Date | undefined | null): string => {
+  if (!date) return '';
+
   const dateObj = typeof date === 'string' ? new Date(date) : date;
+
+  // Check for invalid date
+  if (isNaN(dateObj.getTime())) return '';
+
   return dateObj.toLocaleString('en-US', {
     weekday: 'short',
     month: 'short',
@@ -611,17 +627,19 @@ export const RequestCompactCard: React.FC<IRequestCompactCardProps> = ({
               size={24}
               displayMode="avatarAndName"
             />
-            <TooltipHost
-              content={formatDateTime(itemData.created)}
-              directionalHint={DirectionalHint.topCenter}
-            >
-              <Text
-                variant="tiny"
-                styles={{ root: { color: '#8a8886', cursor: 'default' } }}
+            {itemData.created && (
+              <TooltipHost
+                content={formatDateTime(itemData.created)}
+                directionalHint={DirectionalHint.topCenter}
               >
-                {relativeTime}
-              </Text>
-            </TooltipHost>
+                <Text
+                  variant="tiny"
+                  styles={{ root: { color: '#8a8886', cursor: 'default' } }}
+                >
+                  {relativeTime || formatDate(itemData.created)}
+                </Text>
+              </TooltipHost>
+            )}
           </Stack>
         </div>
 

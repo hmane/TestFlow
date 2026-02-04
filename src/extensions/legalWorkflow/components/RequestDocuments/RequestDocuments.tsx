@@ -82,9 +82,11 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
     stagedFiles,
     filesToDelete,
     filesToRename,
+    filesToChangeType,
     uploadPendingFiles,
     deletePendingFiles,
     renamePendingFiles,
+    changeTypePendingFiles,
     loadDocuments,
     clearPendingOperations,
   } = useDocumentsStore();
@@ -213,8 +215,13 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
    * Check if there are pending document operations
    */
   const hasPendingOperations = React.useMemo(() => {
-    return stagedFiles.length > 0 || filesToDelete.length > 0 || filesToRename.length > 0;
-  }, [stagedFiles, filesToDelete, filesToRename]);
+    return (
+      stagedFiles.length > 0 ||
+      filesToDelete.length > 0 ||
+      filesToRename.length > 0 ||
+      filesToChangeType.length > 0
+    );
+  }, [stagedFiles, filesToDelete, filesToRename, filesToChangeType]);
 
   /**
    * Determine if save button footer should be shown
@@ -271,6 +278,11 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
         await renamePendingFiles();
       }
 
+      // Process type changes (Review <-> Supplemental)
+      if (filesToChangeType.length > 0) {
+        await changeTypePendingFiles(itemId);
+      }
+
       // Process deletions
       if (filesToDelete.length > 0) {
         await deletePendingFiles();
@@ -288,7 +300,7 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
     } finally {
       setIsSaving(false);
     }
-  }, [itemId, stagedFiles, filesToRename, filesToDelete, uploadPendingFiles, renamePendingFiles, deletePendingFiles, loadDocuments, showSuccess, showError]);
+  }, [itemId, stagedFiles, filesToRename, filesToChangeType, filesToDelete, uploadPendingFiles, renamePendingFiles, changeTypePendingFiles, deletePendingFiles, loadDocuments, showSuccess, showError]);
 
   /**
    * Handle cancel - discard all pending changes
@@ -339,26 +351,6 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
           documentLibraryTitle={documentLibraryTitle}
           maxFiles={50}
           maxFileSize={250 * 1024 * 1024}
-          allowedExtensions={[
-            'pdf',
-            'doc',
-            'docx',
-            'xls',
-            'xlsx',
-            'ppt',
-            'pptx',
-            'jpg',
-            'jpeg',
-            'png',
-            'gif',
-            'bmp',
-            'txt',
-            'rtf',
-            'csv',
-            'zip',
-            'msg',
-            'eml',
-          ]}
           onFilesChange={handleFilesChange}
           onError={handleError}
         />

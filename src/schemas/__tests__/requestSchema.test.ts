@@ -402,7 +402,7 @@ describe('Request Schema Validation', () => {
   });
 
   describe('closeoutWithTrackingIdSchema', () => {
-    it('should require tracking ID when compliance reviewed and foreside required', () => {
+    it('should not require tracking ID when only foreside required', () => {
       const data = {
         trackingId: '',
         isForesideReviewRequired: true,
@@ -411,17 +411,25 @@ describe('Request Schema Validation', () => {
       };
 
       const result = closeoutWithTrackingIdSchema.safeParse(data);
-      expect(result.success).toBe(false);
-
-      if (!result.success) {
-        expect(result.error.issues[0].message).toContain('Tracking ID is required');
-      }
+      expect(result.success).toBe(true);
     });
 
-    it('should require tracking ID when compliance reviewed and retail use', () => {
+    it('should not require tracking ID when only retail use', () => {
       const data = {
         trackingId: '',
         isForesideReviewRequired: false,
+        isRetailUse: true,
+        complianceReviewed: true,
+      };
+
+      const result = closeoutWithTrackingIdSchema.safeParse(data);
+      expect(result.success).toBe(true);
+    });
+
+    it('should require tracking ID when compliance reviewed and both foreside and retail use', () => {
+      const data = {
+        trackingId: '',
+        isForesideReviewRequired: true,
         isRetailUse: true,
         complianceReviewed: true,
       };

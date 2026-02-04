@@ -212,6 +212,10 @@ export function buildRequestUpdatePayload(
     updater.set(RequestsFields.TotalReviewerHours, request.totalReviewerHours, originalRequest.totalReviewerHours);
     updater.set(RequestsFields.TotalSubmitterHours, request.totalSubmitterHours, originalRequest.totalSubmitterHours);
 
+    // Admin override and previous status tracking (for audit trail)
+    updater.set(RequestsFields.PreviousStatus, request.previousStatus, originalRequest.previousStatus);
+    updater.set(RequestsFields.AdminOverrideNotes, request.adminOverrideNotes, originalRequest.adminOverrideNotes);
+
     // Map approvals array to individual SharePoint fields
     mapApprovalsToSharePointFields(updater, request.approvals, originalRequest.approvals);
 
@@ -434,6 +438,9 @@ export function buildPartialUpdatePayload(data: Partial<ILegalRequest>): Record<
   setIfDefined(RequestsFields.CloseoutSubmitterHours, data.closeoutSubmitterHours);
   setIfDefined(RequestsFields.TotalReviewerHours, data.totalReviewerHours);
   setIfDefined(RequestsFields.TotalSubmitterHours, data.totalSubmitterHours);
+
+  // Admin override audit trail
+  setIfDefined(RequestsFields.AdminOverrideNotes, data.adminOverrideNotes);
 
   return updater.getUpdates();
 }

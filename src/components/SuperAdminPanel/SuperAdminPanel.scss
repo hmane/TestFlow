@@ -683,6 +683,33 @@
 
   &:hover {
     background: #7f1d1d !important;
+    color: var(--sap-text-inverse) !important;
+  }
+
+  &:hover,
+  &:active,
+  &:focus,
+  &:focus-visible {
+    color: var(--sap-text-inverse) !important;
+  }
+
+  // Ensure button text stays white in all states
+  .ms-Button-label,
+  .ms-Button-textContainer,
+  .ms-Button-flexContainer {
+    color: var(--sap-text-inverse) !important;
+  }
+
+  &:hover .ms-Button-label,
+  &:hover .ms-Button-textContainer,
+  &:hover .ms-Button-flexContainer,
+  &:active .ms-Button-label,
+  &:active .ms-Button-textContainer,
+  &:focus .ms-Button-label,
+  &:focus .ms-Button-textContainer,
+  &:focus-visible .ms-Button-label,
+  &:focus-visible .ms-Button-textContainer {
+    color: var(--sap-text-inverse) !important;
   }
 }
 

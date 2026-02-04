@@ -365,12 +365,6 @@ const AdditionalApprovalItem: React.FC<IAdditionalApprovalItemProps> = ({
             required={true}
             isReadOnly={disabled}
             hasError={hasDocumentError}
-            allowedExtensions={[
-              'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
-              'jpg', 'jpeg', 'png', 'gif', 'bmp',
-              'txt', 'rtf', 'csv',
-              'zip', 'msg', 'eml',
-            ]}
             onFilesChange={handleFilesChange}
             label=""
             description={`Upload up to ${MAX_APPROVAL_DOCUMENTS} approval documents (PDF, Word, Excel, PowerPoint, images, emails, etc.)`}
@@ -853,12 +847,6 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
                   required={true}
                   isReadOnly={disabled}
                   hasError={hasCommDocumentError}
-                  allowedExtensions={[
-                    'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
-                    'jpg', 'jpeg', 'png', 'gif', 'bmp',
-                    'txt', 'rtf', 'csv',
-                    'zip', 'msg', 'eml',
-                  ]}
                   onFilesChange={handleCommFilesChange}
                   label=""
                   description={`Upload up to ${MAX_APPROVAL_DOCUMENTS} approval documents (PDF, Word, Excel, PowerPoint, images, emails, etc.)`}

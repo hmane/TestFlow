@@ -54,6 +54,27 @@ interface IRenderListDataRow {
  */
 const DEFAULT_LIBRARY_TITLE = Lists.RequestDocuments.Title;
 
+function decodeServerRelativePath(path: string): string {
+  let decoded = path;
+  // SharePoint APIs expect a decoded path; decode at most twice to handle double-encoding.
+  for (let i = 0; i < 2; i++) {
+    try {
+      const next = decodeURIComponent(decoded);
+      if (next === decoded) {
+        break;
+      }
+      decoded = next;
+    } catch (decodeError) {
+      SPContext.logger.warn('Failed to decode server-relative URL, using current value', {
+        serverRelativeUrl: decoded,
+        error: decodeError instanceof Error ? decodeError.message : String(decodeError),
+      });
+      break;
+    }
+  }
+  return decoded;
+}
+
 /**
  * Get folder path for document
  * - Attachments (Review/Supplemental): RequestDocuments/{itemId}/
@@ -608,7 +629,7 @@ export async function deleteFile(file: IDocument): Promise<void> {
 
     // Extract server-relative path from absolute URL
     const urlObj = new URL(file.url);
-    const serverRelativeUrl = urlObj.pathname;
+    const serverRelativeUrl = decodeServerRelativePath(urlObj.pathname);
 
     await sp.web.getFileByServerRelativePath(serverRelativeUrl).delete();
 
@@ -638,41 +659,51 @@ export async function renameFile(file: IDocument, newName: string): Promise<void
     // file.url format: "https://tenant.sharepoint.com/sites/SiteName/RequestDocuments/1/file.pdf"
     // We need: "/sites/SiteName/RequestDocuments/1/file.pdf"
     const urlObj = new URL(file.url);
-    const serverRelativeUrl = urlObj.pathname;
+    const serverRelativeUrl = decodeServerRelativePath(urlObj.pathname);
 
     SPContext.logger.info('Extracted server-relative URL', {
       absoluteUrl: file.url,
       serverRelativeUrl,
     });
 
-    // Get the file and its list item
+    // Get the file
     const spFile = sp.web.getFileByServerRelativePath(serverRelativeUrl);
-    const listItem = await spFile.getItem();
 
-    // Check current DocumentType value
-    const currentItem = await listItem.select('DocumentType', 'FileLeafRef')();
-    SPContext.logger.info('Current list item before update', {
-      fileLeafRef: currentItem.FileLeafRef,
-      documentType: currentItem.DocumentType,
-    });
+    // Build new server-relative path (same folder, new name)
+    const lastSlashIndex = serverRelativeUrl.lastIndexOf('/');
+    const folderPath = lastSlashIndex >= 0 ? serverRelativeUrl.substring(0, lastSlashIndex) : '';
+    const newServerRelativeUrl = folderPath
+      ? `${folderPath}/${newName}`
+      : `/${newName}`;
 
-    // Rename by updating FileLeafRef field
-    // IMPORTANT: Must explicitly include DocumentType to preserve it during rename
-    const updateData = {
-      FileLeafRef: newName,
-      DocumentType: file.documentType,
-    };
+    // Prefer move to ensure the file name is updated in SharePoint
+    const spFileAny = spFile as any;
+    if (typeof spFileAny.moveByPath === 'function') {
+      await spFileAny.moveByPath(newServerRelativeUrl, true);
+    } else if (typeof spFileAny.moveTo === 'function') {
+      await spFileAny.moveTo(newServerRelativeUrl, true);
+    } else {
+      // Fallback: update FileLeafRef on the list item
+      const listItem = await spFile.getItem();
+      const updateData = {
+        FileLeafRef: newName,
+        DocumentType: file.documentType,
+      };
+      await listItem.update(updateData);
+    }
 
-    SPContext.logger.info('Updating list item with', updateData);
-
-    await listItem.update(updateData);
-
-    // Verify the update was successful
-    const updatedItem = await listItem.select('DocumentType', 'FileLeafRef')();
-    SPContext.logger.info('List item after update', {
-      fileLeafRef: updatedItem.FileLeafRef,
-      documentType: updatedItem.DocumentType,
-    });
+    // Ensure DocumentType is preserved (rename/move can sometimes reset metadata)
+    try {
+      const updatedFile = sp.web.getFileByServerRelativePath(newServerRelativeUrl);
+      const updatedItem = await updatedFile.getItem();
+      await updatedItem.update({ DocumentType: file.documentType });
+    } catch (metaError) {
+      SPContext.logger.warn('Failed to re-apply DocumentType after rename', {
+        fileName: newName,
+        documentType: file.documentType,
+        error: metaError instanceof Error ? metaError.message : String(metaError),
+      });
+    }
 
     SPContext.logger.success('File renamed successfully', {
       oldName: file.name,

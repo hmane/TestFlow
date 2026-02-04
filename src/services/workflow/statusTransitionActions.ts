@@ -442,8 +442,8 @@ export async function moveToCloseout(
  * Closeout request
  *
  * Transitions:
- * - Closeout → Awaiting Foreside Documents (if isForesideReviewRequired is true)
- * - Closeout → Completed (if isForesideReviewRequired is false)
+ * - Closeout → Awaiting Foreside Documents (if isForesideReviewRequired and isRetailUse are true)
+ * - Closeout → Completed (if isForesideReviewRequired and isRetailUse are not both true)
  *
  * Fields updated:
  * - Status → Awaiting FINRA Documents OR Completed (based on isForesideReviewRequired)
@@ -497,11 +497,13 @@ export async function closeoutRequest(
     });
   }
 
-  // Determine the next status based on isForesideReviewRequired
-  // If Foreside Review is required, route to Awaiting FINRA Documents
+  // Determine the next status based on isForesideReviewRequired AND isRetailUse
+  // If both are required, route to Awaiting FINRA Documents
   // Otherwise, route directly to Completed
   const isForesideRequired = currentRequest.isForesideReviewRequired === true;
-  const nextStatus = isForesideRequired
+  const isRetailUse = currentRequest.isRetailUse === true;
+  const shouldAwaitFinra = isForesideRequired && isRetailUse;
+  const nextStatus = shouldAwaitFinra
     ? RequestStatus.AwaitingFINRADocuments
     : RequestStatus.Completed;
 
@@ -509,6 +511,8 @@ export async function closeoutRequest(
     correlationId,
     itemId,
     isForesideReviewRequired: isForesideRequired,
+    isRetailUse,
+    shouldAwaitFinra,
     nextStatus,
   });
 
@@ -534,7 +538,7 @@ export async function closeoutRequest(
   }
 
   // If routing to Awaiting FINRA Documents, set the timestamp
-  if (isForesideRequired) {
+  if (shouldAwaitFinra) {
     updater.set(RequestsFields.AwaitingFINRASince, now.toISOString());
   }
 
@@ -574,6 +578,8 @@ export async function closeoutRequest(
     requestId: updatedRequest.requestId,
     nextStatus,
     isForesideRequired,
+    isRetailUse,
+    shouldAwaitFinra,
     timeTracked: {
       closeoutReviewerHours: timeTrackingUpdates.closeoutReviewerHours,
       totalReviewerHours: timeTrackingUpdates.totalReviewerHours,

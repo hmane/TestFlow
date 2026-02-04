@@ -280,6 +280,214 @@ $transitionNormal: 200ms ease-out;
 }
 
 // ============================================================================
+// Section Labels
+// ============================================================================
+
+.rts__section-label {
+  display: flex;
+  align-items: center;
+  gap: $space-md;
+  margin-bottom: $space-md;
+}
+
+.rts__section-label-line {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, $neutralLight 50%, transparent 100%);
+}
+
+.rts__section-label-line--external {
+  background: linear-gradient(90deg, transparent 0%, #d1e9eb 50%, transparent 100%);
+}
+
+.rts__section-label-text {
+  display: flex;
+  align-items: center;
+  gap: $space-sm;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: $neutralSecondary;
+  white-space: nowrap;
+
+  i {
+    font-size: 14px;
+    color: $themePrimary;
+  }
+}
+
+.rts__section-label-text--external {
+  color: #0e7c86;
+
+  i {
+    color: #0e7c86;
+  }
+}
+
+.rts__external-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: #0e7c86;
+  background-color: #e6f4f5;
+  border: 1px solid #b8e0e3;
+  border-radius: 3px;
+  margin-left: $space-xs;
+}
+
+// ============================================================================
+// External Application Section (Vendor Management)
+// ============================================================================
+
+.rts__external-section {
+  margin-top: $space-lg;
+  margin-bottom: $space-lg;
+  padding: $space-md;
+  background: linear-gradient(135deg, #f8fcfc 0%, #eef7f7 100%);
+  border: 1px solid #d1e9eb;
+  border-radius: $borderRadiusMedium;
+  position: relative;
+
+  // Subtle pattern overlay
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: radial-gradient(circle at 2px 2px, rgba(14, 124, 134, 0.03) 1px, transparent 1px);
+    background-size: 16px 16px;
+    pointer-events: none;
+    border-radius: $borderRadiusMedium;
+  }
+}
+
+.rts__external-section-hint {
+  font-size: 12px;
+  color: #5a8a8f;
+  margin: 0 0 $space-md 0;
+  text-align: center;
+  position: relative;
+}
+
+.rts__external-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: $space-sm;
+  position: relative;
+}
+
+// ============================================================================
+// External App Card
+// ============================================================================
+
+.rts__external-card {
+  display: flex;
+  align-items: center;
+  gap: $space-sm;
+  padding: $space-sm $space-md;
+  background: $white;
+  border: 1px solid #c5dfe2;
+  border-radius: $borderRadiusMedium;
+  cursor: pointer;
+  transition:
+    border-color $transitionFast,
+    box-shadow $transitionFast,
+    transform $transitionFast,
+    background-color $transitionFast;
+  animation: rts-fadeIn 0.3s ease-out backwards;
+  animation-delay: var(--animation-delay, 0ms);
+
+  &:hover {
+    border-color: #0e7c86;
+    box-shadow: 0 2px 8px rgba(14, 124, 134, 0.15);
+    transform: translateY(-1px);
+    background-color: #fcfefe;
+
+    .rts__external-card-icon {
+      background-color: #0e7c86;
+      color: $white;
+
+      i {
+        color: $white;
+      }
+    }
+
+    .rts__external-link-icon {
+      opacity: 1;
+      transform: translate(1px, -1px);
+    }
+  }
+
+  &:focus {
+    outline: none;
+    border-color: #0e7c86;
+    box-shadow: 0 0 0 2px rgba(14, 124, 134, 0.2);
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 4px rgba(14, 124, 134, 0.1);
+  }
+}
+
+.rts__external-card-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background-color: #e6f4f5;
+  border-radius: $borderRadiusMedium;
+  transition: background-color $transitionFast, color $transitionFast;
+
+  i {
+    font-size: 14px;
+    color: #0e7c86;
+    transition: color $transitionFast;
+  }
+}
+
+.rts__external-card-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.rts__external-card-title {
+  display: flex;
+  align-items: center;
+  gap: $space-xs;
+  font-size: 13px;
+  font-weight: 600;
+  color: $neutralPrimary;
+  line-height: 1.3;
+}
+
+.rts__external-link-icon {
+  font-size: 10px !important;
+  color: $neutralTertiary !important;
+  opacity: 0.6;
+  transition: opacity $transitionFast, transform $transitionFast;
+}
+
+.rts__external-card-description {
+  font-size: 11px;
+  color: $neutralSecondary;
+  margin: 2px 0 0 0;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+// ============================================================================
 // Workflow Preview
 // ============================================================================
 

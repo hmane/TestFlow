@@ -217,7 +217,10 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
       complianceReviewStatus: currentRequest?.complianceReview?.status,
       isCurrentUserSubmitter,
       // FINRA Documents step fields
-      isForesideReviewRequired: currentRequest?.complianceReview?.isForesideReviewRequired || currentRequest?.isForesideReviewRequired,
+      isForesideReviewRequired:
+        (currentRequest?.complianceReview?.isForesideReviewRequired === true &&
+          currentRequest?.complianceReview?.isRetailUse === true) ||
+        (currentRequest?.isForesideReviewRequired === true && currentRequest?.isRetailUse === true),
       finraCompletedOn: currentRequest?.finraCompletedOn,
       finraCompletedBy: currentRequest?.finraCompletedBy?.title,
       // Terminal state fields (Cancelled/OnHold)
@@ -248,12 +251,14 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
       currentRequest?.complianceReview?.status,
       currentRequest?.complianceReview?.outcome,
       currentRequest?.complianceReview?.isForesideReviewRequired,
+      currentRequest?.complianceReview?.isRetailUse,
       currentRequest?.complianceReviewCompletedBy,
       currentRequest?.complianceReviewCompletedOn,
       currentRequest?.closeoutOn,
       currentRequest?.closeoutBy,
       currentRequest?.trackingId,
       currentRequest?.isForesideReviewRequired,
+      currentRequest?.isRetailUse,
       currentRequest?.finraCompletedOn,
       currentRequest?.finraCompletedBy,
       currentRequest?.previousStatus,

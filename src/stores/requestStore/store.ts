@@ -443,14 +443,23 @@ export const useRequestStore = create<IRequestState>()(
         set({ isSaving: true, error: undefined });
 
         try {
-          // Merge updates with current request
-          const mergedRequest = { ...state.currentRequest!, ...updates };
+          if (!state.currentRequest) {
+            SPContext.logger.warn('RequestStore: updateRequest called without currentRequest', {
+              itemId: state.itemId,
+            });
+          }
+
+          const baseRequest = state.currentRequest;
+          const originalRequest = state.originalRequest ?? baseRequest;
+
+          // Merge updates with current request when available
+          const mergedRequest = baseRequest ? { ...baseRequest, ...updates } : updates;
 
           // Call service to save (with change detection and reload)
           const result = await saveRequest(
             state.itemId,
             mergedRequest,
-            state.originalRequest
+            originalRequest
           );
 
           // Update store state with result

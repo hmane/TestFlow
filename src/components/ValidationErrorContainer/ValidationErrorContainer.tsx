@@ -68,6 +68,7 @@ const DEFAULT_FIELD_LABELS: Record<string, string> = {
   complianceReviewNotes: 'Compliance Review Notes',
   // Closeout fields
   trackingId: 'Tracking ID',
+  finraDocuments: 'FINRA Documents',
   // Approval fields
   approvals: 'Approvals',
 };

@@ -13,6 +13,7 @@ import { devtools } from 'zustand/middleware';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import type { FileOperationStatus } from '@services/approvalFileService';
 import { DocumentType } from '@appTypes/documentTypes';
+import { Lists } from '@sp/Lists';
 import {
   loadDocuments as loadDocumentsFromService,
   getRequestDocumentsLibraryId,
@@ -35,6 +36,39 @@ import {
   setLastLoadedItemId,
   resetTrackingVariables,
 } from './initialState';
+
+const REQUEST_DOCUMENTS_SEGMENT = Lists.RequestDocuments.Title.toLowerCase();
+
+function getRequestItemIdFromFileUrl(fileUrl: string): number | undefined {
+  try {
+    const url = new URL(fileUrl);
+    const parts = url.pathname.split('/').filter(Boolean);
+
+    // ES5 compatible: find library index using for loop
+    let libraryIndex = -1;
+    for (let i = 0; i < parts.length; i++) {
+      if (parts[i].toLowerCase() === REQUEST_DOCUMENTS_SEGMENT) {
+        libraryIndex = i;
+        break;
+      }
+    }
+
+    if (libraryIndex >= 0 && parts[libraryIndex + 1]) {
+      const maybeId = parseInt(parts[libraryIndex + 1], 10);
+      // ES5 compatible: use isNaN global function
+      if (!isNaN(maybeId)) {
+        return maybeId;
+      }
+    }
+  } catch (error) {
+    SPContext.logger.warn('Failed to parse request itemId from file URL', {
+      fileUrl,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  return undefined;
+}
 
 /**
  * Documents store
@@ -626,14 +660,20 @@ export const useDocumentsStore = create<IDocumentsState>()(
         try {
           SPContext.logger.info('Deleting files', { count: state.filesToDelete.length });
 
-          // Track affected item IDs for reload
+          // Track affected request item IDs for reload
           const itemIds = new Set<number>();
+          if (lastLoadedItemId) {
+            itemIds.add(lastLoadedItemId);
+          }
 
           // Delete each file
           for (let i = 0; i < state.filesToDelete.length; i++) {
             const fileToDelete = state.filesToDelete[i];
-            if (fileToDelete.listItemId) {
-              itemIds.add(fileToDelete.listItemId);
+            if (fileToDelete.url) {
+              const requestItemId = getRequestItemIdFromFileUrl(fileToDelete.url);
+              if (requestItemId) {
+                itemIds.add(requestItemId);
+              }
             }
 
             try {
@@ -657,6 +697,8 @@ export const useDocumentsStore = create<IDocumentsState>()(
 
           if (reloadPromises.length > 0) {
             await Promise.all(reloadPromises);
+          } else {
+            SPContext.logger.warn('No request itemId resolved for reload after delete');
           }
 
           SPContext.logger.success('Files deleted successfully');
@@ -679,14 +721,20 @@ export const useDocumentsStore = create<IDocumentsState>()(
         try {
           SPContext.logger.info('Renaming files', { count: state.filesToRename.length });
 
-          // Capture itemIds BEFORE processing
+          // Capture request itemIds BEFORE processing
           const itemIds = new Set<number>();
+          if (lastLoadedItemId) {
+            itemIds.add(lastLoadedItemId);
+          }
 
           for (let i = 0; i < state.filesToRename.length; i++) {
             const renameInfo = state.filesToRename[i];
-            // Extract itemId from file URL or metadata
-            if (renameInfo.file.listItemId) {
-              itemIds.add(renameInfo.file.listItemId);
+            // Extract request itemId from file URL when possible
+            if (renameInfo.file.url) {
+              const requestItemId = getRequestItemIdFromFileUrl(renameInfo.file.url);
+              if (requestItemId) {
+                itemIds.add(requestItemId);
+              }
             }
           }
 
@@ -730,6 +778,8 @@ export const useDocumentsStore = create<IDocumentsState>()(
           if (reloadPromises.length > 0) {
             await Promise.all(reloadPromises);
             SPContext.logger.success('Documents reloaded after rename');
+          } else {
+            SPContext.logger.warn('No request itemId resolved for reload after rename');
           }
         } catch (error: unknown) {
           SPContext.logger.error('File rename failed', error);
@@ -748,16 +798,27 @@ export const useDocumentsStore = create<IDocumentsState>()(
         }
 
         try {
+          const deleteIds = new Set<string>();
+          for (let i = 0; i < state.filesToDelete.length; i++) {
+            deleteIds.add(state.filesToDelete[i].uniqueId);
+          }
+
+          const pendingTypeChanges = state.filesToChangeType.filter(tc => !deleteIds.has(tc.file.uniqueId));
+          if (pendingTypeChanges.length === 0) {
+            set({ filesToChangeType: [] });
+            return;
+          }
+
           SPContext.logger.info('Changing document types', {
-            count: state.filesToChangeType.length,
+            count: pendingTypeChanges.length,
             itemId,
           });
 
           // Group files by their new type
           const filesByNewType = new Map<DocumentType, IDocument[]>();
 
-          for (let i = 0; i < state.filesToChangeType.length; i++) {
-            const change = state.filesToChangeType[i];
+          for (let i = 0; i < pendingTypeChanges.length; i++) {
+            const change = pendingTypeChanges[i];
             const existing = filesByNewType.get(change.newType) || [];
             existing.push(change.file);
             filesByNewType.set(change.newType, existing);

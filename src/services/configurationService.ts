@@ -313,10 +313,25 @@ export async function getFileUploadConfig(): Promise<IFileUploadConfig> {
     ]);
 
     // Parse extensions (comma-separated, trim whitespace)
-    const allowedExtensions = extensionsStr
+    const rawExtensions = extensionsStr
       .split(',')
       .map(ext => ext.trim().toLowerCase())
       .filter(ext => ext.length > 0);
+
+    // Sanitize extensions (ignore invalid values like URLs)
+    const allowedExtensions = rawExtensions
+      .filter(ext => {
+        const normalized = ext.charAt(0) === '.' ? ext.substring(1) : ext;
+        return /^[a-z0-9]+$/.test(normalized);
+      })
+      .map(ext => (ext.charAt(0) === '.' ? ext : `.${ext}`));
+
+    if (allowedExtensions.length === 0 && rawExtensions.length > 0) {
+      SPContext.logger.warn('File upload configuration contains invalid extensions, using defaults', {
+        rawExtensions,
+        defaultExtensions: DEFAULT_ALLOWED_EXTENSIONS,
+      });
+    }
 
     // Parse max file size
     const maxFileSizeMB = parseInt(maxFileSizeStr, 10) || 250;

@@ -643,7 +643,18 @@ export function useRequestActionsState(props: {
     if (!currentRequest) return false;
     if (currentRequest.reviewAudience === 'Legal') return false;
     return (
-      currentRequest.complianceReview?.isForesideReviewRequired === true ||
+      currentRequest.complianceReview?.isForesideReviewRequired === true &&
+      currentRequest.complianceReview?.isRetailUse === true
+    );
+  }, [currentRequest]);
+
+  /**
+   * Check if FINRA documents are required
+   */
+  const isFinraDocumentsRequired = React.useMemo((): boolean => {
+    if (!currentRequest) return false;
+    return (
+      currentRequest.complianceReview?.isForesideReviewRequired === true &&
       currentRequest.complianceReview?.isRetailUse === true
     );
   }, [currentRequest]);
@@ -662,7 +673,7 @@ export function useRequestActionsState(props: {
       if (isTrackingIdRequired && (!trackingId || trackingId.trim() === '')) {
         errors.push({
           field: 'trackingId',
-          message: 'Tracking ID is required because Foreside Review or Retail Use was indicated during compliance review.',
+          message: 'Tracking ID is required because both Foreside Review Required and Retail Use were indicated during compliance review.',
         });
       }
 
@@ -725,7 +736,18 @@ export function useRequestActionsState(props: {
    * Shows confirmation dialog if no documents are uploaded
    */
   const handleCompleteFINRADocumentsClick = React.useCallback(async (): Promise<void> => {
-    // If no FINRA documents, show confirmation dialog using spfx-toolkit
+    // If no FINRA documents and required, block completion
+    if (isFinraDocumentsRequired && !hasFINRADocuments) {
+      setValidationErrors([
+        {
+          field: 'finraDocuments',
+          message: 'FINRA documents are required before completing this request.',
+        },
+      ]);
+      return;
+    }
+
+    // If no FINRA documents and not required, show confirmation dialog using spfx-toolkit
     if (!hasFINRADocuments) {
       SPContext.logger.info('RequestActions: No FINRA documents uploaded, showing confirmation dialog');
 
@@ -783,7 +805,7 @@ export function useRequestActionsState(props: {
     } finally {
       setActiveAction(undefined);
     }
-  }, [workflowCompleteFINRADocuments, hasFINRADocuments, setValidationErrors, stagedFiles, itemId]);
+  }, [workflowCompleteFINRADocuments, hasFINRADocuments, isFinraDocumentsRequired, setValidationErrors, stagedFiles, itemId]);
 
   /**
    * Handle reason dialog confirmation

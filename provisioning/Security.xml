@@ -49,6 +49,17 @@
                    OnlyAllowMembersViewMembership="true" />
   </pnp:SiteGroups>
 
+  <pnp:Permissions>
+    <pnp:RoleAssignments>
+      <pnp:RoleAssignment Principal="LW - Admin" RoleDefinition="Full Control" />
+      <pnp:RoleAssignment Principal="LW - Submitters" RoleDefinition="Read" />
+      <pnp:RoleAssignment Principal="LW - Legal Admin" RoleDefinition="Read" />
+      <pnp:RoleAssignment Principal="LW - Attorney Assigner" RoleDefinition="Read" />
+      <pnp:RoleAssignment Principal="LW - Attorneys" RoleDefinition="Read" />
+      <pnp:RoleAssignment Principal="LW - Compliance Users" RoleDefinition="Read" />
+    </pnp:RoleAssignments>
+  </pnp:Permissions>
+
   
 
 </pnp:Security>

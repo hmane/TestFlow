@@ -119,7 +119,7 @@ export default class RequestIdFieldCustomizer
         purpose: listItem.getValueByName('Purpose') as string | undefined,
         reviewAudience: listItem.getValueByName('ReviewAudience') as ReviewAudience,
         targetReturnDate: this.parseDate(listItem.getValueByName('TargetReturnDate')),
-        created: new Date(listItem.getValueByName('Created') as string),
+        created: this.parseDate(listItem.getValueByName('Created')) || new Date(),
         createdBy: this.extractPrincipal(listItem, 'Author'),
         modified: this.parseDate(listItem.getValueByName('Modified')),
         modifiedBy: this.extractPrincipal(listItem, 'Editor'),

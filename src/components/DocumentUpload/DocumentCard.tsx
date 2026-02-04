@@ -410,9 +410,9 @@ export const DocumentCard: React.FC<IDocumentCardProps> = React.memo(({
                 // Show as clickable DocumentLink
                 // Prefer uniqueId over URL to avoid URL encoding issues
                 <DocumentLink
-                  {...(document.uniqueId
-                    ? { documentUniqueId: document.uniqueId }
-                    : { documentUrl: document.url })}
+                  {...(document.url
+                    ? { documentUrl: document.url }
+                    : { documentUniqueId: document.uniqueId })}
                   layout="linkOnly"
                   enableHoverCard={false}
                   showVersionHistory={false}
@@ -420,6 +420,7 @@ export const DocumentCard: React.FC<IDocumentCardProps> = React.memo(({
                   onClick="preview"
                   className="file-name-link"
                   linkClassName={isDeleted ? 'deleted' : ''}
+                  enableCache={false}
                 />
               )}
             </div>

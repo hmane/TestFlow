@@ -256,7 +256,7 @@
           <OrderBy><FieldRef Name="Created" Ascending="FALSE" /></OrderBy>
         </Query>
         <ViewFields>
-          <FieldRef Name="LinkTitle" />
+          <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Status" />
           <FieldRef Name="TargetReturnDate" />
@@ -281,7 +281,7 @@
           <OrderBy><FieldRef Name="CloseoutOn" Ascending="FALSE" /></OrderBy>
         </Query>
         <ViewFields>
-          <FieldRef Name="LinkTitle" />
+          <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Status" />
           <FieldRef Name="Attorney" />
@@ -304,7 +304,7 @@
           <OrderBy><FieldRef Name="AwaitingFINRASince" Ascending="TRUE" /></OrderBy>
         </Query>
         <ViewFields>
-          <FieldRef Name="LinkTitle" />
+          <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="AwaitingFINRASince" />
           <FieldRef Name="TrackingId" />
@@ -332,7 +332,7 @@
           <OrderBy><FieldRef Name="Created" Ascending="FALSE" /></OrderBy>
         </Query>
         <ViewFields>
-          <FieldRef Name="LinkTitle" />
+          <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Status" />
           <FieldRef Name="Author" />
@@ -355,7 +355,7 @@
           <OrderBy><FieldRef Name="CloseoutOn" Ascending="FALSE" /></OrderBy>
         </Query>
         <ViewFields>
-          <FieldRef Name="LinkTitle" />
+          <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Status" />
           <FieldRef Name="Author" />
@@ -380,7 +380,7 @@
           <OrderBy><FieldRef Name="SubmittedOn" Ascending="TRUE" /></OrderBy>
         </Query>
         <ViewFields>
-          <FieldRef Name="LinkTitle" />
+          <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Author" />
           <FieldRef Name="SubmittedOn" />
@@ -401,7 +401,7 @@
           <OrderBy><FieldRef Name="SubmittedToAssignAttorneyOn" Ascending="TRUE" /></OrderBy>
         </Query>
         <ViewFields>
-          <FieldRef Name="LinkTitle" />
+          <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Author" />
           <FieldRef Name="SubmissionItem" />
@@ -422,7 +422,7 @@
           <OrderBy><FieldRef Name="SubmittedForReviewOn" Ascending="TRUE" /></OrderBy>
         </Query>
         <ViewFields>
-          <FieldRef Name="LinkTitle" />
+          <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Author" />
           <FieldRef Name="Attorney" />
@@ -460,7 +460,7 @@
           <OrderBy><FieldRef Name="Created" Ascending="FALSE" /></OrderBy>
         </Query>
         <ViewFields>
-          <FieldRef Name="LinkTitle" />
+          <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Status" />
           <FieldRef Name="LegalReviewStatus" />
@@ -492,7 +492,7 @@
           <OrderBy><FieldRef Name="SubmittedForReviewOn" Ascending="TRUE" /></OrderBy>
         </Query>
         <ViewFields>
-          <FieldRef Name="LinkTitle" />
+          <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="LegalReviewStatus" />
           <FieldRef Name="Author" />
@@ -518,7 +518,7 @@
           <OrderBy><FieldRef Name="LegalReviewCompletedOn" Ascending="FALSE" /></OrderBy>
         </Query>
         <ViewFields>
-          <FieldRef Name="LinkTitle" />
+          <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Author" />
           <FieldRef Name="Status" />
@@ -542,7 +542,7 @@
           <OrderBy><FieldRef Name="SubmittedToAssignAttorneyOn" Ascending="TRUE" /></OrderBy>
         </Query>
         <ViewFields>
-          <FieldRef Name="LinkTitle" />
+          <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Author" />
           <FieldRef Name="SubmissionItem" />
@@ -582,7 +582,7 @@
           <OrderBy><FieldRef Name="SubmittedForReviewOn" Ascending="TRUE" /></OrderBy>
         </Query>
         <ViewFields>
-          <FieldRef Name="LinkTitle" />
+          <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="ComplianceReviewStatus" />
           <FieldRef Name="LegalReviewStatus" />
@@ -612,7 +612,7 @@
           <OrderBy><FieldRef Name="ComplianceReviewCompletedOn" Ascending="FALSE" /></OrderBy>
         </Query>
         <ViewFields>
-          <FieldRef Name="LinkTitle" />
+          <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Author" />
           <FieldRef Name="Status" />
@@ -636,7 +636,7 @@
           <OrderBy><FieldRef Name="SubmittedForReviewOn" Ascending="TRUE" /></OrderBy>
         </Query>
         <ViewFields>
-          <FieldRef Name="LinkTitle" />
+          <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Author" />
           <FieldRef Name="LegalReviewOutcome" />
@@ -661,7 +661,7 @@
           <OrderBy><FieldRef Name="AwaitingFINRASince" Ascending="TRUE" /></OrderBy>
         </Query>
         <ViewFields>
-          <FieldRef Name="LinkTitle" />
+          <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Author" />
           <FieldRef Name="AwaitingFINRASince" />
@@ -682,7 +682,7 @@
           <OrderBy><FieldRef Name="Created" Ascending="FALSE" /></OrderBy>
         </Query>
         <ViewFields>
-          <FieldRef Name="LinkTitle" />
+          <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Status" />
           <FieldRef Name="Author" />
@@ -701,7 +701,7 @@
           <OrderBy><FieldRef Name="OnHoldSince" Ascending="TRUE" /></OrderBy>
         </Query>
         <ViewFields>
-          <FieldRef Name="LinkTitle" />
+          <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Author" />
           <FieldRef Name="Attorney" />
@@ -735,7 +735,7 @@
           <OrderBy><FieldRef Name="TargetReturnDate" Ascending="TRUE" /></OrderBy>
         </Query>
         <ViewFields>
-          <FieldRef Name="LinkTitle" />
+          <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Status" />
           <FieldRef Name="Author" />

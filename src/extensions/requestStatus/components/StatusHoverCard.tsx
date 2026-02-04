@@ -191,6 +191,10 @@ export const StatusHoverCard: React.FC<
       );
     }
 
+    // Check if status is terminal (Completed or Cancelled)
+    const isTerminalStatus = displayData.status === RequestStatus.Completed ||
+      displayData.status === RequestStatus.Cancelled;
+
     return (
       <div className={styles.statusHoverCard}>
         {/* Header: Status Badge */}
@@ -204,7 +208,7 @@ export const StatusHoverCard: React.FC<
           >
             {displayData.status}
           </div>
-          {displayData.isRushRequest && (
+          {displayData.isRushRequest && !isTerminalStatus && (
             <div className={styles.rushBadge}>
               <Icon iconName="StatusCircleErrorX" styles={{ root: { marginRight: 4 } }} />
               Rush
@@ -226,62 +230,67 @@ export const StatusHoverCard: React.FC<
             </Text>
           </div>
 
-          {/* Waiting on */}
-          <WaitingOnDisplay waitingOn={displayWaitingOn} webUrl={webUrl} />
-
-          {/* Days in current stage */}
-          {displayTimingInfo.stageStartDate && (
-            <div className={styles.fieldRow}>
-              <Text variant="small" className={styles.fieldLabel}>
-                In this stage:
-              </Text>
-              <Text variant="small" className={styles.fieldValue}>
-                {formatStageDurationText(displayTimingInfo.daysInStage)}
-              </Text>
-            </div>
-          )}
-
-          {/* Target date information */}
-          {displayTimingInfo.targetReturnDate && (
+          {/* Only show active workflow info for non-terminal statuses */}
+          {!isTerminalStatus && (
             <>
+              {/* Waiting on */}
+              <WaitingOnDisplay waitingOn={displayWaitingOn} webUrl={webUrl} />
+
+              {/* Days in current stage */}
+              {displayTimingInfo.stageStartDate && (
+                <div className={styles.fieldRow}>
+                  <Text variant="small" className={styles.fieldLabel}>
+                    In this stage:
+                  </Text>
+                  <Text variant="small" className={styles.fieldValue}>
+                    {formatStageDurationText(displayTimingInfo.daysInStage)}
+                  </Text>
+                </div>
+              )}
+
+              {/* Target date information */}
+              {displayTimingInfo.targetReturnDate && (
+                <>
+                  <div className={styles.fieldRow}>
+                    <Text variant="small" className={styles.fieldLabel}>
+                      Target date:
+                    </Text>
+                    <Text variant="small" className={styles.fieldValue}>
+                      {formatDate(displayTimingInfo.targetReturnDate)}
+                    </Text>
+                  </div>
+
+                  <div className={styles.fieldRow}>
+                    <Text variant="small" className={styles.fieldLabel}>
+                      {displayTimingInfo.isOverdue ? 'Overdue by:' : 'Days remaining:'}
+                    </Text>
+                    <Text
+                      variant="small"
+                      className={styles.fieldValue}
+                      styles={{
+                        root: {
+                          color: displayTimingInfo.isOverdue ? '#a4262c' : displayTimingInfo.daysRemaining === 0 || displayTimingInfo.daysRemaining === 1 ? '#ca5010' : '#107c10',
+                          fontWeight: displayTimingInfo.isOverdue || displayTimingInfo.daysRemaining! <= 1 ? 600 : 400,
+                        },
+                      }}
+                    >
+                      {formatDaysRemainingText(displayTimingInfo.daysRemaining!)}
+                    </Text>
+                  </div>
+                </>
+              )}
+
+              {/* Action text */}
               <div className={styles.fieldRow}>
                 <Text variant="small" className={styles.fieldLabel}>
-                  Target date:
+                  Action needed:
                 </Text>
                 <Text variant="small" className={styles.fieldValue}>
-                  {formatDate(displayTimingInfo.targetReturnDate)}
-                </Text>
-              </div>
-
-              <div className={styles.fieldRow}>
-                <Text variant="small" className={styles.fieldLabel}>
-                  {displayTimingInfo.isOverdue ? 'Overdue by:' : 'Days remaining:'}
-                </Text>
-                <Text
-                  variant="small"
-                  className={styles.fieldValue}
-                  styles={{
-                    root: {
-                      color: displayTimingInfo.isOverdue ? '#a4262c' : displayTimingInfo.daysRemaining === 0 || displayTimingInfo.daysRemaining === 1 ? '#ca5010' : '#107c10',
-                      fontWeight: displayTimingInfo.isOverdue || displayTimingInfo.daysRemaining! <= 1 ? 600 : 400,
-                    },
-                  }}
-                >
-                  {formatDaysRemainingText(displayTimingInfo.daysRemaining!)}
+                  {getActionText(displayWaitingOn, displayData.status)}
                 </Text>
               </div>
             </>
           )}
-
-          {/* Action text */}
-          <div className={styles.fieldRow}>
-            <Text variant="small" className={styles.fieldLabel}>
-              Action needed:
-            </Text>
-            <Text variant="small" className={styles.fieldValue}>
-              {getActionText(displayWaitingOn, displayData.status)}
-            </Text>
-          </div>
         </Stack>
 
         <Separator styles={{ root: { padding: 0, height: 1, margin: '12px 0' } }} />

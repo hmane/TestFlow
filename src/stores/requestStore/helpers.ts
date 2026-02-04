@@ -53,11 +53,16 @@ export async function processDocumentOperationsAfterSave(itemId: number): Promis
       SPContext.logger.success('Document operations completed', docResults);
     }
 
+    // 3. Process document type changes (Review <-> Supplemental)
+    if (documentsStore.filesToChangeType.length > 0) {
+      await documentsStore.changeTypePendingFiles(itemId);
+    }
+
     // Clear pending operations after successful processing
     documentsStore.clearPendingOperations();
 
     // Reload documents from SharePoint to display uploaded files
-    await documentsStore.loadAllDocuments(itemId);
+    await documentsStore.loadAllDocuments(itemId, true);
     SPContext.logger.info('Documents reloaded after upload', { itemId });
   } catch (docError) {
     // Log error but don't fail the entire save
