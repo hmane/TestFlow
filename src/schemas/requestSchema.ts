@@ -22,6 +22,7 @@ import {
   SubmissionType,
   UCITS,
   USFunds,
+  USFundShares,
 } from '@appTypes/requestTypes';
 import { RequestStatus, ReviewAudience } from '@appTypes/workflowTypes';
 import { approvalsArraySchema } from '@schemas/approvalSchema';
@@ -118,6 +119,7 @@ export const requestInformationSchema = z.object({
       ])
     )
     .optional(),
+  clientId: z.string().max(255).optional(),
   priorSubmissions: z.array(lookupSchema).optional(),
   priorSubmissionNotes: z.string().max(PURPOSE_MAX_LENGTH).optional(),
   dateOfFirstUse: z.date().optional(),
@@ -149,10 +151,12 @@ export const requestInformationSchema = z.object({
         USFunds.IncomeFund,
         USFunds.InternationalStockFund,
         USFunds.StockFund,
-        USFunds.GlobalBondFundIShares,
-        USFunds.GlobalBondFundXShares,
+        USFunds.GlobalBondFund,
       ])
     )
+    .optional(),
+  usFundShares: z
+    .array(z.enum([USFundShares.IShares, USFundShares.XShares]))
     .optional(),
   ucits: z
     .array(
@@ -243,6 +247,7 @@ export const saveRequestSchema = z
     approvals: z.array(z.any()).optional(),
     department: z.string().max(DEPARTMENT_MAX_LENGTH).optional(),
     distributionMethod: z.array(z.any()).optional(),
+    clientId: z.string().max(255).optional(),
     priorSubmissions: z.array(lookupSchema).optional(),
     priorSubmissionNotes: z.string().max(PURPOSE_MAX_LENGTH).optional(),
     dateOfFirstUse: z.date().optional(),
@@ -253,6 +258,7 @@ export const saveRequestSchema = z
     finraAudienceCategory: z.array(z.any()).optional(),
     audience: z.array(z.any()).optional(),
     usFunds: z.array(z.any()).optional(),
+    usFundShares: z.array(z.any()).optional(),
     ucits: z.array(z.any()).optional(),
     separateAcctStrategies: z.array(z.any()).optional(),
     separateAcctStrategiesIncl: z.array(z.any()).optional(),
@@ -311,6 +317,7 @@ export const submitRequestSchema = z
     dateOfFirstUse: z.any().optional(),
     // Optional fields
     department: z.string().max(DEPARTMENT_MAX_LENGTH).optional(),
+    clientId: z.string().max(255).optional(),
     priorSubmissions: z.array(lookupSchema).optional(),
     priorSubmissionNotes: z.string().max(PURPOSE_MAX_LENGTH).optional(),
     additionalParty: z.array(principalSchema).optional(),
@@ -320,6 +327,7 @@ export const submitRequestSchema = z
     finraAudienceCategory: z.array(z.any()).optional(),
     audience: z.array(z.any()).optional(),
     usFunds: z.array(z.any()).optional(),
+    usFundShares: z.array(z.any()).optional(),
     ucits: z.array(z.any()).optional(),
     separateAcctStrategies: z.array(z.any()).optional(),
     separateAcctStrategiesIncl: z.array(z.any()).optional(),
@@ -657,6 +665,8 @@ export const updateRequestSchema = z.object({
       ])
     )
     .optional(),
+  clientId: z.string().max(255).optional(),
+  usFundShares: z.array(z.any()).optional(),
   priorSubmissionNotes: z.string().max(PURPOSE_MAX_LENGTH).optional(),
   dateOfFirstUse: z.date().optional(),
   additionalParty: z.array(principalSchema).optional(),
@@ -829,10 +839,12 @@ export const fullRequestSchema = z.object({
         USFunds.IncomeFund,
         USFunds.InternationalStockFund,
         USFunds.StockFund,
-        USFunds.GlobalBondFundIShares,
-        USFunds.GlobalBondFundXShares,
+        USFunds.GlobalBondFund,
       ])
     )
+    .optional(),
+  usFundShares: z
+    .array(z.enum([USFundShares.IShares, USFundShares.XShares]))
     .optional(),
   ucits: z
     .array(

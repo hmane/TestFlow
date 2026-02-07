@@ -7,11 +7,7 @@ import { Text } from '@fluentui/react/lib/Text';
 import { SelectBox } from 'devextreme-react/select-box';
 import { Controller, FieldErrors, useFormContext } from 'react-hook-form';
 
-import {
-  FormContainer,
-  FormItem,
-  FormLabel,
-} from 'spfx-toolkit/lib/components/spForm';
+import { FormContainer, FormItem, FormLabel, FormValue } from 'spfx-toolkit/lib/components/spForm';
 import {
   SPChoiceField,
   SPChoiceDisplayType,
@@ -35,6 +31,7 @@ import {
   SubmissionType,
   UCITS,
   USFunds,
+  USFundShares,
 } from '@appTypes/index';
 import { PriorSubmissionPicker } from '@components/PriorSubmissionPicker/PriorSubmissionPicker';
 import { ReviewAudienceSelector } from '@components/ReviewAudienceSelector';
@@ -94,9 +91,10 @@ const US_FUNDS_CHOICES: USFunds[] = [
   USFunds.IncomeFund,
   USFunds.InternationalStockFund,
   USFunds.StockFund,
-  USFunds.GlobalBondFundIShares,
-  USFunds.GlobalBondFundXShares,
+  USFunds.GlobalBondFund,
 ];
+
+const US_FUND_SHARES_CHOICES: USFundShares[] = [USFundShares.IShares, USFundShares.XShares];
 
 const UCITS_CHOICES: UCITS[] = [
   UCITS.AllUCITSFunds,
@@ -337,7 +335,10 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
                 stylingMode='outlined'
                 rules={{
                   required: 'Rush rationale is required for rush requests',
-                  maxLength: { value: RUSH_RATIONALE_MAX_LENGTH, message: FIELD_LIMIT_MESSAGES.rushRationale },
+                  maxLength: {
+                    value: RUSH_RATIONALE_MAX_LENGTH,
+                    message: FIELD_LIMIT_MESSAGES.rushRationale,
+                  },
                 }}
               />
             </>
@@ -452,10 +453,7 @@ export const ReviewAudienceSection: React.FC<ReviewAudienceSectionProps> = ({
       {/* Card-based review audience selector */}
       <div style={{ display: isVisible ? 'block' : 'none', marginTop: '16px' }}>
         <FormItem fieldName='reviewAudience'>
-          <ReviewAudienceSelector
-            name='reviewAudience'
-            isRequired={isVisible}
-          />
+          <ReviewAudienceSelector name='reviewAudience' isRequired={isVisible} />
         </FormItem>
       </div>
     </>
@@ -498,7 +496,9 @@ export const ProductAudienceSection: React.FC<ProductAudienceSectionProps> = ({
         >
           <FormContainer>
             <FormItem fieldName='finraAudienceCategory'>
-              <FormLabel>FINRA Audience Category</FormLabel>
+              <FormLabel infoText='Select the FINRA audience classification for this communication'>
+                FINRA Audience Category
+              </FormLabel>
               <SPChoiceField
                 name='finraAudienceCategory'
                 placeholder='Select FINRA audience categories'
@@ -543,7 +543,9 @@ export const ProductAudienceSection: React.FC<ProductAudienceSectionProps> = ({
         >
           <FormContainer>
             <FormItem fieldName='usFunds'>
-              <FormLabel>U.S. Funds</FormLabel>
+              <FormLabel infoText='Select the U.S. mutual funds referenced in this communication'>
+                U.S. Funds
+              </FormLabel>
               <SPChoiceField
                 name='usFunds'
                 placeholder='Select U.S. funds'
@@ -557,10 +559,30 @@ export const ProductAudienceSection: React.FC<ProductAudienceSectionProps> = ({
                 }}
               />
             </FormItem>
+            <FormItem fieldName='usFundShares'>
+              <FormLabel>&nbsp;</FormLabel>
+              <FormValue>
+                <div style={{ paddingLeft: 30 }}>
+                  <SPChoiceField
+                    name='usFundShares'
+                    allowMultiple
+                    displayType={SPChoiceDisplayType.Checkboxes}
+                    choices={US_FUND_SHARES_CHOICES}
+                    dataSource={{
+                      type: 'list',
+                      listNameOrId: requestListIdentifier,
+                      fieldInternalName: 'USFundShares',
+                    }}
+                  />
+                </div>
+              </FormValue>
+            </FormItem>
           </FormContainer>
           <FormContainer>
             <FormItem fieldName='ucits'>
-              <FormLabel>UCITS</FormLabel>
+              <FormLabel infoText='Select the UCITS funds referenced in this communication'>
+                UCITS
+              </FormLabel>
               <SPChoiceField
                 name='ucits'
                 placeholder='Select UCITS funds'
@@ -580,7 +602,9 @@ export const ProductAudienceSection: React.FC<ProductAudienceSectionProps> = ({
         {/* Separate Account Strategies */}
         <FormContainer>
           <FormItem fieldName='separateAcctStrategies'>
-            <FormLabel>Separate Account Strategies</FormLabel>
+            <FormLabel infoText='Select the separate account strategies referenced in this communication'>
+              Separate Account Strategies
+            </FormLabel>
             <SPChoiceField
               name='separateAcctStrategies'
               placeholder='Select separate account strategies'
@@ -594,24 +618,25 @@ export const ProductAudienceSection: React.FC<ProductAudienceSectionProps> = ({
               }}
             />
           </FormItem>
-        </FormContainer>
 
-        {/* Includes */}
-        <FormContainer>
           <FormItem fieldName='separateAcctStrategiesIncl'>
-            <FormLabel>Includes</FormLabel>
-            <SPChoiceField
-              name='separateAcctStrategiesIncl'
-              placeholder='Select what separate account strategies include'
-              allowMultiple
-              displayType={SPChoiceDisplayType.Checkboxes}
-              choices={SEPARATE_ACCT_STRATEGIES_INCL_CHOICES}
-              dataSource={{
-                type: 'list',
-                listNameOrId: requestListIdentifier,
-                fieldInternalName: 'SeparateAcctStrategiesIncl',
-              }}
-            />
+            <FormLabel>&nbsp;</FormLabel>
+            <FormValue>
+              <b>Includes</b>
+
+              <SPChoiceField
+                name='separateAcctStrategiesIncl'
+                placeholder='Select what separate account strategies include'
+                allowMultiple
+                displayType={SPChoiceDisplayType.Checkboxes}
+                choices={SEPARATE_ACCT_STRATEGIES_INCL_CHOICES}
+                dataSource={{
+                  type: 'list',
+                  listNameOrId: requestListIdentifier,
+                  fieldInternalName: 'SeparateAcctStrategiesIncl',
+                }}
+              />
+            </FormValue>
           </FormItem>
         </FormContainer>
       </div>
@@ -639,26 +664,39 @@ export const PriorSubmissionsSection: React.FC<PriorSubmissionsSectionProps> = (
       <Separator />
       <SectionHeader
         icon='History'
-        title='Prior Submissions'
-        description='Reference any related prior submissions'
+        title='Prior and/or Related Submissions Information (If Applicable)'
+        description='Reference any related prior or related submissions'
       />
       <FormContainer labelWidth='200px'>
+        <FormItem fieldName='clientId'>
+          <FormLabel>Client Id</FormLabel>
+          <SPTextField
+            name='clientId'
+            placeholder='Enter client ID'
+            mode={SPTextFieldMode.SingleLine}
+            maxLength={255}
+            stylingMode='outlined'
+          />
+        </FormItem>
+
         <FormItem fieldName='priorSubmissions'>
-          <FormLabel>Prior Submissions</FormLabel>
+          <FormLabel infoText='Search by request ID, client ID, title, or submission item to find related workflows'>
+            Workflow Ids
+          </FormLabel>
           <PriorSubmissionPicker
             value={priorSubmissions || []}
             onChange={onPriorSubmissionsChange}
             disabled={isLoading}
             currentUserDepartment={currentUserDepartment}
-            placeholder='Search by request ID, title, purpose, or submission item...'
+            placeholder='Search by request ID, client ID, title, or submission item...'
           />
         </FormItem>
 
         <FormItem fieldName='priorSubmissionNotes'>
-          <FormLabel>Prior Submission Notes</FormLabel>
+          <FormLabel>Notes</FormLabel>
           <SPTextField
             name='priorSubmissionNotes'
-            placeholder='Add any notes about prior submissions'
+            placeholder='Add any notes about prior or related submissions'
             mode={SPTextFieldMode.MultiLine}
             rows={3}
             maxLength={PURPOSE_MAX_LENGTH}

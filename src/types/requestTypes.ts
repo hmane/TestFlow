@@ -83,8 +83,15 @@ export enum USFunds {
   IncomeFund = 'Income Fund',
   InternationalStockFund = 'International Stock Fund',
   StockFund = 'Stock Fund',
-  GlobalBondFundIShares = 'Global Bond Fund (I Shares)',
-  GlobalBondFundXShares = 'Global Bond Fund (X Shares)',
+  GlobalBondFund = 'Global Bond Fund',
+}
+
+/**
+ * U.S. Fund Shares options
+ */
+export enum USFundShares {
+  IShares = 'I Shares',
+  XShares = 'X Shares',
 }
 
 /**
@@ -145,6 +152,7 @@ export interface ILegalRequest {
   isRushRequest: boolean;
   rushRationale?: string;
   reviewAudience: ReviewAudience;
+  clientId?: string;
   priorSubmissions?: SPLookup[];
   priorSubmissionNotes?: string;
   dateOfFirstUse?: Date;
@@ -156,6 +164,7 @@ additionalParty?: IPrincipal[];
   finraAudienceCategory?: FINRAAudienceCategory[];
   audience?: Audience[];
   usFunds?: USFunds[];
+  usFundShares?: USFundShares[];
   ucits?: UCITS[];
   separateAcctStrategies?: SeparateAcctStrategies[];
   separateAcctStrategiesIncl?: SeparateAcctStrategiesIncl[];
@@ -314,6 +323,7 @@ export interface ICreateRequestPayload {
   requiresCommunicationsApproval: boolean;
   approvals: Approval[];
   distributionMethod?: DistributionMethod[];
+  clientId?: string;
   priorSubmissions?: SPLookup[];
   priorSubmissionNotes?: string;
   dateOfFirstUse?: Date;
@@ -347,6 +357,7 @@ export interface IRequestListItem {
   IsRushRequest: boolean;
   RushRationale?: string;
   ReviewAudience: string;
+  ClientId?: string;
   PriorSubmissionsId?: number[];
   PriorSubmissionNotes?: string;
   DateOfFirstUse?: string;
@@ -365,6 +376,7 @@ export interface IRequestListItem {
   FINRAAudienceCategory?: string[];
   Audience?: string[];
   USFunds?: string[];
+  USFundShares?: string[];
   UCITS?: string[];
   SeparateAcctStrategies?: string[];
   SeparateAcctStrategiesIncl?: string[];

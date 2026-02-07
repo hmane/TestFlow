@@ -48,7 +48,7 @@ import { Label } from '@fluentui/react/lib/Label';
 import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
-import { Toggle } from '@fluentui/react/lib/Toggle';
+
 
 // DevExtreme - tree-shaken imports
 import { SelectBox } from 'devextreme-react/select-box';
@@ -122,7 +122,7 @@ const DELETE_BUTTON_STYLES = {
   root: { color: '#a4262c' },
   rootHovered: { color: '#d13438', backgroundColor: '#fef6f6' },
 };
-const TOGGLE_STYLES = { root: { marginBottom: '0' } };
+
 const COMM_APPROVAL_CONTAINER_STYLES = {
   root: {
     padding: '16px',
@@ -608,36 +608,87 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
   // Note: Approval date errors are handled by SPDateField's built-in validation display
 
   /**
-   * Handle communications approval toggle change
+   * Derive current communications approval mode from the two boolean fields
    */
-  const handleCommApprovalToggle = React.useCallback(
-    (_event: React.MouseEvent<HTMLElement>, checked?: boolean) => {
-      const newValue = checked || false;
-      onCommApprovalChange(newValue);
+  const commApprovalMode = React.useMemo((): 'not-required' | 'required' | 'comm-only' => {
+    if (!requiresCommunicationsApproval) return 'not-required';
+    if (communicationsOnly) return 'comm-only';
+    return 'required';
+  }, [requiresCommunicationsApproval, communicationsOnly]);
 
-      if (newValue && communicationsApprovalIndex === -1) {
-        // Add communications approval
-        const newApproval = {
-          type: ApprovalType.Communications,
-          approvalDate: undefined as any,
-          approver: {
-            id: '',
-            email: '',
-            title: '',
-          },
-          documentId: '',
-          notes: '',
-        } as any;
+  /**
+   * Handle communications approval mode change (radio card selection)
+   * Maps from a single selection to the two underlying boolean fields
+   */
+  const handleCommApprovalModeChange = React.useCallback(
+    (mode: 'not-required' | 'required' | 'comm-only') => {
+      if (disabled) return;
 
-        append(newApproval);
-        SPContext.logger.info('ApprovalSection: Communications approval added');
-      } else if (!newValue && communicationsApprovalIndex !== -1) {
-        // Remove communications approval
-        remove(communicationsApprovalIndex);
-        SPContext.logger.info('ApprovalSection: Communications approval removed');
+      const prevRequired = requiresCommunicationsApproval;
+
+      // Update both boolean fields based on selected mode
+      switch (mode) {
+        case 'not-required':
+          onCommApprovalChange(false);
+          onCommOnlyChange(false);
+          // Remove communications approval if it exists
+          if (communicationsApprovalIndex !== -1) {
+            remove(communicationsApprovalIndex);
+            SPContext.logger.info('ApprovalSection: Communications approval removed');
+          }
+          break;
+
+        case 'required':
+          onCommApprovalChange(true);
+          onCommOnlyChange(false);
+          // Add communications approval if not already present
+          if (!prevRequired && communicationsApprovalIndex === -1) {
+            append({
+              type: ApprovalType.Communications,
+              approvalDate: undefined as any,
+              approver: { id: '', email: '', title: '' },
+              documentId: '',
+              notes: '',
+            } as any);
+            SPContext.logger.info('ApprovalSection: Communications approval added');
+          }
+          break;
+
+        case 'comm-only': {
+          onCommApprovalChange(true);
+          onCommOnlyChange(true);
+          // Add communications approval if not already present
+          if (!prevRequired && communicationsApprovalIndex === -1) {
+            append({
+              type: ApprovalType.Communications,
+              approvalDate: undefined as any,
+              approver: { id: '', email: '', title: '' },
+              documentId: '',
+              notes: '',
+            } as any);
+            SPContext.logger.info('ApprovalSection: Communications approval added');
+          }
+          // Remove all non-Communications approvals
+          const indicesToRemove: number[] = [];
+          if (approvals && Array.isArray(approvals)) {
+            for (let i = 0; i < approvals.length; i++) {
+              const approval = approvals[i] as any;
+              if (approval.type !== ApprovalType.Communications) {
+                indicesToRemove.push(i);
+              }
+            }
+          }
+          for (let i = indicesToRemove.length - 1; i >= 0; i--) {
+            remove(indicesToRemove[i]);
+          }
+          SPContext.logger.info('ApprovalSection: Communications Only enabled', {
+            removedCount: indicesToRemove.length,
+          });
+          break;
+        }
       }
     },
-    [onCommApprovalChange, communicationsApprovalIndex, append, remove]
+    [disabled, requiresCommunicationsApproval, communicationsApprovalIndex, onCommApprovalChange, onCommOnlyChange, append, remove, approvals]
   );
 
   /**
@@ -699,180 +750,237 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
     [communicationsApprovalIndex]
   );
 
-  /**
-   * Handle communications only toggle change
-   * When enabled, removes all additional (non-Communications) approvals
-   */
-  const handleCommOnlyToggle = React.useCallback(
-    (_event: React.MouseEvent<HTMLElement>, checked?: boolean) => {
-      const newValue = checked || false;
-      onCommOnlyChange(newValue);
-
-      if (newValue) {
-        // Remove all non-Communications approvals when enabling "Communications Only"
-        // We need to iterate backwards to avoid index shifting issues
-        const indicesToRemove: number[] = [];
-        if (approvals && Array.isArray(approvals)) {
-          for (let i = 0; i < approvals.length; i++) {
-            const approval = approvals[i] as any;
-            if (approval.type !== ApprovalType.Communications) {
-              indicesToRemove.push(i);
-            }
-          }
-        }
-
-        // Remove in reverse order to maintain correct indices
-        for (let i = indicesToRemove.length - 1; i >= 0; i--) {
-          remove(indicesToRemove[i]);
-        }
-
-        SPContext.logger.info('ApprovalSection: Communications Only enabled, removed additional approvals', {
-          removedCount: indicesToRemove.length,
-        });
-      }
-    },
-    [onCommOnlyChange, approvals, remove]
-  );
-
   return (
     <Stack tokens={{ childrenGap: 16 }}>
       {/* Communications Approval Section */}
-      <Stack tokens={{ childrenGap: 12 }}>
+      <Stack tokens={{ childrenGap: 12 }} styles={{ root: { padding: '16px', backgroundColor: '#f8f9fc', borderRadius: '6px', border: '1px solid #edebe9' } }}>
         <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
           <Icon iconName='Streaming' styles={{ root: { fontSize: '18px', color: '#0078d4' } }} />
           <Label styles={COMM_APPROVAL_LABEL_STYLES}>
-            Does this request require Communications approval?
+            Communications Approval
           </Label>
         </Stack>
 
-        <Toggle
-          label=''
-          onText='Yes'
-          offText='No'
-          checked={requiresCommunicationsApproval || false}
-          onChange={handleCommApprovalToggle}
-          disabled={disabled}
-          styles={TOGGLE_STYLES}
-        />
-
-        {/* Communications Approval Fields (shown when toggle is Yes) */}
-        {requiresCommunicationsApproval && communicationsApprovalIndex !== -1 && (
-          <Stack tokens={{ childrenGap: 12 }} styles={COMM_APPROVAL_CONTAINER_STYLES}>
+        {/* Radio card group — responsive: 3 columns on wide, stacks on narrow */}
+        <div
+          role='radiogroup'
+          aria-label='Communications approval requirement'
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '10px',
+          }}
+        >
+          {/* Option: Not Required */}
+          <button
+            type='button'
+            role='radio'
+            aria-checked={commApprovalMode === 'not-required'}
+            aria-label='Not Required — No Communications approval needed'
+            disabled={disabled}
+            onClick={() => handleCommApprovalModeChange('not-required')}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              gap: '4px',
+              padding: '12px 14px',
+              border: `1px solid ${commApprovalMode === 'not-required' ? '#0078d4' : '#e1dfdd'}`,
+              borderRadius: '4px',
+              backgroundColor: commApprovalMode === 'not-required' ? '#f0f6ff' : '#ffffff',
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              opacity: disabled ? 0.6 : 1,
+              textAlign: 'left',
+              transition: 'all 0.15s ease',
+              outline: 'none',
+            }}
+            onFocus={(e) => { if (!disabled) e.currentTarget.style.boxShadow = '0 0 0 1px #0078d4'; }}
+            onBlur={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
+          >
             <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
-              <Icon iconName='CheckMark' styles={CHECKMARK_ICON_STYLES} />
-              <Text variant='medium' styles={APPROVAL_TITLE_STYLES}>
-                Communications Approval
+              <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: `2px solid ${commApprovalMode === 'not-required' ? '#0078d4' : '#8a8886'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {commApprovalMode === 'not-required' && (
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#0078d4' }} />
+                )}
+              </div>
+              <Text variant='medium' styles={{ root: { fontWeight: 600, color: '#323130', fontSize: '13px' } }}>
+                Not Required
               </Text>
             </Stack>
+            <Text variant='small' styles={{ root: { color: '#605e5c', lineHeight: '1.4', paddingLeft: '24px', fontSize: '12px' } }}>
+              No Communications approval needed for this request.
+            </Text>
+          </button>
 
-            {/* Communications Only Toggle - Shown at top of Communications Approval section */}
-            <Stack
-              tokens={{ childrenGap: 8 }}
-              styles={{
-                root: {
-                  padding: '12px',
-                  backgroundColor: '#ffffff',
-                  borderRadius: '4px',
-                  border: '1px solid #d1e5ff',
-                },
-              }}
-            >
-              <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
-                <Icon iconName='Filter' styles={{ root: { fontSize: '16px', color: '#0078d4' } }} />
-                <Label styles={{ root: { fontWeight: 600, color: '#323130', fontSize: '13px' } }}>
-                  Is this a Communications Only request?
-                </Label>
-              </Stack>
-              <Toggle
-                label=''
-                onText='Yes'
-                offText='No'
-                checked={communicationsOnly || false}
-                onChange={handleCommOnlyToggle}
-                disabled={disabled}
-                styles={TOGGLE_STYLES}
-              />
-              <Text variant='small' styles={DESC_TEXT_STYLES}>
-                Enable this if only Communications approval is needed. When disabled, at least one additional approval (Portfolio Manager, Research Analyst, etc.) is required.
+          {/* Option: Required */}
+          <button
+            type='button'
+            role='radio'
+            aria-checked={commApprovalMode === 'required'}
+            aria-label='Required — Communications approval plus additional approvals'
+            disabled={disabled}
+            onClick={() => handleCommApprovalModeChange('required')}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              gap: '4px',
+              padding: '12px 14px',
+              border: `1px solid ${commApprovalMode === 'required' ? '#0078d4' : '#e1dfdd'}`,
+              borderRadius: '4px',
+              backgroundColor: commApprovalMode === 'required' ? '#f0f6ff' : '#ffffff',
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              opacity: disabled ? 0.6 : 1,
+              textAlign: 'left',
+              transition: 'all 0.15s ease',
+              outline: 'none',
+            }}
+            onFocus={(e) => { if (!disabled) e.currentTarget.style.boxShadow = '0 0 0 1px #0078d4'; }}
+            onBlur={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
+          >
+            <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
+              <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: `2px solid ${commApprovalMode === 'required' ? '#0078d4' : '#8a8886'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {commApprovalMode === 'required' && (
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#0078d4' }} />
+                )}
+              </div>
+              <Text variant='medium' styles={{ root: { fontWeight: 600, color: '#323130', fontSize: '13px' } }}>
+                Required
               </Text>
             </Stack>
+            <Text variant='small' styles={{ root: { color: '#605e5c', lineHeight: '1.4', paddingLeft: '24px', fontSize: '12px' } }}>
+              Communications approval plus at least one additional approval.
+            </Text>
+          </button>
 
-            <FormContainer labelWidth='200px'>
-              {/* Approver */}
-              <FormItem>
-                <FormLabel isRequired infoText='Select the person who approved this item'>
-                  Approved By
-                </FormLabel>
-                <SPUserField
-                  key={`comm-approver-${communicationsApprovalIndex}-${approvals?.[communicationsApprovalIndex]?.approver?.id || 'empty'}`}
-                  name={`approvals.${communicationsApprovalIndex}.approver` as const}
-                  control={formControl}
-                  placeholder='Search for approver'
-                  allowMultiple={false}
-                  showPhoto
-                  showEmail
-                  disabled={disabled}
-                  hasError={hasCommApproverError}
-                />
-              </FormItem>
-
-              {/* Approval Date */}
-              <FormItem>
-                <FormLabel isRequired infoText='Date when the approval was granted'>
-                  Approval Date
-                </FormLabel>
-                <SPDateField
-                  name={`approvals.${communicationsApprovalIndex}.approvalDate` as const}
-                  control={formControl}
-                  placeholder='Select approval date'
-                  dateTimeFormat={SPDateTimeFormat.DateOnly}
-                  displayFormat='MM/dd/yyyy'
-                  maxDate={TODAY}
-                  showClearButton
-                  calendarButtonPosition='before'
-                  disabled={disabled}
-                />
-              </FormItem>
-
-              {/* Approval Document Upload */}
-              <FormItem>
-                <FormLabel isRequired>Approval Documents</FormLabel>
-                <DocumentUpload
-                  documentType={DocumentType.CommunicationApproval}
-                  itemId={requestId ? parseInt(requestId, 10) : undefined}
-                  siteUrl={SPContext.webAbsoluteUrl}
-                  documentLibraryTitle={Lists.RequestDocuments.Title}
-                  maxFiles={MAX_APPROVAL_DOCUMENTS}
-                  maxFileSize={250 * 1024 * 1024}
-                  required={true}
-                  isReadOnly={disabled}
-                  hasError={hasCommDocumentError}
-                  onFilesChange={handleCommFilesChange}
-                  label=""
-                  description={`Upload up to ${MAX_APPROVAL_DOCUMENTS} approval documents (PDF, Word, Excel, PowerPoint, images, emails, etc.)`}
-                />
-              </FormItem>
-
-              {/* Notes */}
-              <FormItem fieldName={`approvals.${communicationsApprovalIndex}.notes`}>
-                <FormLabel infoText='Optional notes about this approval'>
-                  Notes
-                </FormLabel>
-                <SPTextField
-                  name={`approvals.${communicationsApprovalIndex}.notes` as const}
-                  placeholder='Add any notes about this approval (optional)'
-                  mode={SPTextFieldMode.MultiLine}
-                  rows={3}
-                  maxLength={500}
-                  showCharacterCount
-                  stylingMode='outlined'
-                  disabled={disabled}
-                />
-              </FormItem>
-            </FormContainer>
-          </Stack>
-        )}
+          {/* Option: Communications Only */}
+          <button
+            type='button'
+            role='radio'
+            aria-checked={commApprovalMode === 'comm-only'}
+            aria-label='Communications Only — Only Communications approval is needed'
+            disabled={disabled}
+            onClick={() => handleCommApprovalModeChange('comm-only')}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-start',
+              gap: '4px',
+              padding: '12px 14px',
+              border: `1px solid ${commApprovalMode === 'comm-only' ? '#0078d4' : '#e1dfdd'}`,
+              borderRadius: '4px',
+              backgroundColor: commApprovalMode === 'comm-only' ? '#f0f6ff' : '#ffffff',
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              opacity: disabled ? 0.6 : 1,
+              textAlign: 'left',
+              transition: 'all 0.15s ease',
+              outline: 'none',
+            }}
+            onFocus={(e) => { if (!disabled) e.currentTarget.style.boxShadow = '0 0 0 1px #0078d4'; }}
+            onBlur={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
+          >
+            <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
+              <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: `2px solid ${commApprovalMode === 'comm-only' ? '#0078d4' : '#8a8886'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {commApprovalMode === 'comm-only' && (
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#0078d4' }} />
+                )}
+              </div>
+              <Text variant='medium' styles={{ root: { fontWeight: 600, color: '#323130', fontSize: '13px' } }}>
+                Communications Only
+              </Text>
+            </Stack>
+            <Text variant='small' styles={{ root: { color: '#605e5c', lineHeight: '1.4', paddingLeft: '24px', fontSize: '12px' } }}>
+              Only Communications approval is needed, no additional approvals.
+            </Text>
+          </button>
+        </div>
       </Stack>
+
+      {/* Communications Approval Fields (shown when required or comm-only) */}
+      {requiresCommunicationsApproval && communicationsApprovalIndex !== -1 && (
+        <Stack tokens={{ childrenGap: 12 }} styles={COMM_APPROVAL_CONTAINER_STYLES}>
+          <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
+            <Icon iconName='CheckMark' styles={CHECKMARK_ICON_STYLES} />
+            <Text variant='medium' styles={APPROVAL_TITLE_STYLES}>
+              Communications Approval
+            </Text>
+          </Stack>
+
+          <FormContainer labelWidth='200px'>
+            {/* Approver */}
+            <FormItem>
+              <FormLabel isRequired infoText='Select the person who approved this item'>
+                Approved By
+              </FormLabel>
+              <SPUserField
+                key={`comm-approver-${communicationsApprovalIndex}-${approvals?.[communicationsApprovalIndex]?.approver?.id || 'empty'}`}
+                name={`approvals.${communicationsApprovalIndex}.approver` as const}
+                control={formControl}
+                placeholder='Search for approver'
+                allowMultiple={false}
+                showPhoto
+                showEmail
+                disabled={disabled}
+                hasError={hasCommApproverError}
+              />
+            </FormItem>
+
+            {/* Approval Date */}
+            <FormItem>
+              <FormLabel isRequired infoText='Date when the approval was granted'>
+                Approval Date
+              </FormLabel>
+              <SPDateField
+                name={`approvals.${communicationsApprovalIndex}.approvalDate` as const}
+                control={formControl}
+                placeholder='Select approval date'
+                dateTimeFormat={SPDateTimeFormat.DateOnly}
+                displayFormat='MM/dd/yyyy'
+                maxDate={TODAY}
+                showClearButton
+                calendarButtonPosition='before'
+                disabled={disabled}
+              />
+            </FormItem>
+
+            {/* Approval Document Upload */}
+            <FormItem>
+              <FormLabel isRequired>Approval Documents</FormLabel>
+              <DocumentUpload
+                documentType={DocumentType.CommunicationApproval}
+                itemId={requestId ? parseInt(requestId, 10) : undefined}
+                siteUrl={SPContext.webAbsoluteUrl}
+                documentLibraryTitle={Lists.RequestDocuments.Title}
+                maxFiles={MAX_APPROVAL_DOCUMENTS}
+                maxFileSize={250 * 1024 * 1024}
+                required={true}
+                isReadOnly={disabled}
+                hasError={hasCommDocumentError}
+                onFilesChange={handleCommFilesChange}
+                label=""
+                description={`Upload up to ${MAX_APPROVAL_DOCUMENTS} approval documents (PDF, Word, Excel, PowerPoint, images, emails, etc.)`}
+              />
+            </FormItem>
+
+            {/* Notes */}
+            <FormItem fieldName={`approvals.${communicationsApprovalIndex}.notes`}>
+              <FormLabel infoText='Optional notes about this approval'>
+                Notes
+              </FormLabel>
+              <SPTextField
+                name={`approvals.${communicationsApprovalIndex}.notes` as const}
+                placeholder='Add any notes about this approval (optional)'
+                mode={SPTextFieldMode.MultiLine}
+                rows={3}
+                maxLength={500}
+                showCharacterCount
+                stylingMode='outlined'
+                disabled={disabled}
+              />
+            </FormItem>
+          </FormContainer>
+        </Stack>
+      )}
 
       {/* Additional Approvals Section - Hidden when Communications Only is enabled */}
       {!communicationsOnly && (

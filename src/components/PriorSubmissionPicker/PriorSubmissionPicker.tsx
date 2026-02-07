@@ -106,10 +106,11 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
         const escapedSearch = searchText.replace(/'/g, "''");
 
         // Build filter for search on Text fields only (Note fields like Purpose cannot be filtered)
-        // Title = Request ID (CRR-25-1), RequestTitle = actual title, SubmissionItem = text field
+        // Title = Request ID (CRR-25-1), RequestTitle = actual title, SubmissionItem = text field, ClientId = client identifier
         let filter = `(substringof('${escapedSearch}',${RequestsFields.RequestId}) or ` +
           `substringof('${escapedSearch}',${RequestsFields.RequestTitle}) or ` +
-          `substringof('${escapedSearch}',${RequestsFields.SubmissionItem}))`;
+          `substringof('${escapedSearch}',${RequestsFields.SubmissionItem}) or ` +
+          `substringof('${escapedSearch}',${RequestsFields.ClientId}))`;
 
         // Add department filter if available
         if (currentUserDepartment) {
@@ -126,6 +127,7 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
             RequestsFields.RequestTitle, // Actual title
             RequestsFields.Purpose,
             RequestsFields.SubmissionItem, // Text field
+            RequestsFields.ClientId, // Client identifier
             RequestsFields.Status,
             RequestsFields.Created,
             `${RequestsFields.Author}/Title`,
@@ -234,6 +236,7 @@ export const PriorSubmissionPicker: React.FC<IPriorSubmissionPickerProps> = ({
             RequestsFields.RequestTitle,
             RequestsFields.Purpose,
             RequestsFields.SubmissionItem, // Text field
+            RequestsFields.ClientId, // Client identifier
             RequestsFields.Status,
             RequestsFields.Created,
             `${RequestsFields.Author}/Title`,

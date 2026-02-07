@@ -46,6 +46,7 @@ function filterEmptyUpdates(
     'RushRationale': 'rushRationale',
     'Department': 'department',
     'PriorSubmissionNotes': 'priorSubmissionNotes',
+    'ClientId': 'clientId',
     'TrackingId': 'trackingId',
     'DistributionMethod': 'distributionMethod',
     'PriorSubmissions': 'priorSubmissions',
@@ -166,6 +167,7 @@ export function buildRequestUpdatePayload(
     updater.set(RequestsFields.DistributionMethod, request.distributionMethod, originalRequest.distributionMethod);
 
     updater.set(RequestsFields.PriorSubmissionNotes, request.priorSubmissionNotes, originalRequest.priorSubmissionNotes);
+    updater.set(RequestsFields.ClientId, request.clientId, originalRequest.clientId);
     updater.set(RequestsFields.TrackingId, request.trackingId, originalRequest.trackingId);
 
     // Multi-value lookup/user fields
@@ -176,6 +178,7 @@ export function buildRequestUpdatePayload(
     updater.set(RequestsFields.FINRAAudienceCategory, request.finraAudienceCategory, originalRequest.finraAudienceCategory);
     updater.set(RequestsFields.Audience, request.audience, originalRequest.audience);
     updater.set(RequestsFields.USFunds, request.usFunds, originalRequest.usFunds);
+    updater.set(RequestsFields.USFundShares, request.usFundShares, originalRequest.usFundShares);
     updater.set(RequestsFields.UCITS, request.ucits, originalRequest.ucits);
     updater.set(RequestsFields.SeparateAcctStrategies, request.separateAcctStrategies, originalRequest.separateAcctStrategies);
     updater.set(RequestsFields.SeparateAcctStrategiesIncl, request.separateAcctStrategiesIncl, originalRequest.separateAcctStrategiesIncl);
@@ -255,6 +258,9 @@ export function buildRequestUpdatePayload(
     if (request.priorSubmissionNotes) {
       newUpdater.set(RequestsFields.PriorSubmissionNotes, request.priorSubmissionNotes, undefined);
     }
+    if (request.clientId) {
+      newUpdater.set(RequestsFields.ClientId, request.clientId, undefined);
+    }
     if (request.dateOfFirstUse) {
       newUpdater.set(RequestsFields.DateOfFirstUse, request.dateOfFirstUse, undefined);
     }
@@ -277,6 +283,9 @@ export function buildRequestUpdatePayload(
     }
     if (request.usFunds && request.usFunds.length > 0) {
       newUpdater.set(RequestsFields.USFunds, request.usFunds, undefined);
+    }
+    if (request.usFundShares && request.usFundShares.length > 0) {
+      newUpdater.set(RequestsFields.USFundShares, request.usFundShares, undefined);
     }
     if (request.ucits && request.ucits.length > 0) {
       newUpdater.set(RequestsFields.UCITS, request.ucits, undefined);

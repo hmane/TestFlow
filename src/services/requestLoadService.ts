@@ -44,6 +44,7 @@ import {
   FINRAAudienceCategory,
   Audience,
   USFunds,
+  USFundShares,
   UCITS,
   SeparateAcctStrategies,
   SeparateAcctStrategiesIncl,
@@ -91,6 +92,7 @@ const QUERY1_FIELDS = [
   RequestsFields.DistributionMethod,
   RequestsFields.DateOfFirstUse,
   RequestsFields.PriorSubmissionNotes,
+  RequestsFields.ClientId,
   RequestsFields.TotalTurnaroundDays,
   RequestsFields.ExpectedTurnaroundDate,
 
@@ -98,6 +100,7 @@ const QUERY1_FIELDS = [
   RequestsFields.FINRAAudienceCategory,
   RequestsFields.Audience,
   RequestsFields.USFunds,
+  RequestsFields.USFundShares,
   RequestsFields.UCITS,
   RequestsFields.SeparateAcctStrategies,
   RequestsFields.SeparateAcctStrategiesIncl,
@@ -456,6 +459,7 @@ export function mapRequestListItemToRequest(item: IRawSharePointItem): ILegalReq
         .filter((lookup: SPLookup): lookup is SPLookup & { id: number } => lookup.id !== undefined);
     })(),
     priorSubmissionNotes: extractor.string(RequestsFields.PriorSubmissionNotes),
+    clientId: extractor.string(RequestsFields.ClientId),
 
     // Additional parties
     additionalParty: extractor.userMulti(RequestsFields.AdditionalParty) || [],
@@ -464,6 +468,7 @@ export function mapRequestListItemToRequest(item: IRawSharePointItem): ILegalReq
     finraAudienceCategory: (extractor.multiChoice(RequestsFields.FINRAAudienceCategory) || []) as FINRAAudienceCategory[],
     audience: (extractor.multiChoice(RequestsFields.Audience) || []) as Audience[],
     usFunds: (extractor.multiChoice(RequestsFields.USFunds) || []) as USFunds[],
+    usFundShares: (extractor.multiChoice(RequestsFields.USFundShares) || []) as USFundShares[],
     ucits: (extractor.multiChoice(RequestsFields.UCITS) || []) as UCITS[],
     separateAcctStrategies: (extractor.multiChoice(RequestsFields.SeparateAcctStrategies) || []) as SeparateAcctStrategies[],
     separateAcctStrategiesIncl: (extractor.multiChoice(RequestsFields.SeparateAcctStrategiesIncl) || []) as SeparateAcctStrategiesIncl[],

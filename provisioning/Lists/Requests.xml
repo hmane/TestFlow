@@ -48,6 +48,7 @@
       </Field>
       <Field Type="LookupMulti" Name="PriorSubmissions" DisplayName="Prior Submissions" List="Lists/Requests" ShowField="Title" Mult="TRUE" Group="Request Information" ID="{499E8607-D98C-4EDE-BB58-E9AD387C39B7}" />
       <Field Type="Note" Name="PriorSubmissionNotes" DisplayName="Prior Submission Notes" RichText="FALSE" NumLines="6" Group="Request Information" ID="{5C815A64-EFB9-4791-B9FE-A0B555038EBA}" />
+      <Field Type="Text" Name="ClientId" DisplayName="Client Id" MaxLength="255" Group="Request Information" ID="{A7E3B2D1-4F8C-4A6E-9D5B-1C2E3F4A5B6C}" />
       <Field Type="DateTime" Name="DateOfFirstUse" DisplayName="Date Of First Use" Format="DateTime" Group="Request Information" ID="{B8FE45F0-E7BF-4DBB-A58A-03962D54A52F}" />
       <Field Type="UserMulti" Name="AdditionalParty" DisplayName="Additional Party" UserSelectionMode="PeopleOnly" Mult="TRUE" Group="Request Information" ID="{F3197884-0B3C-412F-AB5B-6CF1F428CF87}" />
 
@@ -76,8 +77,13 @@
           <CHOICE>Income Fund</CHOICE>
           <CHOICE>International Stock Fund</CHOICE>
           <CHOICE>Stock Fund</CHOICE>
-          <CHOICE>Global Bond Fund (I Shares)</CHOICE>
-          <CHOICE>Global Bond Fund (X Shares)</CHOICE>
+          <CHOICE>Global Bond Fund</CHOICE>
+        </CHOICES>
+      </Field>
+      <Field Type="MultiChoice" Name="USFundShares" DisplayName="U.S. Fund Shares" Group="Request Information" ID="{D4F5E6A7-8B9C-4D1E-A2F3-5B6C7D8E9F0A}">
+        <CHOICES>
+          <CHOICE>I Shares</CHOICE>
+          <CHOICE>X Shares</CHOICE>
         </CHOICES>
       </Field>
       <Field Type="MultiChoice" Name="UCITS" DisplayName="UCITS" Group="Request Information" ID="{0B744DC0-F1B4-4B65-9BA5-C0B6FE3C6A43}">
