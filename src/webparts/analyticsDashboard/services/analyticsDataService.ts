@@ -10,6 +10,8 @@ import { Lists } from '@sp/Lists';
 import { RequestsFields } from '@sp/listFields';
 import type {
   IDashboardData,
+  IDashboardFilters,
+  IDashboardFilterOptions,
   IKPIMetrics,
   IStatusData,
   IVolumeData,
@@ -103,6 +105,8 @@ export const generateMockData = (dateRange: DateRangeOption): IDashboardData => 
   const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
 
   // Generate KPI metrics
+  const totalHoursLogged = Math.floor(Math.random() * 500) + 100;
+  const reviewerShare = Math.round(totalHoursLogged * (0.55 + Math.random() * 0.15));
   const kpiMetrics: IKPIMetrics = {
     totalRequests: Math.floor(Math.random() * 150) + 50,
     totalRequestsTrend: Math.floor(Math.random() * 30) - 10,
@@ -111,7 +115,9 @@ export const generateMockData = (dateRange: DateRangeOption): IDashboardData => 
     pendingReviews: Math.floor(Math.random() * 30) + 5,
     rushRequestPercentage: Math.floor(Math.random() * 25) + 5,
     slaCompliancePercentage: Math.floor(Math.random() * 20) + 75,
-    totalHoursLogged: Math.floor(Math.random() * 500) + 100,
+    totalHoursLogged,
+    totalReviewerHours: reviewerShare,
+    totalSubmitterHours: totalHoursLogged - reviewerShare,
     awaitingFINRADocuments: Math.floor(Math.random() * 8) + 2,
     foresideCommentsReceived: Math.floor(Math.random() * 5) + 1,
   };
@@ -158,6 +164,15 @@ export const generateMockData = (dateRange: DateRangeOption): IDashboardData => 
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() - daysOverdue);
 
+    let riskCategory: 'Overdue' | 'Due Today' | 'Due This Week';
+    if (daysOverdue > 0) {
+      riskCategory = 'Overdue';
+    } else if (daysOverdue === 0) {
+      riskCategory = 'Due Today';
+    } else {
+      riskCategory = 'Due This Week';
+    }
+
     const idNum = 100 + i;
     const idStr = idNum < 10 ? `00${idNum}` : idNum < 100 ? `0${idNum}` : `${idNum}`;
     requestsAtRisk.push({
@@ -168,6 +183,7 @@ export const generateMockData = (dateRange: DateRangeOption): IDashboardData => 
       targetReturnDate: targetDate,
       daysOverdue: Math.max(0, daysOverdue),
       attorney: MOCK_ATTORNEYS[Math.floor(Math.random() * MOCK_ATTORNEYS.length)],
+      riskCategory,
     });
   }
 
@@ -260,6 +276,11 @@ export const generateMockData = (dateRange: DateRangeOption): IDashboardData => 
     timeByStage,
     reviewOutcomes,
     communicationsOnlyDistribution,
+    filterOptions: {
+      reviewAudience: ['Legal', 'Compliance', 'Both'],
+      requestType: ['Communication', 'General Review'],
+      department: ['Marketing', 'Product', 'Distribution', 'Institutional Sales', 'Compliance'],
+    },
     lastUpdated: new Date(),
   };
 };
@@ -293,64 +314,124 @@ export const checkUserAccess = async (): Promise<IUserAccess> => {
 export const fetchDashboardData = async (
   dateRange: DateRangeOption,
   customStartDate?: Date,
-  customEndDate?: Date
+  customEndDate?: Date,
+  filters?: IDashboardFilters
 ): Promise<IDashboardData> => {
   const { startDate, endDate } = getDateRange(dateRange, customStartDate, customEndDate);
 
   try {
-    // Fetch all requests within date range
-    const dateFilter = `${RequestsFields.Created} ge datetime'${startDate.toISOString()}' and ${RequestsFields.Created} le datetime'${endDate.toISOString()}'`;
+    // Build query filters
+    let dateFilter = `${RequestsFields.Created} ge datetime'${startDate.toISOString()}' and ${RequestsFields.Created} le datetime'${endDate.toISOString()}'`;
 
-    const items = await SPContext.sp.web.lists
-      .getByTitle(Lists.Requests.Title)
-      .items
-      .select(
-        RequestsFields.ID,
-        RequestsFields.RequestId, // Title field stores RequestId
-        RequestsFields.RequestTitle,
-        RequestsFields.Status,
-        RequestsFields.TargetReturnDate,
-        RequestsFields.Created,
-        RequestsFields.IsRushRequest,
-        RequestsFields.CommunicationsOnly,
-        `${RequestsFields.Attorney}/ID`,
-        `${RequestsFields.Attorney}/Title`,
-        RequestsFields.LegalReviewOutcome,
-        RequestsFields.ComplianceReviewOutcome,
-        RequestsFields.LegalIntakeLegalAdminHours,
-        RequestsFields.LegalIntakeSubmitterHours,
-        RequestsFields.LegalReviewAttorneyHours,
-        RequestsFields.LegalReviewSubmitterHours,
-        RequestsFields.ComplianceReviewReviewerHours,
-        RequestsFields.ComplianceReviewSubmitterHours,
-        RequestsFields.CloseoutReviewerHours,
-        RequestsFields.CloseoutSubmitterHours,
-        RequestsFields.TotalReviewerHours,
-        RequestsFields.TotalSubmitterHours,
-        RequestsFields.CloseoutOn,
-        RequestsFields.SubmittedOn,
-        RequestsFields.ForesideCommentsReceived
-      )
-      .expand(RequestsFields.Attorney)
-      .filter(dateFilter)
-      .top(5000)();
+    // Apply segmentation filters
+    if (filters?.reviewAudience) {
+      dateFilter += ` and ${RequestsFields.ReviewAudience} eq '${filters.reviewAudience}'`;
+    }
+    if (filters?.requestType) {
+      dateFilter += ` and ${RequestsFields.RequestType} eq '${filters.requestType}'`;
+    }
+    if (filters?.department) {
+      dateFilter += ` and ${RequestsFields.Department} eq '${filters.department}'`;
+    }
+
+    // Previous period for trend comparison
+    const periodMs = endDate.getTime() - startDate.getTime();
+    const prevEndDate = new Date(startDate.getTime() - 1);
+    const prevStartDate = new Date(prevEndDate.getTime() - periodMs);
+    prevStartDate.setHours(0, 0, 0, 0);
+    const prevDateFilter = `${RequestsFields.Created} ge datetime'${prevStartDate.toISOString()}' and ${RequestsFields.Created} le datetime'${prevEndDate.toISOString()}'`;
+
+    // Snapshot filter — active items only (no date range)
+    const snapshotFilter = `${RequestsFields.Status} ne 'Draft' and ${RequestsFields.Status} ne 'Completed' and ${RequestsFields.Status} ne 'Cancelled'`;
+
+    // Run all three queries in parallel
+    const [items, snapshotItems, prevItems] = await Promise.all([
+      // 1. Period query — items created within date range
+      SPContext.sp.web.lists
+        .getByTitle(Lists.Requests.Title)
+        .items
+        .select(
+          RequestsFields.ID,
+          RequestsFields.RequestId,
+          RequestsFields.RequestTitle,
+          RequestsFields.Status,
+          RequestsFields.TargetReturnDate,
+          RequestsFields.Created,
+          RequestsFields.IsRushRequest,
+          RequestsFields.CommunicationsOnly,
+          `${RequestsFields.Attorney}/ID`,
+          `${RequestsFields.Attorney}/Title`,
+          RequestsFields.LegalReviewOutcome,
+          RequestsFields.ComplianceReviewOutcome,
+          RequestsFields.LegalIntakeLegalAdminHours,
+          RequestsFields.LegalIntakeSubmitterHours,
+          RequestsFields.LegalReviewAttorneyHours,
+          RequestsFields.LegalReviewSubmitterHours,
+          RequestsFields.ComplianceReviewReviewerHours,
+          RequestsFields.ComplianceReviewSubmitterHours,
+          RequestsFields.CloseoutReviewerHours,
+          RequestsFields.CloseoutSubmitterHours,
+          RequestsFields.TotalReviewerHours,
+          RequestsFields.TotalSubmitterHours,
+          RequestsFields.CloseoutOn,
+          RequestsFields.SubmittedOn,
+          RequestsFields.ForesideCommentsReceived,
+          RequestsFields.FINRACompletedOn,
+          RequestsFields.ReviewAudience,
+          RequestsFields.RequestType,
+          RequestsFields.Department
+        )
+        .expand(RequestsFields.Attorney)
+        .filter(dateFilter)
+        .top(5000)(),
+
+      // 2. Snapshot query — current state (no date filter)
+      SPContext.sp.web.lists
+        .getByTitle(Lists.Requests.Title)
+        .items
+        .select(
+          RequestsFields.ID,
+          RequestsFields.RequestId,
+          RequestsFields.RequestTitle,
+          RequestsFields.Status,
+          RequestsFields.TargetReturnDate,
+          `${RequestsFields.Attorney}/ID`,
+          `${RequestsFields.Attorney}/Title`,
+          RequestsFields.ForesideCommentsReceived
+        )
+        .expand(RequestsFields.Attorney)
+        .filter(snapshotFilter)
+        .top(5000)(),
+
+      // 3. Previous period query — for trend comparison
+      SPContext.sp.web.lists
+        .getByTitle(Lists.Requests.Title)
+        .items
+        .select(
+          RequestsFields.ID,
+          RequestsFields.Status,
+          RequestsFields.SubmittedOn,
+          RequestsFields.CloseoutOn,
+          RequestsFields.FINRACompletedOn
+        )
+        .filter(prevDateFilter)
+        .top(5000)(),
+    ]);
 
     // Calculate KPI metrics
     const totalRequests = items.length;
     const completedRequests = items.filter((i: { Status: string }) => i.Status === 'Completed');
-    const pendingRequests = items.filter((i: { Status: string }) =>
-      ['Legal Intake', 'Assign Attorney', 'In Review', 'Closeout'].includes(i.Status)
-    );
     const rushRequests = items.filter((i: { IsRushRequest: boolean }) => i.IsRushRequest);
 
     // Calculate average turnaround for completed requests
     let avgTurnaroundDays = 0;
     if (completedRequests.length > 0) {
-      const turnaroundDays = completedRequests.map((r: { SubmittedOn: string; CloseoutOn: string }) => {
-        if (r.SubmittedOn && r.CloseoutOn) {
+      const turnaroundDays = completedRequests.map((r: { SubmittedOn?: string; CloseoutOn?: string; ForesideCompletedOn?: string }) => {
+        const completionDateStr = r.ForesideCompletedOn || r.CloseoutOn;
+        if (r.SubmittedOn && completionDateStr) {
           const submitted = new Date(r.SubmittedOn);
-          const closeout = new Date(r.CloseoutOn);
-          return Math.ceil((closeout.getTime() - submitted.getTime()) / (1000 * 60 * 60 * 24));
+          const completion = new Date(completionDateStr);
+          return Math.ceil((completion.getTime() - submitted.getTime()) / (1000 * 60 * 60 * 24));
         }
         return 0;
       }).filter((d: number) => d > 0);
@@ -362,13 +443,14 @@ export const fetchDashboardData = async (
 
     // Calculate SLA compliance
     let slaCompliance = 100;
-    const completedWithDates = completedRequests.filter((r: { TargetReturnDate: string; CloseoutOn: string }) =>
-      r.TargetReturnDate && r.CloseoutOn
+    const completedWithDates = completedRequests.filter((r: { TargetReturnDate?: string; CloseoutOn?: string; ForesideCompletedOn?: string }) =>
+      r.TargetReturnDate && (r.ForesideCompletedOn || r.CloseoutOn)
     );
     if (completedWithDates.length > 0) {
-      const onTime = completedWithDates.filter((r: { TargetReturnDate: string; CloseoutOn: string }) =>
-        new Date(r.CloseoutOn) <= new Date(r.TargetReturnDate)
-      );
+      const onTime = completedWithDates.filter((r: { TargetReturnDate: string; CloseoutOn?: string; ForesideCompletedOn?: string }) => {
+        const completionDate = new Date((r.ForesideCompletedOn || r.CloseoutOn) as string);
+        return completionDate <= new Date(r.TargetReturnDate);
+      });
       slaCompliance = Math.round((onTime.length / completedWithDates.length) * 100);
     }
 
@@ -377,23 +459,60 @@ export const fetchDashboardData = async (
       return sum + (item.TotalReviewerHours || 0) + (item.TotalSubmitterHours || 0);
     }, 0);
 
-    // Calculate FINRA / Foreside comments stats
-    const awaitingFINRA = items.filter((i: { Status: string }) => i.Status === 'Awaiting FINRA Documents');
-    const foresideCommentsCount = awaitingFINRA.filter(
+    // Snapshot metrics (from unfiltered active items query)
+    const snapshotPendingReviews = snapshotItems.filter((i: { Status: string }) =>
+      ['Legal Intake', 'Assign Attorney', 'In Review', 'Closeout'].includes(i.Status)
+    );
+    const snapshotAwaitingFINRA = snapshotItems.filter((i: { Status: string }) => i.Status === 'Awaiting FINRA Documents');
+    const snapshotForesideComments = snapshotAwaitingFINRA.filter(
       (i: { ForesideCommentsReceived?: boolean }) => i.ForesideCommentsReceived === true
     ).length;
 
+    // Calculate trends from previous period
+    const prevTotalRequests = prevItems.length;
+    const totalRequestsTrend = prevTotalRequests > 0
+      ? Math.round(((totalRequests - prevTotalRequests) / prevTotalRequests) * 100)
+      : 0;
+
+    let prevAvgTurnaround = 0;
+    const prevCompleted = prevItems.filter((i: { Status: string }) => i.Status === 'Completed');
+    if (prevCompleted.length > 0) {
+      const prevDays = prevCompleted.map((r: { SubmittedOn?: string; CloseoutOn?: string; ForesideCompletedOn?: string }) => {
+        const completionDateStr = r.ForesideCompletedOn || r.CloseoutOn;
+        if (r.SubmittedOn && completionDateStr) {
+          return Math.ceil((new Date(completionDateStr).getTime() - new Date(r.SubmittedOn).getTime()) / (1000 * 60 * 60 * 24));
+        }
+        return 0;
+      }).filter((d: number) => d > 0);
+      if (prevDays.length > 0) {
+        prevAvgTurnaround = Math.round(prevDays.reduce((a: number, b: number) => a + b, 0) / prevDays.length);
+      }
+    }
+    const avgTurnaroundTrend = prevAvgTurnaround > 0
+      ? Math.round(((avgTurnaroundDays - prevAvgTurnaround) / prevAvgTurnaround) * 100)
+      : 0;
+
+    // Split hours into reviewer and submitter
+    const totalReviewerHrs = items.reduce((sum: number, item: { TotalReviewerHours?: number }) => {
+      return sum + (item.TotalReviewerHours || 0);
+    }, 0);
+    const totalSubmitterHrs = items.reduce((sum: number, item: { TotalSubmitterHours?: number }) => {
+      return sum + (item.TotalSubmitterHours || 0);
+    }, 0);
+
     const kpiMetrics: IKPIMetrics = {
       totalRequests,
-      totalRequestsTrend: 0, // Would need previous period data
+      totalRequestsTrend,
       avgTurnaroundDays,
-      avgTurnaroundTrend: 0,
-      pendingReviews: pendingRequests.length,
+      avgTurnaroundTrend,
+      pendingReviews: snapshotPendingReviews.length,
       rushRequestPercentage: totalRequests > 0 ? Math.round((rushRequests.length / totalRequests) * 100) : 0,
       slaCompliancePercentage: slaCompliance,
       totalHoursLogged: Math.round(totalHours * 10) / 10,
-      awaitingFINRADocuments: awaitingFINRA.length,
-      foresideCommentsReceived: foresideCommentsCount,
+      totalReviewerHours: Math.round(totalReviewerHrs * 10) / 10,
+      totalSubmitterHours: Math.round(totalSubmitterHrs * 10) / 10,
+      awaitingFINRADocuments: snapshotAwaitingFINRA.length,
+      foresideCommentsReceived: snapshotForesideComments,
     };
 
     // Calculate status distribution
@@ -475,35 +594,50 @@ export const fetchDashboardData = async (
         }
       }
     }
-    const attorneyWorkload = attorneyValues.map((a: IAttorneyWorkload) => ({
-      ...a,
-      avgHours: a.assignedCount > 0 ? Math.round((a.avgHours / a.assignedCount) * 10) / 10 : 0,
-    }));
+    const attorneyWorkload = attorneyValues
+      .map((a: IAttorneyWorkload) => ({
+        ...a,
+        avgHours: a.assignedCount > 0 ? Math.round((a.avgHours / a.assignedCount) * 10) / 10 : 0,
+      }))
+      .sort((a, b) => b.inProgressCount - a.inProgressCount);
 
-    // Calculate requests at risk
+    // Calculate requests at risk (from snapshot — all active items, not period-filtered)
     const today = new Date();
-    const requestsAtRisk: IRequestAtRisk[] = items
+    const requestsAtRisk: IRequestAtRisk[] = snapshotItems
       .filter((item: { Status: string; TargetReturnDate?: string }) => {
         if (!item.TargetReturnDate) return false;
-        if (['Completed', 'Cancelled'].includes(item.Status)) return false;
         const target = new Date(item.TargetReturnDate);
         const daysLeft = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        return daysLeft <= 3; // Within 3 days or overdue
+        return daysLeft <= 5; // Within 5 days or overdue
       })
       .map((item: { Id: number; Title: string; RequestTitle: string; Status: string; TargetReturnDate: string; Attorney?: { Title: string } }) => {
         const target = new Date(item.TargetReturnDate);
-        const daysOverdue = Math.ceil((today.getTime() - target.getTime()) / (1000 * 60 * 60 * 24));
+        const daysLeft = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        const daysOverdue = Math.max(0, -daysLeft);
+        let riskCategory: 'Overdue' | 'Due Today' | 'Due This Week';
+        if (daysLeft < 0) {
+          riskCategory = 'Overdue';
+        } else if (daysLeft === 0) {
+          riskCategory = 'Due Today';
+        } else {
+          riskCategory = 'Due This Week';
+        }
         return {
           id: item.Id,
           requestId: item.Title,
           requestTitle: item.RequestTitle,
           status: item.Status,
           targetReturnDate: target,
-          daysOverdue: Math.max(0, daysOverdue),
+          daysOverdue,
           attorney: item.Attorney?.Title || 'Unassigned',
+          riskCategory,
         };
       })
-      .slice(0, 10);
+      .sort((a, b) => {
+        const order: Record<string, number> = { 'Overdue': 0, 'Due Today': 1, 'Due This Week': 2 };
+        return (order[a.riskCategory] - order[b.riskCategory]) || (b.daysOverdue - a.daysOverdue);
+      })
+      .slice(0, 15);
 
     // Calculate time by stage
     const stageHours: Record<string, { reviewer: number; submitter: number; count: number }> = {
@@ -595,6 +729,19 @@ export const fetchDashboardData = async (
       },
     ];
 
+    // Extract unique filter options for segmentation dropdowns
+    const filterOptions: IDashboardFilterOptions = {
+      reviewAudience: Array.from(new Set(
+        items.map((i: { ReviewAudience?: string }) => i.ReviewAudience).filter((v): v is string => !!v)
+      )).sort(),
+      requestType: Array.from(new Set(
+        items.map((i: { RequestType?: string }) => i.RequestType).filter((v): v is string => !!v)
+      )).sort(),
+      department: Array.from(new Set(
+        items.map((i: { Department?: string }) => i.Department).filter((v): v is string => !!v)
+      )).sort(),
+    };
+
     return {
       kpiMetrics,
       statusDistribution,
@@ -604,6 +751,7 @@ export const fetchDashboardData = async (
       timeByStage,
       reviewOutcomes,
       communicationsOnlyDistribution,
+      filterOptions,
       lastUpdated: new Date(),
     };
   } catch (error) {

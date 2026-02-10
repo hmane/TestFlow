@@ -33,6 +33,8 @@ import Chart, {
 import type {
   IAnalyticsDashboardProps,
   IDashboardData,
+  IDashboardFilters,
+  IDashboardFilterOptions,
   IUserAccess,
   DateRangeOption,
   IAttorneyWorkload,
@@ -138,6 +140,8 @@ const AnalyticsDashboard: React.FC<IAnalyticsDashboardProps> = (props) => {
   const [dashboardData, setDashboardData] = React.useState<IDashboardData | undefined>();
   const [dateRange, setDateRange] = React.useState<DateRangeOption>(defaultDateRange || '30');
   const [isMockMode, setIsMockMode] = React.useState(useMockData);
+  const [filters, setFilters] = React.useState<IDashboardFilters>({});
+  const [filterOptions, setFilterOptions] = React.useState<IDashboardFilterOptions>({ reviewAudience: [], requestType: [], department: [] });
 
   // Date range options
   const dateRangeOptions: IDropdownOption[] = [
@@ -173,10 +177,15 @@ const AnalyticsDashboard: React.FC<IAnalyticsDashboardProps> = (props) => {
         if (isMockMode) {
           data = generateMockData(dateRange);
         } else {
-          data = await fetchDashboardData(dateRange);
+          data = await fetchDashboardData(dateRange, undefined, undefined, filters);
         }
 
         setDashboardData(data);
+
+        // Cache filter options from first unfiltered load
+        if (!filters.reviewAudience && !filters.requestType && !filters.department) {
+          setFilterOptions(data.filterOptions);
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Failed to load dashboard data';
         setError(message);
@@ -187,7 +196,7 @@ const AnalyticsDashboard: React.FC<IAnalyticsDashboardProps> = (props) => {
     };
 
     loadData().catch((err) => SPContext.logger.error('AnalyticsDashboard: Load failed', err));
-  }, [dateRange, isMockMode]);
+  }, [dateRange, isMockMode, filters]);
 
   // Attorney workload columns
   const attorneyColumns: IColumn[] = [
@@ -200,6 +209,17 @@ const AnalyticsDashboard: React.FC<IAnalyticsDashboardProps> = (props) => {
       isResizable: true,
     },
     {
+      key: 'inProgressCount',
+      name: 'Active',
+      fieldName: 'inProgressCount',
+      minWidth: 70,
+      maxWidth: 90,
+      isResizable: true,
+      onRender: (item: IAttorneyWorkload) => (
+        <span className={`${styles.tableBadge} ${styles.badgeWarning}`}>{item.inProgressCount}</span>
+      ),
+    },
+    {
       key: 'assignedCount',
       name: 'Assigned',
       fieldName: 'assignedCount',
@@ -208,17 +228,6 @@ const AnalyticsDashboard: React.FC<IAnalyticsDashboardProps> = (props) => {
       isResizable: true,
       onRender: (item: IAttorneyWorkload) => (
         <span className={styles.tableBadge}>{item.assignedCount}</span>
-      ),
-    },
-    {
-      key: 'inProgressCount',
-      name: 'In Progress',
-      fieldName: 'inProgressCount',
-      minWidth: 80,
-      maxWidth: 100,
-      isResizable: true,
-      onRender: (item: IAttorneyWorkload) => (
-        <span className={`${styles.tableBadge} ${styles.badgeWarning}`}>{item.inProgressCount}</span>
       ),
     },
     {
@@ -283,17 +292,38 @@ const AnalyticsDashboard: React.FC<IAnalyticsDashboardProps> = (props) => {
       },
     },
     {
-      key: 'daysOverdue',
-      name: 'Days Overdue',
-      fieldName: 'daysOverdue',
-      minWidth: 90,
-      maxWidth: 110,
+      key: 'riskCategory',
+      name: 'Risk',
+      fieldName: 'riskCategory',
+      minWidth: 80,
+      maxWidth: 100,
       isResizable: true,
-      onRender: (item: IRequestAtRisk) => (
-        <span className={item.daysOverdue > 0 ? styles.overdue : styles.dueSoon}>
-          {item.daysOverdue > 0 ? `${item.daysOverdue} days overdue` : 'Due soon'}
-        </span>
-      ),
+      onRender: (item: IRequestAtRisk) => {
+        const riskColors: Record<string, string> = { 'Overdue': '#a4262c', 'Due Today': '#ffaa44', 'Due This Week': '#8764b8' };
+        return (
+          <span style={{ color: riskColors[item.riskCategory] || '#8a8886', fontWeight: 600 }}>
+            {item.riskCategory}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'daysOverdue',
+      name: 'Timeline',
+      fieldName: 'daysOverdue',
+      minWidth: 100,
+      maxWidth: 120,
+      isResizable: true,
+      onRender: (item: IRequestAtRisk) => {
+        if (item.daysOverdue > 0) {
+          return <span className={styles.overdue}>{item.daysOverdue} day{item.daysOverdue !== 1 ? 's' : ''} overdue</span>;
+        }
+        if (item.riskCategory === 'Due Today') {
+          return <span className={styles.dueSoon}>Due today</span>;
+        }
+        const daysLeft = Math.ceil((item.targetReturnDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+        return <span className={styles.dueSoon}>Due in {daysLeft} day{daysLeft !== 1 ? 's' : ''}</span>;
+      },
     },
     {
       key: 'attorney',
@@ -379,6 +409,60 @@ const AnalyticsDashboard: React.FC<IAnalyticsDashboardProps> = (props) => {
         </div>
       </div>
 
+      {/* Segmentation Filters */}
+      {(filterOptions.reviewAudience.length > 0 || filterOptions.requestType.length > 0 || filterOptions.department.length > 0) && (
+        <div className={styles.lastUpdated} style={{ gap: '12px', flexWrap: 'wrap' }}>
+          <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center" wrap>
+            <Icon iconName="Filter" style={{ fontSize: '14px', color: '#605e5c' }} />
+            {filterOptions.reviewAudience.length > 0 && (
+              <Dropdown
+                placeholder="Review Audience"
+                selectedKey={filters.reviewAudience || ''}
+                options={[
+                  { key: '', text: 'All Audiences' },
+                  ...filterOptions.reviewAudience.map(v => ({ key: v, text: v })),
+                ]}
+                onChange={(_, option) => setFilters(prev => ({ ...prev, reviewAudience: option?.key ? String(option.key) : undefined }))}
+                styles={{ dropdown: { width: 150 } }}
+              />
+            )}
+            {filterOptions.requestType.length > 0 && (
+              <Dropdown
+                placeholder="Request Type"
+                selectedKey={filters.requestType || ''}
+                options={[
+                  { key: '', text: 'All Types' },
+                  ...filterOptions.requestType.map(v => ({ key: v, text: v })),
+                ]}
+                onChange={(_, option) => setFilters(prev => ({ ...prev, requestType: option?.key ? String(option.key) : undefined }))}
+                styles={{ dropdown: { width: 150 } }}
+              />
+            )}
+            {filterOptions.department.length > 0 && (
+              <Dropdown
+                placeholder="Department"
+                selectedKey={filters.department || ''}
+                options={[
+                  { key: '', text: 'All Departments' },
+                  ...filterOptions.department.map(v => ({ key: v, text: v })),
+                ]}
+                onChange={(_, option) => setFilters(prev => ({ ...prev, department: option?.key ? String(option.key) : undefined }))}
+                styles={{ dropdown: { width: 170 } }}
+              />
+            )}
+            {(filters.reviewAudience || filters.requestType || filters.department) && (
+              <Text
+                variant="small"
+                styles={{ root: { color: '#0078d4', cursor: 'pointer', textDecoration: 'underline' } }}
+                onClick={() => setFilters({})}
+              >
+                Clear filters
+              </Text>
+            )}
+          </Stack>
+        </div>
+      )}
+
       {/* Last Updated */}
       <div className={styles.lastUpdated}>
         <Icon iconName="Sync" />
@@ -410,7 +494,7 @@ const AnalyticsDashboard: React.FC<IAnalyticsDashboardProps> = (props) => {
           value={kpiMetrics.pendingReviews}
           icon="TaskList"
           iconColor="#ffaa44"
-          subtitle="awaiting action"
+          subtitle="current active requests"
         />
         <KPICard
           title="Rush Requests"
@@ -431,7 +515,7 @@ const AnalyticsDashboard: React.FC<IAnalyticsDashboardProps> = (props) => {
           value={formatHours(kpiMetrics.totalHoursLogged)}
           icon="Clock"
           iconColor="#0078d4"
-          subtitle="logged in period"
+          subtitle={`Reviewer: ${formatHours(kpiMetrics.totalReviewerHours)} | Submitter: ${formatHours(kpiMetrics.totalSubmitterHours)}`}
         />
         <KPICard
           title="Foreside Comments"

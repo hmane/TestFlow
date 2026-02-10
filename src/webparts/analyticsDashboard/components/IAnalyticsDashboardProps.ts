@@ -9,14 +9,18 @@ export type DateRangeOption = '7' | '30' | '90' | 'custom';
  * KPI Summary Metrics
  */
 export interface IKPIMetrics {
+  // Period metrics (filtered by date range)
   totalRequests: number;
   totalRequestsTrend: number; // percentage change from previous period
   avgTurnaroundDays: number;
   avgTurnaroundTrend: number;
-  pendingReviews: number;
   rushRequestPercentage: number;
   slaCompliancePercentage: number;
   totalHoursLogged: number;
+  totalReviewerHours: number;
+  totalSubmitterHours: number;
+  // Snapshot metrics (current state, not period-filtered)
+  pendingReviews: number;
   /** Requests awaiting FINRA documents where Foreside comments have been received */
   foresideCommentsReceived: number;
   /** Total requests currently awaiting FINRA documents */
@@ -65,6 +69,7 @@ export interface IRequestAtRisk {
   targetReturnDate: Date;
   daysOverdue: number;
   attorney: string;
+  riskCategory: 'Overdue' | 'Due Today' | 'Due This Week';
 }
 
 /**
@@ -98,6 +103,24 @@ export interface ICommunicationsOnlyData {
 }
 
 /**
+ * Filter options for segmentation
+ */
+export interface IDashboardFilterOptions {
+  reviewAudience: string[];
+  requestType: string[];
+  department: string[];
+}
+
+/**
+ * Active filter selections
+ */
+export interface IDashboardFilters {
+  reviewAudience?: string;
+  requestType?: string;
+  department?: string;
+}
+
+/**
  * Complete dashboard data
  */
 export interface IDashboardData {
@@ -109,6 +132,7 @@ export interface IDashboardData {
   timeByStage: ITimeByStage[];
   reviewOutcomes: IReviewOutcome[];
   communicationsOnlyDistribution: ICommunicationsOnlyData[];
+  filterOptions: IDashboardFilterOptions;
   lastUpdated: Date;
 }
 
