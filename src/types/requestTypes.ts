@@ -251,8 +251,8 @@ additionalParty?: IPrincipal[];
   finraNotes?: string;
   /** When the request entered Awaiting FINRA Documents status */
   awaitingFINRASince?: Date;
-  /** Whether Foreside comments have been received */
-  foresideCommentsReceived?: boolean;
+  /** Whether FINRA comments have been received */
+  finraCommentsReceived?: boolean;
 
   // Cancellation
   cancelledBy?: IPrincipal;
@@ -437,7 +437,7 @@ export interface IRequestListItem {
   FINRACompletedOn?: string;
   FINRANotes?: string;
   AwaitingFINRASince?: string;
-  ForesideCommentsReceived?: boolean;
+  FINRACommentsReceived?: boolean;
 
   // System tracking
   SubmittedById?: number;

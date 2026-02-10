@@ -518,8 +518,8 @@ const AnalyticsDashboard: React.FC<IAnalyticsDashboardProps> = (props) => {
           subtitle={`Reviewer: ${formatHours(kpiMetrics.totalReviewerHours)} | Submitter: ${formatHours(kpiMetrics.totalSubmitterHours)}`}
         />
         <KPICard
-          title="Foreside Comments"
-          value={`${kpiMetrics.foresideCommentsReceived} / ${kpiMetrics.awaitingFINRADocuments}`}
+          title="FINRA Comments"
+          value={`${kpiMetrics.finraCommentsReceived} / ${kpiMetrics.awaitingFINRADocuments}`}
           icon="Comment"
           iconColor="#8764b8"
           subtitle="received / awaiting FINRA docs"

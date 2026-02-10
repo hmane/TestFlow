@@ -171,14 +171,15 @@ This document provides a comprehensive reference for the SharePoint site schema 
 | CommentsAcknowledged | Comments Acknowledged | Boolean | No | - | Default: 0 (No) |
 | CommentsAcknowledgedOn | Comments Acknowledged On | DateTime | No | - | - |
 
-#### Foreside Documents (4 fields)
+#### FINRA Documents (5 fields)
 
 | Internal Name | Display Name | Type | Required | Notes |
 |---------------|--------------|------|----------|-------|
-| ForesideCompletedBy | FINRA Completed By | User | No | People only |
-| ForesideCompletedOn | FINRA Completed On | DateTime | No | - |
-| ForesideNotes | FINRA Notes | Note (Multi-line) | No | AppendOnly, 6 lines |
+| FINRACompletedBy | FINRA Completed By | User | No | People only |
+| FINRACompletedOn | FINRA Completed On | DateTime | No | - |
+| FINRANotes | FINRA Notes | Note (Multi-line) | No | AppendOnly, 6 lines |
 | AwaitingFINRASince | Awaiting FINRA Since | DateTime | No | Set when status changes to Awaiting FINRA Documents |
+| FINRACommentsReceived | Comments Received | Boolean | No | Default: No |
 
 #### System Tracking (18 fields)
 

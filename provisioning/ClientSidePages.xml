@@ -51,27 +51,27 @@
         </pnp:Controls>
       </pnp:Section>
 
-      <!-- My Open Requests -->
+      <!-- All Open Requests -->
       <pnp:Section Order="2" Type="OneColumn">
         <pnp:Controls>
           <pnp:CanvasControl WebPartType="List" ControlId="f92bf067-bc19-489e-a556-7fe95f508720" Order="1" Column="1"
-            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000102&quot;,&quot;title&quot;:&quot;My Open Requests&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,My Open Requests}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;My Open Requests&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000102&quot;,&quot;title&quot;:&quot;All Open Requests&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,All Open Requests}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;All Open Requests&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
         </pnp:Controls>
       </pnp:Section>
 
-      <!-- My Awaiting FINRA Documents -->
+      <!-- Awaiting FINRA Documents -->
       <pnp:Section Order="3" Type="OneColumn">
         <pnp:Controls>
           <pnp:CanvasControl WebPartType="List" ControlId="f92bf067-bc19-489e-a556-7fe95f508720" Order="1" Column="1"
-            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000106&quot;,&quot;title&quot;:&quot;My Awaiting FINRA Documents&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,My Awaiting FINRA Documents}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;My Awaiting FINRA Documents&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000106&quot;,&quot;title&quot;:&quot;Awaiting FINRA Documents&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,Awaiting FINRA Documents}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;Awaiting FINRA Documents&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
         </pnp:Controls>
       </pnp:Section>
 
-      <!-- My Completed Requests -->
+      <!-- All Completed Requests -->
       <pnp:Section Order="4" Type="OneColumn">
         <pnp:Controls>
           <pnp:CanvasControl WebPartType="List" ControlId="f92bf067-bc19-489e-a556-7fe95f508720" Order="1" Column="1"
-            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000104&quot;,&quot;title&quot;:&quot;My Completed Requests&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,My Completed Requests}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;My Completed Requests&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000104&quot;,&quot;title&quot;:&quot;All Completed Requests&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,All Completed Requests}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;All Completed Requests&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
         </pnp:Controls>
       </pnp:Section>
     </pnp:Sections>
@@ -79,7 +79,7 @@
   </pnp:ClientSidePage>
 
   <!-- ========================================================================
-       2. My Requests Dashboard (For Submitters) - Legacy, redirects to RequestDashboard
+       2. My Requests Dashboard (For Submitters)
        ======================================================================== -->
   <pnp:ClientSidePage PromoteAsNewsArticle="false"
                        PromoteAsTemplate="false"
@@ -93,10 +93,27 @@
     <pnp:Header Type="None" LayoutType="NoImage" ShowTopicHeader="false" ShowPublishDate="false" />
 
     <pnp:Sections>
+      <!-- My Open Requests -->
       <pnp:Section Order="1" Type="OneColumn">
         <pnp:Controls>
           <pnp:CanvasControl WebPartType="List" ControlId="f92bf067-bc19-489e-a556-7fe95f508720" Order="1" Column="1"
             JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000012&quot;,&quot;title&quot;:&quot;My Open Requests&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,My Open Requests}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;My Open Requests&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
+        </pnp:Controls>
+      </pnp:Section>
+
+      <!-- My Awaiting FINRA Documents -->
+      <pnp:Section Order="2" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="List" ControlId="f92bf067-bc19-489e-a556-7fe95f508720" Order="1" Column="1"
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000013&quot;,&quot;title&quot;:&quot;My Awaiting FINRA Documents&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,My Awaiting FINRA Documents}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;My Awaiting FINRA Documents&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
+        </pnp:Controls>
+      </pnp:Section>
+
+      <!-- My Completed Requests -->
+      <pnp:Section Order="3" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="List" ControlId="f92bf067-bc19-489e-a556-7fe95f508720" Order="1" Column="1"
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000014&quot;,&quot;title&quot;:&quot;My Completed Requests&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,My Completed Requests}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;My Completed Requests&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
         </pnp:Controls>
       </pnp:Section>
     </pnp:Sections>
@@ -134,24 +151,8 @@
         </pnp:Controls>
       </pnp:Section>
 
-      <!-- All In Review -->
-      <pnp:Section Order="3" Type="OneColumn">
-        <pnp:Controls>
-          <pnp:CanvasControl WebPartType="List" ControlId="f92bf067-bc19-489e-a556-7fe95f508720" Order="1" Column="1"
-            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000031&quot;,&quot;title&quot;:&quot;All In Review&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,All In Review}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;All In Review&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
-        </pnp:Controls>
-      </pnp:Section>
-
-      <!-- Closeout Queue -->
-      <pnp:Section Order="4" Type="OneColumn">
-        <pnp:Controls>
-          <pnp:CanvasControl WebPartType="List" ControlId="f92bf067-bc19-489e-a556-7fe95f508720" Order="1" Column="1"
-            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000033&quot;,&quot;title&quot;:&quot;Closeout Queue&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,Closeout Queue}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;Closeout Queue&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
-        </pnp:Controls>
-      </pnp:Section>
-
       <!-- All Open Requests -->
-      <pnp:Section Order="5" Type="OneColumn">
+      <pnp:Section Order="3" Type="OneColumn">
         <pnp:Controls>
           <pnp:CanvasControl WebPartType="List" ControlId="f92bf067-bc19-489e-a556-7fe95f508720" Order="1" Column="1"
             JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000022&quot;,&quot;title&quot;:&quot;All Open Requests&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,All Open Requests}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;All Open Requests&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
@@ -159,31 +160,15 @@
       </pnp:Section>
 
       <!-- Awaiting FINRA Documents -->
-      <pnp:Section Order="6" Type="OneColumn">
+      <pnp:Section Order="4" Type="OneColumn">
         <pnp:Controls>
           <pnp:CanvasControl WebPartType="List" ControlId="f92bf067-bc19-489e-a556-7fe95f508720" Order="1" Column="1"
             JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000027&quot;,&quot;title&quot;:&quot;Awaiting FINRA Documents&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,Awaiting FINRA Documents}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;Awaiting FINRA Documents&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
         </pnp:Controls>
       </pnp:Section>
 
-      <!-- Rush Requests -->
-      <pnp:Section Order="7" Type="OneColumn">
-        <pnp:Controls>
-          <pnp:CanvasControl WebPartType="List" ControlId="f92bf067-bc19-489e-a556-7fe95f508720" Order="1" Column="1"
-            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-00000000002B&quot;,&quot;title&quot;:&quot;Rush Requests&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,Rush Requests}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;Rush Requests&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
-        </pnp:Controls>
-      </pnp:Section>
-
-      <!-- On Hold Requests -->
-      <pnp:Section Order="8" Type="OneColumn">
-        <pnp:Controls>
-          <pnp:CanvasControl WebPartType="List" ControlId="f92bf067-bc19-489e-a556-7fe95f508720" Order="1" Column="1"
-            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-00000000002D&quot;,&quot;title&quot;:&quot;On Hold Requests&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,On Hold Requests}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;On Hold Requests&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
-        </pnp:Controls>
-      </pnp:Section>
-
       <!-- All Completed Requests -->
-      <pnp:Section Order="9" Type="OneColumn">
+      <pnp:Section Order="5" Type="OneColumn">
         <pnp:Controls>
           <pnp:CanvasControl WebPartType="List" ControlId="f92bf067-bc19-489e-a556-7fe95f508720" Order="1" Column="1"
             JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000029&quot;,&quot;title&quot;:&quot;All Completed Requests&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,All Completed Requests}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;All Completed Requests&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
@@ -213,6 +198,22 @@
         <pnp:Controls>
           <pnp:CanvasControl WebPartType="List" ControlId="f92bf067-bc19-489e-a556-7fe95f508720" Order="1" Column="1"
             JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000032&quot;,&quot;title&quot;:&quot;Awaiting Attorney Assignment&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,Awaiting Attorney Assignment}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;Awaiting Attorney Assignment&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
+        </pnp:Controls>
+      </pnp:Section>
+
+      <!-- Attorney Assigned By Me (Open) -->
+      <pnp:Section Order="2" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="List" ControlId="f92bf067-bc19-489e-a556-7fe95f508720" Order="1" Column="1"
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000034&quot;,&quot;title&quot;:&quot;Attorney Assigned By Me (Open)&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,Attorney Assigned By Me Open}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;Attorney Assigned By Me (Open)&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
+        </pnp:Controls>
+      </pnp:Section>
+
+      <!-- Attorney Assigned By Me (Closed) -->
+      <pnp:Section Order="3" Type="OneColumn">
+        <pnp:Controls>
+          <pnp:CanvasControl WebPartType="List" ControlId="f92bf067-bc19-489e-a556-7fe95f508720" Order="1" Column="1"
+            JsonControlData="{&quot;id&quot;:&quot;f92bf067-bc19-489e-a556-7fe95f508720&quot;,&quot;instanceId&quot;:&quot;00000000-0000-0000-0000-000000000035&quot;,&quot;title&quot;:&quot;Attorney Assigned By Me (Closed)&quot;,&quot;description&quot;:&quot;List&quot;,&quot;dataVersion&quot;:&quot;1.0&quot;,&quot;properties&quot;:{&quot;isDocumentLibrary&quot;:false,&quot;selectedListUrl&quot;:&quot;{site}/Lists/Requests&quot;,&quot;webRelativeListUrl&quot;:&quot;/Lists/Requests&quot;,&quot;selectedViewId&quot;:&quot;{viewid:Requests,Attorney Assigned By Me Closed}&quot;,&quot;webpartHeightKey&quot;:4,&quot;hideCommandBar&quot;:true},&quot;serverProcessedContent&quot;:{&quot;htmlStrings&quot;:{},&quot;searchablePlainTexts&quot;:{&quot;listTitle&quot;:&quot;Attorney Assigned By Me (Closed)&quot;},&quot;imageSources&quot;:{},&quot;links&quot;:{}},&quot;dynamicDataPaths&quot;:{},&quot;dynamicDataValues&quot;:{&quot;filterBy&quot;:{}}}" />
         </pnp:Controls>
       </pnp:Section>
     </pnp:Sections>

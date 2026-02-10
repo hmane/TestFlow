@@ -118,10 +118,10 @@ export const RequestsFields = {
   CommentsAcknowledged: 'CommentsAcknowledged',
   CommentsAcknowledgedOn: 'CommentsAcknowledgedOn',
   // FINRA Documents
-  FINRACompletedBy: 'ForesideCompletedBy',
-  FINRACompletedOn: 'ForesideCompletedOn',
-  FINRANotes: 'ForesideNotes',
+  FINRACompletedBy: 'FINRACompletedBy',
+  FINRACompletedOn: 'FINRACompletedOn',
+  FINRANotes: 'FINRANotes',
   AwaitingFINRASince: 'AwaitingFINRASince',
-  ForesideCommentsReceived: 'ForesideCommentsReceived'
+  FINRACommentsReceived: 'FINRACommentsReceived'
 } as const;
 

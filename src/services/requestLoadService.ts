@@ -197,7 +197,7 @@ const QUERY2_FIELDS = [
   RequestsFields.FINRACompletedOn,
   RequestsFields.FINRANotes,
   RequestsFields.AwaitingFINRASince,
-  RequestsFields.ForesideCommentsReceived,
+  RequestsFields.FINRACommentsReceived,
 
   // Cancellation
   RequestsFields.CancelledBy,
@@ -549,7 +549,7 @@ export function mapRequestListItemToRequest(item: IRawSharePointItem): ILegalReq
     finraCompletedOn: extractor.date(RequestsFields.FINRACompletedOn),
     finraNotes: extractor.string(RequestsFields.FINRANotes),
     awaitingFINRASince: extractor.date(RequestsFields.AwaitingFINRASince),
-    foresideCommentsReceived: extractor.boolean(RequestsFields.ForesideCommentsReceived, false),
+    finraCommentsReceived: extractor.boolean(RequestsFields.FINRACommentsReceived, false),
 
     // Cancellation
     cancelledBy: extractor.user(RequestsFields.CancelledBy),

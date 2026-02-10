@@ -204,7 +204,7 @@ export function buildRequestUpdatePayload(
     updater.set(RequestsFields.ComplianceReviewCompletedBy, request.complianceReviewCompletedBy, originalRequest.complianceReviewCompletedBy);
 
     // FINRA Documents fields
-    updater.set(RequestsFields.ForesideCommentsReceived, request.foresideCommentsReceived, originalRequest.foresideCommentsReceived);
+    updater.set(RequestsFields.FINRACommentsReceived, request.finraCommentsReceived, originalRequest.finraCommentsReceived);
 
     // Time Tracking fields
     updater.set(RequestsFields.LegalIntakeLegalAdminHours, request.legalIntakeLegalAdminHours, originalRequest.legalIntakeLegalAdminHours);
@@ -438,7 +438,7 @@ export function buildPartialUpdatePayload(data: Partial<ILegalRequest>): Record<
   if (data.finraCompletedBy !== undefined) {
     updater.set(RequestsFields.FINRACompletedBy, data.finraCompletedBy, undefined);
   }
-  setIfDefined(RequestsFields.ForesideCommentsReceived, data.foresideCommentsReceived);
+  setIfDefined(RequestsFields.FINRACommentsReceived, data.finraCommentsReceived);
 
   // Time tracking fields
   setIfDefined(RequestsFields.LegalIntakeLegalAdminHours, data.legalIntakeLegalAdminHours);

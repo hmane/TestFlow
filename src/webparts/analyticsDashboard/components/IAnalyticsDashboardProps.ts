@@ -21,8 +21,8 @@ export interface IKPIMetrics {
   totalSubmitterHours: number;
   // Snapshot metrics (current state, not period-filtered)
   pendingReviews: number;
-  /** Requests awaiting FINRA documents where Foreside comments have been received */
-  foresideCommentsReceived: number;
+  /** Requests awaiting FINRA documents where FINRA comments have been received */
+  finraCommentsReceived: number;
   /** Total requests currently awaiting FINRA documents */
   awaitingFINRADocuments: number;
 }

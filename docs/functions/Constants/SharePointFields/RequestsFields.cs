@@ -435,19 +435,22 @@ namespace LegalWorkflow.Functions.Constants.SharePointFields
         public const string AdminOverrideNotes = "AdminOverrideNotes";
 
         // =================================================================
-        // FINRA Documents (Foreside)
+        // FINRA Documents
         // =================================================================
 
-        /// <summary>User who completed FINRA/Foreside documents</summary>
-        public const string FINRACompletedBy = "ForesideCompletedBy";
+        /// <summary>User who completed FINRA documents</summary>
+        public const string FINRACompletedBy = "FINRACompletedBy";
 
-        /// <summary>Date when FINRA/Foreside documents were completed</summary>
-        public const string FINRACompletedOn = "ForesideCompletedOn";
+        /// <summary>Date when FINRA documents were completed</summary>
+        public const string FINRACompletedOn = "FINRACompletedOn";
 
-        /// <summary>FINRA/Foreside notes</summary>
-        public const string FINRANotes = "ForesideNotes";
+        /// <summary>FINRA notes</summary>
+        public const string FINRANotes = "FINRANotes";
 
         /// <summary>Date since awaiting FINRA documents</summary>
         public const string AwaitingFINRASince = "AwaitingFINRASince";
+
+        /// <summary>Whether FINRA comments have been received</summary>
+        public const string FINRACommentsReceived = "FINRACommentsReceived";
     }
 }

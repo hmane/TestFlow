@@ -118,8 +118,8 @@ export interface IHoldPayload {
 export interface ICompleteFINRADocumentsPayload {
   /** Optional notes about the FINRA document completion */
   notes?: string;
-  /** Whether Foreside comments have been received */
-  foresideCommentsReceived?: boolean;
+  /** Whether FINRA comments have been received */
+  finraCommentsReceived?: boolean;
 }
 
 // ============================================

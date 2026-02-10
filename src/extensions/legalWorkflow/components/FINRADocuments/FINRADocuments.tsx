@@ -120,7 +120,7 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
   }, [finraDocumentCount, onDocumentCountChange]);
 
   // Comments received state - read from store, update store directly
-  const commentsReceived = currentRequest?.foresideCommentsReceived ?? false;
+  const commentsReceived = currentRequest?.finraCommentsReceived ?? false;
   const isSavingRef = React.useRef(false);
 
   /**
@@ -138,13 +138,13 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
       const storeState = useRequestStore.getState();
       if (!storeState.currentRequest) return;
 
-      const previousValue = storeState.currentRequest.foresideCommentsReceived ?? false;
+      const previousValue = storeState.currentRequest.finraCommentsReceived ?? false;
 
       // Update both currentRequest and originalRequest so isDirty is unaffected
       useRequestStore.setState({
-        currentRequest: { ...storeState.currentRequest, foresideCommentsReceived: value },
+        currentRequest: { ...storeState.currentRequest, finraCommentsReceived: value },
         originalRequest: storeState.originalRequest
-          ? { ...storeState.originalRequest, foresideCommentsReceived: value }
+          ? { ...storeState.originalRequest, finraCommentsReceived: value }
           : storeState.originalRequest,
       });
 
@@ -157,21 +157,21 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
       SPContext.sp.web.lists
         .getByTitle(Lists.Requests.Title)
         .items.getById(itemId)
-        .update({ [RequestsFields.ForesideCommentsReceived]: value })
+        .update({ [RequestsFields.FINRACommentsReceived]: value })
         .then(() => {
           isSavingRef.current = false;
-          SPContext.logger.info('ForesideCommentsReceived saved to SharePoint', { itemId, value });
+          SPContext.logger.info('FINRACommentsReceived saved to SharePoint', { itemId, value });
         })
         .catch((error: unknown) => {
           isSavingRef.current = false;
-          SPContext.logger.error('Failed to save ForesideCommentsReceived', error, { itemId });
+          SPContext.logger.error('Failed to save FINRACommentsReceived', error, { itemId });
           // Revert both currentRequest and originalRequest on failure
           const current = useRequestStore.getState();
           if (current.currentRequest) {
             useRequestStore.setState({
-              currentRequest: { ...current.currentRequest, foresideCommentsReceived: previousValue },
+              currentRequest: { ...current.currentRequest, finraCommentsReceived: previousValue },
               originalRequest: current.originalRequest
-                ? { ...current.originalRequest, foresideCommentsReceived: previousValue }
+                ? { ...current.originalRequest, finraCommentsReceived: previousValue }
                 : current.originalRequest,
             });
           }

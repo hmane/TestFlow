@@ -185,11 +185,11 @@
 
       <!-- FINRA Documents (4) - tracks FINRA letter upload stage -->
       <!-- Note: Internal names use "Foreside" for backward compatibility with existing SharePoint columns -->
-      <Field Type="User" Name="ForesideCompletedBy" DisplayName="FINRA Completed By" UserSelectionMode="PeopleOnly" Group="FINRA Documents" ID="{A0B1C2D3-7777-4E5F-9A1B-2C3D4E5F6A7B}" />
-      <Field Type="DateTime" Name="ForesideCompletedOn" DisplayName="FINRA Completed On" Format="DateTime" Group="FINRA Documents" ID="{B1C2D3E4-8888-4F6A-0B2C-3D4E5F6A7B8C}" />
-      <Field Type="Note" Name="ForesideNotes" DisplayName="FINRA Notes" RichText="FALSE" AppendOnly="TRUE" NumLines="6" Group="FINRA Documents" ID="{C2D3E4F5-9999-4A7B-1C3D-4E5F6A7B8C9D}" />
+      <Field Type="User" Name="FINRACompletedBy" DisplayName="FINRA Completed By" UserSelectionMode="PeopleOnly" Group="FINRA Documents" ID="{A0B1C2D3-7777-4E5F-9A1B-2C3D4E5F6A7B}" />
+      <Field Type="DateTime" Name="FINRACompletedOn" DisplayName="FINRA Completed On" Format="DateTime" Group="FINRA Documents" ID="{B1C2D3E4-8888-4F6A-0B2C-3D4E5F6A7B8C}" />
+      <Field Type="Note" Name="FINRANotes" DisplayName="FINRA Notes" RichText="FALSE" AppendOnly="TRUE" NumLines="6" Group="FINRA Documents" ID="{C2D3E4F5-9999-4A7B-1C3D-4E5F6A7B8C9D}" />
       <Field Type="DateTime" Name="AwaitingFINRASince" DisplayName="Awaiting FINRA Since" Format="DateTime" Group="FINRA Documents" ID="{D3E4F5A6-AAAA-4B8C-2D4E-5F6A7B8C9D0E}" />
-      <Field Type="Boolean" Name="ForesideCommentsReceived" DisplayName="Comments Received" Group="FINRA Documents" ID="{E4F5A6B7-BBBB-4C9D-3E5F-6A7B8C9D0E1F}"><Default>0</Default></Field>
+      <Field Type="Boolean" Name="FINRACommentsReceived" DisplayName="Comments Received" Group="FINRA Documents" ID="{E4F5A6B7-BBBB-4C9D-3E5F-6A7B8C9D0E1F}"><Default>0</Default></Field>
 
       <!-- System Tracking (18) -->
       <Field Type="Choice" Name="Status" DisplayName="Status" Required="TRUE" Group="System Tracking" ID="{9E390E5D-9D57-472F-B470-EDE7F1D5EB89}" Indexed="TRUE" ClientSideComponentId="e55dcdea-8fa3-4708-9fbe-35c866026289">
@@ -266,6 +266,7 @@
           <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Status" />
+          <FieldRef Name="IsRushRequest" />
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="Attorney" />
         </ViewFields>
@@ -313,7 +314,9 @@
         <ViewFields>
           <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
+          <FieldRef Name="Attorney" />
           <FieldRef Name="AwaitingFINRASince" />
+          <FieldRef Name="FINRACommentsReceived" />
           <FieldRef Name="TrackingId" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
@@ -342,6 +345,7 @@
           <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Status" />
+          <FieldRef Name="IsRushRequest" />
           <FieldRef Name="Author" />
           <FieldRef Name="Attorney" />
           <FieldRef Name="TargetReturnDate" />
@@ -389,6 +393,7 @@
         <ViewFields>
           <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
+          <FieldRef Name="IsRushRequest" />
           <FieldRef Name="Author" />
           <FieldRef Name="SubmittedOn" />
           <FieldRef Name="SubmissionItem" />
@@ -410,6 +415,7 @@
         <ViewFields>
           <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
+          <FieldRef Name="IsRushRequest" />
           <FieldRef Name="Author" />
           <FieldRef Name="SubmissionItem" />
           <FieldRef Name="ReviewAudience" />
@@ -470,6 +476,7 @@
           <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
           <FieldRef Name="Status" />
+          <FieldRef Name="IsRushRequest" />
           <FieldRef Name="LegalReviewStatus" />
           <FieldRef Name="Author" />
           <FieldRef Name="TargetReturnDate" />
@@ -501,6 +508,7 @@
         <ViewFields>
           <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
+          <FieldRef Name="IsRushRequest" />
           <FieldRef Name="LegalReviewStatus" />
           <FieldRef Name="Author" />
           <FieldRef Name="SubmissionItem" />
@@ -551,11 +559,72 @@
         <ViewFields>
           <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
+          <FieldRef Name="IsRushRequest" />
           <FieldRef Name="Author" />
           <FieldRef Name="SubmissionItem" />
           <FieldRef Name="ReviewAudience" />
           <FieldRef Name="TargetReturnDate" />
           <FieldRef Name="SubmittedToAssignAttorneyOn" />
+        </ViewFields>
+        <RowLimit Paged="TRUE">50</RowLimit>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+      </View>
+
+      <!-- Attorney Assigned By Me (Open) - Requests where current user assigned the attorney, still open -->
+      <View DisplayName="Attorney Assigned By Me Open" DefaultView="FALSE" Type="HTML" Url="{site}/Lists/Requests/AttorneyAssignedByMeOpen.aspx" Level="1" BaseViewID="20" ContentTypeID="0x">
+        <Query>
+          <Where>
+            <And>
+              <Eq><FieldRef Name="SubmittedForReviewBy" /><Value Type="Integer"><UserID/></Value></Eq>
+              <In>
+                <FieldRef Name="Status" />
+                <Values>
+                  <Value Type="Choice">In Review</Value>
+                  <Value Type="Choice">Closeout</Value>
+                  <Value Type="Choice">Awaiting FINRA Documents</Value>
+                  <Value Type="Choice">On Hold</Value>
+                </Values>
+              </In>
+            </And>
+          </Where>
+          <OrderBy><FieldRef Name="SubmittedForReviewOn" Ascending="FALSE" /></OrderBy>
+        </Query>
+        <ViewFields>
+          <FieldRef Name="Title" />
+          <FieldRef Name="RequestTitle" />
+          <FieldRef Name="Status" />
+          <FieldRef Name="Author" />
+          <FieldRef Name="Attorney" />
+          <FieldRef Name="LegalReviewStatus" />
+          <FieldRef Name="TargetReturnDate" />
+          <FieldRef Name="SubmittedForReviewOn" />
+        </ViewFields>
+        <RowLimit Paged="TRUE">50</RowLimit>
+        <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
+      </View>
+
+      <!-- Attorney Assigned By Me (Closed) - Requests where current user assigned the attorney, now completed/cancelled -->
+      <View DisplayName="Attorney Assigned By Me Closed" DefaultView="FALSE" Type="HTML" Url="{site}/Lists/Requests/AttorneyAssignedByMeClosed.aspx" Level="1" BaseViewID="21" ContentTypeID="0x">
+        <Query>
+          <Where>
+            <And>
+              <Eq><FieldRef Name="SubmittedForReviewBy" /><Value Type="Integer"><UserID/></Value></Eq>
+              <Or>
+                <Eq><FieldRef Name="Status" /><Value Type="Choice">Completed</Value></Eq>
+                <Eq><FieldRef Name="Status" /><Value Type="Choice">Cancelled</Value></Eq>
+              </Or>
+            </And>
+          </Where>
+          <OrderBy><FieldRef Name="CloseoutOn" Ascending="FALSE" /></OrderBy>
+        </Query>
+        <ViewFields>
+          <FieldRef Name="Title" />
+          <FieldRef Name="RequestTitle" />
+          <FieldRef Name="Status" />
+          <FieldRef Name="Author" />
+          <FieldRef Name="Attorney" />
+          <FieldRef Name="LegalReviewOutcome" />
+          <FieldRef Name="CloseoutOn" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>
         <CustomFormatter>{"commandBarProps":{"commands":[{"key":"new","hide":true},{"key":"edit","hide":true},{"key":"delete","hide":true},{"key":"share","hide":true},{"key":"copyLink","hide":true},{"key":"automate","hide":true},{"key":"integrate","hide":true},{"key":"alertMe","hide":true},{"key":"manageAlert","hide":true},{"key":"powerBI","hide":true},{"key":"powerBIVisualizeList","hide":true},{"key":"editInGridView","hide":true},{"key":"exportExcel","hide":false,"primary":true,"position":0,"sectionType":"Primary"}]}}</CustomFormatter>
@@ -591,6 +660,7 @@
         <ViewFields>
           <FieldRef Name="Title" />
           <FieldRef Name="RequestTitle" />
+          <FieldRef Name="IsRushRequest" />
           <FieldRef Name="ComplianceReviewStatus" />
           <FieldRef Name="LegalReviewStatus" />
           <FieldRef Name="Author" />

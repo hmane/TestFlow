@@ -659,10 +659,10 @@ export const useRequestStore = create<IRequestState>()(
           throw new Error('Cannot complete FINRA documents - no item ID');
         }
 
-        const payload: { notes?: string; foresideCommentsReceived?: boolean } = {};
+        const payload: { notes?: string; finraCommentsReceived?: boolean } = {};
         if (notes) payload.notes = notes;
-        if (state.currentRequest?.foresideCommentsReceived !== undefined) {
-          payload.foresideCommentsReceived = state.currentRequest.foresideCommentsReceived;
+        if (state.currentRequest?.finraCommentsReceived !== undefined) {
+          payload.finraCommentsReceived = state.currentRequest.finraCommentsReceived;
         }
 
         const result = await completeFINRADocumentsAction(state.itemId, Object.keys(payload).length > 0 ? payload : undefined);

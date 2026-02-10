@@ -119,7 +119,7 @@ export const generateMockData = (dateRange: DateRangeOption): IDashboardData => 
     totalReviewerHours: reviewerShare,
     totalSubmitterHours: totalHoursLogged - reviewerShare,
     awaitingFINRADocuments: Math.floor(Math.random() * 8) + 2,
-    foresideCommentsReceived: Math.floor(Math.random() * 5) + 1,
+    finraCommentsReceived: Math.floor(Math.random() * 5) + 1,
   };
 
   // Generate status distribution
@@ -379,7 +379,7 @@ export const fetchDashboardData = async (
           RequestsFields.TotalSubmitterHours,
           RequestsFields.CloseoutOn,
           RequestsFields.SubmittedOn,
-          RequestsFields.ForesideCommentsReceived,
+          RequestsFields.FINRACommentsReceived,
           RequestsFields.FINRACompletedOn,
           RequestsFields.ReviewAudience,
           RequestsFields.RequestType,
@@ -401,7 +401,7 @@ export const fetchDashboardData = async (
           RequestsFields.TargetReturnDate,
           `${RequestsFields.Attorney}/ID`,
           `${RequestsFields.Attorney}/Title`,
-          RequestsFields.ForesideCommentsReceived
+          RequestsFields.FINRACommentsReceived
         )
         .expand(RequestsFields.Attorney)
         .filter(snapshotFilter)
@@ -430,8 +430,8 @@ export const fetchDashboardData = async (
     // Calculate average turnaround for completed requests
     let avgTurnaroundDays = 0;
     if (completedRequests.length > 0) {
-      const turnaroundDays = completedRequests.map((r: { SubmittedOn?: string; CloseoutOn?: string; ForesideCompletedOn?: string }) => {
-        const completionDateStr = r.ForesideCompletedOn || r.CloseoutOn;
+      const turnaroundDays = completedRequests.map((r: { SubmittedOn?: string; CloseoutOn?: string; FINRACompletedOn?: string }) => {
+        const completionDateStr = r.FINRACompletedOn || r.CloseoutOn;
         if (r.SubmittedOn && completionDateStr) {
           const submitted = new Date(r.SubmittedOn);
           const completion = new Date(completionDateStr);
@@ -447,12 +447,12 @@ export const fetchDashboardData = async (
 
     // Calculate SLA compliance
     let slaCompliance = 100;
-    const completedWithDates = completedRequests.filter((r: { TargetReturnDate?: string; CloseoutOn?: string; ForesideCompletedOn?: string }) =>
-      r.TargetReturnDate && (r.ForesideCompletedOn || r.CloseoutOn)
+    const completedWithDates = completedRequests.filter((r: { TargetReturnDate?: string; CloseoutOn?: string; FINRACompletedOn?: string }) =>
+      r.TargetReturnDate && (r.FINRACompletedOn || r.CloseoutOn)
     );
     if (completedWithDates.length > 0) {
-      const onTime = completedWithDates.filter((r: { TargetReturnDate: string; CloseoutOn?: string; ForesideCompletedOn?: string }) => {
-        const completionDate = new Date((r.ForesideCompletedOn || r.CloseoutOn) as string);
+      const onTime = completedWithDates.filter((r: { TargetReturnDate: string; CloseoutOn?: string; FINRACompletedOn?: string }) => {
+        const completionDate = new Date((r.FINRACompletedOn || r.CloseoutOn) as string);
         return completionDate <= new Date(r.TargetReturnDate);
       });
       slaCompliance = Math.round((onTime.length / completedWithDates.length) * 100);
@@ -468,8 +468,8 @@ export const fetchDashboardData = async (
       ['Legal Intake', 'Assign Attorney', 'In Review', 'Closeout'].includes(i.Status)
     );
     const snapshotAwaitingFINRA = snapshotItems.filter((i: { Status: string }) => i.Status === 'Awaiting FINRA Documents');
-    const snapshotForesideComments = snapshotAwaitingFINRA.filter(
-      (i: { ForesideCommentsReceived?: boolean }) => i.ForesideCommentsReceived === true
+    const snapshotFINRAComments = snapshotAwaitingFINRA.filter(
+      (i: { FINRACommentsReceived?: boolean }) => i.FINRACommentsReceived === true
     ).length;
 
     // Calculate trends from previous period
@@ -481,8 +481,8 @@ export const fetchDashboardData = async (
     let prevAvgTurnaround = 0;
     const prevCompleted = prevItems.filter((i: { Status: string }) => i.Status === 'Completed');
     if (prevCompleted.length > 0) {
-      const prevDays = prevCompleted.map((r: { SubmittedOn?: string; CloseoutOn?: string; ForesideCompletedOn?: string }) => {
-        const completionDateStr = r.ForesideCompletedOn || r.CloseoutOn;
+      const prevDays = prevCompleted.map((r: { SubmittedOn?: string; CloseoutOn?: string; FINRACompletedOn?: string }) => {
+        const completionDateStr = r.FINRACompletedOn || r.CloseoutOn;
         if (r.SubmittedOn && completionDateStr) {
           return Math.ceil((new Date(completionDateStr).getTime() - new Date(r.SubmittedOn).getTime()) / (1000 * 60 * 60 * 24));
         }
@@ -516,7 +516,7 @@ export const fetchDashboardData = async (
       totalReviewerHours: Math.round(totalReviewerHrs * 10) / 10,
       totalSubmitterHours: Math.round(totalSubmitterHrs * 10) / 10,
       awaitingFINRADocuments: snapshotAwaitingFINRA.length,
-      foresideCommentsReceived: snapshotForesideComments,
+      finraCommentsReceived: snapshotFINRAComments,
     };
 
     // Calculate status distribution
