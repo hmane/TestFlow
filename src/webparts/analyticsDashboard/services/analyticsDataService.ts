@@ -320,29 +320,33 @@ export const fetchDashboardData = async (
   const { startDate, endDate } = getDateRange(dateRange, customStartDate, customEndDate);
 
   try {
-    // Build query filters
-    let dateFilter = `${RequestsFields.Created} ge datetime'${startDate.toISOString()}' and ${RequestsFields.Created} le datetime'${endDate.toISOString()}'`;
+    // Escape OData string values (single quotes → doubled)
+    const escapeOData = (value: string): string => value.replace(/'/g, "''");
 
-    // Apply segmentation filters
+    // Build segmentation filter clauses (applied to all three queries for consistency)
+    let segmentationFilter = '';
     if (filters?.reviewAudience) {
-      dateFilter += ` and ${RequestsFields.ReviewAudience} eq '${filters.reviewAudience}'`;
+      segmentationFilter += ` and ${RequestsFields.ReviewAudience} eq '${escapeOData(filters.reviewAudience)}'`;
     }
     if (filters?.requestType) {
-      dateFilter += ` and ${RequestsFields.RequestType} eq '${filters.requestType}'`;
+      segmentationFilter += ` and ${RequestsFields.RequestType} eq '${escapeOData(filters.requestType)}'`;
     }
     if (filters?.department) {
-      dateFilter += ` and ${RequestsFields.Department} eq '${filters.department}'`;
+      segmentationFilter += ` and ${RequestsFields.Department} eq '${escapeOData(filters.department)}'`;
     }
 
-    // Previous period for trend comparison
+    // Build query filters
+    const dateFilter = `${RequestsFields.Created} ge datetime'${startDate.toISOString()}' and ${RequestsFields.Created} le datetime'${endDate.toISOString()}'${segmentationFilter}`;
+
+    // Previous period for trend comparison (same segmentation filters)
     const periodMs = endDate.getTime() - startDate.getTime();
     const prevEndDate = new Date(startDate.getTime() - 1);
     const prevStartDate = new Date(prevEndDate.getTime() - periodMs);
     prevStartDate.setHours(0, 0, 0, 0);
-    const prevDateFilter = `${RequestsFields.Created} ge datetime'${prevStartDate.toISOString()}' and ${RequestsFields.Created} le datetime'${prevEndDate.toISOString()}'`;
+    const prevDateFilter = `${RequestsFields.Created} ge datetime'${prevStartDate.toISOString()}' and ${RequestsFields.Created} le datetime'${prevEndDate.toISOString()}'${segmentationFilter}`;
 
-    // Snapshot filter — active items only (no date range)
-    const snapshotFilter = `${RequestsFields.Status} ne 'Draft' and ${RequestsFields.Status} ne 'Completed' and ${RequestsFields.Status} ne 'Cancelled'`;
+    // Snapshot filter — active items only (no date range), excludes On Hold
+    const snapshotFilter = `${RequestsFields.Status} ne 'Draft' and ${RequestsFields.Status} ne 'Completed' and ${RequestsFields.Status} ne 'Cancelled' and ${RequestsFields.Status} ne 'On Hold'${segmentationFilter}`;
 
     // Run all three queries in parallel
     const [items, snapshotItems, prevItems] = await Promise.all([
