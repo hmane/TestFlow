@@ -20,7 +20,7 @@ import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
 import { Icon } from '@fluentui/react/lib/Icon';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Separator } from '@fluentui/react/lib/Separator';
-import { Toggle } from '@fluentui/react/lib/Toggle';
+import { Checkbox } from '@fluentui/react/lib/Checkbox';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { RequestStatus, ReviewOutcome, ReviewAudience, LegalReviewStatus, ComplianceReviewStatus } from '@appTypes/workflowTypes';
 import { useRequestStore } from '@stores/index';
@@ -666,13 +666,11 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
                   Clear the assigned attorney to allow reassignment.
                 </p>
                 <Stack horizontal tokens={{ childrenGap: 12 }} verticalAlign="center">
-                  <Toggle
+                  <Checkbox
                     label="Clear current attorney"
                     checked={clearAttorney}
-                    onChange={(_, checked) => setClearAttorney(checked || false)}
+                    onChange={(_ev?: React.FormEvent<HTMLElement | HTMLInputElement>, checked?: boolean) => setClearAttorney(checked || false)}
                     disabled={isProcessing || !currentRequest?.attorney}
-                    onText="Yes, clear attorney"
-                    offText="No"
                   />
                   <DefaultButton
                     text="Clear Attorney"
@@ -834,21 +832,17 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
                 </p>
                 <Stack tokens={{ childrenGap: 12 }}>
                   <Stack horizontal tokens={{ childrenGap: 24 }}>
-                    <Toggle
+                    <Checkbox
                       label="Foreside Review Required"
                       checked={isForesideRequired ?? currentRequest?.isForesideReviewRequired ?? false}
-                      onChange={(_, checked) => setIsForesideRequired(checked)}
+                      onChange={(_ev?: React.FormEvent<HTMLElement | HTMLInputElement>, checked?: boolean) => setIsForesideRequired(checked)}
                       disabled={isProcessing}
-                      onText="Yes"
-                      offText="No"
                     />
-                    <Toggle
+                    <Checkbox
                       label="Retail Use"
                       checked={isRetailUse ?? currentRequest?.isRetailUse ?? false}
-                      onChange={(_, checked) => setIsRetailUse(checked)}
+                      onChange={(_ev?: React.FormEvent<HTMLElement | HTMLInputElement>, checked?: boolean) => setIsRetailUse(checked)}
                       disabled={isProcessing}
-                      onText="Yes"
-                      offText="No"
                     />
                   </Stack>
                   <DefaultButton

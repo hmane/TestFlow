@@ -81,6 +81,11 @@ export async function completeFINRADocuments(
     updater.set(RequestsFields.FINRANotes, payload.notes);
   }
 
+  // Set comments received flag if provided
+  if (payload?.foresideCommentsReceived !== undefined) {
+    updater.set(RequestsFields.ForesideCommentsReceived, payload.foresideCommentsReceived);
+  }
+
   const updatePayload = updater.getUpdates();
   const fieldsUpdated = Object.keys(updatePayload);
 

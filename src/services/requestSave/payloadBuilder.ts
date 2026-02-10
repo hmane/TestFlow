@@ -46,7 +46,7 @@ function filterEmptyUpdates(
     'RushRationale': 'rushRationale',
     'Department': 'department',
     'PriorSubmissionNotes': 'priorSubmissionNotes',
-    'ClientId': 'clientId',
+    'ContentId': 'contentId',
     'TrackingId': 'trackingId',
     'DistributionMethod': 'distributionMethod',
     'PriorSubmissions': 'priorSubmissions',
@@ -167,7 +167,7 @@ export function buildRequestUpdatePayload(
     updater.set(RequestsFields.DistributionMethod, request.distributionMethod, originalRequest.distributionMethod);
 
     updater.set(RequestsFields.PriorSubmissionNotes, request.priorSubmissionNotes, originalRequest.priorSubmissionNotes);
-    updater.set(RequestsFields.ClientId, request.clientId, originalRequest.clientId);
+    updater.set(RequestsFields.ContentId, request.contentId, originalRequest.contentId);
     updater.set(RequestsFields.TrackingId, request.trackingId, originalRequest.trackingId);
 
     // Multi-value lookup/user fields
@@ -202,6 +202,9 @@ export function buildRequestUpdatePayload(
     updater.set(RequestsFields.ComplianceStatusUpdatedBy, request.complianceStatusUpdatedBy, originalRequest.complianceStatusUpdatedBy);
     updater.set(RequestsFields.ComplianceReviewCompletedOn, request.complianceReviewCompletedOn, originalRequest.complianceReviewCompletedOn);
     updater.set(RequestsFields.ComplianceReviewCompletedBy, request.complianceReviewCompletedBy, originalRequest.complianceReviewCompletedBy);
+
+    // FINRA Documents fields
+    updater.set(RequestsFields.ForesideCommentsReceived, request.foresideCommentsReceived, originalRequest.foresideCommentsReceived);
 
     // Time Tracking fields
     updater.set(RequestsFields.LegalIntakeLegalAdminHours, request.legalIntakeLegalAdminHours, originalRequest.legalIntakeLegalAdminHours);
@@ -258,8 +261,8 @@ export function buildRequestUpdatePayload(
     if (request.priorSubmissionNotes) {
       newUpdater.set(RequestsFields.PriorSubmissionNotes, request.priorSubmissionNotes, undefined);
     }
-    if (request.clientId) {
-      newUpdater.set(RequestsFields.ClientId, request.clientId, undefined);
+    if (request.contentId) {
+      newUpdater.set(RequestsFields.ContentId, request.contentId, undefined);
     }
     if (request.dateOfFirstUse) {
       newUpdater.set(RequestsFields.DateOfFirstUse, request.dateOfFirstUse, undefined);
@@ -435,6 +438,7 @@ export function buildPartialUpdatePayload(data: Partial<ILegalRequest>): Record<
   if (data.finraCompletedBy !== undefined) {
     updater.set(RequestsFields.FINRACompletedBy, data.finraCompletedBy, undefined);
   }
+  setIfDefined(RequestsFields.ForesideCommentsReceived, data.foresideCommentsReceived);
 
   // Time tracking fields
   setIfDefined(RequestsFields.LegalIntakeLegalAdminHours, data.legalIntakeLegalAdminHours);

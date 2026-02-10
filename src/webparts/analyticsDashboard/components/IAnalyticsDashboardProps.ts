@@ -17,6 +17,10 @@ export interface IKPIMetrics {
   rushRequestPercentage: number;
   slaCompliancePercentage: number;
   totalHoursLogged: number;
+  /** Requests awaiting FINRA documents where Foreside comments have been received */
+  foresideCommentsReceived: number;
+  /** Total requests currently awaiting FINRA documents */
+  awaitingFINRADocuments: number;
 }
 
 /**

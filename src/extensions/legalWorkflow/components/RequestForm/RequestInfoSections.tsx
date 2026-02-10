@@ -179,7 +179,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
 
   return (
     <>
-      <FormContainer labelWidth='200px'>
+      <FormContainer labelWidth='220px'>
         <FormItem fieldName='requestTitle'>
           <FormLabel isRequired>Request Title</FormLabel>
           <SPTextField
@@ -374,7 +374,7 @@ export const DistributionSection: React.FC<DistributionSectionProps> = ({
           description='Specify how and where this communication will be distributed'
         />
       </div>
-      <FormContainer labelWidth='200px' style={{ display: isVisible ? 'block' : 'none' }}>
+      <FormContainer labelWidth='220px' style={{ display: isVisible ? 'block' : 'none' }}>
         <FormItem fieldName='distributionMethod'>
           <FormLabel isRequired={isVisible}>Distribution Method</FormLabel>
           <SPChoiceField
@@ -494,7 +494,7 @@ export const ProductAudienceSection: React.FC<ProductAudienceSectionProps> = ({
             marginBottom: '16px',
           }}
         >
-          <FormContainer>
+          <FormContainer labelWidth='220px'>
             <FormItem fieldName='finraAudienceCategory'>
               <FormLabel infoText='Select the FINRA audience classification for this communication'>
                 FINRA Audience Category
@@ -513,7 +513,7 @@ export const ProductAudienceSection: React.FC<ProductAudienceSectionProps> = ({
               />
             </FormItem>
           </FormContainer>
-          <FormContainer>
+          <FormContainer labelWidth='220px'>
             <FormItem fieldName='audience'>
               <FormLabel>Audience</FormLabel>
               <SPChoiceField
@@ -541,7 +541,7 @@ export const ProductAudienceSection: React.FC<ProductAudienceSectionProps> = ({
             marginBottom: '16px',
           }}
         >
-          <FormContainer>
+          <FormContainer labelWidth='220px'>
             <FormItem fieldName='usFunds'>
               <FormLabel infoText='Select the U.S. mutual funds referenced in this communication'>
                 U.S. Funds
@@ -578,7 +578,7 @@ export const ProductAudienceSection: React.FC<ProductAudienceSectionProps> = ({
               </FormValue>
             </FormItem>
           </FormContainer>
-          <FormContainer>
+          <FormContainer labelWidth='220px'>
             <FormItem fieldName='ucits'>
               <FormLabel infoText='Select the UCITS funds referenced in this communication'>
                 UCITS
@@ -600,7 +600,7 @@ export const ProductAudienceSection: React.FC<ProductAudienceSectionProps> = ({
         </div>
 
         {/* Separate Account Strategies */}
-        <FormContainer>
+        <FormContainer labelWidth='220px'>
           <FormItem fieldName='separateAcctStrategies'>
             <FormLabel infoText='Select the separate account strategies referenced in this communication'>
               Separate Account Strategies
@@ -667,12 +667,12 @@ export const PriorSubmissionsSection: React.FC<PriorSubmissionsSectionProps> = (
         title='Prior and/or Related Submissions Information (If Applicable)'
         description='Reference any related prior or related submissions'
       />
-      <FormContainer labelWidth='200px'>
-        <FormItem fieldName='clientId'>
-          <FormLabel>Client Id</FormLabel>
+      <FormContainer labelWidth='220px'>
+        <FormItem fieldName='contentId'>
+          <FormLabel>Business Tracking/Content Id</FormLabel>
           <SPTextField
-            name='clientId'
-            placeholder='Enter client ID'
+            name='contentId'
+            placeholder='Enter business tracking or content ID'
             mode={SPTextFieldMode.SingleLine}
             maxLength={255}
             stylingMode='outlined'
@@ -724,7 +724,7 @@ export const AdditionalPartiesSection: React.FC<AdditionalPartiesSectionProps> =
         title='Additional Parties'
         description='Add other people who should be notified or involved'
       />
-      <FormContainer labelWidth='200px'>
+      <FormContainer labelWidth='220px'>
         <FormItem fieldName='additionalParty'>
           <FormLabel>Additional Parties</FormLabel>
           <SPUserField

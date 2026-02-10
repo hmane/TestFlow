@@ -649,17 +649,6 @@ export function useRequestActionsState(props: {
   }, [currentRequest]);
 
   /**
-   * Check if FINRA documents are required
-   */
-  const isFinraDocumentsRequired = React.useMemo((): boolean => {
-    if (!currentRequest) return false;
-    return (
-      currentRequest.complianceReview?.isForesideReviewRequired === true &&
-      currentRequest.complianceReview?.isRetailUse === true
-    );
-  }, [currentRequest]);
-
-  /**
    * Handle Closeout Submit
    */
   const handleCloseoutClick = React.useCallback(async (): Promise<void> => {
@@ -736,23 +725,12 @@ export function useRequestActionsState(props: {
    * Shows confirmation dialog if no documents are uploaded
    */
   const handleCompleteFINRADocumentsClick = React.useCallback(async (): Promise<void> => {
-    // If no FINRA documents and required, block completion
-    if (isFinraDocumentsRequired && !hasFINRADocuments) {
-      setValidationErrors([
-        {
-          field: 'finraDocuments',
-          message: 'FINRA documents are required before completing this request.',
-        },
-      ]);
-      return;
-    }
-
-    // If no FINRA documents and not required, show confirmation dialog using spfx-toolkit
+    // Show appropriate confirmation dialog based on document status
     if (!hasFINRADocuments) {
       SPContext.logger.info('RequestActions: No FINRA documents uploaded, showing confirmation dialog');
 
       const confirmed = await confirm(
-        'You have not attached the FINRA document. Do you want to close the request anyway?',
+        'You have not attached the FINRA document. Do you want to complete the request anyway?',
         {
           title: 'No FINRA Document',
           buttons: [
@@ -768,6 +746,23 @@ export function useRequestActionsState(props: {
       }
 
       SPContext.logger.info('RequestActions: User confirmed completing without FINRA documents');
+    } else {
+      // FINRA documents are present — confirm before completing
+      const confirmed = await confirm(
+        'Are you sure you want to complete this request? This action cannot be undone.',
+        {
+          title: 'Complete Request',
+          buttons: [
+            { text: 'Yes, Complete Request', primary: true, value: true },
+            { text: 'Cancel', value: false },
+          ],
+        }
+      );
+
+      if (!confirmed) {
+        SPContext.logger.info('RequestActions: User cancelled completing request');
+        return;
+      }
     }
 
     // Proceed with completion
@@ -799,13 +794,26 @@ export function useRequestActionsState(props: {
         SPContext.logger.success('RequestActions: FINRA documents completed, request is now Completed');
       } else {
         SPContext.logger.warn('RequestActions: Complete FINRA documents denied', { reason: result.reason });
+        setValidationErrors([
+          {
+            field: 'finraDocuments',
+            message: result.reason || 'Failed to complete the request. Please try again.',
+          },
+        ]);
       }
     } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       SPContext.logger.error('RequestActions: Complete FINRA documents failed', error);
+      setValidationErrors([
+        {
+          field: 'finraDocuments',
+          message: `Failed to complete the request: ${message}`,
+        },
+      ]);
     } finally {
       setActiveAction(undefined);
     }
-  }, [workflowCompleteFINRADocuments, hasFINRADocuments, isFinraDocumentsRequired, setValidationErrors, stagedFiles, itemId]);
+  }, [workflowCompleteFINRADocuments, hasFINRADocuments, setValidationErrors, stagedFiles, itemId]);
 
   /**
    * Handle reason dialog confirmation

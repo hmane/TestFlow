@@ -181,6 +181,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
     control,
     watch,
     reset,
+    getValues,
     setError: setFormError,
     clearErrors,
   } = useForm<ILegalIntakeFormData>({
@@ -429,9 +430,11 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
     setMessageBarError(undefined);
 
     try {
+      // Read notes at click time via getValues to avoid stale closure values
+      const currentNotes = getValues('attorneyAssignNotes');
       // Pass review audience to save Legal Admin's override
       // For Compliance Only, selectedAttorney will be undefined which is correct
-      await storeAssignAttorney(selectedAttorney, notesValue, localReviewAudience);
+      await storeAssignAttorney(selectedAttorney, currentNotes, localReviewAudience);
       setShowSuccess(true);
       successTimerRef.current = setTimeout(() => {
         if (mountedRef.current) setShowSuccess(false);
@@ -442,7 +445,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
     } finally {
       setIsAssigning(false);
     }
-  }, [selectedAttorney, notesValue, localReviewAudience, storeAssignAttorney, showAttorneyField]);
+  }, [selectedAttorney, localReviewAudience, storeAssignAttorney, showAttorneyField, getValues]);
 
   /**
    * Handle Send to Committee button click
@@ -452,8 +455,10 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
     setMessageBarError(undefined);
 
     try {
+      // Read notes at click time via getValues to avoid stale closure values
+      const currentNotes = getValues('attorneyAssignNotes');
       // Pass review audience to save Legal Admin's override
-      await storeSendToCommittee(notesValue, localReviewAudience);
+      await storeSendToCommittee(currentNotes, localReviewAudience);
       setShowSuccess(true);
       successTimerRef.current = setTimeout(() => {
         if (mountedRef.current) setShowSuccess(false);
@@ -464,7 +469,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
     } finally {
       setIsSendingToCommittee(false);
     }
-  }, [notesValue, localReviewAudience, storeSendToCommittee]);
+  }, [localReviewAudience, storeSendToCommittee, getValues]);
 
   /**
    * Check if current user can perform legal intake actions

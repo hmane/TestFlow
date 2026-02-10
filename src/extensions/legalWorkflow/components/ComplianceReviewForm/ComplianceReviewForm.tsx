@@ -13,6 +13,7 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 
 // Fluent UI - tree-shaken imports
+import { Checkbox } from '@fluentui/react/lib/Checkbox';
 import { DefaultButton, PrimaryButton } from '@fluentui/react/lib/Button';
 import { Icon } from '@fluentui/react/lib/Icon';
 import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
@@ -34,8 +35,6 @@ import {
 import {
   SPTextField,
   SPTextFieldMode,
-  SPBooleanField,
-  SPBooleanDisplayType,
   SPChoiceField,
 } from 'spfx-toolkit/lib/components/spFields';
 
@@ -114,6 +113,65 @@ function calculateDurationMinutes(
 
   return businessMinutes;
 }
+
+/**
+ * Styled boolean callout — matches the FINRADocuments "Comments Received" pattern
+ */
+interface IStyledBooleanCalloutProps {
+  label: string;
+  helpText: string;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (checked: boolean) => void;
+}
+
+const StyledBooleanCallout: React.FC<IStyledBooleanCalloutProps> = ({
+  label,
+  helpText,
+  checked,
+  disabled,
+  onChange,
+}) => (
+  <Stack
+    horizontal
+    verticalAlign='center'
+    tokens={{ childrenGap: 12 }}
+    styles={{
+      root: {
+        padding: '12px 16px',
+        backgroundColor: checked ? '#dff6dd' : '#f4f4f4',
+        borderRadius: '6px',
+        border: checked ? '1px solid #107c10' : '1px solid #e1dfdd',
+        transition: 'all 0.2s ease',
+      },
+    }}
+  >
+    {checked && (
+      <Icon
+        iconName='SkypeCheck'
+        styles={{
+          root: {
+            fontSize: '20px',
+            color: '#107c10',
+            flexShrink: 0,
+          },
+        }}
+      />
+    )}
+    <Stack tokens={{ childrenGap: 2 }} styles={{ root: { flex: 1 } }}>
+      <Checkbox
+        label={label}
+        checked={checked}
+        onChange={(_ev?, val?) => onChange(val ?? false)}
+        disabled={disabled}
+        styles={{ label: { fontWeight: 600 } }}
+      />
+      <Text variant='small' styles={{ root: { color: '#605e5c', paddingLeft: '26px' } }}>
+        {helpText}
+      </Text>
+    </Stack>
+  </Stack>
+);
 
 /**
  * Compliance Review form data
@@ -203,6 +261,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
     reset,
     formState,
     getValues,
+    setValue,
   } = useForm<IComplianceReviewFormData>({
     defaultValues: {
       complianceReviewStatus: currentRequest?.complianceReview?.status || ComplianceReviewStatus.NotStarted,
@@ -220,6 +279,8 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
 
   const reviewStatus = watch('complianceReviewStatus');
   const selectedOutcome = watch('complianceReviewOutcome');
+  const isForesideReviewRequired = watch('isForesideReviewRequired');
+  const isRetailUse = watch('isRetailUse');
 
   // Sync form with store when currentRequest changes
   React.useEffect(() => {
@@ -646,35 +707,22 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
 
                 {/* Compliance-specific fields - only editable by reviewer */}
                 <Separator />
-                <FormContainer labelWidth='200px'>
-                  <FormItem fieldName='isForesideReviewRequired'>
-                    <FormLabel infoText='Indicate if Foreside review is required for this request'>
-                      Foreside Review Required
-                    </FormLabel>
-                    <SPBooleanField
-                      name='isForesideReviewRequired'
-                      displayType={SPBooleanDisplayType.Toggle}
-                      checkedText='Yes'
-                      uncheckedText='No'
-                      showText
-                      disabled={!isReviewer}
-                    />
-                  </FormItem>
-
-                  <FormItem fieldName='isRetailUse'>
-                    <FormLabel infoText='Indicate if this will be used for retail purposes'>
-                      Retail Use
-                    </FormLabel>
-                    <SPBooleanField
-                      name='isRetailUse'
-                      displayType={SPBooleanDisplayType.Toggle}
-                      checkedText='Yes'
-                      uncheckedText='No'
-                      showText
-                      disabled={!isReviewer}
-                    />
-                  </FormItem>
-                </FormContainer>
+                <Stack tokens={{ childrenGap: 12 }}>
+                  <StyledBooleanCallout
+                    label='Foreside Review Required'
+                    helpText='Indicate if Foreside review is required for this request.'
+                    checked={isForesideReviewRequired}
+                    disabled={!isReviewer}
+                    onChange={(val) => setValue('isForesideReviewRequired', val, { shouldDirty: true })}
+                  />
+                  <StyledBooleanCallout
+                    label='Retail Use'
+                    helpText='Indicate if this will be used for retail purposes.'
+                    checked={isRetailUse}
+                    disabled={!isReviewer}
+                    onChange={(val) => setValue('isRetailUse', val, { shouldDirty: true })}
+                  />
+                </Stack>
               </Stack>
             </form>
           ) : reviewStatus === ComplianceReviewStatus.WaitingOnCompliance ? (
@@ -737,33 +785,20 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                   <Separator />
 
                   {/* Compliance-specific fields - After Review Notes */}
-                  <FormContainer labelWidth='200px'>
-                    <FormItem fieldName='isForesideReviewRequired'>
-                      <FormLabel infoText='Indicate if Foreside review is required for this request'>
-                        Foreside Review Required
-                      </FormLabel>
-                      <SPBooleanField
-                        name='isForesideReviewRequired'
-                        displayType={SPBooleanDisplayType.Toggle}
-                        checkedText='Yes'
-                        uncheckedText='No'
-                        showText
-                      />
-                    </FormItem>
-
-                    <FormItem fieldName='isRetailUse'>
-                      <FormLabel infoText='Indicate if this will be used for retail purposes'>
-                        Retail Use
-                      </FormLabel>
-                      <SPBooleanField
-                        name='isRetailUse'
-                        displayType={SPBooleanDisplayType.Toggle}
-                        checkedText='Yes'
-                        uncheckedText='No'
-                        showText
-                      />
-                    </FormItem>
-                  </FormContainer>
+                  <Stack tokens={{ childrenGap: 12 }}>
+                    <StyledBooleanCallout
+                      label='Foreside Review Required'
+                      helpText='Indicate if Foreside review is required for this request.'
+                      checked={isForesideReviewRequired}
+                      onChange={(val) => setValue('isForesideReviewRequired', val, { shouldDirty: true })}
+                    />
+                    <StyledBooleanCallout
+                      label='Retail Use'
+                      helpText='Indicate if this will be used for retail purposes.'
+                      checked={isRetailUse}
+                      onChange={(val) => setValue('isRetailUse', val, { shouldDirty: true })}
+                    />
+                  </Stack>
                 </Stack>
               </form>
             </Stack>
@@ -812,33 +847,20 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                 <Separator />
 
                 {/* Compliance-specific fields - After Review Notes */}
-                <FormContainer labelWidth='200px'>
-                  <FormItem fieldName='isForesideReviewRequired'>
-                    <FormLabel infoText='Indicate if Foreside review is required for this request'>
-                      Foreside Review Required
-                    </FormLabel>
-                    <SPBooleanField
-                      name='isForesideReviewRequired'
-                      displayType={SPBooleanDisplayType.Toggle}
-                      checkedText='Yes'
-                      uncheckedText='No'
-                      showText
-                    />
-                  </FormItem>
-
-                  <FormItem fieldName='isRetailUse'>
-                    <FormLabel infoText='Indicate if this will be used for retail purposes'>
-                      Retail Use
-                    </FormLabel>
-                    <SPBooleanField
-                      name='isRetailUse'
-                      displayType={SPBooleanDisplayType.Toggle}
-                      checkedText='Yes'
-                      uncheckedText='No'
-                      showText
-                    />
-                  </FormItem>
-                </FormContainer>
+                <Stack tokens={{ childrenGap: 12 }}>
+                  <StyledBooleanCallout
+                    label='Foreside Review Required'
+                    helpText='Indicate if Foreside review is required for this request.'
+                    checked={isForesideReviewRequired}
+                    onChange={(val) => setValue('isForesideReviewRequired', val, { shouldDirty: true })}
+                  />
+                  <StyledBooleanCallout
+                    label='Retail Use'
+                    helpText='Indicate if this will be used for retail purposes.'
+                    checked={isRetailUse}
+                    onChange={(val) => setValue('isRetailUse', val, { shouldDirty: true })}
+                  />
+                </Stack>
               {/* Validation errors - at the end of content */}
               <ValidationErrorContainer
                 errors={complianceReviewValidationErrors}

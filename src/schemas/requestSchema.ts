@@ -119,7 +119,7 @@ export const requestInformationSchema = z.object({
       ])
     )
     .optional(),
-  clientId: z.string().max(255).optional(),
+  contentId: z.string().max(255).optional(),
   priorSubmissions: z.array(lookupSchema).optional(),
   priorSubmissionNotes: z.string().max(PURPOSE_MAX_LENGTH).optional(),
   dateOfFirstUse: z.date().optional(),
@@ -247,7 +247,7 @@ export const saveRequestSchema = z
     approvals: z.array(z.any()).optional(),
     department: z.string().max(DEPARTMENT_MAX_LENGTH).optional(),
     distributionMethod: z.array(z.any()).optional(),
-    clientId: z.string().max(255).optional(),
+    contentId: z.string().max(255).optional(),
     priorSubmissions: z.array(lookupSchema).optional(),
     priorSubmissionNotes: z.string().max(PURPOSE_MAX_LENGTH).optional(),
     dateOfFirstUse: z.date().optional(),
@@ -317,7 +317,7 @@ export const submitRequestSchema = z
     dateOfFirstUse: z.any().optional(),
     // Optional fields
     department: z.string().max(DEPARTMENT_MAX_LENGTH).optional(),
-    clientId: z.string().max(255).optional(),
+    contentId: z.string().max(255).optional(),
     priorSubmissions: z.array(lookupSchema).optional(),
     priorSubmissionNotes: z.string().max(PURPOSE_MAX_LENGTH).optional(),
     additionalParty: z.array(principalSchema).optional(),
@@ -665,7 +665,7 @@ export const updateRequestSchema = z.object({
       ])
     )
     .optional(),
-  clientId: z.string().max(255).optional(),
+  contentId: z.string().max(255).optional(),
   usFundShares: z.array(z.any()).optional(),
   priorSubmissionNotes: z.string().max(PURPOSE_MAX_LENGTH).optional(),
   dateOfFirstUse: z.date().optional(),

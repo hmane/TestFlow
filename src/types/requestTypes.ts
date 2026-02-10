@@ -152,7 +152,7 @@ export interface ILegalRequest {
   isRushRequest: boolean;
   rushRationale?: string;
   reviewAudience: ReviewAudience;
-  clientId?: string;
+  contentId?: string;
   priorSubmissions?: SPLookup[];
   priorSubmissionNotes?: string;
   dateOfFirstUse?: Date;
@@ -251,6 +251,8 @@ additionalParty?: IPrincipal[];
   finraNotes?: string;
   /** When the request entered Awaiting FINRA Documents status */
   awaitingFINRASince?: Date;
+  /** Whether Foreside comments have been received */
+  foresideCommentsReceived?: boolean;
 
   // Cancellation
   cancelledBy?: IPrincipal;
@@ -323,7 +325,7 @@ export interface ICreateRequestPayload {
   requiresCommunicationsApproval: boolean;
   approvals: Approval[];
   distributionMethod?: DistributionMethod[];
-  clientId?: string;
+  contentId?: string;
   priorSubmissions?: SPLookup[];
   priorSubmissionNotes?: string;
   dateOfFirstUse?: Date;
@@ -357,7 +359,7 @@ export interface IRequestListItem {
   IsRushRequest: boolean;
   RushRationale?: string;
   ReviewAudience: string;
-  ClientId?: string;
+  ContentId?: string;
   PriorSubmissionsId?: number[];
   PriorSubmissionNotes?: string;
   DateOfFirstUse?: string;
@@ -435,6 +437,7 @@ export interface IRequestListItem {
   FINRACompletedOn?: string;
   FINRANotes?: string;
   AwaitingFINRASince?: string;
+  ForesideCommentsReceived?: boolean;
 
   // System tracking
   SubmittedById?: number;

@@ -982,16 +982,18 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
         </Stack>
       )}
 
-      {/* Additional Approvals Section - Hidden when Communications Only is enabled */}
+      {/* Required Approval(s) Section - Hidden when Communications Only is enabled */}
       {!communicationsOnly && (
         <Stack tokens={{ childrenGap: 12 }}>
           <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
             <Icon iconName='AddTo' styles={{ root: { fontSize: '18px', color: '#0078d4' } }} />
-            <Label styles={COMM_APPROVAL_LABEL_STYLES}>Additional Approvals</Label>
+            <Label styles={COMM_APPROVAL_LABEL_STYLES}>
+              Required Approval(s) <span style={{ color: '#a4262c', fontWeight: 600 }}>*</span>
+            </Label>
           </Stack>
 
           <Text variant='small' styles={DESC_TEXT_STYLES}>
-            Select additional approval types as needed. Each can only be added once.
+            Select required approval types. At least one is required. Each can only be added once.
           </Text>
 
           {/* Additional Approval Items */}

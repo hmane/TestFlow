@@ -13,7 +13,9 @@
 import * as React from 'react';
 
 // Fluent UI - tree-shaken imports
+import { Checkbox } from '@fluentui/react/lib/Checkbox';
 import { Icon } from '@fluentui/react/lib/Icon';
+import { Separator } from '@fluentui/react/lib/Separator';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
 
@@ -23,6 +25,7 @@ import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
 
 // App imports using path aliases
 import { Lists } from '@sp/Lists';
+import { RequestsFields } from '@sp/listFields/RequestsFields';
 import { DocumentUpload } from '@components/DocumentUpload';
 import { usePermissions } from '@hooks/usePermissions';
 import { useDocumentsStore } from '@stores/documentsStore';
@@ -44,6 +47,8 @@ export interface IFINRADocumentsProps {
   readOnly?: boolean;
   /** Callback when document count changes (for validation) */
   onDocumentCountChange?: (count: number) => void;
+  /** Callback when comments received checkbox changes */
+  onCommentsReceivedChange?: (checked: boolean) => void;
 }
 
 /**
@@ -56,6 +61,7 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
   defaultExpanded = true,
   readOnly: readOnlyProp = false,
   onDocumentCountChange,
+  onCommentsReceivedChange,
 }) => {
   const { isAdmin, isSubmitter } = usePermissions();
   const currentRequest = useRequestStore((s) => s.currentRequest);
@@ -112,6 +118,67 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
       onDocumentCountChange(finraDocumentCount);
     }
   }, [finraDocumentCount, onDocumentCountChange]);
+
+  // Comments received state - read from store, update store directly
+  const commentsReceived = currentRequest?.foresideCommentsReceived ?? false;
+  const isSavingRef = React.useRef(false);
+
+  /**
+   * Handle comments received checkbox change
+   * Updates the store AND saves directly to SharePoint so the value persists
+   * even without a full form save (Save button is hidden during Awaiting FINRA Documents).
+   * Uses setState to update both currentRequest and originalRequest atomically
+   * so isDirty is not affected by this toggle.
+   */
+  const handleCommentsReceivedChange = React.useCallback(
+    (_ev?: React.FormEvent<HTMLElement | HTMLInputElement>, checked?: boolean) => {
+      if (isSavingRef.current || !itemId) return;
+
+      const value = checked ?? false;
+      const storeState = useRequestStore.getState();
+      if (!storeState.currentRequest) return;
+
+      const previousValue = storeState.currentRequest.foresideCommentsReceived ?? false;
+
+      // Update both currentRequest and originalRequest so isDirty is unaffected
+      useRequestStore.setState({
+        currentRequest: { ...storeState.currentRequest, foresideCommentsReceived: value },
+        originalRequest: storeState.originalRequest
+          ? { ...storeState.originalRequest, foresideCommentsReceived: value }
+          : storeState.originalRequest,
+      });
+
+      if (onCommentsReceivedChange) {
+        onCommentsReceivedChange(value);
+      }
+
+      // Persist directly to SharePoint — the Save button is hidden in Awaiting FINRA Documents status
+      isSavingRef.current = true;
+      SPContext.sp.web.lists
+        .getByTitle(Lists.Requests.Title)
+        .items.getById(itemId)
+        .update({ [RequestsFields.ForesideCommentsReceived]: value })
+        .then(() => {
+          isSavingRef.current = false;
+          SPContext.logger.info('ForesideCommentsReceived saved to SharePoint', { itemId, value });
+        })
+        .catch((error: unknown) => {
+          isSavingRef.current = false;
+          SPContext.logger.error('Failed to save ForesideCommentsReceived', error, { itemId });
+          // Revert both currentRequest and originalRequest on failure
+          const current = useRequestStore.getState();
+          if (current.currentRequest) {
+            useRequestStore.setState({
+              currentRequest: { ...current.currentRequest, foresideCommentsReceived: previousValue },
+              originalRequest: current.originalRequest
+                ? { ...current.originalRequest, foresideCommentsReceived: previousValue }
+                : current.originalRequest,
+            });
+          }
+        });
+    },
+    [onCommentsReceivedChange, itemId]
+  );
 
   /**
    * Handle files change
@@ -209,6 +276,52 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
             onError={handleError}
           />
         )}
+
+        <Separator />
+
+        {/* Comments Received — prominent callout so users don't miss it */}
+        <Stack
+          horizontal
+          verticalAlign='center'
+          tokens={{ childrenGap: 12 }}
+          styles={{
+            root: {
+              padding: '12px 16px',
+              backgroundColor: commentsReceived ? '#dff6dd' : '#f4f4f4',
+              borderRadius: '6px',
+              border: commentsReceived ? '1px solid #107c10' : '1px solid #e1dfdd',
+              transition: 'all 0.2s ease',
+            },
+          }}
+        >
+          {commentsReceived && (
+            <Icon
+              iconName='SkypeCheck'
+              styles={{
+                root: {
+                  fontSize: '20px',
+                  color: '#107c10',
+                  flexShrink: 0,
+                },
+              }}
+            />
+          )}
+          <Stack tokens={{ childrenGap: 2 }} styles={{ root: { flex: 1 } }}>
+            <Checkbox
+              label='Foreside Comments Received'
+              checked={commentsReceived}
+              onChange={handleCommentsReceivedChange}
+              disabled={isReadOnly}
+              ariaLabel='Indicate if Foreside comments have been received'
+              styles={{
+                label: { fontWeight: 600 },
+              }}
+            />
+            <Text variant='small' styles={{ root: { color: '#605e5c', paddingLeft: '26px' } }}>
+              Check this box if comments have been received from Foreside for this submission.
+            </Text>
+          </Stack>
+        </Stack>
       </Content>
     </Card>
   );

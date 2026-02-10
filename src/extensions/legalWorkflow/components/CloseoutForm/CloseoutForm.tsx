@@ -520,8 +520,8 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
               </Stack>
             )}
 
-            {/* Tracking ID - moved after Review Comments section */}
-            <FormContainer labelWidth='150px'>
+            {/* Tracking ID and Closeout Notes */}
+            <FormContainer labelWidth='180px'>
               <FormItem fieldName='trackingId'>
                 <FormLabel
                   isRequired={!readOnly && isTrackingIdRequired}
@@ -533,14 +533,14 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
                         : 'Enter the tracking ID assigned to this request (optional)'
                   }
                 >
-                  Tracking ID
+                  Foreside Tracking Id
                 </FormLabel>
                 {readOnly ? (
                   <span>{currentRequest.trackingId || '—'}</span>
                 ) : (
                   <SPTextField
                     name='trackingId'
-                    placeholder='Enter tracking ID'
+                    placeholder='Enter Foreside tracking ID'
                     mode={SPTextFieldMode.SingleLine}
                     maxLength={TRACKING_ID_MAX_LENGTH}
                     showCharacterCount
@@ -548,6 +548,39 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
                   />
                 )}
               </FormItem>
+
+              {/* Final Notes - show in both edit and read-only mode */}
+              {(!readOnly || currentRequest.closeoutNotes) && (
+                <FormItem fieldName='closeoutNotes'>
+                  <FormLabel infoText={readOnly ? undefined : 'Add any final notes or comments about this request'}>
+                    Closeout Notes
+                  </FormLabel>
+                  {readOnly ? (
+                    <Text
+                      styles={{
+                        root: {
+                          whiteSpace: 'pre-wrap',
+                          lineHeight: '1.5',
+                          color: currentRequest.closeoutNotes ? '#323130' : '#8a8886',
+                        },
+                      }}
+                    >
+                      {currentRequest.closeoutNotes || '—'}
+                    </Text>
+                  ) : (
+                    <SPTextField
+                      name='closeoutNotes'
+                      placeholder='Add any final notes or comments'
+                      mode={SPTextFieldMode.MultiLine}
+                      rows={3}
+                      maxLength={CLOSEOUT_NOTES_MAX_LENGTH}
+                      showCharacterCount
+                      stylingMode='outlined'
+                      spellCheck
+                    />
+                  )}
+                </FormItem>
+              )}
             </FormContainer>
 
             {/* Show acknowledgment status in read-only mode if comments were acknowledged */}
@@ -578,41 +611,6 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
                   </Text>
                 </Stack>
               </>
-            )}
-
-            {/* Final Notes - show in both edit and read-only mode */}
-            {(!readOnly || currentRequest.closeoutNotes) && (
-              <FormContainer labelWidth='150px'>
-                <FormItem fieldName='closeoutNotes'>
-                  <FormLabel infoText={readOnly ? undefined : 'Add any final notes or comments about this request'}>
-                    Closeout Notes
-                  </FormLabel>
-                  {readOnly ? (
-                    <Text
-                      styles={{
-                        root: {
-                          whiteSpace: 'pre-wrap',
-                          lineHeight: '1.5',
-                          color: currentRequest.closeoutNotes ? '#323130' : '#8a8886',
-                        },
-                      }}
-                    >
-                      {currentRequest.closeoutNotes || '—'}
-                    </Text>
-                  ) : (
-                    <SPTextField
-                      name='closeoutNotes'
-                      placeholder='Add any final notes or comments'
-                      mode={SPTextFieldMode.MultiLine}
-                      rows={3}
-                      maxLength={CLOSEOUT_NOTES_MAX_LENGTH}
-                      showCharacterCount
-                      stylingMode='outlined'
-                      spellCheck
-                    />
-                  )}
-                </FormItem>
-              </FormContainer>
             )}
 
             {/* Validation errors - at the end of content (only in edit mode) */}

@@ -539,10 +539,17 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
             )}
 
           {/* Prior Submissions Section */}
-          {(currentRequest.priorSubmissions?.length || currentRequest.priorSubmissionNotes) && (
+          {(currentRequest.contentId || currentRequest.priorSubmissions?.length || currentRequest.priorSubmissionNotes) && (
             <div className='summary-section'>
               <SectionHeader title='Prior Submissions' icon='History' />
               <div className='summary-grid summary-grid--2col'>
+                {currentRequest.contentId && (
+                  <CompactField
+                    label='Business Tracking/Content Id'
+                    value={currentRequest.contentId}
+                    icon='DocumentSet'
+                  />
+                )}
                 {currentRequest.priorSubmissions && currentRequest.priorSubmissions.length > 0 && (
                   <div className='summary-field'>
                     <div className='summary-field__label'>

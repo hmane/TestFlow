@@ -92,7 +92,7 @@ const QUERY1_FIELDS = [
   RequestsFields.DistributionMethod,
   RequestsFields.DateOfFirstUse,
   RequestsFields.PriorSubmissionNotes,
-  RequestsFields.ClientId,
+  RequestsFields.ContentId,
   RequestsFields.TotalTurnaroundDays,
   RequestsFields.ExpectedTurnaroundDate,
 
@@ -197,6 +197,7 @@ const QUERY2_FIELDS = [
   RequestsFields.FINRACompletedOn,
   RequestsFields.FINRANotes,
   RequestsFields.AwaitingFINRASince,
+  RequestsFields.ForesideCommentsReceived,
 
   // Cancellation
   RequestsFields.CancelledBy,
@@ -459,7 +460,7 @@ export function mapRequestListItemToRequest(item: IRawSharePointItem): ILegalReq
         .filter((lookup: SPLookup): lookup is SPLookup & { id: number } => lookup.id !== undefined);
     })(),
     priorSubmissionNotes: extractor.string(RequestsFields.PriorSubmissionNotes),
-    clientId: extractor.string(RequestsFields.ClientId),
+    contentId: extractor.string(RequestsFields.ContentId),
 
     // Additional parties
     additionalParty: extractor.userMulti(RequestsFields.AdditionalParty) || [],
@@ -548,6 +549,7 @@ export function mapRequestListItemToRequest(item: IRawSharePointItem): ILegalReq
     finraCompletedOn: extractor.date(RequestsFields.FINRACompletedOn),
     finraNotes: extractor.string(RequestsFields.FINRANotes),
     awaitingFINRASince: extractor.date(RequestsFields.AwaitingFINRASince),
+    foresideCommentsReceived: extractor.boolean(RequestsFields.ForesideCommentsReceived, false),
 
     // Cancellation
     cancelledBy: extractor.user(RequestsFields.CancelledBy),

@@ -64,7 +64,7 @@ export const RequestsFields = {
   SubjectMatterExpert: 'SubjectMatterExpert',
   TotalTurnaroundDays: 'TotalTurnaroundDays',
   PriorSubmissionNotes: 'PriorSubmissionNotes',
-  ClientId: 'ClientId',
+  ContentId: 'ContentId',
   CommunicationsApprover: 'CommunicationsApprover',
   CommunicationsApprovalNotes: 'CommunicationsApprovalNotes',
   ComplianceReviewNotes: 'ComplianceReviewNotes',
@@ -121,6 +121,7 @@ export const RequestsFields = {
   FINRACompletedBy: 'ForesideCompletedBy',
   FINRACompletedOn: 'ForesideCompletedOn',
   FINRANotes: 'ForesideNotes',
-  AwaitingFINRASince: 'AwaitingFINRASince'
+  AwaitingFINRASince: 'AwaitingFINRASince',
+  ForesideCommentsReceived: 'ForesideCommentsReceived'
 } as const;
 

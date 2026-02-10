@@ -471,8 +471,8 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
       // Search documents in parallel with request search
       const documentRequestIdsPromise = searchDocuments(query);
 
-      // Build filter for request search
-      let filter = `substringof('${query}', Title) or substringof('${query}', RequestTitle)`;
+      // Build filter for request search (Title=RequestID, RequestTitle, ContentId, TrackingId)
+      let filter = `substringof('${query}', Title) or substringof('${query}', RequestTitle) or substringof('${query}', ContentId) or substringof('${query}', TrackingId)`;
 
       // Get request IDs from document search
       const documentRequestIds = await documentRequestIdsPromise;
@@ -504,7 +504,9 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
           'LegalReviewStatus',
           'ComplianceReviewStatus',
           'LegalReviewOutcome',
-          'ComplianceReviewOutcome'
+          'ComplianceReviewOutcome',
+          'ContentId',
+          'TrackingId'
         )
         .expand('Author', 'Attorney')
         .filter(filter)

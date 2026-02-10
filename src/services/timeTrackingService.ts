@@ -9,6 +9,7 @@
 
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import type { ILegalRequest, TimeTrackingOwner, TimeTrackingStage } from '@appTypes/requestTypes';
+import { RequestStatus } from '@appTypes/workflowTypes';
 import { calculateBusinessHours } from '@utils/businessHoursCalculator';
 import { getWorkingHoursConfig } from './configurationService';
 
@@ -250,7 +251,11 @@ function getStageCurrentOwner(
 ): TimeTrackingOwner | undefined {
   switch (stage) {
     case 'LegalIntake':
-      // Legal Intake doesn't have status-based owner tracking yet
+      // Legal Intake is owned by the Legal Admin (Reviewer)
+      // Only active when request is actually in Legal Intake or Assign Attorney stage
+      if (request.status === RequestStatus.LegalIntake || request.status === RequestStatus.AssignAttorney) {
+        return 'Reviewer';
+      }
       return undefined;
 
     case 'LegalReview':
@@ -270,8 +275,11 @@ function getStageCurrentOwner(
       return undefined;
 
     case 'Closeout':
-      // Closeout is always owned by reviewer (simple case)
-      return 'Reviewer';
+      // Closeout is owned by the reviewer, but only when request is actually in Closeout stage
+      if (request.status === RequestStatus.Closeout) {
+        return 'Reviewer';
+      }
+      return undefined;
 
     default:
       return undefined;
@@ -300,8 +308,9 @@ function getStageLastHandoffDate(
       return request.complianceStatusUpdatedOn;
 
     case 'Closeout':
-      // Use closeoutOn, or fall back to when last review completed
-      return request.closeoutOn || request.complianceReviewCompletedOn || request.legalReviewCompletedOn;
+      // Use when the last review completed (entry into Closeout stage)
+      // Note: closeoutOn is the completion timestamp, not the entry timestamp
+      return request.complianceReviewCompletedOn || request.legalReviewCompletedOn;
 
     default:
       return undefined;

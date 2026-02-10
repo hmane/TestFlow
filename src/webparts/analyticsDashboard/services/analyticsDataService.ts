@@ -112,6 +112,8 @@ export const generateMockData = (dateRange: DateRangeOption): IDashboardData => 
     rushRequestPercentage: Math.floor(Math.random() * 25) + 5,
     slaCompliancePercentage: Math.floor(Math.random() * 20) + 75,
     totalHoursLogged: Math.floor(Math.random() * 500) + 100,
+    awaitingFINRADocuments: Math.floor(Math.random() * 8) + 2,
+    foresideCommentsReceived: Math.floor(Math.random() * 5) + 1,
   };
 
   // Generate status distribution
@@ -326,7 +328,8 @@ export const fetchDashboardData = async (
         RequestsFields.TotalReviewerHours,
         RequestsFields.TotalSubmitterHours,
         RequestsFields.CloseoutOn,
-        RequestsFields.SubmittedOn
+        RequestsFields.SubmittedOn,
+        RequestsFields.ForesideCommentsReceived
       )
       .expand(RequestsFields.Attorney)
       .filter(dateFilter)
@@ -374,6 +377,12 @@ export const fetchDashboardData = async (
       return sum + (item.TotalReviewerHours || 0) + (item.TotalSubmitterHours || 0);
     }, 0);
 
+    // Calculate FINRA / Foreside comments stats
+    const awaitingFINRA = items.filter((i: { Status: string }) => i.Status === 'Awaiting FINRA Documents');
+    const foresideCommentsCount = awaitingFINRA.filter(
+      (i: { ForesideCommentsReceived?: boolean }) => i.ForesideCommentsReceived === true
+    ).length;
+
     const kpiMetrics: IKPIMetrics = {
       totalRequests,
       totalRequestsTrend: 0, // Would need previous period data
@@ -383,6 +392,8 @@ export const fetchDashboardData = async (
       rushRequestPercentage: totalRequests > 0 ? Math.round((rushRequests.length / totalRequests) * 100) : 0,
       slaCompliancePercentage: slaCompliance,
       totalHoursLogged: Math.round(totalHours * 10) / 10,
+      awaitingFINRADocuments: awaitingFINRA.length,
+      foresideCommentsReceived: foresideCommentsCount,
     };
 
     // Calculate status distribution
@@ -433,7 +444,7 @@ export const fetchDashboardData = async (
     // Calculate attorney workload
     const attorneyData: Record<number, IAttorneyWorkload> = {};
     items.forEach((item: { Attorney?: { Id: number; Title: string }; Status: string; TotalReviewerHours?: number }) => {
-      if (item.Attorney) {
+      if (item.Attorney && item.Attorney.Id) {
         if (!attorneyData[item.Attorney.Id]) {
           attorneyData[item.Attorney.Id] = {
             attorneyId: item.Attorney.Id,
@@ -458,7 +469,10 @@ export const fetchDashboardData = async (
     const attorneyValues: IAttorneyWorkload[] = [];
     for (const key in attorneyData) {
       if (Object.prototype.hasOwnProperty.call(attorneyData, key)) {
-        attorneyValues.push(attorneyData[parseInt(key, 10)]);
+        const entry = attorneyData[parseInt(key, 10)];
+        if (entry) {
+          attorneyValues.push(entry);
+        }
       }
     }
     const attorneyWorkload = attorneyValues.map((a: IAttorneyWorkload) => ({

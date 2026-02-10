@@ -433,6 +433,13 @@ const AnalyticsDashboard: React.FC<IAnalyticsDashboardProps> = (props) => {
           iconColor="#0078d4"
           subtitle="logged in period"
         />
+        <KPICard
+          title="Foreside Comments"
+          value={`${kpiMetrics.foresideCommentsReceived} / ${kpiMetrics.awaitingFINRADocuments}`}
+          icon="Comment"
+          iconColor="#8764b8"
+          subtitle="received / awaiting FINRA docs"
+        />
       </div>
 
       {/* Main Content Grid */}
