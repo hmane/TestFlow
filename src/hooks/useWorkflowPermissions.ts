@@ -576,8 +576,8 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
         cancelReason: reason,
         currentStatus: actionContext.request.status,
         isOwner:
-          actionContext.request.submittedBy?.id === currentUserId ||
-          actionContext.request.author?.id === currentUserId,
+          String(actionContext.request.submittedBy?.id ?? '') === currentUserId ||
+          String(actionContext.request.author?.id ?? '') === currentUserId,
         isAdmin: permissions.isAdmin,
         isLegalAdmin: permissions.isLegalAdmin,
       });
@@ -713,8 +713,8 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
 
       // Check permission - only owner or admin can complete FINRA documents
       const isOwner =
-        actionContext.request.submittedBy?.id === currentUserId ||
-        actionContext.request.author?.id === currentUserId;
+        String(actionContext.request.submittedBy?.id ?? '') === currentUserId ||
+        String(actionContext.request.author?.id ?? '') === currentUserId;
 
       if (!isOwner && !permissions.isAdmin) {
         const result = { allowed: false, reason: 'Only the submitter or admin can complete FINRA documents' };

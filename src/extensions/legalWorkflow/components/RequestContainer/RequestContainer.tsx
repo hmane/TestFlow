@@ -169,8 +169,8 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
     if (!currentRequest) return false;
     const currentUserId = SPContext.currentUser?.id?.toString() ?? '';
     return (
-      currentRequest.submittedBy?.id === currentUserId ||
-      currentRequest.author?.id?.toString() === currentUserId
+      String(currentRequest.submittedBy?.id ?? '') === currentUserId ||
+      String(currentRequest.author?.id ?? '') === currentUserId
     );
   }, [currentRequest?.submittedBy?.id, currentRequest?.author?.id]);
 

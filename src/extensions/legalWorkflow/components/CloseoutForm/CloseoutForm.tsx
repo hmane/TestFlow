@@ -227,15 +227,15 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
       // Validate tracking ID if required
       const isTrackingIdRequired =
         currentRequest?.reviewAudience !== ReviewAudience.Legal &&
-        currentRequest?.complianceReview?.isForesideReviewRequired === true &&
-        currentRequest?.complianceReview?.isRetailUse === true;
+        (currentRequest?.complianceReview?.isForesideReviewRequired === true ||
+        currentRequest?.complianceReview?.isRetailUse === true);
 
       const errors: { field: string; message: string }[] = [];
 
       if (isTrackingIdRequired && (!trackingIdValue || trackingIdValue.trim() === '')) {
         errors.push({
           field: 'trackingId',
-          message: 'Tracking ID is required because both Foreside Review Required and Retail Use were indicated during compliance review.',
+          message: 'Tracking ID is required because Foreside Review Required or Retail Use was indicated during compliance review.',
         });
       }
 
@@ -298,8 +298,8 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
   // Determine if tracking ID is required based on compliance review flags
   const isTrackingIdRequired =
     currentRequest.reviewAudience !== ReviewAudience.Legal &&
-    currentRequest.complianceReview?.isForesideReviewRequired === true &&
-    currentRequest.complianceReview?.isRetailUse === true;
+    (currentRequest.complianceReview?.isForesideReviewRequired === true ||
+    currentRequest.complianceReview?.isRetailUse === true);
 
   // Determine the last review completion date based on review audience
   // This represents when reviews were approved and closeout started
@@ -529,7 +529,7 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
                     readOnly
                       ? undefined
                       : isTrackingIdRequired
-                        ? 'Tracking ID is required because both Foreside Review Required and Retail Use were indicated during compliance review'
+                        ? 'Tracking ID is required because Foreside Review Required or Retail Use was indicated during compliance review'
                         : 'Enter the tracking ID assigned to this request (optional)'
                   }
                 >

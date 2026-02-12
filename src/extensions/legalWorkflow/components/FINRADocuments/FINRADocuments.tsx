@@ -308,17 +308,17 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
           )}
           <Stack tokens={{ childrenGap: 2 }} styles={{ root: { flex: 1 } }}>
             <Checkbox
-              label='Foreside Comments Received'
+              label='FINRA Comments Received'
               checked={commentsReceived}
               onChange={handleCommentsReceivedChange}
               disabled={isReadOnly}
-              ariaLabel='Indicate if Foreside comments have been received'
+              ariaLabel='Indicate if FINRA comments have been received'
               styles={{
                 label: { fontWeight: 600 },
               }}
             />
             <Text variant='small' styles={{ root: { color: '#605e5c', paddingLeft: '26px' } }}>
-              Check this box if comments have been received from Foreside for this submission.
+              Check this box if comments have been received from FINRA for this submission.
             </Text>
           </Stack>
         </Stack>

@@ -285,7 +285,7 @@ export const closeoutWithTrackingIdSchema = z
       return true;
     },
     {
-      message: 'Tracking ID is required when Compliance reviewed and both Foreside Review Required and Retail Use are true',
+      message: 'Tracking ID is required when Compliance reviewed and either Foreside Review Required or Retail Use is true',
       path: ['trackingId'],
     }
   );

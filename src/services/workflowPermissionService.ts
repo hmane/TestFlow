@@ -111,8 +111,8 @@ export function canSubmitRequest(context: IActionContext): IPermissionCheckResul
   }
 
   // Must be owner or admin
-  const isOwner = request.submittedBy?.id === currentUserId ||
-                  request.author?.id === currentUserId;
+  const isOwner = String(request.submittedBy?.id ?? '') === currentUserId ||
+                  String(request.author?.id ?? '') === currentUserId;
 
   if (!isOwner && !permissions.isAdmin) {
     return {
@@ -373,8 +373,8 @@ export function canCompleteFINRADocuments(context: IActionContext): IPermissionC
   }
 
   // Must be owner (submitter)
-  const isOwner = request.submittedBy?.id === currentUserId ||
-                  request.author?.id === currentUserId;
+  const isOwner = String(request.submittedBy?.id ?? '') === currentUserId ||
+                  String(request.author?.id ?? '') === currentUserId;
 
   if (!isOwner) {
     return {
@@ -416,8 +416,8 @@ export function canCancelRequest(context: IActionContext): IPermissionCheckResul
   }
 
   // Owner can cancel only if in Draft
-  const isOwner = request.submittedBy?.id === currentUserId ||
-                  request.author?.id === currentUserId;
+  const isOwner = String(request.submittedBy?.id ?? '') === currentUserId ||
+                  String(request.author?.id ?? '') === currentUserId;
 
   if (isOwner && request.status === RequestStatus.Draft) {
     return { allowed: true };
@@ -520,8 +520,8 @@ export function canSaveDraft(context: IActionContext): IPermissionCheckResult {
   }
 
   // Must be owner
-  const isOwner = request.submittedBy?.id === currentUserId ||
-                  request.author?.id === currentUserId;
+  const isOwner = String(request.submittedBy?.id ?? '') === currentUserId ||
+                  String(request.author?.id ?? '') === currentUserId;
 
   // For new requests (no submittedBy yet), any submitter can save
   if (!request.submittedBy && permissions.isSubmitter) {
@@ -562,8 +562,8 @@ export function canEditRequest(context: IActionContext): IPermissionCheckResult 
   }
 
   // Owner can edit in Draft
-  const isOwner = request.submittedBy?.id === currentUserId ||
-                  request.author?.id === currentUserId;
+  const isOwner = String(request.submittedBy?.id ?? '') === currentUserId ||
+                  String(request.author?.id ?? '') === currentUserId;
 
   if (isOwner && request.status === RequestStatus.Draft) {
     return { allowed: true };

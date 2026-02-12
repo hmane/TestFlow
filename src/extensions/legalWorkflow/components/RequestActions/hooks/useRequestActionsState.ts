@@ -159,10 +159,12 @@ export function useRequestActionsState(props: {
   // Check if current user is the owner
   const isOwner = React.useMemo((): boolean => {
     if (!currentRequest) return false;
-    const currentUserId = SPContext.currentUser?.id?.toString() ?? '';
+    const currentUserId = SPContext.currentUser?.id;
+    if (!currentUserId) return false;
+    const currentUserIdStr = String(currentUserId);
     return (
-      currentRequest.submittedBy?.id === currentUserId ||
-      currentRequest.author?.id === currentUserId
+      String(currentRequest.submittedBy?.id ?? '') === currentUserIdStr ||
+      String(currentRequest.author?.id ?? '') === currentUserIdStr
     );
   }, [currentRequest]);
 
@@ -643,7 +645,7 @@ export function useRequestActionsState(props: {
     if (!currentRequest) return false;
     if (currentRequest.reviewAudience === 'Legal') return false;
     return (
-      currentRequest.complianceReview?.isForesideReviewRequired === true &&
+      currentRequest.complianceReview?.isForesideReviewRequired === true ||
       currentRequest.complianceReview?.isRetailUse === true
     );
   }, [currentRequest]);
@@ -662,7 +664,7 @@ export function useRequestActionsState(props: {
       if (isTrackingIdRequired && (!trackingId || trackingId.trim() === '')) {
         errors.push({
           field: 'trackingId',
-          message: 'Tracking ID is required because both Foreside Review Required and Retail Use were indicated during compliance review.',
+          message: 'Tracking ID is required because Foreside Review Required or Retail Use was indicated during compliance review.',
         });
       }
 

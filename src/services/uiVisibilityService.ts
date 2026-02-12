@@ -490,11 +490,11 @@ export function createVisibilityContext(
   }
 ): IVisibilityContext {
   const isOwner = request ? (
-    request.submittedBy?.id === currentUserId ||
-    request.author?.id === currentUserId
+    String(request.submittedBy?.id ?? '') === currentUserId ||
+    String(request.author?.id ?? '') === currentUserId
   ) : false;
 
-  const isAssignedAttorney = request?.legalReview?.assignedAttorney?.id === currentUserId;
+  const isAssignedAttorney = String(request?.legalReview?.assignedAttorney?.id ?? '') === currentUserId;
   const hasAssignedAttorney = !!request?.legalReview?.assignedAttorney?.id;
 
   const reviewAudience = request?.reviewAudience || '';

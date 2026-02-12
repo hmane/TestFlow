@@ -71,8 +71,8 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
     if (!currentRequest) return false;
     const currentUserId = SPContext.currentUser?.id?.toString() ?? '';
     return (
-      currentRequest.submittedBy?.id === currentUserId ||
-      currentRequest.author?.id === currentUserId
+      String(currentRequest.submittedBy?.id ?? '') === currentUserId ||
+      String(currentRequest.author?.id ?? '') === currentUserId
     );
   }, [currentRequest]);
 

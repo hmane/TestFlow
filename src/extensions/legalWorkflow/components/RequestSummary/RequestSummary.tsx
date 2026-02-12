@@ -146,8 +146,8 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
     // Check if current user is the submitter/author
     const currentUserId = SPContext.currentUser?.id?.toString() ?? '';
     const isOwner =
-      currentRequest.submittedBy?.id === currentUserId ||
-      currentRequest.author?.id === currentUserId;
+      String(currentRequest.submittedBy?.id ?? '') === currentUserId ||
+      String(currentRequest.author?.id ?? '') === currentUserId;
 
     return isOwner;
   }, [currentRequest, permissions.isAdmin]);

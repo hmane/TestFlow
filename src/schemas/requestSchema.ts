@@ -691,14 +691,14 @@ export const closeoutWithTrackingIdSchema = z
   })
   .refine(
     data => {
-      // Tracking ID required if compliance reviewed AND (foreside AND retail)
-      if (data.complianceReviewed && data.isForesideReviewRequired && data.isRetailUse) {
+      // Tracking ID required if compliance reviewed AND (foreside review required OR retail use)
+      if (data.complianceReviewed && (data.isForesideReviewRequired || data.isRetailUse)) {
         return data.trackingId && data.trackingId.length > 0;
       }
       return true;
     },
     {
-      message: 'Tracking ID is required when Compliance reviewed and both Foreside Review Required and Retail Use are true',
+      message: 'Tracking ID is required when Compliance reviewed and either Foreside Review Required or Retail Use is true',
       path: ['trackingId'],
     }
   );
