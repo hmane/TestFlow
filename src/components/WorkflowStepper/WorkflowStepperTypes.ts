@@ -116,6 +116,8 @@ export interface IRequestMetadata {
   finraCompletedOn?: Date;
   /** User who completed FINRA documents (display name) */
   finraCompletedBy?: string;
+  /** User identifier (email/login) for FINRA completed by */
+  finraCompletedByLogin?: string;
 
   // Terminal state fields (Cancelled/OnHold)
   /** Previous status before Cancelled or OnHold */

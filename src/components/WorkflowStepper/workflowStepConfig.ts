@@ -756,6 +756,26 @@ function getStepDescriptions(
     }
   }
 
+  // FINRA Documents step
+  if (step.key === 'finraDocuments' && requestMetadata) {
+    // Completed - show when FINRA was completed and by whom
+    if (status === 'completed' && requestMetadata.finraCompletedOn) {
+      return {
+        description1: createDateElement('Completed', requestMetadata.finraCompletedOn),
+        description2: requestMetadata.finraCompletedByLogin
+          ? createUserElement(requestMetadata.finraCompletedByLogin, requestMetadata.finraCompletedBy)
+          : (requestMetadata.finraCompletedBy ? `by ${requestMetadata.finraCompletedBy}` : undefined),
+      };
+    }
+    // Current - awaiting documents
+    if (status === 'current') {
+      return {
+        description1: 'Awaiting FINRA documents',
+        description2: 'Upload documents to complete',
+      };
+    }
+  }
+
   // Default descriptions
   return {
     description1: step.description,

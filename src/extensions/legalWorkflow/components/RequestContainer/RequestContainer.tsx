@@ -223,6 +223,7 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
         (currentRequest?.isForesideReviewRequired === true && currentRequest?.isRetailUse === true),
       finraCompletedOn: currentRequest?.finraCompletedOn,
       finraCompletedBy: currentRequest?.finraCompletedBy?.title,
+      finraCompletedByLogin: currentRequest?.finraCompletedBy?.loginName,
       // Terminal state fields (Cancelled/OnHold)
       previousStatus: currentRequest?.previousStatus,
       cancelledOn: currentRequest?.cancelledOn,
