@@ -666,7 +666,9 @@ export const useRequestStore = create<IRequestState>()(
         if (state.currentRequest?.finraCommentsReceived !== undefined) {
           payload.finraCommentsReceived = state.currentRequest.finraCommentsReceived;
         }
-        if (state.currentRequest?.finraComment !== undefined) {
+        if (state.currentRequest?.finraCommentsReceived === false) {
+          payload.finraComment = '';
+        } else if (state.currentRequest?.finraComment !== undefined) {
           payload.finraComment = state.currentRequest.finraComment;
         }
 

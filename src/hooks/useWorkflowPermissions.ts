@@ -248,6 +248,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
         attorney: primaryAttorney || { id: '' },
         assignmentNotes: notes,
         currentStatus: actionContext.request.status,
+        reviewAudience: actionContext.request.reviewAudience,
       });
 
       if (!validation.success) {
@@ -260,7 +261,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
       setError(undefined);
 
       try {
-        await storeAssignAttorney(attorneys, notes);
+        await storeAssignAttorney(attorneys, notes, actionContext.request.reviewAudience);
         SPContext.logger.success('Attorney(s) assigned', {
           attorneyCount: attorneys?.length ?? 0,
           requestId: itemId,

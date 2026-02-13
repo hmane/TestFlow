@@ -21,13 +21,25 @@
 
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 
+function getLocalStorage(): Storage | undefined {
+  try {
+    if (typeof globalThis !== 'undefined' && 'localStorage' in globalThis) {
+      return globalThis.localStorage;
+    }
+  } catch {
+    // localStorage may be blocked in some environments
+  }
+  return undefined;
+}
+
 /**
  * Debug flag - controlled via localStorage for runtime toggling
  * Set localStorage.setItem('LRS_DEBUG', 'true') to enable verbose logging
  */
 const isDebugEnabled = (): boolean => {
   try {
-    return localStorage.getItem('LRS_DEBUG') === 'true';
+    const storage = getLocalStorage();
+    return storage?.getItem('LRS_DEBUG') === 'true';
   } catch {
     return false;
   }
@@ -346,7 +358,8 @@ export const debugFlag = {
    */
   enable: (): void => {
     try {
-      localStorage.setItem('LRS_DEBUG', 'true');
+      const storage = getLocalStorage();
+      storage?.setItem('LRS_DEBUG', 'true');
       SPContext.logger.info('Debug mode enabled. Refresh to see verbose logging.');
     } catch {
       // localStorage not available
@@ -358,7 +371,8 @@ export const debugFlag = {
    */
   disable: (): void => {
     try {
-      localStorage.removeItem('LRS_DEBUG');
+      const storage = getLocalStorage();
+      storage?.removeItem('LRS_DEBUG');
       SPContext.logger.info('Debug mode disabled.');
     } catch {
       // localStorage not available

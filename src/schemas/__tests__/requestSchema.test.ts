@@ -343,16 +343,16 @@ describe('Request Schema Validation', () => {
       }
     });
 
-    it('should reject cancel reason exceeding 500 characters', () => {
+    it('should reject cancel reason exceeding 1000 characters', () => {
       const data = {
-        cancelReason: 'x'.repeat(501),
+        cancelReason: 'x'.repeat(1001),
       };
 
       const result = cancelRequestSchema.safeParse(data);
       expect(result.success).toBe(false);
 
       if (!result.success) {
-        expect(result.error.issues[0].message).toContain('cannot exceed 500 characters');
+        expect(result.error.issues[0].message).toContain('cannot exceed 1000 characters');
       }
     });
   });
@@ -402,7 +402,7 @@ describe('Request Schema Validation', () => {
   });
 
   describe('closeoutWithTrackingIdSchema', () => {
-    it('should not require tracking ID when only foreside required', () => {
+    it('should require tracking ID when only foreside required', () => {
       const data = {
         trackingId: '',
         isForesideReviewRequired: true,
@@ -411,10 +411,10 @@ describe('Request Schema Validation', () => {
       };
 
       const result = closeoutWithTrackingIdSchema.safeParse(data);
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
     });
 
-    it('should not require tracking ID when only retail use', () => {
+    it('should require tracking ID when only retail use', () => {
       const data = {
         trackingId: '',
         isForesideReviewRequired: false,
@@ -423,7 +423,7 @@ describe('Request Schema Validation', () => {
       };
 
       const result = closeoutWithTrackingIdSchema.safeParse(data);
-      expect(result.success).toBe(true);
+      expect(result.success).toBe(false);
     });
 
     it('should require tracking ID when compliance reviewed and both foreside and retail use', () => {
@@ -444,7 +444,7 @@ describe('Request Schema Validation', () => {
 
     it('should not require tracking ID when compliance not reviewed', () => {
       const data = {
-        trackingId: 'dummy', // Need a non-empty string to pass base schema validation
+        trackingId: '',
         isForesideReviewRequired: true,
         isRetailUse: true,
         complianceReviewed: false,
@@ -456,7 +456,7 @@ describe('Request Schema Validation', () => {
 
     it('should not require tracking ID when no foreside or retail', () => {
       const data = {
-        trackingId: 'dummy', // Need a non-empty string to pass base schema validation
+        trackingId: '',
         isForesideReviewRequired: false,
         isRetailUse: false,
         complianceReviewed: true,

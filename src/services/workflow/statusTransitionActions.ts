@@ -22,7 +22,7 @@ import { generateCorrelationId } from '../../utils/correlationId';
 import { calculateAndUpdateStageTime } from '../timeTrackingService';
 
 import type { ILegalRequest } from '@appTypes/requestTypes';
-import { RequestStatus, LegalReviewStatus } from '@appTypes/workflowTypes';
+import { RequestStatus, LegalReviewStatus, ReviewAudience } from '@appTypes/workflowTypes';
 
 import { getCurrentUserPrincipal, updateItem } from './workflowHelpers';
 import type {
@@ -199,14 +199,17 @@ export async function assignAttorney(
   payload: IAssignAttorneyPayload
 ): Promise<IWorkflowActionResult> {
   const correlationId = generateCorrelationId('assignAttorney');
-  const isComplianceOnly = !payload.attorney || payload.attorney.length === 0;
+  const effectiveAttorneys = payload.reviewAudience === ReviewAudience.Compliance
+    ? undefined
+    : payload.attorney;
+  const isComplianceOnly = !effectiveAttorneys || effectiveAttorneys.length === 0;
 
   SPContext.logger.info(isComplianceOnly ? 'WorkflowActionService: Sending to compliance review' : 'WorkflowActionService: Assigning attorney(s)', {
     correlationId,
     itemId,
     isComplianceOnly,
-    attorneyCount: payload.attorney?.length ?? 0,
-    attorneyNames: payload.attorney?.map(a => a.title).join(', '),
+    attorneyCount: effectiveAttorneys?.length ?? 0,
+    attorneyNames: effectiveAttorneys?.map(a => a.title).join(', '),
     hasNotes: !!payload.notes,
     reviewAudience: payload.reviewAudience,
   });
@@ -228,9 +231,12 @@ export async function assignAttorney(
   updater.setDate(RequestsFields.SubmittedForReviewOn, now);
 
   // Only set attorney and legal review status if attorney(s) provided (not Compliance Only)
-  if (payload.attorney && payload.attorney.length > 0) {
-    updater.set(RequestsFields.Attorney, payload.attorney);
+  if (effectiveAttorneys && effectiveAttorneys.length > 0) {
+    updater.set(RequestsFields.Attorney, effectiveAttorneys);
     updater.setChoice(RequestsFields.LegalReviewStatus, LegalReviewStatus.NotStarted);
+  } else {
+    // Ensure stale attorney assignments are cleared for Compliance-only routing.
+    updater.set(RequestsFields.Attorney, []);
   }
 
   // Always set notes field - overwrites any previous value
@@ -270,7 +276,7 @@ export async function assignAttorney(
     correlationId,
     itemId,
     requestId: updatedRequest.requestId,
-    attorney: payload.attorney?.map(a => a.title).join(', ') ?? 'None (Compliance Only)',
+    attorney: effectiveAttorneys?.map(a => a.title).join(', ') ?? 'None (Compliance Only)',
   });
 
   return {

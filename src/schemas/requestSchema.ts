@@ -684,7 +684,7 @@ export const closeoutRequestSchema = z.object({
  */
 export const closeoutWithTrackingIdSchema = z
   .object({
-    trackingId: z.string().min(1, 'Tracking ID is required'),
+    trackingId: z.string().optional(),
     isForesideReviewRequired: z.boolean(),
     isRetailUse: z.boolean(),
     complianceReviewed: z.boolean(),
@@ -693,7 +693,7 @@ export const closeoutWithTrackingIdSchema = z
     data => {
       // Tracking ID required if compliance reviewed AND (foreside review required OR retail use)
       if (data.complianceReviewed && (data.isForesideReviewRequired || data.isRetailUse)) {
-        return data.trackingId && data.trackingId.length > 0;
+        return !!data.trackingId && data.trackingId.trim().length > 0;
       }
       return true;
     },

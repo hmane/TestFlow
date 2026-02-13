@@ -19,7 +19,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useLegalIntakeStore } from '@stores/legalIntakeStore';
 import { useCloseoutStore } from '@stores/closeoutStore';
 import { useDocumentsStore } from '@stores/documentsStore';
-import { RequestStatus, ReviewOutcome } from '@appTypes/workflowTypes';
+import { RequestStatus, ReviewAudience, ReviewOutcome } from '@appTypes/workflowTypes';
 import { DocumentType } from '@appTypes/documentTypes';
 import {
   assignAttorneySchema,
@@ -562,7 +562,10 @@ export function useRequestActionsState(props: {
       setValidationErrors([]);
 
       const formData = legalIntakeStore.getFormData();
-      const { attorney: attorneys, notes } = formData;
+      const { attorney: rawAttorneys, notes, reviewAudience } = formData;
+      const effectiveReviewAudience = reviewAudience || currentRequest?.reviewAudience;
+      const isComplianceOnly = effectiveReviewAudience === ReviewAudience.Compliance;
+      const attorneys = isComplianceOnly ? undefined : rawAttorneys;
       const primaryAttorney = attorneys?.[0];
 
       SPContext.logger.info('RequestActions: handleAssignAttorneyClick - form data from store', {
@@ -571,6 +574,7 @@ export function useRequestActionsState(props: {
         attorneyCount: attorneys?.length ?? 0,
         primaryAttorneyId: primaryAttorney?.id,
         primaryAttorneyTitle: primaryAttorney?.title,
+        reviewAudience: effectiveReviewAudience,
         notes,
       });
 
@@ -586,6 +590,7 @@ export function useRequestActionsState(props: {
         } : { id: '' },
         assignmentNotes: notes,
         currentStatus: status,
+        reviewAudience: effectiveReviewAudience,
       };
 
       const result = schema.safeParse(validationData);
@@ -615,10 +620,11 @@ export function useRequestActionsState(props: {
       SPContext.logger.info('RequestActions: Assigning attorney(s)', {
         attorneyCount: attorneys?.length ?? 0,
         attorneyNames: attorneys?.map(a => a.title).join(', '),
+        reviewAudience: effectiveReviewAudience,
         notes: notes ? 'provided' : 'none',
       });
 
-      await storeAssignAttorney(attorneys, notes);
+      await storeAssignAttorney(attorneys, notes, effectiveReviewAudience);
 
       SPContext.logger.success('RequestActions: Attorney assigned successfully');
       legalIntakeStore.reset();
@@ -627,7 +633,7 @@ export function useRequestActionsState(props: {
     } finally {
       setActiveAction(undefined);
     }
-  }, [legalIntakeStore, storeAssignAttorney, status, setValidationErrors]);
+  }, [legalIntakeStore, storeAssignAttorney, status, setValidationErrors, currentRequest]);
 
   /**
    * Check if review has "Approved with Comments" outcome

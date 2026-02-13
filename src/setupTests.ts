@@ -63,10 +63,23 @@ const localStorageMock = {
   length: 0,
   key: jest.fn(),
 };
-Object.defineProperty(window, 'localStorage', { value: localStorageMock });
+Object.defineProperty(window, 'localStorage', {
+  configurable: true,
+  writable: true,
+  value: localStorageMock,
+});
+Object.defineProperty(globalThis, 'localStorage', {
+  configurable: true,
+  writable: true,
+  value: localStorageMock,
+});
 
 // Mock sessionStorage
-Object.defineProperty(window, 'sessionStorage', { value: localStorageMock });
+Object.defineProperty(window, 'sessionStorage', {
+  configurable: true,
+  writable: true,
+  value: localStorageMock,
+});
 
 // Mock console methods to reduce noise in tests
 const originalConsoleError = console.error;

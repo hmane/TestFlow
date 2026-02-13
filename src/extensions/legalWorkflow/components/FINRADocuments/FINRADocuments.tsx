@@ -157,12 +157,22 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
       if (!storeState.currentRequest) return;
 
       const previousValue = storeState.currentRequest.finraCommentsReceived ?? false;
+      const previousComment = storeState.currentRequest.finraComment;
+      const nextComment = value ? storeState.currentRequest.finraComment : '';
 
       // Update both currentRequest and originalRequest so isDirty is unaffected
       useRequestStore.setState({
-        currentRequest: { ...storeState.currentRequest, finraCommentsReceived: value },
+        currentRequest: {
+          ...storeState.currentRequest,
+          finraCommentsReceived: value,
+          finraComment: nextComment,
+        },
         originalRequest: storeState.originalRequest
-          ? { ...storeState.originalRequest, finraCommentsReceived: value }
+          ? {
+            ...storeState.originalRequest,
+            finraCommentsReceived: value,
+            finraComment: value ? storeState.originalRequest.finraComment : '',
+          }
           : storeState.originalRequest,
       });
 
@@ -172,10 +182,17 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
 
       // Persist directly to SharePoint — the Save button is hidden in Awaiting FINRA Documents status
       isSavingRef.current = true;
+      const updatePayload: Record<string, unknown> = {
+        [RequestsFields.FINRACommentsReceived]: value,
+      };
+      if (!value) {
+        // Clear stale comment text when user marks "comments received" as false
+        updatePayload[RequestsFields.FINRAComment] = '';
+      }
       SPContext.sp.web.lists
         .getByTitle(Lists.Requests.Title)
         .items.getById(itemId)
-        .update({ [RequestsFields.FINRACommentsReceived]: value })
+        .update(updatePayload)
         .then(() => {
           isSavingRef.current = false;
           SPContext.logger.info('FINRACommentsReceived saved to SharePoint', { itemId, value });
@@ -187,9 +204,17 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
           const current = useRequestStore.getState();
           if (current.currentRequest) {
             useRequestStore.setState({
-              currentRequest: { ...current.currentRequest, finraCommentsReceived: previousValue },
+              currentRequest: {
+                ...current.currentRequest,
+                finraCommentsReceived: previousValue,
+                finraComment: previousComment,
+              },
               originalRequest: current.originalRequest
-                ? { ...current.originalRequest, finraCommentsReceived: previousValue }
+                ? {
+                  ...current.originalRequest,
+                  finraCommentsReceived: previousValue,
+                  finraComment: previousComment,
+                }
                 : current.originalRequest,
             });
           }

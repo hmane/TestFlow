@@ -321,7 +321,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
 
     storeSyncTimerRef.current = setTimeout(() => {
       setLegalIntakeValues({
-        selectedAttorney: selectedAttorneys,
+        selectedAttorney: showAttorneyField ? selectedAttorneys : undefined,
         assignmentNotes: notesValue,
         reviewAudience: localReviewAudience,
       });
@@ -332,7 +332,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
         clearTimeout(storeSyncTimerRef.current);
       }
     };
-  }, [selectedAttorneys, notesValue, localReviewAudience, setLegalIntakeValues, readOnly]);
+  }, [selectedAttorneys, notesValue, localReviewAudience, setLegalIntakeValues, readOnly, showAttorneyField]);
 
   // Get the loadRequest function from the store to refresh data after save
   const loadRequest = useRequestStore((s) => s.loadRequest);
@@ -432,8 +432,9 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
       // Read notes at click time via getValues to avoid stale closure values
       const currentNotes = getValues('attorneyAssignNotes');
       // Pass review audience to save Legal Admin's override
-      // For Compliance Only, selectedAttorneys will be undefined which is correct
-      await storeAssignAttorney(selectedAttorneys, currentNotes, localReviewAudience);
+      // For Compliance Only, explicitly pass undefined so hidden attorney picker values are ignored
+      const attorneysForAssignment = showAttorneyField ? selectedAttorneys : undefined;
+      await storeAssignAttorney(attorneysForAssignment, currentNotes, localReviewAudience);
       setShowSuccess(true);
       successTimerRef.current = setTimeout(() => {
         if (mountedRef.current) setShowSuccess(false);

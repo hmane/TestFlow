@@ -44,6 +44,7 @@ module.exports = {
     '^@services/(.*)$': '<rootDir>/src/services/$1',
     '^@stores/(.*)$': '<rootDir>/src/stores/$1',
     '^@schemas/(.*)$': '<rootDir>/src/schemas/$1',
+    '^@constants/(.*)$': '<rootDir>/src/constants/$1',
     '^@sp/(.*)$': '<rootDir>/src/sp/$1',
     '^@utils/(.*)$': '<rootDir>/src/utils/$1',
 
