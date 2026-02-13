@@ -17,7 +17,7 @@ import type { IPrincipal, ReviewAudience } from '@appTypes/index';
  * Legal intake form values for batch update
  */
 export interface ILegalIntakeValues {
-  selectedAttorney?: IPrincipal;
+  selectedAttorney?: IPrincipal[];
   assignmentNotes?: string;
   reviewAudience?: ReviewAudience;
 }
@@ -27,7 +27,7 @@ export interface ILegalIntakeValues {
  */
 export interface ILegalIntakeState {
   // Form values
-  selectedAttorney?: IPrincipal;
+  selectedAttorney?: IPrincipal[];
   assignmentNotes?: string;
   reviewAudience?: ReviewAudience;
 
@@ -35,11 +35,11 @@ export interface ILegalIntakeState {
   isDirty: boolean;
 
   // Actions
-  setSelectedAttorney: (attorney: IPrincipal | undefined) => void;
+  setSelectedAttorney: (attorneys: IPrincipal[] | undefined) => void;
   setAssignmentNotes: (notes: string | undefined) => void;
   setReviewAudience: (audience: ReviewAudience | undefined) => void;
   setFormValues: (values: {
-    attorney?: IPrincipal;
+    attorney?: IPrincipal[];
     notes?: string;
     reviewAudience?: ReviewAudience;
   }) => void;
@@ -47,7 +47,7 @@ export interface ILegalIntakeState {
   setLegalIntakeValues: (values: ILegalIntakeValues) => void;
   reset: () => void;
   getFormData: () => {
-    attorney?: IPrincipal;
+    attorney?: IPrincipal[];
     notes?: string;
     reviewAudience?: ReviewAudience;
   };
@@ -71,14 +71,14 @@ export const useLegalIntakeStore = create<ILegalIntakeState>()(
     (set, get) => ({
       ...initialState,
 
-      setSelectedAttorney: (attorney) => {
+      setSelectedAttorney: (attorneys) => {
         set({
-          selectedAttorney: attorney,
+          selectedAttorney: attorneys,
           isDirty: true,
         });
-        SPContext.logger.info('Legal Intake: Attorney selected', {
-          attorneyId: attorney?.id,
-          attorneyName: attorney?.title,
+        SPContext.logger.info('Legal Intake: Attorney(s) selected', {
+          count: attorneys?.length ?? 0,
+          names: attorneys?.map(a => a.title).join(', '),
         });
       },
 
@@ -149,9 +149,9 @@ export const useLegalIntakeStore = create<ILegalIntakeState>()(
 // ============================================
 
 /**
- * Selector for selected attorney only
+ * Selector for selected attorney(s) only
  */
-export const useSelectedAttorney = (): IPrincipal | undefined =>
+export const useSelectedAttorney = (): IPrincipal[] | undefined =>
   useLegalIntakeStore(state => state.selectedAttorney);
 
 /**
@@ -177,7 +177,7 @@ export const useLegalIntakeDirty = (): boolean =>
  * Use this when you only need actions without subscribing to state changes
  */
 export const useLegalIntakeActions = (): {
-  setSelectedAttorney: (attorney: IPrincipal | undefined) => void;
+  setSelectedAttorney: (attorneys: IPrincipal[] | undefined) => void;
   setAssignmentNotes: (notes: string | undefined) => void;
   setReviewAudience: (audience: ReviewAudience | undefined) => void;
   setLegalIntakeValues: (values: ILegalIntakeValues) => void;

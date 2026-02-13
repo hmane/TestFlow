@@ -17,6 +17,7 @@ export enum DocumentType {
   SubjectMatterExpertApproval = 'Subject Matter Expert Approval',
   PerformanceApproval = 'Performance Approval',
   OtherApproval = 'Other Approval',
+  ReviewFinal = 'Review Final',
 }
 
 /**

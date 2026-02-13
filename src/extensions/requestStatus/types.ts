@@ -51,7 +51,7 @@ export interface IStatusListItemData {
   // Review information
   legalReviewStatus?: LegalReviewStatus;
   legalReviewOutcome?: ReviewOutcome;
-  legalReviewAssignedAttorney?: IPrincipal;
+  legalReviewAssignedAttorney?: IPrincipal[];
   legalReviewAssignedOn?: Date;
   legalReviewCompletedOn?: Date;
 

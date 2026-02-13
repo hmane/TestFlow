@@ -503,7 +503,7 @@ export const useRequestStore = create<IRequestState>()(
        * Uses dedicated workflow action - only updates attorney and status fields
        * When attorney is undefined (Compliance Only), proceeds directly to compliance review
        */
-      assignAttorney: async (attorney: IPrincipal | undefined, notes?: string, reviewAudience?: ReviewAudience): Promise<void> => {
+      assignAttorney: async (attorney: IPrincipal[] | undefined, notes?: string, reviewAudience?: ReviewAudience): Promise<void> => {
         const state = get();
 
         if (!state.itemId) {
@@ -522,9 +522,11 @@ export const useRequestStore = create<IRequestState>()(
           isDirty: false,
         });
 
-        SPContext.logger.info(attorney ? 'Attorney assigned' : 'Sent to compliance review', {
+        const hasAttorneys = attorney && attorney.length > 0;
+        SPContext.logger.info(hasAttorneys ? 'Attorney(s) assigned' : 'Sent to compliance review', {
           itemId: state.itemId,
-          attorney: attorney?.title ?? 'None (Compliance Only)',
+          attorneys: hasAttorneys ? attorney.map(a => a.title).join(', ') : 'None (Compliance Only)',
+          attorneyCount: attorney?.length ?? 0,
           reviewAudience,
           fieldsUpdated: result.fieldsUpdated,
         });
@@ -659,10 +661,13 @@ export const useRequestStore = create<IRequestState>()(
           throw new Error('Cannot complete FINRA documents - no item ID');
         }
 
-        const payload: { notes?: string; finraCommentsReceived?: boolean } = {};
+        const payload: { notes?: string; finraCommentsReceived?: boolean; finraComment?: string } = {};
         if (notes) payload.notes = notes;
         if (state.currentRequest?.finraCommentsReceived !== undefined) {
           payload.finraCommentsReceived = state.currentRequest.finraCommentsReceived;
+        }
+        if (state.currentRequest?.finraComment !== undefined) {
+          payload.finraComment = state.currentRequest.finraComment;
         }
 
         const result = await completeFINRADocumentsAction(state.itemId, Object.keys(payload).length > 0 ? payload : undefined);
@@ -829,11 +834,12 @@ export const useRequestStore = create<IRequestState>()(
           throw new Error('No request loaded');
         }
 
-        const previousAttorney = state.currentRequest.attorney || state.currentRequest.legalReview?.assignedAttorney;
+        const previousAttorneys = state.currentRequest.attorney || state.currentRequest.legalReview?.assignedAttorney;
+        const previousAttorneyNames = previousAttorneys?.map(a => a.title).join(', ') || 'Unknown';
 
         SPContext.logger.warn('ADMIN OVERRIDE: Clearing attorney assignment', {
           requestId: state.currentRequest.requestId,
-          previousAttorney: previousAttorney?.title,
+          previousAttorneys: previousAttorneyNames,
           reason,
           adminUser: SPContext.currentUser?.email,
         });
@@ -841,16 +847,16 @@ export const useRequestStore = create<IRequestState>()(
         // Build admin override audit entry
         const adminOverrideNotes = formatAdminAuditEntry(
           'ATTORNEY CLEARED',
-          `Removed attorney "${previousAttorney?.title || 'Unknown'}" from assignment`,
+          `Removed attorney(s) "${previousAttorneyNames}" from assignment`,
           reason,
           state.currentRequest.adminOverrideNotes
         );
 
         await get().updateRequest({
-          attorney: undefined,
+          attorney: [],
           legalReview: {
             ...state.currentRequest.legalReview,
-            assignedAttorney: undefined,
+            assignedAttorney: [],
             assignedOn: undefined,
           } as ILegalReview,
           adminOverrideNotes,

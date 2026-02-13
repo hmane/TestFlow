@@ -146,18 +146,6 @@ const StyledBooleanCallout: React.FC<IStyledBooleanCalloutProps> = ({
       },
     }}
   >
-    {checked && (
-      <Icon
-        iconName='SkypeCheck'
-        styles={{
-          root: {
-            fontSize: '20px',
-            color: '#107c10',
-            flexShrink: 0,
-          },
-        }}
-      />
-    )}
     <Stack tokens={{ childrenGap: 2 }} styles={{ root: { flex: 1 } }}>
       <Checkbox
         label={label}

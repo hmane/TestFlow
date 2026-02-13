@@ -198,6 +198,7 @@ const QUERY2_FIELDS = [
   RequestsFields.FINRANotes,
   RequestsFields.AwaitingFINRASince,
   RequestsFields.FINRACommentsReceived,
+  RequestsFields.FINRAComment,
 
   // Cancellation
   RequestsFields.CancelledBy,
@@ -515,7 +516,7 @@ export function mapRequestListItemToRequest(item: IRawSharePointItem): ILegalReq
     otherApprovalTitle: extractor.string(RequestsFields.OtherApprovalTitle),
 
     // Legal Review
-    attorney: extractor.user(RequestsFields.Attorney),
+    attorney: extractor.userMulti(RequestsFields.Attorney),
     attorneyAssignNotes: extractor.string(RequestsFields.AttorneyAssignNotes),
     legalReviewStatus: extractor.string(RequestsFields.LegalReviewStatus) as LegalReviewStatus,
     legalReviewOutcome: extractor.string(RequestsFields.LegalReviewOutcome) as LegalReviewOutcome,
@@ -550,6 +551,7 @@ export function mapRequestListItemToRequest(item: IRawSharePointItem): ILegalReq
     finraNotes: extractor.string(RequestsFields.FINRANotes),
     awaitingFINRASince: extractor.date(RequestsFields.AwaitingFINRASince),
     finraCommentsReceived: extractor.boolean(RequestsFields.FINRACommentsReceived, false),
+    finraComment: extractor.string(RequestsFields.FINRAComment),
 
     // Cancellation
     cancelledBy: extractor.user(RequestsFields.CancelledBy),
@@ -598,7 +600,7 @@ export function mapRequestListItemToRequest(item: IRawSharePointItem): ILegalReq
       reviewNotes: extractor.string(RequestsFields.LegalReviewNotes),
       statusUpdatedBy: extractor.user(RequestsFields.LegalStatusUpdatedBy),
       statusUpdatedOn: extractor.date(RequestsFields.LegalStatusUpdatedOn),
-      assignedAttorney: extractor.user(RequestsFields.Attorney),
+      assignedAttorney: extractor.userMulti(RequestsFields.Attorney),
       assignedOn: extractor.date(RequestsFields.SubmittedForReviewOn),
       completedOn: extractor.date(RequestsFields.LegalReviewCompletedOn),
     },

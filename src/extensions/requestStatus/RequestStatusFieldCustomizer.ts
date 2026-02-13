@@ -165,7 +165,7 @@ export default class RequestStatusFieldCustomizer
         // Legal review information
         legalReviewStatus: listItem.getValueByName('LegalReviewStatus') as LegalReviewStatus | undefined,
         legalReviewOutcome: listItem.getValueByName('LegalReviewOutcome') as ReviewOutcome | undefined,
-        legalReviewAssignedAttorney: this.extractPrincipal(listItem, 'Attorney'),
+        legalReviewAssignedAttorney: this.extractPrincipalMulti(listItem, 'Attorney'),
         legalReviewAssignedOn: this.parseDate(listItem.getValueByName('LegalReviewAssignedOn')),
         legalReviewCompletedOn: this.parseDate(listItem.getValueByName('LegalReviewCompletedOn')),
 
@@ -259,6 +259,38 @@ export default class RequestStatusFieldCustomizer
     } catch (extractError: unknown) {
       // Log warning but don't fail - missing principal data is not critical
       SPContext.logger.warn(`Failed to extract principal for field ${fieldName}`, extractError);
+      return undefined;
+    }
+  }
+
+  /**
+   * Extract multiple user principals from a UserMulti SharePoint field
+   */
+  private extractPrincipalMulti(listItem: { getValueByName: (name: string) => unknown }, fieldName: string): IPrincipal[] | undefined {
+    try {
+      const value = listItem.getValueByName(fieldName);
+      if (!value) return undefined;
+
+      // UserMulti fields return an array
+      if (Array.isArray(value)) {
+        return value.map((lookupValue: Record<string, unknown>) => ({
+          id: String(lookupValue.lookupId || lookupValue.id || lookupValue.Id || 0),
+          title: String(lookupValue.lookupValue || lookupValue.title || lookupValue.Title || 'Unknown'),
+          email: String(lookupValue.email || lookupValue.Email || ''),
+          loginName: String(lookupValue.loginName || lookupValue.LoginName || lookupValue.sip || ''),
+        }));
+      }
+
+      // Fallback: single value (backwards compatibility)
+      const lookupValue = value as Record<string, unknown>;
+      return [{
+        id: String(lookupValue.lookupId || lookupValue.id || lookupValue.Id || 0),
+        title: String(lookupValue.lookupValue || lookupValue.title || lookupValue.Title || 'Unknown'),
+        email: String(lookupValue.email || lookupValue.Email || ''),
+        loginName: String(lookupValue.loginName || lookupValue.LoginName || lookupValue.sip || ''),
+      }];
+    } catch (extractError: unknown) {
+      SPContext.logger.warn(`Failed to extract principal multi for field ${fieldName}`, extractError);
       return undefined;
     }
   }

@@ -42,8 +42,8 @@ export interface ISubmitRequestPayload {
  * Note: attorney is optional - when ReviewAudience = Compliance Only, no attorney is needed
  */
 export interface IAssignAttorneyPayload {
-  /** Attorney to assign (optional - not required for Compliance Only) */
-  attorney?: IPrincipal;
+  /** Attorney(s) to assign (optional - not required for Compliance Only) */
+  attorney?: IPrincipal[];
   /** Assignment notes (optional) */
   notes?: string;
   /** Review audience override (optional - Legal Admin can change from submitter's selection) */
@@ -120,6 +120,8 @@ export interface ICompleteFINRADocumentsPayload {
   notes?: string;
   /** Whether FINRA comments have been received */
   finraCommentsReceived?: boolean;
+  /** FINRA comment text (optional, saved with completion) */
+  finraComment?: string;
 }
 
 // ============================================

@@ -122,6 +122,7 @@ export const RequestsFields = {
   FINRACompletedOn: 'FINRACompletedOn',
   FINRANotes: 'FINRANotes',
   AwaitingFINRASince: 'AwaitingFINRASince',
-  FINRACommentsReceived: 'FINRACommentsReceived'
+  FINRACommentsReceived: 'FINRACommentsReceived',
+  FINRAComment: 'FINRAComment'
 } as const;
 

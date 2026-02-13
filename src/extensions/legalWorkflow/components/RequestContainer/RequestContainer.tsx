@@ -189,8 +189,8 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
       legalIntakeCompletedOn: currentRequest?.submittedForReviewOn,
       legalIntakeCompletedBy: currentRequest?.submittedForReviewBy?.title,
       legalIntakeCompletedByLogin: currentRequest?.submittedForReviewBy?.loginName,
-      assignedAttorney: currentRequest?.attorney?.title,
-      assignedAttorneyLogin: currentRequest?.attorney?.loginName,
+      assignedAttorney: currentRequest?.attorney?.map(a => a.title).join(', '),
+      assignedAttorneyLogin: currentRequest?.attorney?.[0]?.loginName,
       // Review step info
       reviewStartedOn: currentRequest?.submittedForReviewOn,
       reviewAudience: currentRequest?.reviewAudience,

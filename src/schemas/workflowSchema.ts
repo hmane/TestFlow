@@ -117,19 +117,19 @@ export const submitLegalReviewSchema = z.object({
   currentStatus: z.enum([RequestStatus.InReview], {
     message: 'Legal review can only be submitted when request is In Review status',
   }),
-  assignedAttorneyId: z.string().optional(),
+  assignedAttorneyIds: z.array(z.string()).optional(),
   currentUserId: z.string(),
   isAdmin: z.boolean(),
   isLegalAdmin: z.boolean(),
 }).superRefine((data, ctx) => {
-  // Validate that current user is the assigned attorney OR has override permission
+  // Validate that current user is one of the assigned attorneys OR has override permission
   const canOverride = data.isAdmin || data.isLegalAdmin;
-  const isAssignedAttorney = data.assignedAttorneyId && data.currentUserId === data.assignedAttorneyId;
+  const isAssignedAttorney = data.assignedAttorneyIds && data.assignedAttorneyIds.includes(data.currentUserId);
 
   if (!canOverride && !isAssignedAttorney) {
     ctx.addIssue({
       code: 'custom',
-      message: 'Only the assigned attorney can submit the legal review',
+      message: 'Only an assigned attorney can submit the legal review',
       path: ['outcome'],
     });
   }

@@ -49,9 +49,9 @@ export interface IWorkflowPermissionsResult {
   availableActions: IAvailableActions;
 
   // Permission-aware action handlers
-  assignAttorney: (attorney: IPrincipal, notes?: string) => Promise<IPermissionCheckResult>;
+  assignAttorney: (attorneys: IPrincipal[] | undefined, notes?: string) => Promise<IPermissionCheckResult>;
   sendToCommittee: (notes?: string) => Promise<IPermissionCheckResult>;
-  committeeAssignAttorney: (attorney: IPrincipal, notes?: string) => Promise<IPermissionCheckResult>;
+  committeeAssignAttorney: (attorneys: IPrincipal[] | undefined, notes?: string) => Promise<IPermissionCheckResult>;
   submitLegalReview: (outcome: ReviewOutcome, notes: string) => Promise<IPermissionCheckResult>;
   submitComplianceReview: (
     outcome: ReviewOutcome,
@@ -228,7 +228,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
    * Assign attorney (direct assignment by Legal Admin)
    */
   const assignAttorney = React.useCallback(
-    async (attorney: IPrincipal, notes?: string): Promise<IPermissionCheckResult> => {
+    async (attorneys: IPrincipal[] | undefined, notes?: string): Promise<IPermissionCheckResult> => {
       if (!actionContext || !itemId) {
         return { allowed: false, reason: 'Request not loaded' };
       }
@@ -242,9 +242,10 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
         return permissionCheck;
       }
 
-      // Validate with schema
+      // Validate with schema using primary attorney for validation
+      const primaryAttorney = attorneys?.[0];
       const validation = assignAttorneySchema.safeParse({
-        attorney,
+        attorney: primaryAttorney || { id: '' },
         assignmentNotes: notes,
         currentStatus: actionContext.request.status,
       });
@@ -259,9 +260,9 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
       setError(undefined);
 
       try {
-        await storeAssignAttorney(attorney, notes);
-        SPContext.logger.success('Attorney assigned', {
-          attorneyId: attorney.id,
+        await storeAssignAttorney(attorneys, notes);
+        SPContext.logger.success('Attorney(s) assigned', {
+          attorneyCount: attorneys?.length ?? 0,
           requestId: itemId,
         });
         return { allowed: true };
@@ -330,7 +331,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
    * Committee assigns attorney
    */
   const committeeAssignAttorney = React.useCallback(
-    async (attorney: IPrincipal, notes?: string): Promise<IPermissionCheckResult> => {
+    async (attorneys: IPrincipal[] | undefined, notes?: string): Promise<IPermissionCheckResult> => {
       if (!actionContext || !itemId) {
         return { allowed: false, reason: 'Request not loaded' };
       }
@@ -344,9 +345,10 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
         return permissionCheck;
       }
 
-      // Validate with schema
+      // Validate with schema using primary attorney for validation
+      const primaryAttorney = attorneys?.[0];
       const validation = committeeAssignAttorneySchema.safeParse({
-        attorney,
+        attorney: primaryAttorney || { id: '' },
         assignmentNotes: notes,
         currentStatus: actionContext.request.status,
       });
@@ -361,9 +363,9 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
       setError(undefined);
 
       try {
-        await storeAssignAttorney(attorney, notes);
-        SPContext.logger.success('Attorney assigned by committee', {
-          attorneyId: attorney.id,
+        await storeAssignAttorney(attorneys, notes);
+        SPContext.logger.success('Attorney(s) assigned by committee', {
+          attorneyCount: attorneys?.length ?? 0,
           requestId: itemId,
         });
         return { allowed: true };
@@ -402,7 +404,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
         outcome,
         reviewNotes: notes,
         currentStatus: actionContext.request.status,
-        assignedAttorneyId: actionContext.request.legalReview?.assignedAttorney?.id,
+        assignedAttorneyIds: actionContext.request.legalReview?.assignedAttorney?.map(a => String(a.id)),
         currentUserId,
         isAdmin: permissions.isAdmin,
         isLegalAdmin: permissions.isLegalAdmin,

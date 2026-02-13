@@ -120,6 +120,7 @@ export const generateMockData = (dateRange: DateRangeOption): IDashboardData => 
     totalSubmitterHours: totalHoursLogged - reviewerShare,
     awaitingFINRADocuments: Math.floor(Math.random() * 8) + 2,
     finraCommentsReceived: Math.floor(Math.random() * 5) + 1,
+    finraWithCommentText: Math.floor(Math.random() * 3),
   };
 
   // Generate status distribution
@@ -401,7 +402,8 @@ export const fetchDashboardData = async (
           RequestsFields.TargetReturnDate,
           `${RequestsFields.Attorney}/ID`,
           `${RequestsFields.Attorney}/Title`,
-          RequestsFields.FINRACommentsReceived
+          RequestsFields.FINRACommentsReceived,
+          RequestsFields.FINRAComment
         )
         .expand(RequestsFields.Attorney)
         .filter(snapshotFilter)
@@ -471,6 +473,9 @@ export const fetchDashboardData = async (
     const snapshotFINRAComments = snapshotAwaitingFINRA.filter(
       (i: { FINRACommentsReceived?: boolean }) => i.FINRACommentsReceived === true
     ).length;
+    const snapshotFINRAWithComment = snapshotAwaitingFINRA.filter(
+      (i: { FINRAComment?: string }) => !!i.FINRAComment
+    ).length;
 
     // Calculate trends from previous period
     const prevTotalRequests = prevItems.length;
@@ -517,6 +522,7 @@ export const fetchDashboardData = async (
       totalSubmitterHours: Math.round(totalSubmitterHrs * 10) / 10,
       awaitingFINRADocuments: snapshotAwaitingFINRA.length,
       finraCommentsReceived: snapshotFINRAComments,
+      finraWithCommentText: snapshotFINRAWithComment,
     };
 
     // Calculate status distribution
@@ -564,29 +570,33 @@ export const fetchDashboardData = async (
       a.date.getTime() - b.date.getTime()
     );
 
-    // Calculate attorney workload
+    // Calculate attorney workload (supports multi-attorney assignments)
     const attorneyData: Record<number, IAttorneyWorkload> = {};
-    items.forEach((item: { Attorney?: { Id: number; Title: string }; Status: string; TotalReviewerHours?: number }) => {
-      if (item.Attorney && item.Attorney.Id) {
-        if (!attorneyData[item.Attorney.Id]) {
-          attorneyData[item.Attorney.Id] = {
-            attorneyId: item.Attorney.Id,
-            attorneyName: item.Attorney.Title,
-            assignedCount: 0,
-            inProgressCount: 0,
-            completedCount: 0,
-            avgHours: 0,
-          };
+    items.forEach((item: { Attorney?: Array<{ Id: number; Title: string }> | { Id: number; Title: string }; Status: string; TotalReviewerHours?: number }) => {
+      // Normalize to array (handles both single and multi-value field formats)
+      const attorneys = Array.isArray(item.Attorney) ? item.Attorney : (item.Attorney ? [item.Attorney] : []);
+      attorneys.forEach((attorney) => {
+        if (attorney && attorney.Id) {
+          if (!attorneyData[attorney.Id]) {
+            attorneyData[attorney.Id] = {
+              attorneyId: attorney.Id,
+              attorneyName: attorney.Title,
+              assignedCount: 0,
+              inProgressCount: 0,
+              completedCount: 0,
+              avgHours: 0,
+            };
+          }
+          attorneyData[attorney.Id].assignedCount++;
+          if (item.Status === 'In Review') {
+            attorneyData[attorney.Id].inProgressCount++;
+          }
+          if (item.Status === 'Completed') {
+            attorneyData[attorney.Id].completedCount++;
+          }
+          attorneyData[attorney.Id].avgHours += (item.TotalReviewerHours || 0);
         }
-        attorneyData[item.Attorney.Id].assignedCount++;
-        if (item.Status === 'In Review') {
-          attorneyData[item.Attorney.Id].inProgressCount++;
-        }
-        if (item.Status === 'Completed') {
-          attorneyData[item.Attorney.Id].completedCount++;
-        }
-        attorneyData[item.Attorney.Id].avgHours += (item.TotalReviewerHours || 0);
-      }
+      });
     });
 
     const attorneyValues: IAttorneyWorkload[] = [];

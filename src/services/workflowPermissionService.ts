@@ -257,19 +257,20 @@ export function canSubmitLegalReview(context: IActionContext): IPermissionCheckR
     };
   }
 
-  // Must be the assigned attorney - check both nested object and flat field
-  const assignedAttorneyId = request.legalReview?.assignedAttorney?.id || request.attorney?.id;
-  if (!assignedAttorneyId) {
+  // Must be one of the assigned attorneys - check both nested object and flat field
+  const assignedAttorneys = request.legalReview?.assignedAttorney || request.attorney;
+  const assignedAttorneyIds = assignedAttorneys?.map(a => String(a.id)) || [];
+  if (assignedAttorneyIds.length === 0) {
     return {
       allowed: false,
       reason: 'No attorney has been assigned to this request',
     };
   }
 
-  if (String(assignedAttorneyId) !== String(currentUserId)) {
+  if (!assignedAttorneyIds.includes(String(currentUserId))) {
     return {
       allowed: false,
-      reason: 'Only the assigned attorney can submit the legal review',
+      reason: 'Only an assigned attorney can submit the legal review',
     };
   }
 
@@ -571,8 +572,10 @@ export function canEditRequest(context: IActionContext): IPermissionCheckResult 
 
   // Assigned attorney can edit legal review fields during In Review
   if (permissions.isAttorney && request.status === RequestStatus.InReview) {
-    const assignedAttorneyId = request.legalReview?.assignedAttorney?.id;
-    if (String(assignedAttorneyId) === String(currentUserId)) {
+    const isAssigned = request.legalReview?.assignedAttorney?.some(
+      a => String(a.id) === String(currentUserId)
+    );
+    if (isAssigned) {
       return { allowed: true };
     }
   }

@@ -550,15 +550,26 @@ A Tracking ID is required if:
 
 Enter the Tracking ID assigned by Compliance/Foreside.
 
+### Review Final Documents (Approved With Comments)
+
+If any review outcome was **Approved With Comments**, you must upload at least one **Review Final** document before completing closeout:
+
+1. In the Closeout form, locate the **Final Document(s) with Implemented Comments** section
+2. Check the **Acknowledge Comments** checkbox
+3. Upload one or more final documents showing how review comments were addressed
+4. These documents use the `Review Final` document type
+5. At least one document is required — the system will show a validation error if none are uploaded
+
 ### Completing Closeout
 
 1. Open your request in Closeout status
 2. Enter Tracking ID if required
-3. Review the final summary
-4. Click **Complete Request**
-5. Status changes to:
-   - **Awaiting Foreside Documents** if "Foreside Review Required" = Yes
-   - **Completed** if "Foreside Review Required" = No
+3. If reviews were "Approved With Comments", acknowledge comments and upload Review Final documents
+4. Review the final summary
+5. Click **Complete Request**
+6. Status changes to:
+   - **Awaiting FINRA Documents** if request requires FINRA documentation
+   - **Completed** if no FINRA documentation is needed
 
 ### Automatic Completion
 
@@ -566,42 +577,51 @@ If any review outcome is **Not Approved**, the request automatically moves to **
 
 ---
 
-## Awaiting Foreside Documents
+## Awaiting FINRA Documents
 
-This section applies when **Foreside Review Required** was set to "Yes" during Compliance review. After completing Closeout, the request enters the **Awaiting Foreside Documents** status.
+After completing Closeout, certain requests enter the **Awaiting FINRA Documents** status. This is the final stage before the request is marked as Completed.
 
 ### Understanding This Status
 
-- **Purpose**: Upload Foreside letter documents received from Foreside for audit and compliance purposes
-- **Timeline**: Foreside documents may take weeks or months to receive
-- **Who Can Act**: Submitter (request creator) or Admin
+- **Purpose**: Upload FINRA letter documents for audit and compliance purposes
+- **Timeline**: FINRA documents may take weeks or months to receive
+- **Who Can Act**: Submitter (request creator), users with Submitter role, or Admin
 - **Note**: This request does NOT appear in "Open Requests" views since the review work is complete
 
 ### What You Cannot Do
 
-During Awaiting Foreside Documents status:
+During Awaiting FINRA Documents status:
 - **Cancel** action is not available
 - **Hold** action is not available
 - No time tracking occurs (the waiting period is not counted)
 
-### Uploading Foreside Documents
+### Uploading FINRA Documents
 
-1. Open your request in Awaiting Foreside Documents status
-2. Navigate to the **Foreside Documents** section
-3. Upload one or more Foreside letter documents
+1. Open your request in Awaiting FINRA Documents status
+2. Navigate to the **FINRA Documents** section
+3. Upload one or more FINRA letter documents
 4. Add optional notes about the documents
-5. At least one document must be uploaded before completing
+
+### FINRA Comments Received
+
+If FINRA has provided comments on your submission:
+
+1. Check the **FINRA Comments Received** checkbox (this saves immediately to SharePoint)
+2. A **FINRA Comment** text field appears below the checkbox
+3. Enter details about the FINRA comments received (optional)
+4. The FINRA Comment text is saved when you click **Complete Request**
 
 ### Completing the Request
 
-1. Ensure at least one Foreside document is uploaded
-2. Add any final notes (optional)
-3. Click **Complete Request**
-4. Status changes to **Completed**
+1. Upload at least one FINRA document (or complete without documents if none are needed)
+2. Toggle **FINRA Comments Received** if applicable and add comment details
+3. Add any final notes (optional)
+4. Click **Complete Request**
+5. Status changes to **Completed**
 
-### Foreside Documents View
+### FINRA Documents View
 
-All requests awaiting Foreside documents can be found in the **Awaiting Foreside Documents** dashboard view, sorted by the date they entered this status.
+All requests awaiting FINRA documents can be found in the **Awaiting FINRA Documents** dashboard view, sorted by the date they entered this status.
 
 ---
 
@@ -614,6 +634,8 @@ All requests awaiting Foreside documents can be found in the **Awaiting Foreside
 | **Review** | Materials requiring legal/compliance review | Main marketing materials |
 | **Supplemental** | Supporting documents | Background info, reference materials |
 | **Approval** | Proof of pre-approvals | Approval emails, signed forms |
+| **Review Final** | Final documents with implemented comments | At Closeout when reviews are "Approved With Comments" |
+| **FINRA** | FINRA letter documents | During Awaiting FINRA Documents stage |
 
 ### Uploading Documents
 

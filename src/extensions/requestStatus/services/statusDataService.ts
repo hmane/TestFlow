@@ -144,7 +144,7 @@ function mapItemToStatusData(item: Record<string, unknown>): IStatusListItemData
     // Legal Review
     legalReviewStatus: extractor.string(RequestsFields.LegalReviewStatus) as LegalReviewStatus | undefined,
     legalReviewOutcome: extractor.string(RequestsFields.LegalReviewOutcome) as ReviewOutcome | undefined,
-    legalReviewAssignedAttorney: extractor.user(RequestsFields.Attorney),
+    legalReviewAssignedAttorney: extractor.userMulti(RequestsFields.Attorney),
     legalReviewAssignedOn: extractor.date(RequestsFields.SubmittedForReviewOn),
     legalReviewCompletedOn: extractor.date(RequestsFields.LegalReviewCompletedOn),
 

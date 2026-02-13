@@ -156,21 +156,20 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
     (permissions.isLegalAdmin || permissions.isAdmin) && !isAfterReviewsCompleted;
 
   /**
-   * Convert attorney IPrincipal to have numeric ID for GroupUsersPicker compatibility
+   * Convert attorney IPrincipal[] to have numeric IDs for GroupUsersPicker compatibility
    * The GroupUsersPicker component uses useGroupUsers which returns numeric IDs,
    * but SPExtractor returns string IDs. This helper ensures ID type consistency.
    */
-  const normalizeAttorneyForPicker = React.useCallback(
-    (attorney: IPrincipal | undefined): IPrincipal[] => {
-      if (!attorney) return [];
-      // Convert ID to number if it's a numeric string
-      const numericId = typeof attorney.id === 'string' ? parseInt(attorney.id, 10) : attorney.id;
-      return [
-        {
+  const normalizeAttorneysForPicker = React.useCallback(
+    (attorneys: IPrincipal[] | undefined): IPrincipal[] => {
+      if (!attorneys || attorneys.length === 0) return [];
+      return attorneys.map((attorney) => {
+        const numericId = typeof attorney.id === 'string' ? parseInt(attorney.id, 10) : attorney.id;
+        return {
           ...attorney,
           id: isNaN(numericId as number) ? attorney.id : String(numericId),
-        },
-      ];
+        };
+      });
     },
     []
   );
@@ -188,7 +187,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
     defaultValues: {
       // Use attorney from currentRequest (assigned attorney for completed intake)
       // or from legalReview for in-progress intake
-      attorney: normalizeAttorneyForPicker(
+      attorney: normalizeAttorneysForPicker(
         currentRequest?.attorney || currentRequest?.legalReview?.assignedAttorney
       ),
       attorneyAssignNotes: undefined,
@@ -214,13 +213,13 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
     if (isEditMode && currentRequest && !hasInitializedRef.current) {
       hasInitializedRef.current = true;
       // Reset form with current request values, normalizing attorney ID for picker
-      const normalizedAttorney = normalizeAttorneyForPicker(currentRequest.attorney);
-      SPContext.logger.info('LegalIntakeForm: Resetting form with attorney', {
-        originalAttorney: currentRequest.attorney,
-        normalizedAttorney,
+      const normalizedAttorneys = normalizeAttorneysForPicker(currentRequest.attorney);
+      SPContext.logger.info('LegalIntakeForm: Resetting form with attorneys', {
+        originalAttorneys: currentRequest.attorney,
+        normalizedAttorneys,
       });
       reset({
-        attorney: normalizedAttorney,
+        attorney: normalizedAttorneys,
         attorneyAssignNotes: undefined, // Start fresh for new notes
         reviewAudience: currentRequest.reviewAudience || ReviewAudience.Both,
       });
@@ -229,7 +228,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
     if (!isEditMode) {
       hasInitializedRef.current = false;
     }
-  }, [isEditMode, currentRequest, reset, normalizeAttorneyForPicker]);
+  }, [isEditMode, currentRequest, reset, normalizeAttorneysForPicker]);
 
   // Get validation errors from RequestFormContext (set by RequestActions during Zod validation)
   // Use the safe version that returns undefined if context is not available
@@ -298,7 +297,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
     setLocalReviewAudience(currentRequestReviewAudience || ReviewAudience.Both);
   }, [currentRequestId, currentRequestReviewAudience]);
 
-  const selectedAttorney = attorneyValue && attorneyValue.length > 0 ? attorneyValue[0] : undefined;
+  const selectedAttorneys = attorneyValue && attorneyValue.length > 0 ? attorneyValue : undefined;
 
   // Determine if attorney field should be shown based on review audience
   // Hide attorney field when ReviewAudience = Compliance Only (no attorney needed)
@@ -322,7 +321,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
 
     storeSyncTimerRef.current = setTimeout(() => {
       setLegalIntakeValues({
-        selectedAttorney,
+        selectedAttorney: selectedAttorneys,
         assignmentNotes: notesValue,
         reviewAudience: localReviewAudience,
       });
@@ -333,7 +332,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
         clearTimeout(storeSyncTimerRef.current);
       }
     };
-  }, [selectedAttorney, notesValue, localReviewAudience, setLegalIntakeValues, readOnly]);
+  }, [selectedAttorneys, notesValue, localReviewAudience, setLegalIntakeValues, readOnly]);
 
   // Get the loadRequest function from the store to refresh data after save
   const loadRequest = useRequestStore((s) => s.loadRequest);
@@ -357,16 +356,16 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
       }
 
       // Update attorney based on review audience:
-      // - Compliance Only: explicitly clear attorney (no attorney needed)
-      // - Legal/Both: include selected attorney if present
+      // - Compliance Only: explicitly clear attorneys (no attorney needed)
+      // - Legal/Both: include selected attorneys if present
       if (showAttorneyField) {
-        if (selectedAttorney) {
-          updatePayload.attorney = selectedAttorney;
+        if (selectedAttorneys && selectedAttorneys.length > 0) {
+          updatePayload.attorney = selectedAttorneys;
         }
       } else {
-        // Compliance Only - clear attorney if one was previously assigned
-        if (currentRequest.attorney) {
-          updatePayload.attorney = null;
+        // Compliance Only - clear attorneys if any were previously assigned
+        if (currentRequest.attorney && currentRequest.attorney.length > 0) {
+          updatePayload.attorney = [];
         }
       }
 
@@ -402,10 +401,10 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
    * Handle canceling edit mode
    */
   const handleCancelEdit = (): void => {
-    // Reset form to original values, normalizing attorney ID for picker compatibility
+    // Reset form to original values, normalizing attorney IDs for picker compatibility
     if (currentRequest) {
       reset({
-        attorney: normalizeAttorneyForPicker(currentRequest.attorney),
+        attorney: normalizeAttorneysForPicker(currentRequest.attorney),
         attorneyAssignNotes: undefined,
         reviewAudience: currentRequest.reviewAudience || ReviewAudience.Both,
       });
@@ -419,10 +418,10 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
    * Handle Assign Attorney button click (or Send to Compliance for Compliance Only)
    */
   const handleAssignAttorney = React.useCallback(async (): Promise<void> => {
-    // For Legal or Both: require attorney selection
+    // For Legal or Both: require at least one attorney selection
     // For Compliance Only: no attorney needed, proceed directly to compliance review
-    if (showAttorneyField && !selectedAttorney) {
-      setMessageBarError('Please select an attorney to assign');
+    if (showAttorneyField && (!selectedAttorneys || selectedAttorneys.length === 0)) {
+      setMessageBarError('Please select at least one attorney to assign');
       return;
     }
 
@@ -433,8 +432,8 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
       // Read notes at click time via getValues to avoid stale closure values
       const currentNotes = getValues('attorneyAssignNotes');
       // Pass review audience to save Legal Admin's override
-      // For Compliance Only, selectedAttorney will be undefined which is correct
-      await storeAssignAttorney(selectedAttorney, currentNotes, localReviewAudience);
+      // For Compliance Only, selectedAttorneys will be undefined which is correct
+      await storeAssignAttorney(selectedAttorneys, currentNotes, localReviewAudience);
       setShowSuccess(true);
       successTimerRef.current = setTimeout(() => {
         if (mountedRef.current) setShowSuccess(false);
@@ -445,7 +444,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
     } finally {
       setIsAssigning(false);
     }
-  }, [selectedAttorney, localReviewAudience, storeAssignAttorney, showAttorneyField, getValues]);
+  }, [selectedAttorneys, localReviewAudience, storeAssignAttorney, showAttorneyField, getValues]);
 
   /**
    * Handle Send to Committee button click
@@ -490,7 +489,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
   // Read-only mode: Show completed summary card
   // Admin/Legal Admin can toggle edit mode to modify attorney, review audience, or add notes
   if (readOnly) {
-    const assignedAttorney = currentRequest.attorney;
+    const assignedAttorneys = currentRequest.attorney;
     const completedDate = currentRequest.submittedForReviewOn;
 
     // In edit mode, show editable fields; otherwise show read-only summary
@@ -595,7 +594,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
                           name='attorney'
                           control={control as any}
                           groupName='LW - Attorneys'
-                          maxUserCount={1}
+                          maxUserCount={10}
                           placeholder='Search for attorney to assign...'
                           disabled={isLoading}
                           showClearButton
@@ -682,7 +681,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
 
     // Default read-only view
     // Get the user who completed intake (submittedForReviewBy or attorney)
-    const completedBy = currentRequest.submittedForReviewBy || assignedAttorney;
+    const completedBy = currentRequest.submittedForReviewBy || assignedAttorneys?.[0];
 
     // Calculate duration in business minutes (excludes weekends and non-working hours)
     // Uses businessHoursCalculator to get accurate business hours (8 AM - 5 PM, Mon-Fri PST)
@@ -729,8 +728,8 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
                   : undefined
               }
               attorney={
-                assignedAttorney?.title
-                  ? { title: assignedAttorney.title, email: assignedAttorney.email }
+                assignedAttorneys?.[0]?.title
+                  ? { title: assignedAttorneys[0].title, email: assignedAttorneys[0].email }
                   : undefined
               }
               durationMinutes={durationMinutes}
@@ -760,17 +759,22 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
             <Stack tokens={{ childrenGap: 16 }}>
               <FormContainer labelWidth='180px'>
                 <FormItem>
-                  <FormLabel>Assigned Attorney</FormLabel>
+                  <FormLabel>Assigned Attorney{assignedAttorneys && assignedAttorneys.length > 1 ? 's' : ''}</FormLabel>
                   <FormValue>
-                    {assignedAttorney?.email ? (
-                      <UserPersona
-                        userIdentifier={assignedAttorney.email}
-                        displayName={assignedAttorney.title}
-                        email={assignedAttorney.email}
-                        size={32}
-                        displayMode='avatarAndName'
-                        showSecondaryText={false}
-                      />
+                    {assignedAttorneys && assignedAttorneys.length > 0 ? (
+                      <Stack tokens={{ childrenGap: 8 }}>
+                        {assignedAttorneys.map((attorney) => (
+                          <UserPersona
+                            key={String(attorney.id)}
+                            userIdentifier={attorney.email || ''}
+                            displayName={attorney.title}
+                            email={attorney.email}
+                            size={32}
+                            displayMode='avatarAndName'
+                            showSecondaryText={false}
+                          />
+                        ))}
+                      </Stack>
                     ) : (
                       <Text styles={{ root: { color: '#605e5c', fontStyle: 'italic' } }}>
                         Not assigned
@@ -829,8 +833,8 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
             status='in-progress'
             startedOn={currentRequest.submittedOn}
             attorney={
-              selectedAttorney?.title
-                ? { title: selectedAttorney.title, email: selectedAttorney.email }
+              selectedAttorneys?.[0]?.title
+                ? { title: selectedAttorneys[0].title, email: selectedAttorneys[0].email }
                 : undefined
             }
           />
@@ -893,7 +897,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
                       name='attorney'
                       control={control as any}
                       groupName='LW - Attorneys'
-                      maxUserCount={1}
+                      maxUserCount={10}
                       placeholder='Search for attorney to assign...'
                       disabled={isLoading}
                       showClearButton
@@ -979,9 +983,9 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
               <Stack horizontal horizontalAlign='space-between' verticalAlign='center' styles={{ root: { width: '100%' } }}>
               <Text variant='small' styles={{ root: { color: '#605e5c', fontStyle: 'italic' } }}>
                 {showAttorneyField
-                  ? (selectedAttorney
-                      ? 'Attorney selected. Click "Assign Attorney" to proceed.'
-                      : 'Select an attorney, or click "Submit to Assign Attorney" to send to committee.')
+                  ? (selectedAttorneys && selectedAttorneys.length > 0
+                      ? 'Attorney(s) selected. Click "Assign Attorney" to proceed.'
+                      : 'Select attorney(s), or click "Submit to Assign Attorney" to send to committee.')
                   : 'Compliance Only selected. Click "Send to Compliance" to proceed.'}
               </Text>
               <Stack horizontal tokens={{ childrenGap: 8 }}>
@@ -996,7 +1000,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
                 )}
                 <PrimaryButton
                   onClick={handleAssignAttorney}
-                  disabled={(showAttorneyField && !selectedAttorney) || isAssigning || isSendingToCommittee || isLoading}
+                  disabled={(showAttorneyField && (!selectedAttorneys || selectedAttorneys.length === 0)) || isAssigning || isSendingToCommittee || isLoading}
                   iconProps={{ iconName: showAttorneyField ? 'AddFriend' : 'ComplianceAudit' }}
                 >
                   {isAssigning && (

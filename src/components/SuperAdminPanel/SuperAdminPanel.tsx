@@ -246,7 +246,7 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
 
     SPContext.logger.warn('ADMIN OVERRIDE: Attorney cleared', {
       requestId: currentRequest.requestId,
-      previousAttorney: currentRequest.attorney?.title,
+      previousAttorneys: currentRequest.attorney?.map(a => a.title).join(', '),
       reason: actionReason,
       adminUser: SPContext.currentUser?.email,
     });
@@ -479,7 +479,7 @@ export const SuperAdminPanel: React.FC<ISuperAdminPanelProps> = ({
 
   // Get current request info
   const currentStatus = currentRequest?.status || 'Unknown';
-  const currentAttorney = currentRequest?.attorney?.title || 'Not assigned';
+  const currentAttorney = currentRequest?.attorney?.map(a => a.title).join(', ') || 'Not assigned';
   const currentReviewAudience = currentRequest?.reviewAudience || ReviewAudience.Both;
   const currentLegalOutcome = currentRequest?.legalReview?.outcome || currentRequest?.legalReviewOutcome || 'Not reviewed';
   const currentComplianceOutcome = currentRequest?.complianceReview?.outcome || currentRequest?.complianceReviewOutcome || 'Not reviewed';

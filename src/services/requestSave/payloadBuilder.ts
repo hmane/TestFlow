@@ -157,9 +157,9 @@ export function buildRequestUpdatePayload(
     updater.set(RequestsFields.Department, request.department, originalRequest.department);
     updater.set(RequestsFields.CommunicationsOnly, request.communicationsOnly, originalRequest.communicationsOnly);
 
-    // Attorney fields - validate that attorney has id before saving
-    const attorneyValue = request.attorney && request.attorney.id ? request.attorney : null;
-    const origAttorneyValue = originalRequest.attorney && originalRequest.attorney.id ? originalRequest.attorney : null;
+    // Attorney fields - validate that attorney array has entries before saving
+    const attorneyValue = request.attorney && request.attorney.length > 0 ? request.attorney : [];
+    const origAttorneyValue = originalRequest.attorney && originalRequest.attorney.length > 0 ? originalRequest.attorney : [];
     updater.set(RequestsFields.Attorney, attorneyValue, origAttorneyValue);
     updater.set(RequestsFields.AttorneyAssignNotes, request.attorneyAssignNotes, originalRequest.attorneyAssignNotes);
 
@@ -205,6 +205,7 @@ export function buildRequestUpdatePayload(
 
     // FINRA Documents fields
     updater.set(RequestsFields.FINRACommentsReceived, request.finraCommentsReceived, originalRequest.finraCommentsReceived);
+    updater.set(RequestsFields.FINRAComment, request.finraComment, originalRequest.finraComment);
 
     // Time Tracking fields
     updater.set(RequestsFields.LegalIntakeLegalAdminHours, request.legalIntakeLegalAdminHours, originalRequest.legalIntakeLegalAdminHours);
@@ -300,8 +301,8 @@ export function buildRequestUpdatePayload(
       newUpdater.set(RequestsFields.SeparateAcctStrategiesIncl, request.separateAcctStrategiesIncl, undefined);
     }
 
-    // User fields
-    if (request.attorney && request.attorney.id) {
+    // Attorney (multi-user field)
+    if (request.attorney && request.attorney.length > 0) {
       newUpdater.set(RequestsFields.Attorney, request.attorney, undefined);
     }
 
@@ -362,9 +363,9 @@ export function buildPartialUpdatePayload(data: Partial<ILegalRequest>): Record<
   setIfDefined(RequestsFields.ReviewAudience, data.reviewAudience);
   setIfDefined(RequestsFields.PreviousStatus, data.previousStatus);
 
-  // Attorney fields
+  // Attorney fields (multi-attorney)
   if (data.attorney !== undefined) {
-    const attorneyValue = data.attorney && data.attorney.id ? data.attorney : null;
+    const attorneyValue = data.attorney && data.attorney.length > 0 ? data.attorney : [];
     updater.set(RequestsFields.Attorney, attorneyValue, undefined);
   }
   setIfDefined(RequestsFields.AttorneyAssignNotes, data.attorneyAssignNotes);

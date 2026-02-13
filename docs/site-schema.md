@@ -171,7 +171,7 @@ This document provides a comprehensive reference for the SharePoint site schema 
 | CommentsAcknowledged | Comments Acknowledged | Boolean | No | - | Default: 0 (No) |
 | CommentsAcknowledgedOn | Comments Acknowledged On | DateTime | No | - | - |
 
-#### FINRA Documents (5 fields)
+#### FINRA Documents (6 fields)
 
 | Internal Name | Display Name | Type | Required | Notes |
 |---------------|--------------|------|----------|-------|
@@ -179,7 +179,8 @@ This document provides a comprehensive reference for the SharePoint site schema 
 | FINRACompletedOn | FINRA Completed On | DateTime | No | - |
 | FINRANotes | FINRA Notes | Note (Multi-line) | No | AppendOnly, 6 lines |
 | AwaitingFINRASince | Awaiting FINRA Since | DateTime | No | Set when status changes to Awaiting FINRA Documents |
-| FINRACommentsReceived | Comments Received | Boolean | No | Default: No |
+| FINRACommentsReceived | Comments Received | Boolean | No | Default: No. Saved directly to SP on toggle |
+| FINRAComment | FINRA Comment | Note (Multi-line) | No | RichText: FALSE, 6 lines. Shown when FINRACommentsReceived is checked. Saved on Complete Request |
 
 #### System Tracking (18 fields)
 
@@ -289,7 +290,7 @@ This document provides a comprehensive reference for the SharePoint site schema 
 
 | Internal Name | Display Name | Type | Required | Choices/Notes |
 |---------------|--------------|------|----------|---------------|
-| DocumentType | Document Type | Choice | Yes | `Review`, `Supplemental`, `Communication Approval`, `Portfolio Manager Approval`, `Research Analyst Approval`, `Subject Matter Expert Approval`, `Performance Approval`, `Other Approval` |
+| DocumentType | Document Type | Choice | Yes | `Review`, `Supplemental`, `Communication Approval`, `Portfolio Manager Approval`, `Research Analyst Approval`, `Subject Matter Expert Approval`, `Performance Approval`, `Other Approval`, `Review Final` |
 | Request | Request | Lookup | Yes | Lookup to Requests list (Title field) |
 | Description | Description | Note (Multi-line) | No | 6 lines, no rich text |
 

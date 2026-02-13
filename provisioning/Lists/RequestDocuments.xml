@@ -24,6 +24,7 @@
         <CHOICE>Subject Matter Expert Approval</CHOICE>
         <CHOICE>Performance Approval</CHOICE>
         <CHOICE>Other Approval</CHOICE>
+        <CHOICE>Review Final</CHOICE>
       </CHOICES>
     </Field>
 

@@ -461,8 +461,8 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
                 : undefined
             }
             attorney={
-              currentRequest.attorney?.title
-                ? { title: currentRequest.attorney.title, email: currentRequest.attorney.email }
+              currentRequest.attorney?.[0]?.title
+                ? { title: currentRequest.attorney[0].title, email: currentRequest.attorney[0].email }
                 : undefined
             }
             durationMinutes={durationMinutes}
@@ -512,8 +512,8 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
           status='in-progress'
           startedOn={startedOn}
           attorney={
-            currentRequest.attorney?.title
-              ? { title: currentRequest.attorney.title, email: currentRequest.attorney.email }
+            currentRequest.attorney?.[0]?.title
+              ? { title: currentRequest.attorney[0].title, email: currentRequest.attorney[0].email }
               : undefined
           }
           durationMinutes={durationMinutes}

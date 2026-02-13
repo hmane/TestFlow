@@ -40,12 +40,16 @@ import {
 } from 'spfx-toolkit/lib/components/spFields';
 
 // App imports using path aliases
+import { DocumentUpload } from '@components/DocumentUpload';
 import { ValidationErrorContainer } from '@components/ValidationErrorContainer';
 import { WorkflowCardHeader } from '@components/WorkflowCardHeader';
 import { useRequestFormContext } from '@contexts/RequestFormContext';
+import { useDocumentsStore } from '@stores/documentsStore';
 import { useRequestStore } from '@stores/requestStore';
 import { useShallow } from 'zustand/react/shallow';
 import { useCloseoutStore } from '@stores/closeoutStore';
+import { Lists } from '@sp/Lists';
+import { DocumentType } from '@appTypes/documentTypes';
 import { ReviewAudience, ReviewOutcome } from '@appTypes/index';
 import { TRACKING_ID_MAX_LENGTH, CLOSEOUT_NOTES_MAX_LENGTH } from '@constants/fieldLimits';
 
@@ -89,14 +93,18 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
   defaultCollapsed = false,
   readOnly = false,
 }) => {
-  const { currentRequest, closeoutRequest } = useRequestStore(
+  const { itemId, currentRequest, closeoutRequest } = useRequestStore(
     useShallow((s) => ({
+      itemId: s.itemId,
       currentRequest: s.currentRequest,
       closeoutRequest: s.closeoutRequest,
     }))
   );
   const { setCloseoutValues, commentsAcknowledged, setCommentsAcknowledged } = useCloseoutStore();
   const { validationErrors, setValidationErrors } = useRequestFormContext();
+
+  // Get documents from store for ReviewFinal document count
+  const { documents, stagedFiles } = useDocumentsStore();
 
   // Card controller for programmatic expand/scroll
   const { expandAndScrollTo } = useCardController();
@@ -127,8 +135,26 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
     return undefined;
   }, [validationErrors]);
 
+  // Check if there's a validation error for review final documents
+  const reviewFinalDocsError = React.useMemo(() => {
+    if (!validationErrors) return undefined;
+    for (let i = 0; i < validationErrors.length; i++) {
+      if (validationErrors[i].field === 'reviewFinalDocuments') {
+        return validationErrors[i];
+      }
+    }
+    return undefined;
+  }, [validationErrors]);
+
+  // Calculate ReviewFinal document count (existing + staged)
+  const reviewFinalDocumentCount = React.useMemo(() => {
+    const existingCount = documents.get(DocumentType.ReviewFinal)?.length || 0;
+    const stagedCount = stagedFiles.filter(f => f.documentType === DocumentType.ReviewFinal).length;
+    return existingCount + stagedCount;
+  }, [documents, stagedFiles]);
+
   // Filter validation errors to only show Closeout related fields
-  const closeoutFields = ['trackingId', 'commentsAcknowledged', 'closeoutNotes'];
+  const closeoutFields = ['trackingId', 'commentsAcknowledged', 'closeoutNotes', 'reviewFinalDocuments'];
   const closeoutValidationErrors = React.useMemo(() => {
     if (!validationErrors) return [];
     return validationErrors.filter(err => closeoutFields.includes(err.field));
@@ -206,6 +232,17 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
     }
   }, [commentsAcknowledged, validationErrors, setValidationErrors]);
 
+  // Clear reviewFinalDocuments validation error when documents are added
+  React.useEffect(() => {
+    if (reviewFinalDocumentCount > 0 && validationErrors) {
+      const hasDocsError = validationErrors.some((err: { field: string }) => err.field === 'reviewFinalDocuments');
+      if (hasDocsError) {
+        const filteredErrors = validationErrors.filter((err: { field: string }) => err.field !== 'reviewFinalDocuments');
+        setValidationErrors(filteredErrors);
+      }
+    }
+  }, [reviewFinalDocumentCount, validationErrors, setValidationErrors]);
+
   // Propagate external validation errors to react-hook-form
   React.useEffect(() => {
     if (trackingIdError) {
@@ -214,6 +251,23 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
       clearErrors('trackingId');
     }
   }, [trackingIdError, setError, clearErrors]);
+
+  /**
+   * Handle review final document files change
+   */
+  const handleReviewFinalFilesChange = React.useCallback(() => {
+    SPContext.logger.info('CloseoutForm: Review final documents changed');
+  }, []);
+
+  /**
+   * Handle review final document error
+   */
+  const handleReviewFinalError = React.useCallback(
+    (error: string) => {
+      SPContext.logger.error('CloseoutForm: Review final document error', new Error(error));
+    },
+    []
+  );
 
   /**
    * Handle Complete Request button click
@@ -516,6 +570,49 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
                   )}
                 </Stack>
 
+                {/* Final Document Upload — required when Approved With Comments */}
+                <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: 8 } }}>
+                  <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
+                    <Icon iconName='Attach' styles={{ root: { fontSize: 16, color: '#0078d4' } }} />
+                    <Text variant='mediumPlus' styles={{ root: { fontWeight: 600 } }}>
+                      Final Document(s) with Implemented Comments
+                    </Text>
+                    <Text variant='small' styles={{ root: { color: '#a4262c' } }}>*</Text>
+                  </Stack>
+                  <Text variant='small' styles={{ root: { color: '#605e5c' } }}>
+                    Upload the final version of document(s) with review comments addressed. At least one document is required.
+                  </Text>
+                  <DocumentUpload
+                    itemId={itemId}
+                    documentType={DocumentType.ReviewFinal}
+                    isReadOnly={false}
+                    required={true}
+                    hasError={reviewFinalDocsError !== undefined && reviewFinalDocumentCount === 0}
+                    siteUrl={SPContext.webAbsoluteUrl}
+                    documentLibraryTitle={Lists.RequestDocuments.Title}
+                    maxFiles={10}
+                    maxFileSize={250 * 1024 * 1024}
+                    onFilesChange={handleReviewFinalFilesChange}
+                    onError={handleReviewFinalError}
+                  />
+                  {reviewFinalDocsError && reviewFinalDocumentCount === 0 && (
+                    <Text
+                      variant='small'
+                      styles={{
+                        root: {
+                          color: '#a80000',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        },
+                      }}
+                    >
+                      <Icon iconName='ErrorBadge' styles={{ root: { fontSize: 12 } }} />
+                      {reviewFinalDocsError.message}
+                    </Text>
+                  )}
+                </Stack>
+
                 <Separator />
               </Stack>
             )}
@@ -610,6 +707,26 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
                     )}
                   </Text>
                 </Stack>
+
+                {/* Show ReviewFinal documents in read-only mode */}
+                {reviewFinalDocumentCount > 0 && (
+                  <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: 8 } }}>
+                    <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
+                      <Icon iconName='Attach' styles={{ root: { fontSize: 16, color: '#0078d4' } }} />
+                      <Text variant='mediumPlus' styles={{ root: { fontWeight: 600 } }}>
+                        Final Document(s) with Implemented Comments
+                      </Text>
+                      <span style={{ fontSize: 12, color: '#605e5c' }}>({reviewFinalDocumentCount})</span>
+                    </Stack>
+                    <DocumentUpload
+                      itemId={itemId}
+                      documentType={DocumentType.ReviewFinal}
+                      isReadOnly={true}
+                      siteUrl={SPContext.webAbsoluteUrl}
+                      documentLibraryTitle={Lists.RequestDocuments.Title}
+                    />
+                  </Stack>
+                )}
               </>
             )}
 

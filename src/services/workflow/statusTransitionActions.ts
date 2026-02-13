@@ -199,16 +199,14 @@ export async function assignAttorney(
   payload: IAssignAttorneyPayload
 ): Promise<IWorkflowActionResult> {
   const correlationId = generateCorrelationId('assignAttorney');
-  const isComplianceOnly = !payload.attorney;
+  const isComplianceOnly = !payload.attorney || payload.attorney.length === 0;
 
-  SPContext.logger.info(isComplianceOnly ? 'WorkflowActionService: Sending to compliance review' : 'WorkflowActionService: Assigning attorney', {
+  SPContext.logger.info(isComplianceOnly ? 'WorkflowActionService: Sending to compliance review' : 'WorkflowActionService: Assigning attorney(s)', {
     correlationId,
     itemId,
     isComplianceOnly,
-    attorneyId: payload.attorney?.id,
-    attorneyEmail: payload.attorney?.email,
-    attorneyTitle: payload.attorney?.title,
-    attorneyLoginName: payload.attorney?.loginName,
+    attorneyCount: payload.attorney?.length ?? 0,
+    attorneyNames: payload.attorney?.map(a => a.title).join(', '),
     hasNotes: !!payload.notes,
     reviewAudience: payload.reviewAudience,
   });
@@ -229,9 +227,9 @@ export async function assignAttorney(
   updater.setUser(RequestsFields.SubmittedForReviewBy, currentUser);
   updater.setDate(RequestsFields.SubmittedForReviewOn, now);
 
-  // Only set attorney and legal review status if attorney is provided (not Compliance Only)
-  if (payload.attorney) {
-    updater.setUser(RequestsFields.Attorney, payload.attorney);
+  // Only set attorney and legal review status if attorney(s) provided (not Compliance Only)
+  if (payload.attorney && payload.attorney.length > 0) {
+    updater.set(RequestsFields.Attorney, payload.attorney);
     updater.setChoice(RequestsFields.LegalReviewStatus, LegalReviewStatus.NotStarted);
   }
 
@@ -272,7 +270,7 @@ export async function assignAttorney(
     correlationId,
     itemId,
     requestId: updatedRequest.requestId,
-    attorney: payload.attorney?.title ?? 'None (Compliance Only)',
+    attorney: payload.attorney?.map(a => a.title).join(', ') ?? 'None (Compliance Only)',
   });
 
   return {
@@ -379,9 +377,10 @@ export async function assignFromCommittee(
   itemId: number,
   payload: IAssignAttorneyPayload
 ): Promise<IWorkflowActionResult> {
-  SPContext.logger.info('WorkflowActionService: Committee assigning attorney', {
+  SPContext.logger.info('WorkflowActionService: Committee assigning attorney(s)', {
     itemId,
-    attorneyId: payload.attorney?.id,
+    attorneyCount: payload.attorney?.length ?? 0,
+    attorneyNames: payload.attorney?.map(a => a.title).join(', '),
   });
 
   // Reuse assignAttorney logic - same fields updated

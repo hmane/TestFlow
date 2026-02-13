@@ -25,6 +25,8 @@ export interface IKPIMetrics {
   finraCommentsReceived: number;
   /** Total requests currently awaiting FINRA documents */
   awaitingFINRADocuments: number;
+  /** Awaiting FINRA requests that have comment text entered */
+  finraWithCommentText: number;
 }
 
 /**

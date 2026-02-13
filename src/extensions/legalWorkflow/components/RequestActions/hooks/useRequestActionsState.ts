@@ -562,13 +562,15 @@ export function useRequestActionsState(props: {
       setValidationErrors([]);
 
       const formData = legalIntakeStore.getFormData();
-      const { attorney, notes } = formData;
+      const { attorney: attorneys, notes } = formData;
+      const primaryAttorney = attorneys?.[0];
 
       SPContext.logger.info('RequestActions: handleAssignAttorneyClick - form data from store', {
         formData,
-        attorney,
-        attorneyId: attorney?.id,
-        attorneyTitle: attorney?.title,
+        attorneys,
+        attorneyCount: attorneys?.length ?? 0,
+        primaryAttorneyId: primaryAttorney?.id,
+        primaryAttorneyTitle: primaryAttorney?.title,
         notes,
       });
 
@@ -576,11 +578,11 @@ export function useRequestActionsState(props: {
       const schema = isCommitteeAssignment ? committeeAssignAttorneySchema : assignAttorneySchema;
 
       const validationData = {
-        attorney: attorney ? {
-          id: attorney.id,
-          email: attorney.email,
-          title: attorney.title,
-          loginName: attorney.loginName,
+        attorney: primaryAttorney ? {
+          id: primaryAttorney.id,
+          email: primaryAttorney.email,
+          title: primaryAttorney.title,
+          loginName: primaryAttorney.loginName,
         } : { id: '' },
         assignmentNotes: notes,
         currentStatus: status,
@@ -610,13 +612,13 @@ export function useRequestActionsState(props: {
 
       setActiveAction('assignAttorney');
 
-      SPContext.logger.info('RequestActions: Assigning attorney', {
-        attorneyId: attorney?.id,
-        attorneyName: attorney?.title,
+      SPContext.logger.info('RequestActions: Assigning attorney(s)', {
+        attorneyCount: attorneys?.length ?? 0,
+        attorneyNames: attorneys?.map(a => a.title).join(', '),
         notes: notes ? 'provided' : 'none',
       });
 
-      await storeAssignAttorney(attorney!, notes);
+      await storeAssignAttorney(attorneys, notes);
 
       SPContext.logger.success('RequestActions: Attorney assigned successfully');
       legalIntakeStore.reset();
@@ -675,6 +677,19 @@ export function useRequestActionsState(props: {
         });
       }
 
+      // Validate ReviewFinal documents when there are Approved With Comments outcomes
+      if (hasApprovedWithComments) {
+        const { documents: docs, stagedFiles: staged } = useDocumentsStore.getState();
+        const existingCount = docs.get(DocumentType.ReviewFinal)?.length || 0;
+        const stagedCount = staged.filter(f => f.documentType === DocumentType.ReviewFinal).length;
+        if (existingCount + stagedCount === 0) {
+          errors.push({
+            field: 'reviewFinalDocuments',
+            message: 'At least one final document with implemented comments is required.',
+          });
+        }
+      }
+
       if (errors.length > 0) {
         setValidationErrors(errors);
         SPContext.logger.warn('RequestActions: Closeout validation failed', {
@@ -694,6 +709,23 @@ export function useRequestActionsState(props: {
         trackingId: trackingId || 'none',
         commentsAcknowledged: commentsAcknowledged || false,
       });
+
+      // Upload any staged files (ReviewFinal docs, etc.) before completing closeout
+      const { stagedFiles: closeoutStaged } = useDocumentsStore.getState();
+      if (closeoutStaged.length > 0 && itemId) {
+        SPContext.logger.info('RequestActions: Uploading staged documents before closeout', {
+          stagedCount: closeoutStaged.length,
+          itemId,
+        });
+
+        const { uploadPendingFiles, loadAllDocuments } = useDocumentsStore.getState();
+        await uploadPendingFiles(itemId, (fileId, progress, status) => {
+          SPContext.logger.info('RequestActions: Closeout upload progress', { fileId, progress, status });
+        });
+
+        await loadAllDocuments(itemId, true);
+        SPContext.logger.success('RequestActions: Staged documents uploaded successfully');
+      }
 
       const result = await workflowCloseout({
         trackingId,

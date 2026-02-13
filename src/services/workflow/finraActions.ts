@@ -86,6 +86,11 @@ export async function completeFINRADocuments(
     updater.set(RequestsFields.FINRACommentsReceived, payload.finraCommentsReceived);
   }
 
+  // Set FINRA comment if provided
+  if (payload?.finraComment !== undefined) {
+    updater.set(RequestsFields.FINRAComment, payload.finraComment);
+  }
+
   const updatePayload = updater.getUpdates();
   const fieldsUpdated = Object.keys(updatePayload);
 

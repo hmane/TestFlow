@@ -99,7 +99,7 @@ export const useReviewAudience = (): ReviewAudience | undefined =>
 /**
  * Selector for attorney data only
  */
-export const useAttorneyData = (): IPrincipal | undefined =>
+export const useAttorneyData = (): IPrincipal[] | undefined =>
   useRequestStore(state => state.currentRequest?.attorney);
 
 /**
@@ -132,7 +132,7 @@ export const useRequestActions = (): {
   saveAsDraft: () => Promise<number>;
   submitRequest: () => Promise<number>;
   updateRequest: (updates: Partial<ILegalRequest>) => Promise<void>;
-  assignAttorney: (attorney: IPrincipal, notes?: string) => Promise<void>;
+  assignAttorney: (attorney: IPrincipal[] | undefined, notes?: string) => Promise<void>;
   sendToCommittee: (notes?: string) => Promise<void>;
   submitLegalReview: (outcome: string, notes: string) => Promise<void>;
   submitComplianceReview: (outcome: string, notes: string, flags?: { isForesideReviewRequired?: boolean; isRetailUse?: boolean }) => Promise<void>;

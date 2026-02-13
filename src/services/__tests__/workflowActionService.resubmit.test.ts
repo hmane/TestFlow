@@ -136,7 +136,7 @@ describe('Workflow Action Service - Resubmit Workflow', () => {
         legalReviewOutcome: ReviewOutcome.RespondToCommentsAndResubmit,
         legalReviewNotes: 'Please update the disclosures',
         legalStatusUpdatedOn: new Date('2025-12-29T10:00:00Z'),
-        attorney: { id: 2, title: 'Test Attorney', email: 'attorney@example.com' },
+        attorney: [{ id: 2, title: 'Test Attorney', email: 'attorney@example.com' }],
       } as Partial<ILegalRequest>);
     });
 
@@ -283,7 +283,7 @@ describe('Workflow Action Service - Resubmit Workflow', () => {
         reviewAudience: 'Legal',
         legalReviewStatus: LegalReviewStatus.InProgress,
         legalStatusUpdatedOn: new Date('2025-12-28T10:00:00Z'),
-        attorney: { id: 2, title: 'Test Attorney', email: 'attorney@example.com' },
+        attorney: [{ id: 2, title: 'Test Attorney', email: 'attorney@example.com' }],
       } as Partial<ILegalRequest>);
 
       mockCalculateAndUpdateStageTime.mockResolvedValue({

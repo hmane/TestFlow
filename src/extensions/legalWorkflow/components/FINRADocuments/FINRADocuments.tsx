@@ -18,6 +18,7 @@ import { Icon } from '@fluentui/react/lib/Icon';
 import { Separator } from '@fluentui/react/lib/Separator';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
+import { TextField } from '@fluentui/react/lib/TextField';
 
 // spfx-toolkit - tree-shaken imports
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
@@ -121,7 +122,24 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
 
   // Comments received state - read from store, update store directly
   const commentsReceived = currentRequest?.finraCommentsReceived ?? false;
+  const finraComment = currentRequest?.finraComment ?? '';
   const isSavingRef = React.useRef(false);
+
+  /**
+   * Handle FINRA comment text change
+   * Updates only currentRequest in the store (NOT originalRequest).
+   * The value is saved when "Complete Request" is clicked, not directly to SP.
+   */
+  const handleFinraCommentChange = React.useCallback(
+    (_ev?: React.FormEvent<HTMLInputElement | HTMLTextAreaElement>, newValue?: string) => {
+      const storeState = useRequestStore.getState();
+      if (!storeState.currentRequest) return;
+      useRequestStore.setState({
+        currentRequest: { ...storeState.currentRequest, finraComment: newValue ?? '' },
+      });
+    },
+    []
+  );
 
   /**
    * Handle comments received checkbox change
@@ -294,18 +312,6 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
             },
           }}
         >
-          {commentsReceived && (
-            <Icon
-              iconName='SkypeCheck'
-              styles={{
-                root: {
-                  fontSize: '20px',
-                  color: '#107c10',
-                  flexShrink: 0,
-                },
-              }}
-            />
-          )}
           <Stack tokens={{ childrenGap: 2 }} styles={{ root: { flex: 1 } }}>
             <Checkbox
               label='FINRA Comments Received'
@@ -322,6 +328,45 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
             </Text>
           </Stack>
         </Stack>
+
+        {/* FINRA Comment — shown when comments received is checked */}
+        {commentsReceived && (
+          isReadOnly ? (
+            finraComment ? (
+              <Stack
+                styles={{
+                  root: {
+                    padding: '12px 16px',
+                    backgroundColor: '#f3f2f1',
+                    borderRadius: '4px',
+                    border: '1px solid #edebe9',
+                    marginTop: '12px',
+                  },
+                }}
+              >
+                <Text variant='small' styles={{ root: { fontWeight: 600, marginBottom: '4px' } }}>
+                  FINRA Comment
+                </Text>
+                <Text styles={{ root: { whiteSpace: 'pre-wrap' } }}>{finraComment}</Text>
+              </Stack>
+            ) : null
+          ) : (
+            <Stack styles={{ root: { marginTop: '12px' } }}>
+              <TextField
+                label='FINRA Comment'
+                multiline
+                rows={4}
+                value={finraComment}
+                onChange={handleFinraCommentChange}
+                placeholder='Enter details about the FINRA comments received (optional)'
+                ariaLabel='FINRA comment details'
+                styles={{
+                  root: { width: '100%' },
+                }}
+              />
+            </Stack>
+          )
+        )}
       </Content>
     </Card>
   );

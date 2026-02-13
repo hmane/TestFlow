@@ -14,7 +14,7 @@ export interface ILegalReview {
   statusUpdatedBy?: IPrincipal;
   outcome?: ReviewOutcome;
   reviewNotes?: string;
-  assignedAttorney?: IPrincipal;
+  assignedAttorney?: IPrincipal[];
   assignedOn?: Date;
   completedOn?: Date;
 }

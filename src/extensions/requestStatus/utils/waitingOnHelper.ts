@@ -144,7 +144,7 @@ function determineWaitingOnInReview(
   reviewAudience: ReviewAudience,
   legalReviewStatus: LegalReviewStatus | undefined,
   complianceReviewStatus: ComplianceReviewStatus | undefined,
-  assignedAttorney: IPrincipal | undefined,
+  assignedAttorneys: IPrincipal[] | undefined,
   submitter: IPrincipal | undefined
 ): IWaitingOnInfo {
   // Priority 1: Check if waiting on submitter (either review)
@@ -164,12 +164,18 @@ function determineWaitingOnInReview(
 
   // Priority 2: Check legal review status
   if (reviewAudience === ReviewAudience.Legal || reviewAudience === ReviewAudience.Both) {
-    if (legalReviewStatus === LegalReviewStatus.WaitingOnAttorney && assignedAttorney) {
+    const hasAttorneys = assignedAttorneys && assignedAttorneys.length > 0;
+    const primaryAttorney = assignedAttorneys?.[0];
+    const additionalCount = (assignedAttorneys?.length ?? 0) - 1;
+
+    if (legalReviewStatus === LegalReviewStatus.WaitingOnAttorney && hasAttorneys) {
       return {
         type: 'user',
-        identifier: assignedAttorney.email || assignedAttorney.loginName || assignedAttorney.id || '',
-        displayName: assignedAttorney.title || 'Unknown',
-        principal: assignedAttorney,
+        identifier: primaryAttorney!.email || primaryAttorney!.loginName || primaryAttorney!.id || '',
+        displayName: additionalCount > 0
+          ? `${primaryAttorney!.title || 'Unknown'} +${additionalCount}`
+          : primaryAttorney!.title || 'Unknown',
+        principal: primaryAttorney,
       };
     }
 
@@ -177,12 +183,14 @@ function determineWaitingOnInReview(
       legalReviewStatus === LegalReviewStatus.InProgress ||
       legalReviewStatus === LegalReviewStatus.NotStarted
     ) {
-      if (assignedAttorney) {
+      if (hasAttorneys) {
         return {
           type: 'user',
-          identifier: assignedAttorney.email || assignedAttorney.loginName || assignedAttorney.id || '',
-          displayName: assignedAttorney.title || 'Unknown',
-          principal: assignedAttorney,
+          identifier: primaryAttorney!.email || primaryAttorney!.loginName || primaryAttorney!.id || '',
+          displayName: additionalCount > 0
+            ? `${primaryAttorney!.title || 'Unknown'} +${additionalCount}`
+            : primaryAttorney!.title || 'Unknown',
+          principal: primaryAttorney,
         };
       } else {
         // No attorney assigned yet

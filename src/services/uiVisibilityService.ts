@@ -480,7 +480,7 @@ export function createVisibilityContext(
     submittedBy?: { id: string };
     author?: { id: string };
     legalReview?: {
-      assignedAttorney?: { id: string };
+      assignedAttorney?: Array<{ id: string }>;
       status?: string;
     };
     complianceReview?: {
@@ -494,8 +494,10 @@ export function createVisibilityContext(
     String(request.author?.id ?? '') === currentUserId
   ) : false;
 
-  const isAssignedAttorney = String(request?.legalReview?.assignedAttorney?.id ?? '') === currentUserId;
-  const hasAssignedAttorney = !!request?.legalReview?.assignedAttorney?.id;
+  const isAssignedAttorney = request?.legalReview?.assignedAttorney?.some(
+    a => String(a.id) === currentUserId
+  ) ?? false;
+  const hasAssignedAttorney = (request?.legalReview?.assignedAttorney?.length ?? 0) > 0;
 
   const reviewAudience = request?.reviewAudience || '';
   const legalReviewRequired = reviewAudience === 'Legal' || reviewAudience === 'Both';

@@ -24,7 +24,7 @@ export interface ICloseoutOptions {
  */
 export interface IWorkflowActionsResult {
   // Attorney assignment
-  assignAttorney: (attorney: IPrincipal, notes?: string) => Promise<void>;
+  assignAttorney: (attorneys: IPrincipal[] | undefined, notes?: string) => Promise<void>;
   sendToCommittee: (notes?: string) => Promise<void>;
 
   // Review submissions
@@ -82,7 +82,7 @@ export function useWorkflowActions(itemId?: number): IWorkflowActionsResult {
    * Assign attorney (direct assignment)
    */
   const assignAttorney = React.useCallback(
-    async (attorney: IPrincipal, notes?: string): Promise<void> => {
+    async (attorneys: IPrincipal[] | undefined, notes?: string): Promise<void> => {
       if (!itemId) {
         throw new Error('Cannot assign attorney - no request ID');
       }
@@ -91,9 +91,9 @@ export function useWorkflowActions(itemId?: number): IWorkflowActionsResult {
       setError(undefined);
 
       try {
-        await storeAssignAttorney(attorney, notes);
-        SPContext.logger.success('Attorney assigned', {
-          attorneyId: attorney.id,
+        await storeAssignAttorney(attorneys, notes);
+        SPContext.logger.success('Attorney(s) assigned', {
+          attorneyCount: attorneys?.length ?? 0,
           requestId: itemId,
         });
       } catch (err: unknown) {

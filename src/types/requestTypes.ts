@@ -205,7 +205,7 @@ additionalParty?: IPrincipal[];
   approvals?: Approval[];
 
   // Legal review
-  attorney?: IPrincipal;
+  attorney?: IPrincipal[];
   attorneyAssignNotes?: string;
   legalReviewStatus?: string;
   legalReviewOutcome?: string;
@@ -253,6 +253,8 @@ additionalParty?: IPrincipal[];
   awaitingFINRASince?: Date;
   /** Whether FINRA comments have been received */
   finraCommentsReceived?: boolean;
+  /** FINRA comment text entered when comments are received */
+  finraComment?: string;
 
   // Cancellation
   cancelledBy?: IPrincipal;
@@ -405,7 +407,7 @@ export interface IRequestListItem {
   OtherApprovalId?: number;
 
   // Legal review
-  AttorneyId?: number;
+  AttorneyId?: number[];
   AttorneyAssignNotes?: string;
   LegalReviewStatus?: string;
   LegalStatusUpdatedOn?: string;
@@ -438,6 +440,7 @@ export interface IRequestListItem {
   FINRANotes?: string;
   AwaitingFINRASince?: string;
   FINRACommentsReceived?: boolean;
+  FINRAComment?: string;
 
   // System tracking
   SubmittedById?: number;

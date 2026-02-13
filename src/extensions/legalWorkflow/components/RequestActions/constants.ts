@@ -53,6 +53,7 @@ export const FIELD_LABELS: Record<string, string> = {
   // Closeout fields
   trackingId: 'Tracking ID',
   commentsAcknowledged: 'Comments Acknowledgment',
+  reviewFinalDocuments: 'Final Review Documents',
 };
 
 /**
@@ -95,6 +96,7 @@ export const FIELD_ORDER: Record<string, number> = {
   // Closeout section
   trackingId: 80,
   commentsAcknowledged: 81,
+  reviewFinalDocuments: 82,
 };
 
 /**
@@ -108,6 +110,7 @@ export const CUSTOM_SECTION_MAP: Record<string, string> = {
   // Closeout fields
   trackingId: 'closeout-card',
   commentsAcknowledged: 'closeout-card',
+  reviewFinalDocuments: 'closeout-card',
 };
 
 /**
@@ -132,4 +135,5 @@ export const SECTION_HANDLED_FIELDS: string[] = [
   'trackingId',
   'commentsAcknowledged',
   'closeoutNotes',
+  'reviewFinalDocuments',
 ];

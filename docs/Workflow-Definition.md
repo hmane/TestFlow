@@ -321,7 +321,7 @@ The Legal Review System (LRS) automates the review and approval process for mark
 |-----------|---------|
 | **Entry Condition** | All required reviews completed with Approved/Approved With Comments |
 | **Who Can Edit** | Original Submitter |
-| **Required Fields** | Tracking ID (conditional), Acknowledge Comments (if any) |
+| **Required Fields** | Tracking ID (conditional), Acknowledge Comments (if any), Review Final Documents (if Approved With Comments) |
 | **Available Actions** | Complete Closeout, Request Foreside Documents |
 | **Exit Conditions** | Complete → Completed, Foreside Needed → Awaiting Foreside Documents |
 
@@ -344,7 +344,13 @@ The Legal Review System (LRS) automates the review and approval process for mark
    - Submitter must check acknowledgment box
    - Comments from reviewers displayed prominently
 
-3. **Foreside Documents:**
+3. **Review Final Documents:**
+   - Required when any review outcome was "Approved With Comments"
+   - Submitter must upload at least one final document (document type: `Review Final`) with implemented comments
+   - Documents are uploaded via the DocumentUpload component in the Closeout form
+   - Staged files are uploaded before closeout action is executed
+
+4. **Foreside Documents:**
    - If Foreside review was required
    - Submitter can upload Foreside approval documents
    - Or request "Awaiting Foreside Documents" status
@@ -366,6 +372,9 @@ The Legal Review System (LRS) automates the review and approval process for mark
 - No notifications for this stage
 - Submitter can complete closeout once documents are uploaded
 - No time limit enforced
+- **FINRA Comments Received:** Submitter can toggle the `FINRACommentsReceived` checkbox (saved directly to SharePoint on toggle)
+- **FINRA Comment:** When `FINRACommentsReceived` is checked, a multiline text field (`FINRAComment`) appears for the submitter to enter comment details. This value is saved when "Complete Request" is clicked (not on each keystroke)
+- **Fields updated on Complete Request:** `Status → Completed`, `FINRACompletedBy`, `FINRACompletedOn`, `FINRANotes` (if provided), `FINRACommentsReceived`, `FINRAComment`
 
 ---
 

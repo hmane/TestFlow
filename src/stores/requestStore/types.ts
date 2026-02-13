@@ -61,7 +61,7 @@ export interface IRequestState {
   updateRequest: (updates: Partial<ILegalRequest>) => Promise<void>;
 
   // Actions - Workflow
-  assignAttorney: (attorney: IPrincipal | undefined, notes?: string, reviewAudience?: ReviewAudience) => Promise<void>;
+  assignAttorney: (attorney: IPrincipal[] | undefined, notes?: string, reviewAudience?: ReviewAudience) => Promise<void>;
   sendToCommittee: (notes?: string, reviewAudience?: ReviewAudience) => Promise<void>;
   submitLegalReview: (outcome: string, notes: string) => Promise<void>;
   submitComplianceReview: (

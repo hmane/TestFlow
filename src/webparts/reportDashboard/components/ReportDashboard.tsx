@@ -521,7 +521,7 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
         TargetReturnDate: string | null;
         Created: string;
         Author?: { Title: string };
-        Attorney?: { Title: string };
+        Attorney?: Array<{ Title: string }> | { Title: string };
         SubmittedToAssignAttorneyOn?: string | null;
         PreviousStatus?: string | null;
         IsRushRequest?: boolean;
@@ -551,7 +551,7 @@ const ReportDashboard: React.FC<IReportDashboardProps> = (props) => {
           requestTitle: item.RequestTitle,
           status: item.Status,
           submittedBy: item.Author?.Title || '',
-          attorney: item.Attorney?.Title || '',
+          attorney: Array.isArray(item.Attorney) ? item.Attorney.map(a => a.Title).join(', ') : (item.Attorney?.Title || ''),
           targetReturnDate: targetDate,
           created: new Date(item.Created),
           submittedToAssignAttorneyOn: assignAttorneyDate,

@@ -140,7 +140,7 @@
       <Field Type="Note" Name="OtherApprovalNotes" DisplayName="Other Approval Notes" RichText="FALSE" NumLines="4" Group="Approvals" ID="{F6A7B8C9-6666-4FA0-DB4C-D5E6F7A8B9CA}" />
 
       <!-- Legal Intake (2) -->
-      <Field Type="User" Name="Attorney" DisplayName="Attorney" UserSelectionMode="PeopleOnly" Group="Legal Intake" ID="{9A262A7D-F053-4B9A-A5DB-D902ECE30058}" Indexed="TRUE" />
+      <Field Type="UserMulti" Name="Attorney" DisplayName="Attorney" UserSelectionMode="PeopleOnly" Mult="TRUE" Group="Legal Intake" ID="{9A262A7D-F053-4B9A-A5DB-D902ECE30058}" />
       <Field Type="Note" Name="AttorneyAssignNotes" DisplayName="Attorney Assign Notes" RichText="FALSE" AppendOnly="TRUE" NumLines="6" Group="Legal Intake" ID="{3835A7F1-5B38-4F36-90D7-ADC956D9D6F6}" />
 
       <!-- Legal Review (7 including 2 NEW) -->
@@ -190,6 +190,7 @@
       <Field Type="Note" Name="FINRANotes" DisplayName="FINRA Notes" RichText="FALSE" AppendOnly="TRUE" NumLines="6" Group="FINRA Documents" ID="{C2D3E4F5-9999-4A7B-1C3D-4E5F6A7B8C9D}" />
       <Field Type="DateTime" Name="AwaitingFINRASince" DisplayName="Awaiting FINRA Since" Format="DateTime" Group="FINRA Documents" ID="{D3E4F5A6-AAAA-4B8C-2D4E-5F6A7B8C9D0E}" />
       <Field Type="Boolean" Name="FINRACommentsReceived" DisplayName="Comments Received" Group="FINRA Documents" ID="{E4F5A6B7-BBBB-4C9D-3E5F-6A7B8C9D0E1F}"><Default>0</Default></Field>
+      <Field Type="Note" Name="FINRAComment" DisplayName="FINRA Comment" RichText="FALSE" NumLines="6" Group="FINRA Documents" ID="{F5A6B7C8-CCCC-4D0E-4F6A-7B8C9D0E1F2A}" />
 
       <!-- System Tracking (18) -->
       <Field Type="Choice" Name="Status" DisplayName="Status" Required="TRUE" Group="System Tracking" ID="{9E390E5D-9D57-472F-B470-EDE7F1D5EB89}" Indexed="TRUE" ClientSideComponentId="e55dcdea-8fa3-4708-9fbe-35c866026289">
@@ -317,6 +318,7 @@
           <FieldRef Name="Attorney" />
           <FieldRef Name="AwaitingFINRASince" />
           <FieldRef Name="FINRACommentsReceived" />
+          <FieldRef Name="FINRAComment" />
           <FieldRef Name="TrackingId" />
         </ViewFields>
         <RowLimit Paged="TRUE">50</RowLimit>

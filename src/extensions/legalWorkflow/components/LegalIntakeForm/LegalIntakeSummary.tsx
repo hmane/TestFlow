@@ -65,15 +65,15 @@ export const LegalIntakeSummary: React.FC<ILegalIntakeSummaryProps> = ({
     return null;
   }
 
-  const assignedAttorney = currentRequest.attorney;
+  const assignedAttorneys = currentRequest.attorney;
   const completedDate = currentRequest.submittedForReviewOn;
 
   // Determine if attorney field should be shown based on review audience
   // Hide attorney field when ReviewAudience = Compliance Only (no attorney needed)
   const showAttorneyField = currentRequest.reviewAudience !== ReviewAudience.Compliance;
 
-  // Get the user who completed intake (submittedForReviewBy or attorney)
-  const completedBy = currentRequest.submittedForReviewBy || assignedAttorney;
+  // Get the user who completed intake (submittedForReviewBy or first attorney)
+  const completedBy = currentRequest.submittedForReviewBy || assignedAttorneys?.[0];
 
   // Calculate duration in business minutes (excludes weekends and non-working hours)
   // Uses businessHoursCalculator to get accurate business hours (8 AM - 5 PM, Mon-Fri PST)
@@ -119,8 +119,8 @@ export const LegalIntakeSummary: React.FC<ILegalIntakeSummaryProps> = ({
               : undefined
           }
           attorney={
-            assignedAttorney?.title
-              ? { title: assignedAttorney.title, email: assignedAttorney.email }
+            assignedAttorneys?.[0]?.title
+              ? { title: assignedAttorneys[0].title, email: assignedAttorneys[0].email }
               : undefined
           }
           durationMinutes={durationMinutes}
@@ -149,20 +149,25 @@ export const LegalIntakeSummary: React.FC<ILegalIntakeSummaryProps> = ({
       <Content padding='comfortable'>
         <Stack tokens={{ childrenGap: 16 }}>
           <FormContainer labelWidth='180px'>
-            {/* Assigned Attorney - hidden when ReviewAudience = Compliance Only */}
+            {/* Assigned Attorney(s) - hidden when ReviewAudience = Compliance Only */}
             {showAttorneyField && (
               <FormItem>
-                <FormLabel>Assigned Attorney</FormLabel>
+                <FormLabel>Assigned Attorney{assignedAttorneys && assignedAttorneys.length > 1 ? 's' : ''}</FormLabel>
                 <FormValue>
-                  {assignedAttorney?.email ? (
-                    <UserPersona
-                      userIdentifier={assignedAttorney.email}
-                      displayName={assignedAttorney.title}
-                      email={assignedAttorney.email}
-                      size={32}
-                      displayMode='avatarAndName'
-                      showSecondaryText={false}
-                    />
+                  {assignedAttorneys && assignedAttorneys.length > 0 ? (
+                    <Stack tokens={{ childrenGap: 8 }}>
+                      {assignedAttorneys.map((attorney) => (
+                        <UserPersona
+                          key={String(attorney.id)}
+                          userIdentifier={attorney.email || ''}
+                          displayName={attorney.title}
+                          email={attorney.email}
+                          size={32}
+                          displayMode='avatarAndName'
+                          showSecondaryText={false}
+                        />
+                      ))}
+                    </Stack>
                   ) : (
                     <Text styles={{ root: { color: '#605e5c', fontStyle: 'italic' } }}>
                       Not assigned
