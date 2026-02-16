@@ -37,6 +37,7 @@ import { Card, Content, Footer, Header } from 'spfx-toolkit/lib/components/Card'
 import { SPTextField, SPTextFieldMode } from 'spfx-toolkit/lib/components/spFields';
 import {
   FormContainer,
+  FormDescription,
   FormItem,
   FormLabel,
   FormProvider,
@@ -602,6 +603,11 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
                           ensureUser
                         />
                       </FormValue>
+                      {selectedAttorneys && selectedAttorneys.length > 1 && (
+                        <FormDescription>
+                          All {selectedAttorneys.length} attorneys will be notified in all communications. Either one can approve the request.
+                        </FormDescription>
+                      )}
                     </FormItem>
                   )}
 
@@ -905,6 +911,11 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
                       ensureUser
                     />
                   </FormValue>
+                  {selectedAttorneys && selectedAttorneys.length > 1 && (
+                    <FormDescription>
+                      All {selectedAttorneys.length} attorneys will be notified in all communications. Either one can approve the request.
+                    </FormDescription>
+                  )}
                 </FormItem>
               )}
 
