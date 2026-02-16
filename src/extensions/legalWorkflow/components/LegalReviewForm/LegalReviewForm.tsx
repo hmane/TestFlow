@@ -460,10 +460,9 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
                 ? { title: currentRequest.legalReviewCompletedBy.title, email: currentRequest.legalReviewCompletedBy.email }
                 : undefined
             }
-            attorney={
-              currentRequest.attorney?.[0]?.title
-                ? { title: currentRequest.attorney[0].title, email: currentRequest.attorney[0].email }
-                : undefined
+            attorney={currentRequest.attorney
+              ?.filter((a): a is typeof a & { title: string } => !!a.title)
+              .map(a => ({ title: a.title, email: a.email }))
             }
             durationMinutes={durationMinutes}
           />

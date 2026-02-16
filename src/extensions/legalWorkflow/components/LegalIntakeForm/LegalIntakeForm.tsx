@@ -602,12 +602,12 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
                           showClearButton
                           ensureUser
                         />
+                        {selectedAttorneys && selectedAttorneys.length > 1 && (
+                          <FormDescription>
+                            All {selectedAttorneys.length} attorneys will be notified in all communications. Either one can approve the request.
+                          </FormDescription>
+                        )}
                       </FormValue>
-                      {selectedAttorneys && selectedAttorneys.length > 1 && (
-                        <FormDescription>
-                          All {selectedAttorneys.length} attorneys will be notified in all communications. Either one can approve the request.
-                        </FormDescription>
-                      )}
                     </FormItem>
                   )}
 
@@ -734,10 +734,9 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
                   ? { title: completedBy.title, email: completedBy.email }
                   : undefined
               }
-              attorney={
-                assignedAttorneys?.[0]?.title
-                  ? { title: assignedAttorneys[0].title, email: assignedAttorneys[0].email }
-                  : undefined
+              attorney={assignedAttorneys
+                ?.filter((a): a is IPrincipal & { title: string } => !!a.title)
+                .map(a => ({ title: a.title, email: a.email }))
               }
               durationMinutes={durationMinutes}
               actions={
@@ -839,10 +838,9 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
             title='Legal Intake'
             status='in-progress'
             startedOn={currentRequest.submittedOn}
-            attorney={
-              selectedAttorneys?.[0]?.title
-                ? { title: selectedAttorneys[0].title, email: selectedAttorneys[0].email }
-                : undefined
+            attorney={selectedAttorneys
+              ?.filter((a): a is IPrincipal & { title: string } => !!a.title)
+              .map(a => ({ title: a.title, email: a.email }))
             }
           />
         </Header>
@@ -910,12 +908,12 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
                       showClearButton
                       ensureUser
                     />
+                    {selectedAttorneys && selectedAttorneys.length > 1 && (
+                      <FormDescription>
+                        All {selectedAttorneys.length} attorneys will be notified in all communications. Either one can approve the request.
+                      </FormDescription>
+                    )}
                   </FormValue>
-                  {selectedAttorneys && selectedAttorneys.length > 1 && (
-                    <FormDescription>
-                      All {selectedAttorneys.length} attorneys will be notified in all communications. Either one can approve the request.
-                    </FormDescription>
-                  )}
                 </FormItem>
               )}
 

@@ -118,10 +118,9 @@ export const LegalIntakeSummary: React.FC<ILegalIntakeSummaryProps> = ({
               ? { title: completedBy.title, email: completedBy.email }
               : undefined
           }
-          attorney={
-            assignedAttorneys?.[0]?.title
-              ? { title: assignedAttorneys[0].title, email: assignedAttorneys[0].email }
-              : undefined
+          attorney={assignedAttorneys
+            ?.filter((a): a is typeof a & { title: string } => !!a.title)
+            .map(a => ({ title: a.title, email: a.email }))
           }
           durationMinutes={durationMinutes}
           actions={

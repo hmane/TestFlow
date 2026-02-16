@@ -60,8 +60,8 @@ export interface IWorkflowCardHeaderProps {
   completedOn?: Date;
   /** Person who completed this stage */
   completedBy?: IPersonRef;
-  /** Assigned attorney (for legal review) */
-  attorney?: IPersonRef;
+  /** Assigned attorney(s) (for legal review) — pass single or multiple */
+  attorney?: IPersonRef | IPersonRef[];
   /** Duration in minutes (business hours) */
   durationMinutes?: number;
   /** Tracking ID (for closeout) */
@@ -282,33 +282,69 @@ export const WorkflowCardHeader: React.FC<IWorkflowCardHeaderProps> = ({
   const renderContextInfo = (): React.ReactElement | null => {
     const parts: React.ReactNode[] = [];
 
-    // Determine if attorney and completedBy are the same person
+    // Normalize attorney prop to array
+    const attorneys: IPersonRef[] = attorney
+      ? (Array.isArray(attorney) ? attorney : [attorney])
+      : [];
+    const primaryAttorney = attorneys[0];
+    const hasAttorneys = attorneys.length > 0;
+
+    // Build attorney display text: "Name" for 1, "Name, Name" for 2, "Name +N" for 3+
+    const attorneyDisplayText = attorneys.length <= 2
+      ? attorneys.map(a => a.title).join(', ')
+      : `${primaryAttorney!.title} +${attorneys.length - 1}`;
+
+    // Build full tooltip listing all attorneys
+    const attorneyTooltip = attorneys.length > 1
+      ? attorneys.map(a => a.title).join('\n')
+      : undefined;
+
+    // Determine if primary attorney and completedBy are the same person
     const isSamePerson =
-      attorney?.title &&
+      primaryAttorney?.title &&
       completedBy?.title &&
-      (attorney.title === completedBy.title ||
-        (attorney.email && completedBy.email && attorney.email.toLowerCase() === completedBy.email.toLowerCase()));
+      (primaryAttorney.title === completedBy.title ||
+        (primaryAttorney.email && completedBy.email && primaryAttorney.email.toLowerCase() === completedBy.email.toLowerCase()));
+
+    // Helper to render attorney names (with tooltip when multiple)
+    const renderAttorneyNames = (key: string): React.ReactNode => {
+      const nameSpan = (
+        <span key={key} className='workflow-header__context-item'>
+          <Icon iconName="Contact" className='workflow-header__context-icon' />
+          <span className='workflow-header__context-value'>{attorneyDisplayText}</span>
+        </span>
+      );
+      if (attorneyTooltip) {
+        return (
+          <TooltipHost
+            key={key}
+            content={
+              <div className='workflow-header__tooltip'>
+                {attorneyTooltip.split('\n').map((line, i) => (
+                  <div key={i}>{line}</div>
+                ))}
+              </div>
+            }
+            delay={TooltipDelay.zero}
+            directionalHint={DirectionalHint.bottomCenter}
+          >
+            {nameSpan}
+          </TooltipHost>
+        );
+      }
+      return nameSpan;
+    };
 
     // For completed reviews: show consolidated reviewer info
     if (isCompleted) {
-      if (isSamePerson) {
-        // Attorney completed the review - show single entry with completion context
-        parts.push(
-          <span key="reviewer" className='workflow-header__context-item'>
-            <Icon iconName="Contact" className='workflow-header__context-icon' />
-            <span className='workflow-header__context-value'>{attorney!.title}</span>
-          </span>
-        );
-      } else if (attorney?.title) {
-        // Different people - show attorney
-        parts.push(
-          <span key="attorney" className='workflow-header__context-item'>
-            <Icon iconName="Contact" className='workflow-header__context-icon' />
-            <span className='workflow-header__context-value'>{attorney.title}</span>
-          </span>
-        );
+      if (isSamePerson && attorneys.length === 1) {
+        // Single attorney completed the review - show single entry
+        parts.push(renderAttorneyNames('reviewer'));
+      } else if (hasAttorneys) {
+        // Show attorney(s)
+        parts.push(renderAttorneyNames('attorney'));
         // And show who completed if different
-        if (completedBy?.title) {
+        if (completedBy?.title && !isSamePerson) {
           parts.push(
             <span key="completedBy" className='workflow-header__context-item'>
               <span className='workflow-header__context-sep'>·</span>
@@ -346,20 +382,15 @@ export const WorkflowCardHeader: React.FC<IWorkflowCardHeaderProps> = ({
       }
     } else if (isWaiting) {
       // Waiting status: show who we're waiting on and since when
-      if (attorney?.title) {
-        parts.push(
-          <span key="attorney" className='workflow-header__context-item'>
-            <Icon iconName="Contact" className='workflow-header__context-icon' />
-            <span className='workflow-header__context-value'>{attorney.title}</span>
-          </span>
-        );
+      if (hasAttorneys) {
+        parts.push(renderAttorneyNames('attorney'));
       }
 
       // Show "since" date from waitingSince prop (status updated timestamp)
       if (waitingSince) {
         parts.push(
           <span key="waitingSince" className='workflow-header__context-item'>
-            {attorney?.title && <span className='workflow-header__context-sep'>·</span>}
+            {hasAttorneys && <span className='workflow-header__context-sep'>·</span>}
             <span className='workflow-header__context-label'>since</span>
             <TooltipHost
               content={formatDateTime(waitingSince)}
@@ -374,21 +405,16 @@ export const WorkflowCardHeader: React.FC<IWorkflowCardHeaderProps> = ({
         );
       }
     } else {
-      // In progress: show attorney and start date
-      if (attorney?.title) {
-        parts.push(
-          <span key="attorney" className='workflow-header__context-item'>
-            <Icon iconName="Contact" className='workflow-header__context-icon' />
-            <span className='workflow-header__context-value'>{attorney.title}</span>
-          </span>
-        );
+      // In progress: show attorney(s) and start date
+      if (hasAttorneys) {
+        parts.push(renderAttorneyNames('attorney'));
       }
 
       // Started date for in-progress
       if (startedOn) {
         parts.push(
           <span key="startedOn" className='workflow-header__context-item'>
-            {attorney?.title && <span className='workflow-header__context-sep'>·</span>}
+            {hasAttorneys && <span className='workflow-header__context-sep'>·</span>}
             <span className='workflow-header__context-label'>since</span>
             <TooltipHost
               content={formatDateTime(startedOn)}
