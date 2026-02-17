@@ -3,6 +3,8 @@
  */
 
 import * as React from 'react';
+import { TooltipHost, TooltipDelay } from '@fluentui/react/lib/Tooltip';
+import { DirectionalHint } from '@fluentui/react/lib/Callout';
 import { UserPersona } from 'spfx-toolkit/lib/components/UserPersona';
 import { RequestStatus, RequestType } from '@appTypes/index';
 import type { IWorkflowStep, IStepContent, StepData, AppStepperMode, IRequestMetadata } from './WorkflowStepperTypes';
@@ -544,7 +546,54 @@ function renderStepContent(content: IStepContent): React.ReactNode {
 }
 
 /**
- * Create a date element with friendly text and full date tooltip
+ * Render tooltip content from a multi-line string.
+ * Splits on newlines and renders each "Label: Value" pair with bold label.
+ */
+function renderTooltipContent(text: string): string | React.ReactElement {
+  const lines = text.split('\n');
+  if (lines.length <= 1) return text;
+
+  return React.createElement(
+    'div',
+    { style: { display: 'flex', flexDirection: 'column', gap: '2px', padding: '2px 0' } },
+    lines.map((line, i) => {
+      const colonIdx = line.indexOf(':');
+      if (colonIdx > 0) {
+        const label = line.substring(0, colonIdx + 1);
+        const value = line.substring(colonIdx + 1);
+        return React.createElement(
+          'div',
+          { key: i },
+          React.createElement('span', { style: { fontWeight: 600 } }, label),
+          value
+        );
+      }
+      return React.createElement('div', { key: i }, line);
+    })
+  );
+}
+
+/**
+ * Wrap any content with a Fluent UI TooltipHost
+ */
+function withTooltip(content: string | React.ReactNode, tooltip: string): React.ReactNode {
+  const child = typeof content === 'string'
+    ? React.createElement('span', { style: { cursor: 'help' } }, content)
+    : React.createElement('span', { style: { cursor: 'help' } }, content);
+
+  return React.createElement(
+    TooltipHost,
+    {
+      content: renderTooltipContent(tooltip),
+      delay: TooltipDelay.zero,
+      directionalHint: DirectionalHint.bottomCenter,
+    },
+    child
+  );
+}
+
+/**
+ * Create a date element with friendly text and Fluent UI tooltip showing full date
  */
 function createDateElement(prefix: string, date: Date | undefined): React.ReactNode {
   if (!date) {
@@ -554,16 +603,24 @@ function createDateElement(prefix: string, date: Date | undefined): React.ReactN
   const fullDate = formatFullDate(date);
 
   return React.createElement(
-    'span',
-    { title: fullDate, style: { cursor: 'help' } },
-    `${prefix} ${friendlyDate}`
+    TooltipHost,
+    {
+      content: fullDate,
+      delay: TooltipDelay.zero,
+      directionalHint: DirectionalHint.bottomCenter,
+    },
+    React.createElement(
+      'span',
+      { style: { cursor: 'help' } },
+      `${prefix} ${friendlyDate}`
+    )
   );
 }
 
 /**
  * Create a user element with UserPersona component
  * UserPersona inherits font and color from parent container
- * @param tooltip - Optional hover tooltip for additional context
+ * @param tooltip - Optional Fluent UI tooltip for additional context
  */
 function createUserElement(
   userLogin: string | undefined,
@@ -574,9 +631,7 @@ function createUserElement(
     // Fall back to just the name if no login
     if (!userName) return undefined;
     const textNode = `by ${userName}`;
-    return tooltip
-      ? React.createElement('span', { title: tooltip, style: { cursor: 'help' } }, textNode)
-      : textNode;
+    return tooltip ? withTooltip(textNode, tooltip) : textNode;
   }
 
   const personaSpan = React.createElement(
@@ -593,20 +648,7 @@ function createUserElement(
     })
   );
 
-  return tooltip
-    ? React.createElement('span', { title: tooltip, style: { cursor: 'help' } }, personaSpan)
-    : personaSpan;
-}
-
-/**
- * Wrap any content with a native title tooltip
- */
-function withTooltip(content: string | React.ReactNode, tooltip: string): React.ReactNode {
-  return React.createElement(
-    'span',
-    { title: tooltip, style: { cursor: 'help' } },
-    content
-  );
+  return tooltip ? withTooltip(personaSpan, tooltip) : personaSpan;
 }
 
 /**
