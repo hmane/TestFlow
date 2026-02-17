@@ -62,6 +62,10 @@ export interface IWorkflowCardHeaderProps {
   completedBy?: IPersonRef;
   /** Assigned attorney(s) (for legal review) — pass single or multiple */
   attorney?: IPersonRef | IPersonRef[];
+  /** Label shown before attorney names (e.g., "Assigned to"). If omitted, names are shown with icon only. */
+  attorneyLabel?: string;
+  /** Label for the completedBy person when different from attorney. Defaults to "Reviewed by". */
+  completedByLabel?: string;
   /** Duration in minutes (business hours) */
   durationMinutes?: number;
   /** Tracking ID (for closeout) */
@@ -181,6 +185,8 @@ export const WorkflowCardHeader: React.FC<IWorkflowCardHeaderProps> = ({
   completedOn,
   completedBy,
   attorney,
+  attorneyLabel,
+  completedByLabel = 'Reviewed by',
   durationMinutes,
   trackingId,
   waitingStatus,
@@ -310,7 +316,10 @@ export const WorkflowCardHeader: React.FC<IWorkflowCardHeaderProps> = ({
     const renderAttorneyNames = (key: string): React.ReactNode => {
       const nameSpan = (
         <span key={key} className='workflow-header__context-item'>
-          <Icon iconName="Contact" className='workflow-header__context-icon' />
+          {attorneyLabel
+            ? <span className='workflow-header__context-label'>{attorneyLabel}</span>
+            : <Icon iconName="Contact" className='workflow-header__context-icon' />
+          }
           <span className='workflow-header__context-value'>{attorneyDisplayText}</span>
         </span>
       );
@@ -348,7 +357,7 @@ export const WorkflowCardHeader: React.FC<IWorkflowCardHeaderProps> = ({
           parts.push(
             <span key="completedBy" className='workflow-header__context-item'>
               <span className='workflow-header__context-sep'>·</span>
-              <span className='workflow-header__context-label'>Reviewed by</span>
+              <span className='workflow-header__context-label'>{completedByLabel}</span>
               <span className='workflow-header__context-value'>{completedBy.title}</span>
             </span>
           );

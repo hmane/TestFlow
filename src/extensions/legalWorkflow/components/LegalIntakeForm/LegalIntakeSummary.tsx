@@ -72,8 +72,8 @@ export const LegalIntakeSummary: React.FC<ILegalIntakeSummaryProps> = ({
   // Hide attorney field when ReviewAudience = Compliance Only (no attorney needed)
   const showAttorneyField = currentRequest.reviewAudience !== ReviewAudience.Compliance;
 
-  // Get the user who completed intake (submittedForReviewBy or first attorney)
-  const completedBy = currentRequest.submittedForReviewBy || assignedAttorneys?.[0];
+  // Get the Legal Admin who completed intake (not the assigned attorneys)
+  const completedBy = currentRequest.submittedForReviewBy;
 
   // Calculate duration in business minutes (excludes weekends and non-working hours)
   // Uses businessHoursCalculator to get accurate business hours (8 AM - 5 PM, Mon-Fri PST)
@@ -122,6 +122,8 @@ export const LegalIntakeSummary: React.FC<ILegalIntakeSummaryProps> = ({
             ?.filter((a): a is typeof a & { title: string } => !!a.title)
             .map(a => ({ title: a.title, email: a.email }))
           }
+          attorneyLabel='Assigned to'
+          completedByLabel='By'
           durationMinutes={durationMinutes}
           actions={
             canEditReviewAudience && onEditClick ? (

@@ -687,8 +687,8 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
     }
 
     // Default read-only view
-    // Get the user who completed intake (submittedForReviewBy or attorney)
-    const completedBy = currentRequest.submittedForReviewBy || assignedAttorneys?.[0];
+    // Get the Legal Admin who completed intake (not the assigned attorneys)
+    const completedBy = currentRequest.submittedForReviewBy;
 
     // Calculate duration in business minutes (excludes weekends and non-working hours)
     // Uses businessHoursCalculator to get accurate business hours (8 AM - 5 PM, Mon-Fri PST)
@@ -738,6 +738,8 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
                 ?.filter((a): a is IPrincipal & { title: string } => !!a.title)
                 .map(a => ({ title: a.title, email: a.email }))
               }
+              attorneyLabel='Assigned to'
+              completedByLabel='By'
               durationMinutes={durationMinutes}
               actions={
                 canEditReviewAudience ? (
