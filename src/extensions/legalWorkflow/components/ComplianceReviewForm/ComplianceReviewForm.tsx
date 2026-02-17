@@ -533,11 +533,13 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
             status='completed'
             outcome={toHeaderOutcome(completedOutcome)}
             startedOn={startedOn}
-            completedOn={currentRequest.complianceReviewCompletedOn}
+            completedOn={currentRequest.complianceReviewCompletedOn || currentRequest.complianceStatusUpdatedOn}
             completedBy={
               currentRequest.complianceReviewCompletedBy?.title
                 ? { title: currentRequest.complianceReviewCompletedBy.title, email: currentRequest.complianceReviewCompletedBy.email }
-                : undefined
+                : currentRequest.complianceStatusUpdatedBy?.title
+                  ? { title: currentRequest.complianceStatusUpdatedBy.title, email: currentRequest.complianceStatusUpdatedBy.email }
+                  : undefined
             }
             durationMinutes={durationMinutes}
           />

@@ -344,50 +344,65 @@ export const WorkflowCardHeader: React.FC<IWorkflowCardHeaderProps> = ({
       return nameSpan;
     };
 
-    // For completed reviews: show consolidated reviewer info
+    // Helper to render a date with tooltip
+    const renderDate = (key: string, date: Date, label?: string, withSep?: boolean): React.ReactNode => (
+      <span key={key} className='workflow-header__context-item'>
+        {withSep && <span className='workflow-header__context-sep'>·</span>}
+        {label && <span className='workflow-header__context-label'>{label}</span>}
+        <TooltipHost
+          content={formatDateTime(date)}
+          delay={TooltipDelay.zero}
+          directionalHint={DirectionalHint.bottomCenter}
+        >
+          <span className='workflow-header__context-date workflow-header__context-date--hoverable'>
+            {formatDate(date)}
+          </span>
+        </TooltipHost>
+      </span>
+    );
+
+    // For completed reviews: show consolidated reviewer info with clear completion details
     if (isCompleted) {
+      // 1. Show attorney names
       if (isSamePerson && attorneys.length === 1) {
-        // Single attorney completed the review - show single entry
+        // Single attorney completed the review - show single entry (no redundancy)
         parts.push(renderAttorneyNames('reviewer'));
       } else if (hasAttorneys) {
-        // Show attorney(s)
         parts.push(renderAttorneyNames('attorney'));
-        // And show who completed if different
-        if (completedBy?.title && !isSamePerson) {
-          parts.push(
-            <span key="completedBy" className='workflow-header__context-item'>
-              <span className='workflow-header__context-sep'>·</span>
-              <span className='workflow-header__context-label'>{completedByLabel}</span>
-              <span className='workflow-header__context-value'>{completedBy.title}</span>
-            </span>
-          );
-        }
-      } else if (completedBy?.title) {
-        // No attorney, just show who completed
-        parts.push(
-          <span key="completedBy" className='workflow-header__context-item'>
-            <Icon iconName="Contact" className='workflow-header__context-icon' />
-            <span className='workflow-header__context-value'>{completedBy.title}</span>
-          </span>
-        );
       }
 
-      // Completed date
-      if (completedOn) {
+      // 2. Show who completed and when (combined for readability)
+      const shouldShowCompletedBy = completedBy?.title && (
+        !hasAttorneys || attorneys.length > 1 || !isSamePerson
+      );
+
+      if (shouldShowCompletedBy) {
+        // "· Reviewed by A1 on Jan 10" or "· By Admin on Jan 10"
         parts.push(
-          <span key="completedOn" className='workflow-header__context-item'>
-            <span className='workflow-header__context-sep'>·</span>
-            <TooltipHost
-              content={formatDateTime(completedOn)}
-              delay={TooltipDelay.zero}
-              directionalHint={DirectionalHint.bottomCenter}
-            >
-              <span className='workflow-header__context-date workflow-header__context-date--hoverable'>
-                {formatDate(completedOn)}
-              </span>
-            </TooltipHost>
+          <span key="completedInfo" className='workflow-header__context-item'>
+            {parts.length > 0 && <span className='workflow-header__context-sep'>·</span>}
+            {!hasAttorneys && <Icon iconName="Contact" className='workflow-header__context-icon' />}
+            {hasAttorneys && <span className='workflow-header__context-label'>{completedByLabel}</span>}
+            <span className='workflow-header__context-value'>{completedBy!.title}</span>
+            {completedOn && (
+              <>
+                <span className='workflow-header__context-label'>{' on'}</span>
+                <TooltipHost
+                  content={formatDateTime(completedOn)}
+                  delay={TooltipDelay.zero}
+                  directionalHint={DirectionalHint.bottomCenter}
+                >
+                  <span className='workflow-header__context-date workflow-header__context-date--hoverable'>
+                    {formatDate(completedOn)}
+                  </span>
+                </TooltipHost>
+              </>
+            )}
           </span>
         );
+      } else if (completedOn) {
+        // No completedBy person — show labeled date: "· Completed Jan 10"
+        parts.push(renderDate('completedOn', completedOn, 'Completed', parts.length > 0));
       }
     } else if (isWaiting) {
       // Waiting status: show who we're waiting on and since when

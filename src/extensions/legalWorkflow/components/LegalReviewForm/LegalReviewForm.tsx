@@ -454,11 +454,13 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
             status='completed'
             outcome={toHeaderOutcome(completedOutcome)}
             startedOn={startedOn}
-            completedOn={currentRequest.legalReviewCompletedOn}
+            completedOn={currentRequest.legalReviewCompletedOn || currentRequest.legalStatusUpdatedOn}
             completedBy={
               currentRequest.legalReviewCompletedBy?.title
                 ? { title: currentRequest.legalReviewCompletedBy.title, email: currentRequest.legalReviewCompletedBy.email }
-                : undefined
+                : currentRequest.legalStatusUpdatedBy?.title
+                  ? { title: currentRequest.legalStatusUpdatedBy.title, email: currentRequest.legalStatusUpdatedBy.email }
+                  : undefined
             }
             attorney={currentRequest.attorney
               ?.filter((a): a is typeof a & { title: string } => !!a.title)

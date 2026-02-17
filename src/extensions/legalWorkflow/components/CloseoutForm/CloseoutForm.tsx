@@ -380,7 +380,8 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
   };
 
   // Start date is when the closeout stage began (last review was approved)
-  const startedOn = currentRequest.closeoutOn || getLastReviewCompletedDate();
+  // Note: closeoutOn is the EXIT date (when closeout was completed), not the entry date
+  const startedOn = getLastReviewCompletedDate();
 
   // Calculate duration for closeout
   const calculateCloseoutDuration = (): number | undefined => {

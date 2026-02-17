@@ -492,7 +492,8 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
   // Admin/Legal Admin can toggle edit mode to modify attorney, review audience, or add notes
   if (readOnly) {
     const assignedAttorneys = currentRequest.attorney;
-    const completedDate = currentRequest.submittedForReviewOn;
+    // Prefer submittedForReviewOn (direct path); fall back to submittedToAssignAttorneyOn (committee path)
+    const completedDate = currentRequest.submittedForReviewOn || currentRequest.submittedToAssignAttorneyOn;
 
     // In edit mode, show editable fields; otherwise show read-only summary
     if (isEditMode && canEditReviewAudience) {
@@ -688,7 +689,8 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
 
     // Default read-only view
     // Get the Legal Admin who completed intake (not the assigned attorneys)
-    const completedBy = currentRequest.submittedForReviewBy;
+    // Prefer submittedForReviewBy (direct path); fall back to submittedToAssignAttorneyBy (committee path)
+    const completedBy = currentRequest.submittedForReviewBy || currentRequest.submittedToAssignAttorneyBy;
 
     // Calculate duration in business minutes (excludes weekends and non-working hours)
     // Uses businessHoursCalculator to get accurate business hours (8 AM - 5 PM, Mon-Fri PST)
