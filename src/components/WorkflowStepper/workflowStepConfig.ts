@@ -563,14 +563,23 @@ function createDateElement(prefix: string, date: Date | undefined): React.ReactN
 /**
  * Create a user element with UserPersona component
  * UserPersona inherits font and color from parent container
+ * @param tooltip - Optional hover tooltip for additional context
  */
-function createUserElement(userLogin: string | undefined, userName: string | undefined): React.ReactNode {
+function createUserElement(
+  userLogin: string | undefined,
+  userName: string | undefined,
+  tooltip?: string
+): React.ReactNode {
   if (!userLogin) {
     // Fall back to just the name if no login
-    return userName ? `by ${userName}` : undefined;
+    if (!userName) return undefined;
+    const textNode = `by ${userName}`;
+    return tooltip
+      ? React.createElement('span', { title: tooltip, style: { cursor: 'help' } }, textNode)
+      : textNode;
   }
 
-  return React.createElement(
+  const personaSpan = React.createElement(
     'span',
     { style: { display: 'inline-flex', alignItems: 'center', gap: '4px' } },
     'by ',
@@ -583,6 +592,31 @@ function createUserElement(userLogin: string | undefined, userName: string | und
       showSecondaryText: false,
     })
   );
+
+  return tooltip
+    ? React.createElement('span', { title: tooltip, style: { cursor: 'help' } }, personaSpan)
+    : personaSpan;
+}
+
+/**
+ * Wrap any content with a native title tooltip
+ */
+function withTooltip(content: string | React.ReactNode, tooltip: string): React.ReactNode {
+  return React.createElement(
+    'span',
+    { title: tooltip, style: { cursor: 'help' } },
+    content
+  );
+}
+
+/**
+ * Build a multi-line tooltip string from labeled parts (skips empty values)
+ */
+function buildTooltip(parts: Array<[string, string | undefined]>): string {
+  return parts
+    .filter((p): p is [string, string] => !!p[1])
+    .map(([label, value]) => `${label}: ${value}`)
+    .join('\n');
 }
 
 /**
@@ -614,35 +648,55 @@ function getStepDescriptions(
 
   // Legal Intake step (combined with Assign Attorney)
   if (step.key === 'legalIntake' && requestMetadata) {
-    // If completed - show who completed it
+    // If completed - show the Legal Admin who completed it, with attorney/audience details in tooltip
     if (status === 'completed' && requestMetadata.legalIntakeCompletedOn) {
+      const intakeTooltip = buildTooltip([
+        ['Assigned to', requestMetadata.assignedAttorney],
+        ['Review Audience', requestMetadata.reviewAudience],
+        ['Completed by', requestMetadata.legalIntakeCompletedBy],
+        ['Completed', requestMetadata.legalIntakeCompletedOn ? formatFullDate(requestMetadata.legalIntakeCompletedOn) : undefined],
+      ]);
+
+      // Primary: show "by [Legal Admin]" with tooltip for full context
+      // Fallback: show "Assigned to [attorneys]" if no Legal Admin recorded
+      const desc2 = requestMetadata.legalIntakeCompletedBy
+        ? createUserElement(requestMetadata.legalIntakeCompletedByLogin, requestMetadata.legalIntakeCompletedBy, intakeTooltip)
+        : (requestMetadata.assignedAttorney
+          ? withTooltip(`Assigned to ${requestMetadata.assignedAttorney}`, intakeTooltip)
+          : undefined);
+
       return {
         description1: createDateElement('Completed', requestMetadata.legalIntakeCompletedOn),
-        description2: requestMetadata.assignedAttorney
-          ? createUserElement(requestMetadata.assignedAttorneyLogin, requestMetadata.assignedAttorney)
-          : createUserElement(requestMetadata.legalIntakeCompletedByLogin, requestMetadata.legalIntakeCompletedBy),
+        description2: desc2,
       };
     }
     // If current - show waiting since submitted or pending assignment
     if (status === 'current' && requestMetadata.submittedOn) {
-      // If attorney is assigned, show assignment info
+      // If attorney is assigned (committee path), show assignment info
       if (requestMetadata.assignedAttorney) {
+        const pendingTooltip = buildTooltip([
+          ['Assigned to', requestMetadata.assignedAttorney],
+          ['Review Audience', requestMetadata.reviewAudience],
+          ['Submitted', requestMetadata.submittedOn ? formatFullDate(requestMetadata.submittedOn) : undefined],
+        ]);
         return {
-          description1: 'Pending committee',
-          description2: createUserElement(requestMetadata.assignedAttorneyLogin, requestMetadata.assignedAttorney),
+          description1: 'Pending committee review',
+          description2: withTooltip(`Assigned to ${requestMetadata.assignedAttorney}`, pendingTooltip),
         };
       }
       // Otherwise show waiting for triage
       return {
         description1: createDateElement('Waiting since', requestMetadata.submittedOn),
-        description2: 'Pending triage',
+        description2: requestMetadata.reviewAudience
+          ? withTooltip('Pending triage', `Review Audience: ${requestMetadata.reviewAudience}`)
+          : 'Pending triage',
       };
     }
   }
 
   // Review step (formerly In Review)
   if (step.key === 'inReview' && requestMetadata) {
-    // If completed - show when review was completed and by whom
+    // If completed - show outcome-aware description with reviewer tooltip
     if (status === 'completed') {
       // Determine the last reviewer based on review audience and completion dates
       let lastReviewDate: Date | undefined;
@@ -650,7 +704,6 @@ function getStepDescriptions(
       let lastReviewerName: string | undefined;
 
       if (requestMetadata.reviewAudience === 'Both') {
-        // Both reviews - find the later completion date
         const legalDate = requestMetadata.legalReviewCompletedOn;
         const complianceDate = requestMetadata.complianceReviewCompletedOn;
 
@@ -687,91 +740,191 @@ function getStepDescriptions(
         lastReviewerName = requestMetadata.complianceReviewCompletedBy;
       }
 
-      // Fall back to closeoutStartedOn if no specific review date
       const completedDate = lastReviewDate || requestMetadata.closeoutStartedOn;
 
+      // Build an outcome-aware prefix for description1 (e.g., "Approved today" instead of "Completed today")
+      const legalOutcome = requestMetadata.legalReviewOutcome;
+      const complianceOutcome = requestMetadata.complianceReviewOutcome;
+      let datePrefix = 'Completed';
+      if (requestMetadata.reviewAudience === 'Both' && legalOutcome && complianceOutcome) {
+        // If both outcomes are the same short outcome, use it
+        if (legalOutcome === complianceOutcome && (legalOutcome === 'Approved' || legalOutcome === 'Not Approved')) {
+          datePrefix = legalOutcome;
+        }
+      } else {
+        const singleOutcome = legalOutcome || complianceOutcome;
+        if (singleOutcome === 'Approved' || singleOutcome === 'Not Approved') {
+          datePrefix = singleOutcome;
+        } else if (singleOutcome === 'Approved With Comments') {
+          datePrefix = 'Approved w/ Comments';
+        }
+      }
+
+      // Build tooltip with full review details
+      const reviewTooltipParts: Array<[string, string | undefined]> = [];
+      if (requestMetadata.reviewAudience === 'Both' || requestMetadata.reviewAudience === 'Legal') {
+        reviewTooltipParts.push(['Legal Review', legalOutcome || 'Pending']);
+        reviewTooltipParts.push(['Legal Reviewer', requestMetadata.legalReviewCompletedBy]);
+        if (requestMetadata.legalReviewCompletedOn) {
+          reviewTooltipParts.push(['Legal Completed', formatFullDate(requestMetadata.legalReviewCompletedOn)]);
+        }
+      }
+      if (requestMetadata.reviewAudience === 'Both' || requestMetadata.reviewAudience === 'Compliance') {
+        reviewTooltipParts.push(['Compliance Review', complianceOutcome || 'Pending']);
+        reviewTooltipParts.push(['Compliance Reviewer', requestMetadata.complianceReviewCompletedBy]);
+        if (requestMetadata.complianceReviewCompletedOn) {
+          reviewTooltipParts.push(['Compliance Completed', formatFullDate(requestMetadata.complianceReviewCompletedOn)]);
+        }
+      }
+      if (requestMetadata.assignedAttorney) {
+        reviewTooltipParts.push(['Assigned Attorney(s)', requestMetadata.assignedAttorney]);
+      }
+      const reviewTooltip = buildTooltip(reviewTooltipParts);
+
+      const desc2 = lastReviewerLogin
+        ? createUserElement(lastReviewerLogin, lastReviewerName, reviewTooltip)
+        : (reviewTooltip
+          ? withTooltip(requestMetadata.reviewAudience ? `${requestMetadata.reviewAudience} review` : 'Review complete', reviewTooltip)
+          : (requestMetadata.reviewAudience ? `${requestMetadata.reviewAudience} review` : undefined));
+
       return {
-        description1: createDateElement('Completed', completedDate),
-        description2: lastReviewerLogin
-          ? createUserElement(lastReviewerLogin, lastReviewerName)
-          : (requestMetadata.reviewAudience ? `${requestMetadata.reviewAudience} review` : undefined),
+        description1: createDateElement(datePrefix, completedDate),
+        description2: desc2,
       };
     }
-    // If current - show review completion status
+    // If current - show review status with detailed tooltip
     if (status === 'current') {
-      // Build review status description
+      // Build visible review status parts
       const reviewParts: string[] = [];
+      // Build tooltip with more detail
+      const currentTooltipParts: Array<[string, string | undefined]> = [];
 
-      // Check legal review status
       if (requestMetadata.reviewAudience === 'Legal' || requestMetadata.reviewAudience === 'Both') {
         if (requestMetadata.legalReviewCompleted) {
-          reviewParts.push(`Legal: ${requestMetadata.legalReviewOutcome || 'Completed'}`);
+          const outcomeShort = requestMetadata.legalReviewOutcome === 'Approved With Comments'
+            ? 'Approved w/ Comments' : (requestMetadata.legalReviewOutcome || 'Completed');
+          reviewParts.push(`Legal: ${outcomeShort}`);
         } else {
           reviewParts.push('Legal: In Progress');
         }
-      }
-
-      // Check compliance review status
-      if (requestMetadata.reviewAudience === 'Compliance' || requestMetadata.reviewAudience === 'Both') {
-        if (requestMetadata.complianceReviewCompleted) {
-          reviewParts.push(`Compliance: ${requestMetadata.complianceReviewOutcome || 'Completed'}`);
-        } else {
-          reviewParts.push('Compliance: In Progress');
+        currentTooltipParts.push(['Legal Review', requestMetadata.legalReviewCompleted
+          ? (requestMetadata.legalReviewOutcome || 'Completed') : (requestMetadata.legalReviewStatus || 'In Progress')]);
+        if (requestMetadata.legalReviewCompletedBy) {
+          currentTooltipParts.push(['Legal Reviewer', requestMetadata.legalReviewCompletedBy]);
         }
       }
 
-      // If we have review parts, show them
+      if (requestMetadata.reviewAudience === 'Compliance' || requestMetadata.reviewAudience === 'Both') {
+        if (requestMetadata.complianceReviewCompleted) {
+          const outcomeShort = requestMetadata.complianceReviewOutcome === 'Approved With Comments'
+            ? 'Approved w/ Comments' : (requestMetadata.complianceReviewOutcome || 'Completed');
+          reviewParts.push(`Compliance: ${outcomeShort}`);
+        } else {
+          reviewParts.push('Compliance: In Progress');
+        }
+        currentTooltipParts.push(['Compliance Review', requestMetadata.complianceReviewCompleted
+          ? (requestMetadata.complianceReviewOutcome || 'Completed') : (requestMetadata.complianceReviewStatus || 'In Progress')]);
+        if (requestMetadata.complianceReviewCompletedBy) {
+          currentTooltipParts.push(['Compliance Reviewer', requestMetadata.complianceReviewCompletedBy]);
+        }
+      }
+
+      if (requestMetadata.assignedAttorney) {
+        currentTooltipParts.push(['Assigned Attorney(s)', requestMetadata.assignedAttorney]);
+      }
+      if (requestMetadata.reviewStartedOn) {
+        currentTooltipParts.push(['Review started', formatFullDate(requestMetadata.reviewStartedOn)]);
+      }
+
+      const currentTooltip = buildTooltip(currentTooltipParts);
+
       if (reviewParts.length > 0) {
         return {
           description1: createDateElement('In review since', requestMetadata.reviewStartedOn),
-          description2: reviewParts.join(' | '),
+          description2: currentTooltip
+            ? withTooltip(reviewParts.join(' · '), currentTooltip)
+            : reviewParts.join(' · '),
         };
       }
 
-      // Fallback to simple audience display
       return {
         description1: createDateElement('In review since', requestMetadata.reviewStartedOn),
-        description2: requestMetadata.reviewAudience ? `${requestMetadata.reviewAudience} review` : undefined,
+        description2: requestMetadata.reviewAudience
+          ? withTooltip(`${requestMetadata.reviewAudience} review`, currentTooltip)
+          : undefined,
       };
     }
   }
 
   // Closeout step (merged with Completed status)
   if (step.key === 'closeout' && requestMetadata) {
-    // If completed - show when completed and by whom
+    // If completed - show completer with tracking ID in tooltip
     if (status === 'completed' && requestMetadata.completedOn) {
+      const closeoutTooltip = buildTooltip([
+        ['Completed by', requestMetadata.closeoutCompletedBy],
+        ['Tracking ID', requestMetadata.trackingId],
+        ['Completed', formatFullDate(requestMetadata.completedOn)],
+      ]);
+
+      let desc2: string | React.ReactNode;
+      if (requestMetadata.closeoutCompletedByLogin) {
+        // Show completer with tooltip containing tracking ID
+        desc2 = createUserElement(requestMetadata.closeoutCompletedByLogin, requestMetadata.closeoutCompletedBy, closeoutTooltip);
+      } else if (requestMetadata.trackingId) {
+        desc2 = closeoutTooltip
+          ? withTooltip(`ID: ${requestMetadata.trackingId}`, closeoutTooltip)
+          : `ID: ${requestMetadata.trackingId}`;
+      } else {
+        desc2 = undefined;
+      }
+
       return {
         description1: createDateElement('Completed', requestMetadata.completedOn),
-        description2: requestMetadata.closeoutCompletedByLogin
-          ? createUserElement(requestMetadata.closeoutCompletedByLogin, requestMetadata.closeoutCompletedBy)
-          : (requestMetadata.trackingId ? `ID: ${requestMetadata.trackingId}` : undefined),
+        description2: desc2,
       };
     }
-    // If current - show closeout started
-    if (status === 'current' && requestMetadata.closeoutStartedOn) {
+    // If current - show closeout started with context tooltip
+    if (status === 'current') {
+      const currentCloseoutTooltip = buildTooltip([
+        ['Tracking ID', requestMetadata.trackingId],
+        ['Started', requestMetadata.closeoutStartedOn ? formatFullDate(requestMetadata.closeoutStartedOn) : undefined],
+      ]);
+      const desc2Text = requestMetadata.trackingId ? `ID: ${requestMetadata.trackingId}` : 'Pending completion';
       return {
-        description1: createDateElement('Started', requestMetadata.closeoutStartedOn),
-        description2: requestMetadata.trackingId ? `ID: ${requestMetadata.trackingId}` : 'Pending completion',
+        description1: requestMetadata.closeoutStartedOn
+          ? createDateElement('Started', requestMetadata.closeoutStartedOn)
+          : 'Pending closeout',
+        description2: currentCloseoutTooltip ? withTooltip(desc2Text, currentCloseoutTooltip) : desc2Text,
       };
     }
   }
 
   // FINRA Documents step
   if (step.key === 'finraDocuments' && requestMetadata) {
-    // Completed - show when FINRA was completed and by whom
+    // Completed - show when FINRA was completed with tooltip details
     if (status === 'completed' && requestMetadata.finraCompletedOn) {
+      const finraTooltip = buildTooltip([
+        ['Completed by', requestMetadata.finraCompletedBy],
+        ['Completed', formatFullDate(requestMetadata.finraCompletedOn)],
+        ['Tracking ID', requestMetadata.trackingId],
+      ]);
+
       return {
         description1: createDateElement('Completed', requestMetadata.finraCompletedOn),
         description2: requestMetadata.finraCompletedByLogin
-          ? createUserElement(requestMetadata.finraCompletedByLogin, requestMetadata.finraCompletedBy)
-          : (requestMetadata.finraCompletedBy ? `by ${requestMetadata.finraCompletedBy}` : undefined),
+          ? createUserElement(requestMetadata.finraCompletedByLogin, requestMetadata.finraCompletedBy, finraTooltip)
+          : (requestMetadata.finraCompletedBy
+            ? (finraTooltip ? withTooltip(`by ${requestMetadata.finraCompletedBy}`, finraTooltip) : `by ${requestMetadata.finraCompletedBy}`)
+            : undefined),
       };
     }
-    // Current - awaiting documents
+    // Current - awaiting documents with tracking ID context
     if (status === 'current') {
       return {
         description1: 'Awaiting FINRA documents',
-        description2: 'Upload documents to complete',
+        description2: requestMetadata.trackingId
+          ? withTooltip('Upload documents to complete', `Tracking ID: ${requestMetadata.trackingId}`)
+          : 'Upload documents to complete',
       };
     }
   }
@@ -874,11 +1027,21 @@ function getTerminalStepDescriptions(
     const cancelledBy = requestMetadata.cancelledBy;
     const cancelledByLogin = requestMetadata.cancelledByLogin;
 
+    // Show reason in tooltip if available
+    const cancelTooltip = buildTooltip([
+      ['Reason', requestMetadata.cancelReason],
+      ['Cancelled by', cancelledBy],
+      ['Cancelled', cancelledOn ? formatFullDate(cancelledOn) : undefined],
+      ['Previous Status', requestMetadata.previousStatus],
+    ]);
+
     return {
       description1: cancelledOn ? createDateElement('Cancelled', cancelledOn) : 'Cancelled',
       description2: cancelledByLogin
-        ? createUserElement(cancelledByLogin, cancelledBy)
-        : (cancelledBy ? `by ${cancelledBy}` : undefined),
+        ? createUserElement(cancelledByLogin, cancelledBy, cancelTooltip)
+        : (cancelledBy
+          ? (cancelTooltip ? withTooltip(`by ${cancelledBy}`, cancelTooltip) : `by ${cancelledBy}`)
+          : (requestMetadata.cancelReason ? withTooltip('See reason', `Reason: ${requestMetadata.cancelReason}`) : undefined)),
     };
   }
 
@@ -887,11 +1050,21 @@ function getTerminalStepDescriptions(
     const onHoldBy = requestMetadata.onHoldBy;
     const onHoldByLogin = requestMetadata.onHoldByLogin;
 
+    // Show reason in tooltip if available
+    const holdTooltip = buildTooltip([
+      ['Reason', requestMetadata.onHoldReason],
+      ['On hold by', onHoldBy],
+      ['On hold since', onHoldSince ? formatFullDate(onHoldSince) : undefined],
+      ['Previous Status', requestMetadata.previousStatus],
+    ]);
+
     return {
       description1: onHoldSince ? createDateElement('On hold since', onHoldSince) : 'On Hold',
       description2: onHoldByLogin
-        ? createUserElement(onHoldByLogin, onHoldBy)
-        : (onHoldBy ? `by ${onHoldBy}` : undefined),
+        ? createUserElement(onHoldByLogin, onHoldBy, holdTooltip)
+        : (onHoldBy
+          ? (holdTooltip ? withTooltip(`by ${onHoldBy}`, holdTooltip) : `by ${onHoldBy}`)
+          : (requestMetadata.onHoldReason ? withTooltip('See reason', `Reason: ${requestMetadata.onHoldReason}`) : undefined)),
     };
   }
 
