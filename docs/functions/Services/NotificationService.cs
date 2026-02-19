@@ -8,6 +8,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Caching.Memory;
+using PnP.Core.Services;
 using LegalWorkflow.Functions.Constants;
 using LegalWorkflow.Functions.Helpers;
 using LegalWorkflow.Functions.Models;
@@ -43,20 +45,40 @@ namespace LegalWorkflow.Functions.Services
     public class NotificationService
     {
         private readonly RequestService _requestService;
+        private readonly IPnPContextFactory _contextFactory;
+        private readonly PermissionGroupConfig _groupConfig;
+        private readonly IMemoryCache _groupMembersCache;
         private readonly Logger _logger;
         private readonly NotificationConfig _config;
+
+        /// <summary>
+        /// Cache expiration time for group member emails (5 minutes).
+        /// </summary>
+        private static readonly TimeSpan GroupMembersCacheExpiration = TimeSpan.FromMinutes(5);
 
         /// <summary>
         /// Creates a new NotificationService instance.
         /// </summary>
         /// <param name="requestService">Service for loading request data</param>
+        /// <param name="contextFactory">PnP Core context factory for SharePoint group member resolution</param>
+        /// <param name="groupConfig">SharePoint group name configuration</param>
         /// <param name="logger">Logger instance for logging operations</param>
         /// <param name="config">Configuration for notification settings (optional)</param>
-        public NotificationService(RequestService requestService, Logger logger, NotificationConfig? config = null)
+        /// <param name="memoryCache">Memory cache for caching group member emails (optional)</param>
+        public NotificationService(
+            RequestService requestService,
+            IPnPContextFactory contextFactory,
+            PermissionGroupConfig groupConfig,
+            Logger logger,
+            NotificationConfig? config = null,
+            IMemoryCache? memoryCache = null)
         {
             _requestService = requestService ?? throw new ArgumentNullException(nameof(requestService));
+            _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
+            _groupConfig = groupConfig ?? throw new ArgumentNullException(nameof(groupConfig));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _config = config ?? new NotificationConfig();
+            _groupMembersCache = memoryCache ?? new MemoryCache(new MemoryCacheOptions());
         }
 
         /// <summary>
@@ -123,7 +145,7 @@ namespace LegalWorkflow.Functions.Services
                 }
 
                 // Generate the email
-                var email = GenerateEmail(currentRequest, template, notificationId);
+                var email = await GenerateEmailAsync(currentRequest, template, notificationId);
 
                 _logger.LogNotification(
                     notificationId,
@@ -374,8 +396,9 @@ namespace LegalWorkflow.Functions.Services
 
         /// <summary>
         /// Generates the email notification from the template and request data.
+        /// Resolves group-based recipients by querying SharePoint group members.
         /// </summary>
-        private EmailResponse GenerateEmail(RequestModel request, NotificationTemplate template, string notificationId)
+        private async Task<EmailResponse> GenerateEmailAsync(RequestModel request, NotificationTemplate template, string notificationId)
         {
             // Process the subject with token replacement
             var subject = ReplaceTokens(template.Subject, request);
@@ -383,10 +406,10 @@ namespace LegalWorkflow.Functions.Services
             // Process the body with token replacement and conditionals
             var body = ProcessTemplate(template.Body, request);
 
-            // Resolve recipients
-            var recipients = ResolveRecipients(template.ToRecipients, request);
-            var ccRecipients = ResolveRecipients(template.CcRecipients, request);
-            var bccRecipients = ResolveRecipients(template.BccRecipients, request);
+            // Resolve recipients (queries SharePoint groups for group-based recipients)
+            var recipients = await ResolveRecipientsAsync(template.ToRecipients, request);
+            var ccRecipients = await ResolveRecipientsAsync(template.CcRecipients, request);
+            var bccRecipients = await ResolveRecipientsAsync(template.BccRecipients, request);
 
             return new EmailResponse
             {
@@ -647,9 +670,10 @@ namespace LegalWorkflow.Functions.Services
 
         /// <summary>
         /// Resolves recipient identifiers to email addresses.
-        /// Supports both simple identifiers (e.g., "Submitter") and template tokens (e.g., "{{SubmitterEmail}}").
+        /// Supports simple identifiers (e.g., "Submitter"), template tokens (e.g., "{{SubmitterEmail}}"),
+        /// and group-based recipients that are resolved by querying SharePoint group members.
         /// </summary>
-        private List<string> ResolveRecipients(string recipientConfig, RequestModel request)
+        private async Task<List<string>> ResolveRecipientsAsync(string recipientConfig, RequestModel request)
         {
             var emails = new List<string>();
 
@@ -671,7 +695,7 @@ namespace LegalWorkflow.Functions.Services
 
                 switch (resolvedRecipient)
                 {
-                    // Email-based tokens (resolve to email address)
+                    // Email-based tokens (resolve from request data)
                     case "SubmitterEmail":
                     case "Submitter":
                         if (!string.IsNullOrEmpty(request.SubmittedBy?.Email))
@@ -688,29 +712,35 @@ namespace LegalWorkflow.Functions.Services
                             .Select(a => a.Email));
                         break;
 
-                    // Group-based tokens (resolve to group distribution list email)
+                    // Group-based tokens (resolve by querying SharePoint group members)
                     case "LegalAdminGroup":
                     case "LegalAdmin":
-                        if (!string.IsNullOrEmpty(_config.LegalAdminEmail))
-                        {
-                            emails.Add(_config.LegalAdminEmail);
-                        }
+                        var legalAdminEmails = await GetGroupMemberEmailsAsync(_groupConfig.LegalAdminGroup);
+                        emails.AddRange(legalAdminEmails);
                         break;
 
                     case "AttorneyAssignerGroup":
                     case "AttorneyAssigner":
-                        if (!string.IsNullOrEmpty(_config.AttorneyAssignerEmail))
-                        {
-                            emails.Add(_config.AttorneyAssignerEmail);
-                        }
+                        var assignerEmails = await GetGroupMemberEmailsAsync(_groupConfig.AttorneyAssignerGroup);
+                        emails.AddRange(assignerEmails);
                         break;
 
                     case "ComplianceGroup":
                     case "Compliance":
-                        if (!string.IsNullOrEmpty(_config.ComplianceEmail))
-                        {
-                            emails.Add(_config.ComplianceEmail);
-                        }
+                        var complianceEmails = await GetGroupMemberEmailsAsync(_groupConfig.ComplianceGroup);
+                        emails.AddRange(complianceEmails);
+                        break;
+
+                    case "AdminGroup":
+                    case "Admin":
+                        var adminEmails = await GetGroupMemberEmailsAsync(_groupConfig.AdminGroup);
+                        emails.AddRange(adminEmails);
+                        break;
+
+                    case "AttorneysGroup":
+                    case "Attorneys":
+                        var attorneyEmails = await GetGroupMemberEmailsAsync(_groupConfig.AttorneysGroup);
+                        emails.AddRange(attorneyEmails);
                         break;
 
                     // Multi-value tokens
@@ -732,6 +762,67 @@ namespace LegalWorkflow.Functions.Services
             }
 
             return emails.Distinct().ToList();
+        }
+
+        /// <summary>
+        /// Gets email addresses of all members in a SharePoint group.
+        /// Results are cached for 5 minutes to avoid repeated SharePoint calls.
+        /// </summary>
+        /// <param name="groupName">The SharePoint group name (e.g., "LW - Legal Admin")</param>
+        /// <returns>List of email addresses for group members</returns>
+        private async Task<List<string>> GetGroupMemberEmailsAsync(string groupName)
+        {
+            if (string.IsNullOrEmpty(groupName))
+            {
+                return new List<string>();
+            }
+
+            var cacheKey = $"group-emails:{groupName}";
+
+            // Check cache first
+            if (_groupMembersCache.TryGetValue(cacheKey, out List<string>? cachedEmails) && cachedEmails != null)
+            {
+                _logger.Debug($"Using cached group member emails for '{groupName}' ({cachedEmails.Count} members)");
+                return cachedEmails;
+            }
+
+            try
+            {
+                using var context = await _contextFactory.CreateAsync("Default");
+
+                var siteGroups = context.Web.SiteGroups;
+                var group = await siteGroups.FirstOrDefaultAsync(g => g.Title == groupName);
+
+                if (group == null)
+                {
+                    _logger.Warning($"SharePoint group '{groupName}' not found");
+                    return new List<string>();
+                }
+
+                // Load group members
+                await group.LoadAsync(g => g.Users);
+
+                var memberEmails = group.Users.AsRequested()
+                    .Where(u => !string.IsNullOrEmpty(u.Mail))
+                    .Select(u => u.Mail)
+                    .Distinct()
+                    .ToList();
+
+                _logger.Info($"Resolved {memberEmails.Count} email(s) from SharePoint group '{groupName}'");
+
+                // Cache the result
+                var cacheEntryOptions = new MemoryCacheEntryOptions()
+                    .SetSlidingExpiration(GroupMembersCacheExpiration)
+                    .SetAbsoluteExpiration(TimeSpan.FromMinutes(15));
+                _groupMembersCache.Set(cacheKey, memberEmails, cacheEntryOptions);
+
+                return memberEmails;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error($"Failed to resolve members for SharePoint group '{groupName}'", ex);
+                return new List<string>();
+            }
         }
 
         #endregion
@@ -907,24 +998,6 @@ namespace LegalWorkflow.Functions.Services
         /// Example: "https://contoso.sharepoint.com/sites/LegalWorkflow"
         /// </summary>
         public string SiteUrl { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Email address for the Legal Admin group.
-        /// Used when resolving "LegalAdmin" recipient in templates.
-        /// </summary>
-        public string LegalAdminEmail { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Email address for the Attorney Assigner group.
-        /// Used when resolving "AttorneyAssigner" recipient in templates.
-        /// </summary>
-        public string AttorneyAssignerEmail { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Email address for the Compliance group.
-        /// Used when resolving "Compliance" recipient in templates.
-        /// </summary>
-        public string ComplianceEmail { get; set; } = string.Empty;
 
         /// <summary>
         /// Name of the Requests list in SharePoint.

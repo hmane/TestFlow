@@ -3,6 +3,9 @@
 // Program.cs - Application entry point with dependency injection configuration
 // =============================================================================
 
+using System.Security.Cryptography.X509Certificates;
+using Azure.Identity;
+using Azure.Security.KeyVault.Certificates;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
@@ -64,9 +67,6 @@ namespace LegalWorkflow.Functions
                         return new NotificationConfig
                         {
                             SiteUrl = configuration["SharePoint:SiteUrl"] ?? string.Empty,
-                            LegalAdminEmail = configuration["Notifications:LegalAdminEmail"] ?? string.Empty,
-                            AttorneyAssignerEmail = configuration["Notifications:AttorneyAssignerEmail"] ?? string.Empty,
-                            ComplianceEmail = configuration["Notifications:ComplianceEmail"] ?? string.Empty,
                             RequestsListName = configuration["SharePoint:RequestsListName"] ?? "Requests",
                             EnableDebugLogging = bool.TryParse(configuration["Notifications:EnableDebugLogging"], out var debug) && debug
                         };
@@ -101,15 +101,18 @@ namespace LegalWorkflow.Functions
 
         /// <summary>
         /// Configures PnP Core SDK for SharePoint access.
-        /// Supports both certificate and client secret authentication.
+        /// Uses certificate-based authentication with certificate stored in Azure Key Vault.
         /// </summary>
         private static void ConfigurePnPCore(IServiceCollection services, IConfiguration configuration)
         {
             var clientId = configuration["AzureAd:ClientId"];
             var tenantId = configuration["AzureAd:TenantId"];
-            var clientSecret = configuration["AzureAd:ClientSecret"];
-            var certThumbprint = configuration["AzureAd:CertificateThumbprint"];
+            var keyVaultUrl = configuration["AzureAd:KeyVaultUrl"];
+            var certificateName = configuration["AzureAd:CertificateName"];
             var siteUrl = configuration["SharePoint:SiteUrl"];
+
+            // Load certificate from Azure Key Vault
+            var certificate = LoadCertificateFromKeyVault(keyVaultUrl!, certificateName!);
 
             // Configure PnP Core with retry/resilience settings
             services.AddPnPCore(options =>
@@ -170,38 +173,41 @@ namespace LegalWorkflow.Functions
                 };
             });
 
-            // Add PnP Core authentication
+            // Add PnP Core authentication with certificate from Key Vault
             services.AddPnPCoreAuthentication(options =>
             {
                 var credentialConfig = new PnPCoreAuthenticationCredentialConfigurationOptions
                 {
                     ClientId = clientId,
-                    TenantId = tenantId
+                    TenantId = tenantId,
+                    X509Certificate = new PnPCoreAuthenticationX509CertificateOptions
+                    {
+                        Certificate = certificate
+                    }
                 };
-
-                // Use certificate if thumbprint is provided (production)
-                // Otherwise use client secret (development)
-                if (!string.IsNullOrEmpty(certThumbprint))
-                {
-                    // Certificate-based authentication for production
-                    // Uncomment and configure as needed:
-                    // credentialConfig.X509Certificate = new PnPCoreAuthenticationX509CertificateOptions
-                    // {
-                    //     StoreName = System.Security.Cryptography.X509Certificates.StoreName.My,
-                    //     StoreLocation = System.Security.Cryptography.X509Certificates.StoreLocation.CurrentUser,
-                    //     Thumbprint = certThumbprint
-                    // };
-                    credentialConfig.ClientSecret = clientSecret; // Fallback for now
-                }
-                else if (!string.IsNullOrEmpty(clientSecret))
-                {
-                    // Client secret authentication for development
-                    credentialConfig.ClientSecret = clientSecret;
-                }
 
                 options.Credentials.Configurations.Add("Default", credentialConfig);
                 options.Credentials.DefaultConfiguration = "Default";
             });
+        }
+
+        /// <summary>
+        /// Loads an X.509 certificate from Azure Key Vault.
+        /// Uses DefaultAzureCredential for authentication, which supports:
+        /// - Managed Identity (production in Azure)
+        /// - Azure CLI / Visual Studio credentials (local development)
+        /// </summary>
+        /// <param name="keyVaultUrl">The Key Vault URL (e.g., "https://my-keyvault.vault.azure.net/")</param>
+        /// <param name="certificateName">The name of the certificate in Key Vault</param>
+        /// <returns>The X.509 certificate with private key</returns>
+        private static X509Certificate2 LoadCertificateFromKeyVault(string keyVaultUrl, string certificateName)
+        {
+            var credential = new DefaultAzureCredential();
+            var certClient = new CertificateClient(new Uri(keyVaultUrl), credential);
+
+            // Download the certificate with its private key
+            var certResponse = certClient.DownloadCertificate(certificateName);
+            return certResponse.Value;
         }
     }
 }

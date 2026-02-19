@@ -19,6 +19,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
@@ -52,6 +53,8 @@ namespace LegalWorkflow.Functions
         private readonly ILogger<NotificationFunctions> _logger;
         private readonly IConfiguration _configuration;
         private readonly PermissionGroupConfig _groupConfig;
+        private readonly NotificationConfig _notificationConfig;
+        private readonly IMemoryCache _memoryCache;
         private readonly JsonSerializerOptions _jsonOptions;
 
         /// <summary>
@@ -61,36 +64,26 @@ namespace LegalWorkflow.Functions
         /// <param name="logger">ILogger instance for Azure Functions logging</param>
         /// <param name="configuration">Application configuration for settings</param>
         /// <param name="groupConfig">SharePoint group configuration</param>
+        /// <param name="notificationConfig">Notification configuration</param>
+        /// <param name="memoryCache">Memory cache for group member email caching</param>
         public NotificationFunctions(
             IPnPContextFactory contextFactory,
             ILogger<NotificationFunctions> logger,
             IConfiguration configuration,
-            PermissionGroupConfig groupConfig)
+            PermissionGroupConfig groupConfig,
+            NotificationConfig notificationConfig,
+            IMemoryCache memoryCache)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _groupConfig = groupConfig ?? throw new ArgumentNullException(nameof(groupConfig));
+            _notificationConfig = notificationConfig ?? throw new ArgumentNullException(nameof(notificationConfig));
+            _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            };
-        }
-
-        /// <summary>
-        /// Gets notification configuration from app settings.
-        /// </summary>
-        private NotificationConfig GetNotificationConfig()
-        {
-            return new NotificationConfig
-            {
-                SiteUrl = _configuration["SharePoint:SiteUrl"] ?? string.Empty,
-                LegalAdminEmail = _configuration["Notifications:LegalAdminEmail"] ?? string.Empty,
-                AttorneyAssignerEmail = _configuration["Notifications:AttorneyAssignerEmail"] ?? string.Empty,
-                ComplianceEmail = _configuration["Notifications:ComplianceEmail"] ?? string.Empty,
-                RequestsListName = _configuration["SharePoint:RequestsListName"] ?? "Requests",
-                EnableDebugLogging = bool.TryParse(_configuration["Notifications:EnableDebugLogging"], out var debug) && debug
             };
         }
 
@@ -181,13 +174,11 @@ namespace LegalWorkflow.Functions
 
                 logger.Info("Processing notification for request", new { request.RequestId });
 
-                // Get configuration for notification service
-                var config = GetNotificationConfig();
-
-                // Create services with configuration
+                // Create services with injected dependencies
                 var requestServiceLogger = new Logger(_logger, "RequestService");
                 var requestService = new RequestService(_contextFactory, requestServiceLogger);
-                var notificationService = new NotificationService(requestService, logger, config);
+                var notificationService = new NotificationService(
+                    requestService, _contextFactory, _groupConfig, logger, _notificationConfig, _memoryCache);
 
                 // Process the notification
                 var result = await notificationService.ProcessNotificationAsync(request);
