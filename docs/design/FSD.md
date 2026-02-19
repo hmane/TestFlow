@@ -407,7 +407,7 @@ The proposed Legal Workflows System provides a centralized, automated SharePoint
 **Step 5: Closeout (Closeout Status)**
 - System sends Notification #10: "Ready for Closeout" to Creator
 - Submitter opens request and sees closeout form
-- If Tracking ID required (Compliance reviewed AND (Foreside OR Retail Use)):
+- If Tracking ID required (Compliance reviewed AND IsForesideReviewRequired):
   - Submitter enters Tracking ID (free text)
 - Submitter reviews all approvals and final documents
 - Submitter clicks "Complete Request"
@@ -584,7 +584,7 @@ This section outlines the high-level business requirements for the Legal Workflo
 
 | Req ID | Requirement | Priority | Rationale |
 |--------|-------------|----------|-----------|
-| BR-060 | The system shall require Tracking ID at Closeout if: Compliance reviewed AND (IsForesideReviewRequired OR IsRetailUse) | P1 | Compliance material tracking |
+| BR-060 | The system shall require Tracking ID at Closeout if: Compliance reviewed AND IsForesideReviewRequired | P1 | Compliance material tracking |
 | BR-061 | The system shall make Tracking ID optional at Closeout for all other requests | P1 | Conditional requirement logic |
 | BR-062 | The system shall allow Legal Admin to mark request as Completed from Closeout status | P2 | Admin override capability |
 | BR-063 | The system shall validate Tracking ID format (future enhancement: integrate with external system) | P5 | Phase 2 integration |
@@ -962,12 +962,13 @@ This section provides detailed functional requirements organized by feature area
 - Compliance Reviewer (person picker, single selection)
 - Compliance Review Date (auto-populated when Outcome is set)
 - Is Foreside Review Required (Yes/No choice)
-- Is Retail Use (Yes/No choice)
+- Is Retail Use (Yes/No choice, only visible when Is Foreside Review Required = Yes)
+- Record Retention Only (Yes/No choice, only visible when Is Foreside Review Required = Yes)
 - Compliance Flags (multi-line text, optional, any compliance-specific flags or concerns)
 
 **FR-223:** Compliance User shall complete review by:
 1. Setting Compliance Review Outcome (Approved, Approved With Comments, or Not Approved)
-2. Setting Is Foreside Review Required and Is Retail Use flags (required for compliance reviews)
+2. Setting Is Foreside Review Required flag, and if checked, setting Is Retail Use and Record Retention Only flags (required for compliance reviews)
 3. Adding Compliance Review Notes
 4. Setting Compliance Reviewer = current user
 5. Clicking "Submit Compliance Review"
@@ -1007,7 +1008,7 @@ This section provides detailed functional requirements organized by feature area
 - Closeout Notes (multi-line text, optional, max 500 chars)
 
 **FR-302:** The system shall determine if Tracking ID is required using logic:
-- Required if: Review Audience included Compliance AND (IsForesideReviewRequired = Yes OR IsRetailUse = Yes)
+- Required if: Review Audience included Compliance AND IsForesideReviewRequired = Yes
 - Optional otherwise
 
 **FR-303:** If Tracking ID is required, the system shall display validation error if Submitter attempts to complete without providing it.
@@ -1329,7 +1330,7 @@ This section describes detailed use cases with scenarios, acceptance criteria, a
 18. Tom clicks "Submit Compliance Review"
 19. System sets Compliance Review Status = Completed, Compliance Review Date = now
 20. System evaluates status: Review Audience = Both, Legal = Approved, Compliance = Approved → Status = Closeout
-21. System determines Tracking ID required (Compliance reviewed + Foreside Required + Retail Use)
+21. System determines Tracking ID required (Compliance reviewed + Foreside Required)
 22. System saves list item
 23. System triggers Power Automate flow sending "Ready for Closeout" notification to Submitter
 24. Notification includes note: "Tracking ID is required for closeout"
@@ -1365,7 +1366,7 @@ This section describes detailed use cases with scenarios, acceptance criteria, a
 
 **Preconditions:**
 - Request exists in Closeout status
-- Tracking ID is required (Compliance reviewed + Foreside OR Retail)
+- Tracking ID is required (Compliance reviewed + IsForesideReviewRequired)
 - Submitter has received "Ready for Closeout" notification
 
 **Main Success Scenario:**
@@ -1402,7 +1403,7 @@ This section describes detailed use cases with scenarios, acceptance criteria, a
 - ✓ All data retained for audit (read-only for all except Legal Admin)
 
 **Alternative Path 1: Tracking ID Not Required**
-- At Step 8, if Tracking ID not required (Compliance not reviewed OR Foreside/Retail = No):
+- At Step 8, if Tracking ID not required (Compliance not reviewed OR IsForesideReviewRequired = No):
   - System displays Tracking ID field as optional
   - Submitter can complete without providing Tracking ID
   - Continues from Step 11
@@ -1600,7 +1601,7 @@ This section describes detailed use cases with scenarios, acceptance criteria, a
 
 **UI-026:** Closeout section shall only be visible when Status = "Closeout" to Submitter and Legal Admin.
 
-**UI-027:** Tracking ID field shall display "Required" indicator if Compliance reviewed AND (Foreside OR Retail), otherwise display "Optional".
+**UI-027:** Tracking ID field shall display "Required" indicator if Compliance reviewed AND IsForesideReviewRequired, otherwise display "Optional".
 
 **UI-028:** Expected Turnaround Date shall update dynamically when Submission Item is changed.
 
@@ -2024,7 +2025,7 @@ This section describes detailed use cases with scenarios, acceptance criteria, a
 
 - **Legal Review** (5 fields): LegalReviewStatus, LegalReviewOutcome, LegalReviewNotes, LegalReviewer, LegalReviewDate
 
-- **Compliance Review** (7 fields): ComplianceReviewStatus, ComplianceReviewOutcome, ComplianceReviewNotes, ComplianceReviewer, ComplianceReviewDate, IsForesideReviewRequired, IsRetailUse
+- **Compliance Review** (8 fields): ComplianceReviewStatus, ComplianceReviewOutcome, ComplianceReviewNotes, ComplianceReviewer, ComplianceReviewDate, IsForesideReviewRequired, IsRetailUse, RecordRetentionOnly
 
 - **Closeout** (1 field): TrackingId
 
@@ -2071,7 +2072,7 @@ This section describes detailed use cases with scenarios, acceptance criteria, a
 | Attorney | Required when Status ≠ Draft, Legal Intake, Assign Attorney |
 | LegalReviewNotes | Required when LegalReviewOutcome is set; Max 5000 chars |
 | ComplianceReviewNotes | Required when ComplianceReviewOutcome is set; Max 5000 chars |
-| TrackingId | Required when Status = Closeout AND (IsForesideReviewRequired OR IsRetailUse) AND Review Audience included Compliance; Max 50 chars |
+| TrackingId | Required when Status = Closeout AND IsForesideReviewRequired AND Review Audience included Compliance; Max 50 chars |
 | CancellationReason | Required when Status = Cancelled; Min 10 chars, Max 500 chars |
 | HoldReason | Required when Status = On Hold; Min 10 chars, Max 500 chars |
 | ApprovalDate (all types) | Must not be future date |
@@ -2725,7 +2726,7 @@ The following table defines all permitted status transitions in the Legal Workfl
 - Closeout bypassed
 
 **Closeout → Completed:**
-- TrackingId populated if required (Compliance reviewed AND (IsForesideReviewRequired OR IsRetailUse))
+- TrackingId populated if required (Compliance reviewed AND IsForesideReviewRequired)
 - CompletedBy and CompletedOn fields populated
 - TotalTurnaroundDays calculated (business days from SubmittedOn to CompletedOn)
 - Power Automate flow "Request Completed" triggered (notification to all stakeholders)

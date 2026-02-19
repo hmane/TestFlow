@@ -120,7 +120,7 @@ Automate and streamline legal/compliance review process for marketing communicat
 
 - Review documents for regulatory compliance
 - Submit compliance review with outcome and notes
-- Set compliance flags (`isForesideReviewRequired`, `isRetailUse`)
+- Set compliance flags (`isForesideReviewRequired`, `isRetailUse`, `recordRetentionOnly`)
 - **Note:** No specific assignment - any compliance user can review
 
 ### 2.6 Application Admin (LW - Admin Group)
@@ -236,7 +236,7 @@ LegalReviewOutcome (Choice) - Approved, Approved With Comments, Respond To Comme
 legalReviewNotes (Note/Append-only) - Min 10 chars
 ```
 
-#### E. Compliance Review (7 fields)
+#### E. Compliance Review (8 fields)
 
 ```
 ComplianceReviewStatus (Choice) - Not Required, Not Started, In Progress, Waiting On Submitter, Waiting On Compliance, Completed
@@ -244,14 +244,15 @@ ComplianceStatusUpdatedOn (Date) - When compliance review status was last update
 ComplianceStatusUpdatedBy (Person) - Who updated last compliance status
 ComplianceReviewOutcome (Choice) - Approved, Approved With Comments, Respond To Comments And Resubmit, Not Approved
 ComplianceReviewNotes (Note/Append-only) - Min 10 chars
-IsForesideReviewRequired (Boolean) - If true, tracking ID required
-IsRetailUse (Boolean) - If true, tracking ID required
+IsForesideReviewRequired (Boolean) - Parent checkbox for Foreside/FINRA review options
+IsRetailUse (Boolean) - Visible when IsForesideReviewRequired is checked
+RecordRetentionOnly (Boolean) - For record retention purpose only (visible when IsForesideReviewRequired is checked)
 ```
 
 #### F. Closeout (1 field)
 
 ```
-TrackingId (Text) - Required if either compliance flag is true for IsForesideReviewRequired and IsRetailUse
+TrackingId (Text) - Required if IsForesideReviewRequired is true
 ```
 
 #### G. System Tracking (16 fields)
@@ -419,11 +420,7 @@ if (anyReviewRejected) {
 
 ```typescript
 function isTrackingIdRequired(request: Request): boolean {
-  // Only check if compliance reviewed
-  if (reviewAudience includes 'Compliance') {
-    return isForesideReviewRequired === true || isRetailUse === true;
-  }
-  return false; // Optional if only legal
+  return isForesideReviewRequired === true;
 }
 ```
 
@@ -527,7 +524,7 @@ Special Actions (any stage): Cancel, Hold, Resume
 **Tracking ID Logic:**
 
 ```
-IF compliance reviewed AND (isForesideReviewRequired OR isRetailUse):
+IF isForesideReviewRequired:
   Tracking ID REQUIRED
 ELSE:
   Tracking ID OPTIONAL
@@ -1328,7 +1325,7 @@ Response: {
   | ------- | ---------------------- | ----------------------------------------------------------------- | --------------------------------- |
   | BR-001  | Rush Request Detection | targetDate < (submissionDate + turnaroundDays)                    | Requires rush rationale           |
   | BR-002  | Approval Required      | At least one approval with date + approver + document             | Blocks submission                 |
-  | BR-003  | Tracking ID Required   | Compliance reviewed AND (isForesideReviewRequired OR isRetailUse) | Required at closeout              |
+  | BR-003  | Tracking ID Required   | isForesideReviewRequired === true                                 | Required at closeout              |
   | BR-004  | Rejection Completion   | Any review outcome = Rejected                                     | Status → Completed (not closeout) |
   | BR-005  | Closeout Trigger       | All required reviews = Completed AND no rejections                | Status → Closeout                 |
 
@@ -2104,7 +2101,7 @@ Response: {
 | **Attorney Assigner**       | Committee that assigns attorneys when Legal Admin is unsure                        |
 | **Additional Party**        | Read-only stakeholders on a request                                                |
 | **Closeout**                | Final step where submitter confirms completion and optionally provides tracking ID |
-| **Tracking ID**             | External system reference number (required if compliance flags set)                |
+| **Tracking ID**             | External system reference number (required if IsForesideReviewRequired is true)    |
 | **Business Days**           | Weekdays only (excludes weekends, future: company holidays)                        |
 | **Foreside Review**         | Compliance flag that requires tracking ID if true                                  |
 | **Retail Use**              | Compliance flag that requires tracking ID if true                                  |
@@ -2217,7 +2214,7 @@ Response: {
 | `legalReviewNotes`        | Required when submitting, min 10 chars              | "Legal review notes must be at least 10 characters"                            |
 | `complianceReviewOutcome` | Required when submitting compliance review          | "Please select a compliance review outcome"                                    |
 | `complianceReviewNotes`   | Required when submitting, min 10 chars              | "Compliance review notes must be at least 10 characters"                       |
-| `trackingId`              | Required if isForesideReviewRequired OR isRetailUse | "Tracking ID is required when Foreside Review or Retail Use is indicated"      |
+| `trackingId`              | Required if isForesideReviewRequired is true        | "Tracking ID is required when Foreside Review is indicated"                    |
 | `cancelReason`            | Required when cancelling, 10-1000 chars             | "Cancel reason must be between 10 and 1,000 characters"                        |
 | `onHoldReason`            | Required when holding, 10-1000 chars                | "Hold reason must be between 10 and 1,000 characters"                          |
 
@@ -2241,7 +2238,7 @@ Response: {
 | ---------- | -------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------- |
 | **BR-001** | Rush Request Detection     | `targetReturnDate < (requestedDate + submissionItem.turnAroundTimeInDays)`      | Sets `isRushRequest=true`, requires `rushRationale`         |
 | **BR-002** | Approval Minimum           | At least one approval must have: date + approver + document                     | Blocks submission if not met                               |
-| **BR-003** | Tracking ID Requirement    | Compliance reviewed AND (`isForesideReviewRequired=true` OR `isRetailUse=true`) | Tracking ID required at closeout                           |
+| **BR-003** | Tracking ID Requirement    | `isForesideReviewRequired === true`                                             | Tracking ID required at closeout                           |
 | **BR-004** | Rejection Completion       | Any review outcome = "Rejected"                                                 | Status → Completed (bypasses Closeout)                     |
 | **BR-005** | Closeout Trigger           | All required reviews completed with "Approved" or "Needs Changes"               | Status → Closeout                                          |
 | **BR-006** | Review Audience Override   | Legal Admin can change reviewAudience during Legal Intake                       | May change required reviews                                |
@@ -2381,7 +2378,7 @@ Response: {
 
 1. **Rush = Target < Turnaround Days** (automatic calculation)
 2. **At Least One Approval Required** (date + approver + document)
-3. **Tracking ID Required IF** (Compliance reviewed AND (Foreside OR Retail flag))
+3. **Tracking ID Required IF** isForesideReviewRequired is true
 4. **Rejection = Completed** (bypasses Closeout)
 5. **All Reviews Must Pass** to reach Closeout
 

@@ -362,12 +362,13 @@ Compliance Users see the **Compliance Review** card with:
 
 | Field | Description | Who Can Edit |
 |-------|-------------|--------------|
-| **Foreside Review Required** | Toggle - Yes/No | Compliance Users |
-| **Retail Use** | Toggle - Yes/No | Compliance Users |
+| **Foreside Review Required** | Toggle - Yes/No (parent checkbox) | Compliance Users |
+| **For Record Retention Purpose Only** | Toggle - Yes/No (visible when Foreside checked) | Compliance Users |
+| **Retail Use** | Toggle - Yes/No (visible when Foreside checked) | Compliance Users |
 | **Review Outcome** | Same options as Legal Review | Compliance Users |
 | **Review Notes** | Detailed notes (append-only) | Compliance Users |
 
-> **Important:** If either "Foreside Review Required" or "Retail Use" is set to Yes, a Tracking ID will be required during Closeout.
+> **Important:** If "Foreside Review Required" is set to Yes, a Tracking ID will be required during Closeout. "Record Retention Only" and "Retail Use" are only visible when "Foreside Review Required" is checked.
 
 #### Compliance Review Actions
 
@@ -425,7 +426,7 @@ When all required reviews are completed with Approved or Approved With Comments,
 
 | Field | Description | Required When |
 |-------|-------------|---------------|
-| **Tracking ID** | Unique identifier for the approved communication | Required if Foreside Review or Retail Use = Yes |
+| **Tracking ID** | Unique identifier for the approved communication | Required if Foreside Review Required = Yes |
 | **Acknowledge Comments** | Checkbox to acknowledge reviewer comments | Required if any review outcome was "Approved With Comments" |
 | **Closeout Notes** | Final notes or comments | Optional |
 

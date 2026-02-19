@@ -124,8 +124,8 @@ namespace LegalWorkflow.Functions.Models
 
         #region Legal Intake Fields
 
-        /// <summary>Assigned attorney (user lookup)</summary>
-        public UserInfo? Attorney { get; set; }
+        /// <summary>Assigned attorneys (multi-user lookup)</summary>
+        public List<UserInfo> Attorneys { get; set; } = new();
 
         /// <summary>Notes from Legal Admin during attorney assignment</summary>
         public string AttorneyAssignNotes { get; set; } = string.Empty;
@@ -168,17 +168,20 @@ namespace LegalWorkflow.Functions.Models
         /// <summary>Total time spent in compliance review (in hours)</summary>
         public double? ComplianceReviewTime { get; set; }
 
-        /// <summary>Whether Foreside review is required</summary>
+        /// <summary>Whether Foreside review is required (parent checkbox)</summary>
         public bool IsForesideReviewRequired { get; set; }
 
-        /// <summary>Whether this is for retail use</summary>
+        /// <summary>For record retention purpose only (visible when IsForesideReviewRequired is true)</summary>
+        public bool RecordRetentionOnly { get; set; }
+
+        /// <summary>Whether this is for retail use (visible when IsForesideReviewRequired is true)</summary>
         public bool IsRetailUse { get; set; }
 
         #endregion
 
         #region Closeout Fields
 
-        /// <summary>Tracking ID (required at closeout if compliance reviewed with Foreside/Retail)</summary>
+        /// <summary>Tracking ID (required at closeout if IsForesideReviewRequired is true)</summary>
         public string TrackingId { get; set; } = string.Empty;
 
         #endregion
@@ -291,7 +294,7 @@ namespace LegalWorkflow.Functions.Models
         /// <summary>Previous compliance review outcome</summary>
         public ReviewOutcome ComplianceReviewOutcome { get; set; }
 
-        /// <summary>Previous attorney assignment</summary>
-        public UserInfo? Attorney { get; set; }
+        /// <summary>Previous attorney assignments</summary>
+        public List<UserInfo> Attorneys { get; set; } = new();
     }
 }

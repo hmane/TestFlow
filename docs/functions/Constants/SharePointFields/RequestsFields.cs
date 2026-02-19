@@ -181,7 +181,7 @@ namespace LegalWorkflow.Functions.Constants.SharePointFields
         // Legal Intake / Attorney Assignment
         // =================================================================
 
-        /// <summary>Assigned attorney (user lookup)</summary>
+        /// <summary>Assigned attorneys (multi-user lookup)</summary>
         public const string Attorney = "Attorney";
 
         /// <summary>Notes for attorney assignment</summary>
@@ -237,10 +237,13 @@ namespace LegalWorkflow.Functions.Constants.SharePointFields
         /// <summary>Date when compliance review was completed</summary>
         public const string ComplianceReviewCompletedOn = "ComplianceReviewCompletedOn";
 
-        /// <summary>Whether Foreside review is required</summary>
+        /// <summary>Whether Foreside review is required (parent checkbox)</summary>
         public const string IsForesideReviewRequired = "IsForesideReviewRequired";
 
-        /// <summary>Whether this is for retail use</summary>
+        /// <summary>For record retention purpose only (visible when IsForesideReviewRequired is true)</summary>
+        public const string RecordRetentionOnly = "RecordRetentionOnly";
+
+        /// <summary>Whether this is for retail use (visible when IsForesideReviewRequired is true)</summary>
         public const string IsRetailUse = "IsRetailUse";
 
         // =================================================================

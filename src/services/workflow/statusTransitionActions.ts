@@ -502,12 +502,12 @@ export async function closeoutRequest(
     });
   }
 
-  // Determine the next status based on isForesideReviewRequired AND isRetailUse
-  // If both are required, route to Awaiting FINRA Documents
+  // Determine the next status based on isRetailUse
+  // If Retail Use is checked, route to Awaiting FINRA Documents
   // Otherwise, route directly to Completed
   const isForesideRequired = currentRequest.isForesideReviewRequired === true;
   const isRetailUse = currentRequest.isRetailUse === true;
-  const shouldAwaitFinra = isForesideRequired && isRetailUse;
+  const shouldAwaitFinra = isRetailUse;
   const nextStatus = shouldAwaitFinra
     ? RequestStatus.AwaitingFINRADocuments
     : RequestStatus.Completed;

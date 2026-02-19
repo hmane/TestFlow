@@ -81,6 +81,7 @@ export const RequestsFields = {
   ComplianceReviewOutcome: 'ComplianceReviewOutcome',
   PerformanceApprovalDate: 'PerformanceApprovalDate',
   IsForesideReviewRequired: 'IsForesideReviewRequired',
+  RecordRetentionOnly: 'RecordRetentionOnly',
   CommunicationsApprovalDate: 'CommunicationsApprovalDate',
   ComplianceStatusUpdatedBy: 'ComplianceStatusUpdatedBy',
   ComplianceStatusUpdatedOn: 'ComplianceStatusUpdatedOn',

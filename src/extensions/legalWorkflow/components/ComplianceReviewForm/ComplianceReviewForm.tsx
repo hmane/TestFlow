@@ -169,6 +169,7 @@ interface IComplianceReviewFormData {
   complianceReviewOutcome?: ReviewOutcome;
   complianceReviewNotes?: string;
   isForesideReviewRequired: boolean;
+  recordRetentionOnly: boolean;
   isRetailUse: boolean;
 }
 
@@ -256,6 +257,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
       complianceReviewOutcome: currentRequest?.complianceReview?.outcome,
       complianceReviewNotes: currentRequest?.complianceReview?.reviewNotes,
       isForesideReviewRequired: currentRequest?.complianceReview?.isForesideReviewRequired || false,
+      recordRetentionOnly: currentRequest?.complianceReview?.recordRetentionOnly || false,
       isRetailUse: currentRequest?.complianceReview?.isRetailUse || false,
     },
     mode: 'onSubmit',
@@ -268,7 +270,20 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
   const reviewStatus = watch('complianceReviewStatus');
   const selectedOutcome = watch('complianceReviewOutcome');
   const isForesideReviewRequired = watch('isForesideReviewRequired');
+  const recordRetentionOnly = watch('recordRetentionOnly');
   const isRetailUse = watch('isRetailUse');
+
+  /**
+   * Handle Foreside checkbox change with cascading behavior.
+   * When unchecked, automatically uncheck dependent fields (RecordRetentionOnly, RetailUse).
+   */
+  const handleForesideChange = React.useCallback((val: boolean) => {
+    setValue('isForesideReviewRequired', val, { shouldDirty: true });
+    if (!val) {
+      setValue('recordRetentionOnly', false, { shouldDirty: true });
+      setValue('isRetailUse', false, { shouldDirty: true });
+    }
+  }, [setValue]);
 
   // Sync form with store when currentRequest changes
   React.useEffect(() => {
@@ -278,6 +293,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
         complianceReviewOutcome: currentRequest.complianceReview.outcome,
         complianceReviewNotes: currentRequest.complianceReview.reviewNotes,
         isForesideReviewRequired: currentRequest.complianceReview.isForesideReviewRequired || false,
+        recordRetentionOnly: currentRequest.complianceReview.recordRetentionOnly || false,
         isRetailUse: currentRequest.complianceReview.isRetailUse || false,
       });
     }
@@ -311,6 +327,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
         data.complianceReviewNotes || '',
         {
           isForesideReviewRequired: data.isForesideReviewRequired,
+          recordRetentionOnly: data.recordRetentionOnly,
           isRetailUse: data.isRetailUse,
         }
       );
@@ -326,6 +343,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
         complianceReviewOutcome: data.complianceReviewOutcome,
         complianceReviewNotes: undefined, // Clear for append-only
         isForesideReviewRequired: data.isForesideReviewRequired,
+        recordRetentionOnly: data.recordRetentionOnly,
         isRetailUse: data.isRetailUse,
       });
 
@@ -378,6 +396,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
         outcome: formData.complianceReviewOutcome,
         notes: formData.complianceReviewNotes,
         isForesideReviewRequired: formData.isForesideReviewRequired,
+        recordRetentionOnly: formData.recordRetentionOnly,
         isRetailUse: formData.isRetailUse,
       });
 
@@ -390,6 +409,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
         complianceReviewOutcome: formData.complianceReviewOutcome,
         complianceReviewNotes: undefined, // Clear for append-only
         isForesideReviewRequired: formData.isForesideReviewRequired,
+        recordRetentionOnly: formData.recordRetentionOnly,
         isRetailUse: formData.isRetailUse,
       });
 
@@ -459,6 +479,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
         complianceReviewOutcome: ReviewOutcome.RespondToCommentsAndResubmit, // Outcome stays the same
         complianceReviewNotes: undefined, // Clear for append-only
         isForesideReviewRequired: formData.isForesideReviewRequired,
+        recordRetentionOnly: formData.recordRetentionOnly,
         isRetailUse: formData.isRetailUse,
       });
 
@@ -579,10 +600,19 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                 <Text>{currentRequest.complianceReview?.isForesideReviewRequired ? 'Yes' : 'No'}</Text>
               </FormItem>
 
-              <FormItem fieldName='isRetailUse'>
-                <FormLabel>Retail Use</FormLabel>
-                <Text>{currentRequest.complianceReview?.isRetailUse ? 'Yes' : 'No'}</Text>
-              </FormItem>
+              {currentRequest.complianceReview?.isForesideReviewRequired && (
+                <>
+                  <FormItem fieldName='recordRetentionOnly'>
+                    <FormLabel>For Record Retention Purpose Only</FormLabel>
+                    <Text>{currentRequest.complianceReview?.recordRetentionOnly ? 'Yes' : 'No'}</Text>
+                  </FormItem>
+
+                  <FormItem fieldName='isRetailUse'>
+                    <FormLabel>Retail Use</FormLabel>
+                    <Text>{currentRequest.complianceReview?.isRetailUse ? 'Yes' : 'No'}</Text>
+                  </FormItem>
+                </>
+              )}
             </FormContainer>
           </Stack>
         </Content>
@@ -703,15 +733,26 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                     helpText='Indicate if Foreside review is required for this request.'
                     checked={isForesideReviewRequired}
                     disabled={!isReviewer}
-                    onChange={(val) => setValue('isForesideReviewRequired', val, { shouldDirty: true })}
+                    onChange={handleForesideChange}
                   />
-                  <StyledBooleanCallout
-                    label='Retail Use'
-                    helpText='Indicate if this will be used for retail purposes.'
-                    checked={isRetailUse}
-                    disabled={!isReviewer}
-                    onChange={(val) => setValue('isRetailUse', val, { shouldDirty: true })}
-                  />
+                  {isForesideReviewRequired && (
+                    <>
+                      <StyledBooleanCallout
+                        label='For Record Retention Purpose Only'
+                        helpText='Indicate if this is for record retention purposes only.'
+                        checked={recordRetentionOnly}
+                        disabled={!isReviewer}
+                        onChange={(val) => setValue('recordRetentionOnly', val, { shouldDirty: true })}
+                      />
+                      <StyledBooleanCallout
+                        label='Retail Use'
+                        helpText='Indicate if this will be used for retail purposes.'
+                        checked={isRetailUse}
+                        disabled={!isReviewer}
+                        onChange={(val) => setValue('isRetailUse', val, { shouldDirty: true })}
+                      />
+                    </>
+                  )}
                 </Stack>
               </Stack>
             </form>
@@ -780,14 +821,24 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                       label='Foreside Review Required'
                       helpText='Indicate if Foreside review is required for this request.'
                       checked={isForesideReviewRequired}
-                      onChange={(val) => setValue('isForesideReviewRequired', val, { shouldDirty: true })}
+                      onChange={handleForesideChange}
                     />
-                    <StyledBooleanCallout
-                      label='Retail Use'
-                      helpText='Indicate if this will be used for retail purposes.'
-                      checked={isRetailUse}
-                      onChange={(val) => setValue('isRetailUse', val, { shouldDirty: true })}
-                    />
+                    {isForesideReviewRequired && (
+                      <>
+                        <StyledBooleanCallout
+                          label='For Record Retention Purpose Only'
+                          helpText='Indicate if this is for record retention purposes only.'
+                          checked={recordRetentionOnly}
+                          onChange={(val) => setValue('recordRetentionOnly', val, { shouldDirty: true })}
+                        />
+                        <StyledBooleanCallout
+                          label='Retail Use'
+                          helpText='Indicate if this will be used for retail purposes.'
+                          checked={isRetailUse}
+                          onChange={(val) => setValue('isRetailUse', val, { shouldDirty: true })}
+                        />
+                      </>
+                    )}
                   </Stack>
                 </Stack>
               </form>
@@ -842,14 +893,24 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                     label='Foreside Review Required'
                     helpText='Indicate if Foreside review is required for this request.'
                     checked={isForesideReviewRequired}
-                    onChange={(val) => setValue('isForesideReviewRequired', val, { shouldDirty: true })}
+                    onChange={handleForesideChange}
                   />
-                  <StyledBooleanCallout
-                    label='Retail Use'
-                    helpText='Indicate if this will be used for retail purposes.'
-                    checked={isRetailUse}
-                    onChange={(val) => setValue('isRetailUse', val, { shouldDirty: true })}
-                  />
+                  {isForesideReviewRequired && (
+                    <>
+                      <StyledBooleanCallout
+                        label='For Record Retention Purpose Only'
+                        helpText='Indicate if this is for record retention purposes only.'
+                        checked={recordRetentionOnly}
+                        onChange={(val) => setValue('recordRetentionOnly', val, { shouldDirty: true })}
+                      />
+                      <StyledBooleanCallout
+                        label='Retail Use'
+                        helpText='Indicate if this will be used for retail purposes.'
+                        checked={isRetailUse}
+                        onChange={(val) => setValue('isRetailUse', val, { shouldDirty: true })}
+                      />
+                    </>
+                  )}
                 </Stack>
               {/* Validation errors - at the end of content */}
               <ValidationErrorContainer

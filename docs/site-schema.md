@@ -148,7 +148,7 @@ This document provides a comprehensive reference for the SharePoint site schema 
 | LegalReviewCompletedOn | Legal Review Completed On | DateTime | No | - | - |
 | LegalReviewCompletedBy | Legal Review Completed By | User | No | - | People only |
 
-#### Compliance Review (9 fields)
+#### Compliance Review (10 fields)
 
 | Internal Name | Display Name | Type | Required | Default | Choices |
 |---------------|--------------|------|----------|---------|---------|
@@ -157,8 +157,9 @@ This document provides a comprehensive reference for the SharePoint site schema 
 | ComplianceStatusUpdatedBy | Compliance Status Updated By | User | No | - | People only |
 | ComplianceReviewOutcome | Compliance Review Outcome | Choice | No | - | `Approved`, `Approved With Comments`, `Respond To Comments And Resubmit`, `Not Approved` |
 | ComplianceReviewNotes | Compliance Review Notes | Note (Multi-line) | No | - | AppendOnly, 6 lines |
-| IsForesideReviewRequired | Is Foreside Review Required | Boolean | No | 0 | - |
-| IsRetailUse | Is Retail Use | Boolean | No | 0 | - |
+| IsForesideReviewRequired | Is Foreside Review Required | Boolean | No | 0 | Parent checkbox; RecordRetentionOnly and IsRetailUse only visible when checked |
+| RecordRetentionOnly | Record Retention Only | Boolean | No | 0 | Visible only when IsForesideReviewRequired is checked |
+| IsRetailUse | Is Retail Use | Boolean | No | 0 | Visible only when IsForesideReviewRequired is checked |
 | ComplianceReviewCompletedOn | Compliance Review Completed On | DateTime | No | - | - |
 | ComplianceReviewCompletedBy | Compliance Review Completed By | User | No | - | People only |
 
@@ -166,7 +167,7 @@ This document provides a comprehensive reference for the SharePoint site schema 
 
 | Internal Name | Display Name | Type | Required | Max Length | Notes |
 |---------------|--------------|------|----------|------------|-------|
-| TrackingId | Tracking Id | Text | No | 50 | Required at closeout if compliance reviewed AND (IsForesideReviewRequired OR IsRetailUse) |
+| TrackingId | Tracking Id | Text | No | 50 | Required at closeout if IsForesideReviewRequired is true. Only visible when Foreside Review Required is checked |
 | CloseoutNotes | Closeout Notes | Note (Multi-line) | No | - | 6 lines |
 | CommentsAcknowledged | Comments Acknowledged | Boolean | No | - | Default: 0 (No) |
 | CommentsAcknowledgedOn | Comments Acknowledged On | DateTime | No | - | - |

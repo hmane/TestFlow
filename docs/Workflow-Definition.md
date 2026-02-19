@@ -288,9 +288,12 @@ The Legal Review System (LRS) automates the review and approval process for mark
 | Completed | Review finished |
 
 **Compliance-Specific Fields:**
-- `IsForesideReviewRequired`: External Foreside review needed
-- `IsRetailUse`: Material intended for retail audience
+- `IsForesideReviewRequired`: External Foreside review needed (parent checkbox)
+- `RecordRetentionOnly`: For record retention purpose only (visible when Foreside is checked)
+- `IsRetailUse`: Material intended for retail audience (visible when Foreside is checked)
 - `ComplianceReviewNotes`: Reviewer comments
+
+**Cascading Checkbox Behavior:** RecordRetentionOnly and IsRetailUse are only visible when IsForesideReviewRequired is checked. Unchecking Foreside automatically clears both dependent checkboxes.
 
 **Compliance Notifications:**
 - `ComplianceReviewApproved` - On approval
@@ -336,8 +339,8 @@ The Legal Review System (LRS) automates the review and approval process for mark
 **Closeout Requirements:**
 
 1. **Tracking ID Required When:**
-   - Compliance reviewed the request AND
-   - (`IsForesideReviewRequired = true` OR `IsRetailUse = true`)
+   - `IsForesideReviewRequired = true`
+   - The Tracking ID field is only visible when Foreside Review Required is checked
 
 2. **Comment Acknowledgment:**
    - If any review outcome was "Approved With Comments"
@@ -496,6 +499,8 @@ At least ONE approval must be present before submission:
 - Approver Name (required)
 - Approval Document (required - uploaded file)
 - Approval Notes (optional)
+
+**Exception:** RFP submission items (starting with "RFP Related Review Substantial") bypass all approval requirements at submission.
 
 **Approval Types:**
 - Communications Approval

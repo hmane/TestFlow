@@ -173,8 +173,10 @@ namespace LegalWorkflow.Functions.Services
                     Id = notificationId,
                     Subject = GetFieldValue<string>(item, NotificationsFields.Subject) ?? string.Empty,
                     Body = GetFieldValue<string>(item, NotificationsFields.Body) ?? string.Empty,
-                    Recipients = GetFieldValue<string>(item, NotificationsFields.Recipients) ?? string.Empty,
+                    ToRecipients = GetFieldValue<string>(item, NotificationsFields.ToRecipients) ?? string.Empty,
                     CcRecipients = GetFieldValue<string>(item, NotificationsFields.CcRecipients) ?? string.Empty,
+                    BccRecipients = GetFieldValue<string>(item, NotificationsFields.BccRecipients) ?? string.Empty,
+                    IncludeDocuments = GetFieldValue<bool>(item, NotificationsFields.IncludeDocuments),
                     Importance = ParseEnum<EmailImportance>(GetFieldValue<string>(item, NotificationsFields.Importance), EmailImportance.Normal),
                     Category = ParseEnum<NotificationCategory>(GetFieldValue<string>(item, NotificationsFields.Category), NotificationCategory.System),
                     TriggerEvent = GetFieldValue<string>(item, NotificationsFields.TriggerEvent) ?? string.Empty,
@@ -236,7 +238,7 @@ namespace LegalWorkflow.Functions.Services
                 ProposedDiscontinueDate = null, // Field not in current schema
 
                 // Legal Intake
-                Attorney = ParseUserField(item, RequestsFields.Attorney),
+                Attorneys = ParseMultiUserField(item, RequestsFields.Attorney),
                 AttorneyAssignNotes = GetFieldValue<string>(item, RequestsFields.AttorneyAssignNotes) ?? string.Empty,
 
                 // Legal Review
@@ -253,6 +255,7 @@ namespace LegalWorkflow.Functions.Services
                 ComplianceStatusUpdatedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.ComplianceStatusUpdatedOn),
                 ComplianceReviewTime = GetFieldValueNullable<double>(item, RequestsFields.ComplianceReviewReviewerHours),
                 IsForesideReviewRequired = GetFieldValue<bool>(item, RequestsFields.IsForesideReviewRequired),
+                RecordRetentionOnly = GetFieldValue<bool>(item, RequestsFields.RecordRetentionOnly),
                 IsRetailUse = GetFieldValue<bool>(item, RequestsFields.IsRetailUse),
 
                 // Closeout
@@ -297,7 +300,7 @@ namespace LegalWorkflow.Functions.Services
                 LegalReviewOutcome = ParseEnum<ReviewOutcome>(GetVersionFieldValue<string>(version, RequestsFields.LegalReviewOutcome), ReviewOutcome.None),
                 ComplianceReviewStatus = ParseEnum<ReviewStatus>(GetVersionFieldValue<string>(version, RequestsFields.ComplianceReviewStatus), ReviewStatus.NotStarted),
                 ComplianceReviewOutcome = ParseEnum<ReviewOutcome>(GetVersionFieldValue<string>(version, RequestsFields.ComplianceReviewOutcome), ReviewOutcome.None),
-                Attorney = ParseVersionUserField(version, RequestsFields.Attorney)
+                Attorneys = ParseVersionMultiUserField(version, RequestsFields.Attorney)
             };
         }
 
@@ -484,6 +487,50 @@ namespace LegalWorkflow.Functions.Services
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Parses a multi-user field from version history.
+        /// </summary>
+        private List<UserInfo> ParseVersionMultiUserField(IListItemVersion version, string fieldName)
+        {
+            var users = new List<UserInfo>();
+
+            if (!version.Values.TryGetValue(fieldName, out var value) || value == null)
+            {
+                return users;
+            }
+
+            // Version history may store multi-user as semicolon-separated string
+            if (value is string stringValue && !string.IsNullOrEmpty(stringValue))
+            {
+                var parts = stringValue.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var part in parts)
+                {
+                    var trimmed = part.Trim();
+                    if (!string.IsNullOrEmpty(trimmed) && !trimmed.StartsWith("#"))
+                    {
+                        users.Add(new UserInfo { Title = trimmed });
+                    }
+                }
+            }
+
+            // Handle array of user values
+            if (value is IEnumerable<IFieldUserValue> userValues)
+            {
+                foreach (var userValue in userValues)
+                {
+                    users.Add(new UserInfo
+                    {
+                        Id = userValue.LookupId,
+                        Title = userValue.LookupValue ?? string.Empty,
+                        Email = userValue.Email ?? string.Empty,
+                        LoginName = userValue.Principal?.LoginName ?? string.Empty
+                    });
+                }
+            }
+
+            return users;
         }
 
         /// <summary>
@@ -680,11 +727,17 @@ namespace LegalWorkflow.Functions.Services
         /// <summary>HTML email body template with tokens</summary>
         public string Body { get; set; } = string.Empty;
 
-        /// <summary>Recipients configuration (e.g., "Submitter,LegalAdmin")</summary>
-        public string Recipients { get; set; } = string.Empty;
+        /// <summary>To recipients configuration (e.g., "Submitter,LegalAdmin")</summary>
+        public string ToRecipients { get; set; } = string.Empty;
 
         /// <summary>CC recipients configuration</summary>
         public string CcRecipients { get; set; } = string.Empty;
+
+        /// <summary>BCC recipients configuration</summary>
+        public string BccRecipients { get; set; } = string.Empty;
+
+        /// <summary>Whether to include request documents as attachments</summary>
+        public bool IncludeDocuments { get; set; }
 
         /// <summary>Email importance level</summary>
         public EmailImportance Importance { get; set; }

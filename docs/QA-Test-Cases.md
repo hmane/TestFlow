@@ -803,7 +803,7 @@
 | Field | Value |
 |-------|-------|
 | **Priority** | High |
-| **Preconditions** | Compliance review with IsForesideReviewRequired=Yes or IsRetailUse=Yes |
+| **Preconditions** | Compliance review with IsForesideReviewRequired=Yes |
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
@@ -1454,7 +1454,7 @@
 | Field | Value |
 |-------|-------|
 | **Priority** | High |
-| **Preconditions** | Request in Closeout, Foreside or Retail flagged |
+| **Preconditions** | Request in Closeout, Foreside Review Required flagged |
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|

@@ -29,6 +29,7 @@ export interface IComplianceReview {
   outcome?: ReviewOutcome;
   reviewNotes?: string;
   isForesideReviewRequired: boolean;
+  recordRetentionOnly: boolean;
   isRetailUse: boolean;
   completedOn?: Date;
 }

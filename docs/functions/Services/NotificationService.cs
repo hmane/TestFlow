@@ -233,16 +233,16 @@ namespace LegalWorkflow.Functions.Services
                 return NotificationTemplateIds.ReadyForAttorneyAssignment;
             }
 
-            // 7. Attorney reassigned (attorney changed from one user to another while in review)
+            // 7. Attorney reassigned (attorneys changed while in review)
             // Check this BEFORE status change checks to catch reassignments during In Review
             if (current.Status == RequestStatus.InReview &&
-                previous.Attorney != null && current.Attorney != null &&
-                previous.Attorney.Id != current.Attorney.Id)
+                previous.Attorneys.Count > 0 && current.Attorneys.Count > 0 &&
+                !AttorneyListsMatch(previous.Attorneys, current.Attorneys))
             {
                 _logger.Debug("Attorney reassigned", new
                 {
-                    PreviousAttorney = previous.Attorney.Title,
-                    NewAttorney = current.Attorney.Title
+                    PreviousAttorneys = string.Join(", ", previous.Attorneys.Select(a => a.Title)),
+                    NewAttorneys = string.Join(", ", current.Attorneys.Select(a => a.Title))
                 });
                 return NotificationTemplateIds.AttorneyReassigned;
             }
@@ -384,8 +384,9 @@ namespace LegalWorkflow.Functions.Services
             var body = ProcessTemplate(template.Body, request);
 
             // Resolve recipients
-            var recipients = ResolveRecipients(template.Recipients, request);
+            var recipients = ResolveRecipients(template.ToRecipients, request);
             var ccRecipients = ResolveRecipients(template.CcRecipients, request);
+            var bccRecipients = ResolveRecipients(template.BccRecipients, request);
 
             return new EmailResponse
             {
@@ -394,6 +395,7 @@ namespace LegalWorkflow.Functions.Services
                 Body = body,
                 To = recipients,
                 Cc = ccRecipients,
+                Bcc = bccRecipients,
                 Importance = template.Importance,
                 RequestId = request.Id,
                 RequestTitle = request.Title,
@@ -451,8 +453,14 @@ namespace LegalWorkflow.Functions.Services
             result = result.Replace("{{ProposedDiscontinueDate}}", request.ProposedDiscontinueDate?.ToString("MMMM d, yyyy") ?? "N/A");
 
             // Legal Intake
-            result = result.Replace("{{Attorney}}", request.Attorney?.Title ?? "Not Assigned");
-            result = result.Replace("{{AttorneyEmail}}", request.Attorney?.Email ?? string.Empty);
+            var attorneyNames = request.Attorneys.Count > 0
+                ? string.Join(", ", request.Attorneys.Where(a => !string.IsNullOrEmpty(a.Title)).Select(a => a.Title))
+                : "Not Assigned";
+            var attorneyEmails = string.Join("; ", request.Attorneys
+                .Where(a => !string.IsNullOrEmpty(a.Email))
+                .Select(a => a.Email));
+            result = result.Replace("{{Attorney}}", attorneyNames);
+            result = result.Replace("{{AttorneyEmail}}", attorneyEmails);
             result = result.Replace("{{AttorneyAssignNotes}}", request.AttorneyAssignNotes);
             result = result.Replace("{{AssignmentNotes}}", request.AttorneyAssignNotes); // Template alias
 
@@ -466,6 +474,7 @@ namespace LegalWorkflow.Functions.Services
             result = result.Replace("{{ComplianceReviewOutcome}}", FormatReviewOutcome(request.ComplianceReviewOutcome));
             result = result.Replace("{{ComplianceReviewNotes}}", request.ComplianceReviewNotes);
             result = result.Replace("{{IsForesideReviewRequired}}", request.IsForesideReviewRequired ? "Yes" : "No");
+            result = result.Replace("{{RecordRetentionOnly}}", request.RecordRetentionOnly ? "Yes" : "No");
             result = result.Replace("{{IsRetailUse}}", request.IsRetailUse ? "Yes" : "No");
 
             // Closeout
@@ -489,8 +498,8 @@ namespace LegalWorkflow.Functions.Services
             result = result.Replace("{{SubmitterEmail}}", request.SubmittedBy?.Email ?? string.Empty);
 
             // Attorney name and email (alternative tokens used in templates)
-            result = result.Replace("{{AssignedAttorneyName}}", request.Attorney?.Title ?? "Not Assigned");
-            result = result.Replace("{{AssignedAttorneyEmail}}", request.Attorney?.Email ?? string.Empty);
+            result = result.Replace("{{AssignedAttorneyName}}", attorneyNames);
+            result = result.Replace("{{AssignedAttorneyEmail}}", attorneyEmails);
 
             // Additional party emails (comma-separated list)
             var additionalPartyEmails = string.Join(", ", request.AdditionalParties
@@ -575,10 +584,12 @@ namespace LegalWorkflow.Functions.Services
                 "IsRushRequest" => request.IsRushRequest,
                 "IsOnHold" => request.IsOnHold,
                 "IsForesideReviewRequired" => request.IsForesideReviewRequired,
+                "RecordRetentionOnly" => request.RecordRetentionOnly,
                 "IsRetailUse" => request.IsRetailUse,
 
                 // "Has" prefix conditions (explicit)
-                "HasAttorney" => request.Attorney != null,
+                "HasAttorney" => request.Attorneys.Count > 0,
+                "AssignedAttorneyName" => request.Attorneys.Count > 0,
                 "HasTrackingId" => !string.IsNullOrEmpty(request.TrackingId),
                 "HasLegalReviewNotes" => !string.IsNullOrEmpty(request.LegalReviewNotes),
                 "HasComplianceReviewNotes" => !string.IsNullOrEmpty(request.ComplianceReviewNotes),
@@ -593,7 +604,7 @@ namespace LegalWorkflow.Functions.Services
                 "ComplianceApproved" => request.ComplianceReviewOutcome == ReviewOutcome.Approved || request.ComplianceReviewOutcome == ReviewOutcome.ApprovedWithComments,
                 "LegalHasComments" => request.LegalReviewOutcome == ReviewOutcome.ApprovedWithComments,
                 "ComplianceHasComments" => request.ComplianceReviewOutcome == ReviewOutcome.ApprovedWithComments,
-                "TrackingIdRequired" => request.IsForesideReviewRequired || request.IsRetailUse,
+                "TrackingIdRequired" => request.IsForesideReviewRequired,
 
                 // Field "has value" conditions (used as {{#if FieldName}})
                 "Purpose" => !string.IsNullOrEmpty(request.Purpose),
@@ -672,10 +683,9 @@ namespace LegalWorkflow.Functions.Services
                     case "AttorneyEmail":
                     case "AssignedAttorneyEmail":
                     case "Attorney":
-                        if (!string.IsNullOrEmpty(request.Attorney?.Email))
-                        {
-                            emails.Add(request.Attorney.Email);
-                        }
+                        emails.AddRange(request.Attorneys
+                            .Where(a => !string.IsNullOrEmpty(a.Email))
+                            .Select(a => a.Email));
                         break;
 
                     // Group-based tokens (resolve to group distribution list email)
@@ -728,6 +738,19 @@ namespace LegalWorkflow.Functions.Services
 
         #region Formatting Helpers
 
+        /// <summary>
+        /// Compares two attorney lists to determine if they contain the same users.
+        /// </summary>
+        private static bool AttorneyListsMatch(List<UserInfo> list1, List<UserInfo> list2)
+        {
+            if (list1.Count != list2.Count) return false;
+
+            var ids1 = list1.Select(a => a.Id).OrderBy(id => id).ToList();
+            var ids2 = list2.Select(a => a.Id).OrderBy(id => id).ToList();
+
+            return ids1.SequenceEqual(ids2);
+        }
+
         private string FormatStatus(RequestStatus status)
         {
             return status switch
@@ -740,7 +763,7 @@ namespace LegalWorkflow.Functions.Services
                 RequestStatus.Completed => "Completed",
                 RequestStatus.Cancelled => "Cancelled",
                 RequestStatus.OnHold => "On Hold",
-                RequestStatus.AwaitingForesideDocuments => "Awaiting Foreside Documents",
+                RequestStatus.AwaitingFINRA => "Awaiting FINRA",
                 _ => status.ToString()
             };
         }
@@ -850,7 +873,7 @@ namespace LegalWorkflow.Functions.Services
                 NotificationTemplateIds.RushRequestAlert => $"Rush request submitted (Status: {previousStatus} → {currentStatus})",
                 NotificationTemplateIds.ReadyForAttorneyAssignment => $"Status changed to Assign Attorney",
                 NotificationTemplateIds.AttorneyAssigned => $"Attorney assigned, moving to In Review",
-                NotificationTemplateIds.AttorneyReassigned => $"Attorney reassigned to {current.Attorney?.Title ?? "new attorney"}",
+                NotificationTemplateIds.AttorneyReassigned => $"Attorney reassigned to {(current.Attorneys.Count > 0 ? string.Join(", ", current.Attorneys.Select(a => a.Title)) : "new attorney")}",
                 NotificationTemplateIds.ComplianceReviewRequired => "Compliance review required",
                 NotificationTemplateIds.LegalReviewApproved => "Legal review completed with approval",
                 NotificationTemplateIds.LegalChangesRequested => "Legal reviewer requested changes",

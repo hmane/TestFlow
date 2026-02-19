@@ -67,7 +67,7 @@ export interface IRequestState {
   submitComplianceReview: (
     outcome: string,
     notes: string,
-    flags?: { isForesideReviewRequired?: boolean; isRetailUse?: boolean }
+    flags?: { isForesideReviewRequired?: boolean; recordRetentionOnly?: boolean; isRetailUse?: boolean }
   ) => Promise<void>;
   closeoutRequest: (options?: { trackingId?: string; commentsAcknowledged?: boolean; closeoutNotes?: string }) => Promise<void>;
   completeFINRADocuments: (notes?: string) => Promise<void>;

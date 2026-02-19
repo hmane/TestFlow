@@ -159,7 +159,7 @@ Form validation is implemented using **Zod schemas** that define validation rule
 
 SharePoint Lists provide the data persistence layer with six primary entities:
 
-**Requests List** contains fields organized into sections: Request Information (17 fields), FINRA Audience & Product Fields (6 fields), Approval Fields (24 fields), Legal Intake (2 fields), Legal Review (7 fields), Compliance Review (9 fields), Closeout (2 fields), System Tracking (18 fields), and Time Tracking (10 fields). The list uses indexed columns on Status, AssignedTo, and SubmittedDate to optimize queries and avoid the 5000-item view threshold.
+**Requests List** contains fields organized into sections: Request Information (17 fields), FINRA Audience & Product Fields (6 fields), Approval Fields (24 fields), Legal Intake (2 fields), Legal Review (7 fields), Compliance Review (10 fields), Closeout (2 fields), System Tracking (18 fields), and Time Tracking (10 fields). The list uses indexed columns on Status, AssignedTo, and SubmittedDate to optimize queries and avoid the 5000-item view threshold.
 
 **SubmissionItems List** stores configuration data for request types, including Title, TurnAroundTimeInDays, Description, and DisplayOrder. This design allows administrators to add new request types without code changes.
 

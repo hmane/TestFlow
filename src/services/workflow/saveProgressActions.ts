@@ -178,6 +178,9 @@ export async function saveComplianceReviewProgress(
   if (payload.isForesideReviewRequired !== undefined) {
     updater.set(RequestsFields.IsForesideReviewRequired, payload.isForesideReviewRequired);
   }
+  if (payload.recordRetentionOnly !== undefined) {
+    updater.set(RequestsFields.RecordRetentionOnly, payload.recordRetentionOnly);
+  }
   if (payload.isRetailUse !== undefined) {
     updater.set(RequestsFields.IsRetailUse, payload.isRetailUse);
   }

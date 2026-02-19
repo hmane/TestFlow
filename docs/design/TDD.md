@@ -354,7 +354,7 @@ export interface IRequest {
   legalReviewDate?: Date;
   legalReviewer?: IUser;
 
-  // Compliance Review (7 fields)
+  // Compliance Review (8 fields)
   complianceReviewStatus?: 'In Progress' | 'Completed';
   complianceReviewOutcome?: 'Approved' | 'Approved with Comments' | 'Not Approved';
   complianceReviewNotes?: string;
@@ -362,6 +362,7 @@ export interface IRequest {
   complianceReviewer?: IUser;
   isForesideReviewRequired?: boolean;
   isRetailUse?: boolean;
+  recordRetentionOnly?: boolean;
 
   // Closeout (1 field)
   trackingId?: string; // Conditionally required
@@ -1357,11 +1358,10 @@ export const closeoutSchema = z.object({
       (val, ctx) => {
         const parent = ctx.parent as any;
 
-        // Required if compliance review performed AND (foreside OR retail use)
-        const complianceReviewed = parent.complianceReviewStatus === 'Completed';
-        const requiresTracking = parent.isForesideReviewRequired || parent.isRetailUse;
+        // Required if isForesideReviewRequired is true
+        const requiresTracking = parent.isForesideReviewRequired;
 
-        if (complianceReviewed && requiresTracking && !val) {
+        if (requiresTracking && !val) {
           return false;
         }
         return true;
@@ -2534,12 +2534,10 @@ This calculation is performed:
 
 ```
 FUNCTION validateTrackingId(request):
-  // Tracking ID required if compliance reviewed AND (foreside OR retail use)
-  complianceReviewed = request.complianceReviewStatus = "Completed"
+  // Tracking ID required if isForesideReviewRequired is true
   requiresForeside = request.isForesideReviewRequired = true
-  isRetail = request.isRetailUse = true
 
-  trackingIdRequired = complianceReviewed AND (requiresForeside OR isRetail)
+  trackingIdRequired = requiresForeside
 
   IF trackingIdRequired:
     IF request.trackingId = null OR request.trackingId = "":
@@ -2910,7 +2908,7 @@ return (
 - Legal Review Section: Show only if attorney assigned AND (user is attorney OR admin)
 - Compliance Review Section: Show only if review audience includes Compliance AND user is Compliance User OR admin
 - Closeout Section: Show only if status = Closeout AND user is authorized
-- Tracking ID: Show always in Closeout, mark required based on compliance flags
+- Tracking ID: Show only when isForesideReviewRequired is true, mark required
 
 **Implementation Pattern:**
 

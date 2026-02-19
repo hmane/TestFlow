@@ -86,14 +86,14 @@ config/
 
 ### Main Lists
 
-1. **Requests** (79 fields total):
+1. **Requests** (80 fields total):
 
    - Request Information (17 fields): Title (RequestID), RequestType, Purpose, TargetReturnDate, etc.
    - FINRA Audience & Product Fields (6 fields): FINRAAudienceCategory, Audience, USFunds, UCITS, SeparateAccountStrategies, SeparateAccountStrategiesIncludes
    - Approval Fields (18 fields): CommunicationsApproval, PortfolioManagerApproval, etc.
    - Legal Intake (2 fields): Attorney, AttorneyAssignNotes
    - Legal Review (5 fields): LegalReviewStatus, LegalReviewOutcome, legalReviewNotes
-   - Compliance Review (7 fields): ComplianceReviewStatus, ComplianceReviewOutcome, etc.
+   - Compliance Review (8 fields): ComplianceReviewStatus, ComplianceReviewOutcome, IsForesideReviewRequired, RecordRetentionOnly, IsRetailUse, etc.
    - Closeout (1 field): TrackingId
    - System Tracking (16 fields): Status, SubmittedBy, SubmittedOn, etc.
 
@@ -331,6 +331,7 @@ A request is "rush" if `targetReturnDate < (requestedDate + submissionItem.turnA
 ### Approval Requirements
 
 - At least ONE approval required (date + approver + uploaded document)
+- **Exception**: RFP submission items (starting with "RFP Related Review Substantial") bypass all approval requirements at submission
 - Types: Communications, Portfolio Manager, Research Analyst, SME, Performance, Other
 
 ### Review Audience
@@ -393,7 +394,9 @@ This workflow enables back-and-forth communication between reviewers and submitt
 
 Required at Closeout IF:
 
-- Compliance reviewed AND (`isForesideReviewRequired === true` OR `isRetailUse === true`)
+- `isForesideReviewRequired === true`
+
+The Tracking ID field is only visible on the Closeout form when Foreside Review Required is checked.
 
 ### Closeout Readiness
 

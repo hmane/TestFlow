@@ -42,11 +42,14 @@ namespace LegalWorkflow.Functions.Constants.SharePointFields
         // Recipient Configuration
         // =================================================================
 
-        /// <summary>Recipients configuration (e.g., "Submitter,LegalAdmin")</summary>
-        public const string Recipients = "Recipients";
+        /// <summary>To recipients configuration (e.g., "Submitter,LegalAdmin")</summary>
+        public const string ToRecipients = "ToRecipients";
 
         /// <summary>CC recipients configuration</summary>
         public const string CcRecipients = "CcRecipients";
+
+        /// <summary>BCC recipients configuration</summary>
+        public const string BccRecipients = "BccRecipients";
 
         // =================================================================
         // Notification Settings
@@ -63,6 +66,9 @@ namespace LegalWorkflow.Functions.Constants.SharePointFields
 
         /// <summary>Whether this notification template is active</summary>
         public const string IsActive = "IsActive";
+
+        /// <summary>Whether to include request documents as attachments</summary>
+        public const string IncludeDocuments = "IncludeDocuments";
 
         // =================================================================
         // Metadata

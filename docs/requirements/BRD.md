@@ -106,6 +106,7 @@ Note: Awaiting Foreside Documents step only applies when Is Foreside Review Requ
 
 - Required fields: Request Title, Purpose, Submission Type, Submission Item, Target Return Date, Review Audience
 - At least **one approval required** (date + approver + supporting document)
+  - **Exception:** RFP submission items (starting with "RFP Related Review Substantial") bypass approval requirements
 - At least one document uploaded for review
 - The system shall support the following approval types, of which at least one must be provided (date + approver + supporting document):
   - **Communications Approval**

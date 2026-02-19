@@ -80,6 +80,8 @@ export interface IComplianceReviewPayload {
   notes: string;
   /** Foreside review required flag */
   isForesideReviewRequired?: boolean;
+  /** Record retention only flag */
+  recordRetentionOnly?: boolean;
   /** Retail use flag */
   isRetailUse?: boolean;
 }
@@ -148,6 +150,8 @@ export interface IComplianceReviewSavePayload {
   notes?: string;
   /** Foreside review required flag */
   isForesideReviewRequired?: boolean;
+  /** Record retention only flag */
+  recordRetentionOnly?: boolean;
   /** Retail use flag */
   isRetailUse?: boolean;
 }

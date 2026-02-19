@@ -84,14 +84,98 @@
     <pnp:DataRow>
       <pnp:DataValue FieldName="Title">Website Update - Substantial (4 pages or more)</pnp:DataValue>
       <pnp:DataValue FieldName="TurnAroundTimeInDays">5</pnp:DataValue>
-      <pnp:DataValue FieldName="Description">Major website updates</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Substantial website updates (4 pages or more)</pnp:DataValue>
       <pnp:DataValue FieldName="DisplayOrder">40</pnp:DataValue>
     </pnp:DataRow>
     <pnp:DataRow>
-      <pnp:DataValue FieldName="Title">Marketing Communication</pnp:DataValue>
-      <pnp:DataValue FieldName="TurnAroundTimeInDays">3</pnp:DataValue>
-      <pnp:DataValue FieldName="Description">Marketing communication materials</pnp:DataValue>
+      <pnp:DataValue FieldName="Title">Website Update - Non-Substantial (1-3 pages)</pnp:DataValue>
+      <pnp:DataValue FieldName="TurnAroundTimeInDays">5</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Non-substantial website updates (1-3 pages)</pnp:DataValue>
       <pnp:DataValue FieldName="DisplayOrder">50</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">Email Blast</pnp:DataValue>
+      <pnp:DataValue FieldName="TurnAroundTimeInDays">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Email blast review</pnp:DataValue>
+      <pnp:DataValue FieldName="DisplayOrder">60</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">FAQ/Talking Points</pnp:DataValue>
+      <pnp:DataValue FieldName="TurnAroundTimeInDays">3</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">FAQ or talking points review</pnp:DataValue>
+      <pnp:DataValue FieldName="DisplayOrder">70</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">Shareholder Letter (Final Review)</pnp:DataValue>
+      <pnp:DataValue FieldName="TurnAroundTimeInDays">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Final review of shareholder letter</pnp:DataValue>
+      <pnp:DataValue FieldName="DisplayOrder">80</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">Separate Account Letter (Final Review)</pnp:DataValue>
+      <pnp:DataValue FieldName="TurnAroundTimeInDays">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Final review of separate account letter</pnp:DataValue>
+      <pnp:DataValue FieldName="DisplayOrder">90</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">Investment Commentary (Final Review)</pnp:DataValue>
+      <pnp:DataValue FieldName="TurnAroundTimeInDays">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Final review of investment commentary</pnp:DataValue>
+      <pnp:DataValue FieldName="DisplayOrder">100</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">Standard Mutual Fund Presentation</pnp:DataValue>
+      <pnp:DataValue FieldName="TurnAroundTimeInDays">2</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Standard mutual fund presentation review</pnp:DataValue>
+      <pnp:DataValue FieldName="DisplayOrder">110</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">Client-Specific Mutual Fund Presentation</pnp:DataValue>
+      <pnp:DataValue FieldName="TurnAroundTimeInDays">2</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Client-specific mutual fund presentation review</pnp:DataValue>
+      <pnp:DataValue FieldName="DisplayOrder">120</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">Custom Presentation</pnp:DataValue>
+      <pnp:DataValue FieldName="TurnAroundTimeInDays">2</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Custom presentation review</pnp:DataValue>
+      <pnp:DataValue FieldName="DisplayOrder">130</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">Fact Sheet</pnp:DataValue>
+      <pnp:DataValue FieldName="TurnAroundTimeInDays">3</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Fact sheet review</pnp:DataValue>
+      <pnp:DataValue FieldName="DisplayOrder">140</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">Shareholder Report (Annual/Semi-Annual)</pnp:DataValue>
+      <pnp:DataValue FieldName="TurnAroundTimeInDays">5</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Annual or semi-annual shareholder report review</pnp:DataValue>
+      <pnp:DataValue FieldName="DisplayOrder">150</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">RFP Related Review Substantial (Multiple Pages)</pnp:DataValue>
+      <pnp:DataValue FieldName="TurnAroundTimeInDays">3</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Substantial RFP-related review (multiple pages)</pnp:DataValue>
+      <pnp:DataValue FieldName="DisplayOrder">160</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">RFP Related Review Substantial (1 Page)</pnp:DataValue>
+      <pnp:DataValue FieldName="TurnAroundTimeInDays">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Substantial RFP-related review (single page)</pnp:DataValue>
+      <pnp:DataValue FieldName="DisplayOrder">170</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">Social Media</pnp:DataValue>
+      <pnp:DataValue FieldName="TurnAroundTimeInDays">3</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Social media content review</pnp:DataValue>
+      <pnp:DataValue FieldName="DisplayOrder">180</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">Other</pnp:DataValue>
+      <pnp:DataValue FieldName="TurnAroundTimeInDays">3</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Other submission type</pnp:DataValue>
+      <pnp:DataValue FieldName="DisplayOrder">190</pnp:DataValue>
     </pnp:DataRow>
   </pnp:DataRows>
 

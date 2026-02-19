@@ -35,8 +35,8 @@ namespace LegalWorkflow.Functions.Models
         /// <summary>Request is on hold (paused)</summary>
         OnHold,
 
-        /// <summary>Request is awaiting Foreside documents upload</summary>
-        AwaitingForesideDocuments
+        /// <summary>Request is awaiting FINRA documents upload</summary>
+        AwaitingFINRA
     }
 
     /// <summary>

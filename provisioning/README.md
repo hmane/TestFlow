@@ -154,10 +154,10 @@ Get-PnPField -List "Requests" | Select-Object Title, InternalName, Id | Format-T
    - LegalReviewStatus, LegalStatusUpdatedOn/By
    - LegalReviewOutcome, LegalReviewNotes (append-only)
 
-5. **Compliance Review** (7 fields)
+5. **Compliance Review** (8 fields)
    - ComplianceReviewStatus, ComplianceStatusUpdatedOn/By
    - ComplianceReviewOutcome, ComplianceReviewNotes (append-only)
-   - IsForesideReviewRequired, IsRetailUse
+   - IsForesideReviewRequired, RecordRetentionOnly, IsRetailUse
 
 6. **Closeout** (1 field)
    - TrackingId

@@ -173,6 +173,7 @@
       </Field>
       <Field Type="Note" Name="ComplianceReviewNotes" DisplayName="Compliance Review Notes" RichText="FALSE" AppendOnly="TRUE" NumLines="6" Group="Compliance Review" ID="{AF39C656-C05A-4223-9C48-EA101E3B5814}" />
       <Field Type="Boolean" Name="IsForesideReviewRequired" DisplayName="Is Foreside Review Required" Group="Compliance Review" ID="{412DF9F7-6068-4F9B-B66F-306120C1FEC2}"><Default>0</Default></Field>
+      <Field Type="Boolean" Name="RecordRetentionOnly" DisplayName="Record Retention Only" Group="Compliance Review" ID="{F7A3B1D2-8E4C-4A5F-9D6B-2C1E0F3A7B8D}"><Default>0</Default></Field>
       <Field Type="Boolean" Name="IsRetailUse" DisplayName="Is Retail Use" Group="Compliance Review" ID="{B8DD04CD-5A6F-4495-A281-7A0D25ED6DCD}"><Default>0</Default></Field>
       <Field Type="DateTime" Name="ComplianceReviewCompletedOn" DisplayName="Compliance Review Completed On" Format="DateTime" Group="Compliance Review" ID="{E4E44AF9-7D3F-4CF9-A143-493B24F6111C}" />
       <Field Type="User" Name="ComplianceReviewCompletedBy" DisplayName="Compliance Review Completed By" UserSelectionMode="PeopleOnly" Group="Compliance Review" ID="{3664A608-D0F2-40DC-8502-76401D30DB82}" />

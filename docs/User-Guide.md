@@ -116,7 +116,7 @@ No special setup is required. Your permissions are automatically assigned based 
 
 #### As a Compliance User
 - View requests requiring compliance review
-- Set Foreside review and retail use flags
+- Set Foreside review, record retention, and retail use flags
 - Conduct compliance reviews
 - Approve or reject materials
 
@@ -445,10 +445,11 @@ Before submitting your review, set these flags if applicable:
 
 | Field | Description |
 |-------|-------------|
-| **Is Foreside Review Required** | Toggle if Foreside review is needed |
-| **Is Retail Use** | Toggle if material is for retail audience |
+| **Is Foreside Review Required** | Toggle if Foreside review is needed (parent checkbox) |
+| **For Record Retention Purpose Only** | Toggle if for record retention only (visible when Foreside is checked) |
+| **Is Retail Use** | Toggle if material is for retail audience (visible when Foreside is checked) |
 
-> **Important**: If either flag is set to Yes, a Tracking ID will be required at closeout.
+> **Important**: If Foreside Review Required is set to Yes, a Tracking ID will be required at closeout. Record Retention Only and Retail Use are only visible when Foreside Review Required is checked.
 
 #### Submitting Compliance Review
 
@@ -545,10 +546,9 @@ When all required reviews are approved (or approved with comments), the request 
 #### Tracking ID
 
 A Tracking ID is required if:
-- Compliance reviewed the request AND
-- **Foreside Review Required** is Yes OR **Retail Use** is Yes
+- **Foreside Review Required** is Yes
 
-Enter the Tracking ID assigned by Compliance/Foreside.
+The Tracking ID field is only visible when Foreside Review Required was checked during compliance review. Enter the Tracking ID assigned by Compliance/Foreside.
 
 ### Review Final Documents (Approved With Comments)
 

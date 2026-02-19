@@ -197,6 +197,7 @@ export function buildRequestUpdatePayload(
     updater.set(RequestsFields.ComplianceReviewOutcome, request.complianceReviewOutcome, originalRequest.complianceReviewOutcome);
     updater.set(RequestsFields.ComplianceReviewNotes, request.complianceReviewNotes, originalRequest.complianceReviewNotes);
     updater.set(RequestsFields.IsForesideReviewRequired, request.isForesideReviewRequired, originalRequest.isForesideReviewRequired);
+    updater.set(RequestsFields.RecordRetentionOnly, request.recordRetentionOnly, originalRequest.recordRetentionOnly);
     updater.set(RequestsFields.IsRetailUse, request.isRetailUse, originalRequest.isRetailUse);
     updater.set(RequestsFields.ComplianceStatusUpdatedOn, request.complianceStatusUpdatedOn, originalRequest.complianceStatusUpdatedOn);
     updater.set(RequestsFields.ComplianceStatusUpdatedBy, request.complianceStatusUpdatedBy, originalRequest.complianceStatusUpdatedBy);
@@ -388,6 +389,7 @@ export function buildPartialUpdatePayload(data: Partial<ILegalRequest>): Record<
   setIfDefined(RequestsFields.ComplianceReviewOutcome, data.complianceReviewOutcome);
   setIfDefined(RequestsFields.ComplianceReviewNotes, data.complianceReviewNotes);
   setIfDefined(RequestsFields.IsForesideReviewRequired, data.isForesideReviewRequired);
+  setIfDefined(RequestsFields.RecordRetentionOnly, data.recordRetentionOnly);
   setIfDefined(RequestsFields.IsRetailUse, data.isRetailUse);
   setIfDefined(RequestsFields.ComplianceStatusUpdatedOn, data.complianceStatusUpdatedOn);
   if (data.complianceStatusUpdatedBy !== undefined) {

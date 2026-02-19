@@ -72,7 +72,7 @@ export function determineWaitingOn(itemData: IStatusListItemData): IWaitingOnInf
 
   // Status-specific logic
   switch (status) {
-    case RequestStatus.Draft:
+    case RequestStatus.Draft: {
       // Waiting on submitter to complete and submit
       const submitter = submittedBy || createdBy;
       return {
@@ -81,6 +81,7 @@ export function determineWaitingOn(itemData: IStatusListItemData): IWaitingOnInf
         displayName: submitter?.title || 'Unknown',
         principal: submitter,
       };
+    }
 
     case RequestStatus.LegalIntake:
       // Waiting on Legal Admin group
@@ -112,7 +113,7 @@ export function determineWaitingOn(itemData: IStatusListItemData): IWaitingOnInf
         submittedBy || createdBy
       );
 
-    case RequestStatus.Closeout:
+    case RequestStatus.Closeout: {
       // Waiting on submitter or Legal Admin for closeout
       const closeoutUser = submittedBy || createdBy;
       return {
@@ -121,6 +122,7 @@ export function determineWaitingOn(itemData: IStatusListItemData): IWaitingOnInf
         displayName: closeoutUser?.title || 'Unknown',
         principal: closeoutUser,
       };
+    }
 
     default:
       return {

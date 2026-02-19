@@ -434,6 +434,15 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
     name: 'approvals',
   });
 
+  // Watch submissionItem to detect RFP submissions (approvals not required)
+  const submissionItem = useWatch({
+    control,
+    name: 'submissionItem',
+  });
+
+  const isRFPSubmission = typeof submissionItem === 'string' &&
+    submissionItem.indexOf('RFP Related Review Substantial') === 0;
+
   // Count additional (non-Communications) approvals
   const additionalApprovalsCount = React.useMemo(() => {
     if (!approvals || !Array.isArray(approvals)) return 0;
@@ -988,12 +997,14 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
           <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 12 }}>
             <Icon iconName='AddTo' styles={{ root: { fontSize: '18px', color: '#0078d4' } }} />
             <Label styles={COMM_APPROVAL_LABEL_STYLES}>
-              Required Approval(s) <span style={{ color: '#a4262c', fontWeight: 600 }}>*</span>
+              {isRFPSubmission ? 'Approval(s)' : <>Required Approval(s) <span style={{ color: '#a4262c', fontWeight: 600 }}>*</span></>}
             </Label>
           </Stack>
 
           <Text variant='small' styles={DESC_TEXT_STYLES}>
-            Select required approval types. At least one is required. Each can only be added once.
+            {isRFPSubmission
+              ? 'Approvals are optional for RFP submissions. You may still add approvals if needed.'
+              : 'Select required approval types. At least one is required. Each can only be added once.'}
           </Text>
 
           {/* Additional Approval Items */}
@@ -1043,8 +1054,8 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
                 showClearButton={false}
                 stylingMode='outlined'
                 disabled={disabled}
-                isValid={!hasApprovalDropdownError}
-                validationError={hasApprovalDropdownError ? { message: 'At least one additional approval is required' } : undefined}
+                isValid={!hasApprovalDropdownError || isRFPSubmission}
+                validationError={hasApprovalDropdownError && !isRFPSubmission ? { message: 'At least one additional approval is required' } : undefined}
               />
             ) : (
               <MessageBar messageBarType={MessageBarType.success} isMultiline={false}>

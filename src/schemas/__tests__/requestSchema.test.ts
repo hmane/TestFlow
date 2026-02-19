@@ -402,36 +402,20 @@ describe('Request Schema Validation', () => {
   });
 
   describe('closeoutWithTrackingIdSchema', () => {
-    it('should require tracking ID when only foreside required', () => {
+    it('should require tracking ID when foreside review required', () => {
       const data = {
         trackingId: '',
         isForesideReviewRequired: true,
-        isRetailUse: false,
-        complianceReviewed: true,
       };
 
       const result = closeoutWithTrackingIdSchema.safeParse(data);
       expect(result.success).toBe(false);
     });
 
-    it('should require tracking ID when only retail use', () => {
+    it('should require tracking ID when foreside required and tracking ID is whitespace', () => {
       const data = {
-        trackingId: '',
-        isForesideReviewRequired: false,
-        isRetailUse: true,
-        complianceReviewed: true,
-      };
-
-      const result = closeoutWithTrackingIdSchema.safeParse(data);
-      expect(result.success).toBe(false);
-    });
-
-    it('should require tracking ID when compliance reviewed and both foreside and retail use', () => {
-      const data = {
-        trackingId: '',
+        trackingId: '   ',
         isForesideReviewRequired: true,
-        isRetailUse: true,
-        complianceReviewed: true,
       };
 
       const result = closeoutWithTrackingIdSchema.safeParse(data);
@@ -442,36 +426,29 @@ describe('Request Schema Validation', () => {
       }
     });
 
-    it('should not require tracking ID when compliance not reviewed', () => {
-      const data = {
-        trackingId: '',
-        isForesideReviewRequired: true,
-        isRetailUse: true,
-        complianceReviewed: false,
-      };
-
-      const result = closeoutWithTrackingIdSchema.safeParse(data);
-      expect(result.success).toBe(true);
-    });
-
-    it('should not require tracking ID when no foreside or retail', () => {
+    it('should not require tracking ID when foreside not required', () => {
       const data = {
         trackingId: '',
         isForesideReviewRequired: false,
-        isRetailUse: false,
-        complianceReviewed: true,
       };
 
       const result = closeoutWithTrackingIdSchema.safeParse(data);
       expect(result.success).toBe(true);
     });
 
-    it('should accept valid tracking ID', () => {
+    it('should accept valid tracking ID when foreside required', () => {
       const data = {
         trackingId: 'TRK-2024-001',
         isForesideReviewRequired: true,
-        isRetailUse: true,
-        complianceReviewed: true,
+      };
+
+      const result = closeoutWithTrackingIdSchema.safeParse(data);
+      expect(result.success).toBe(true);
+    });
+
+    it('should accept missing tracking ID when foreside not required', () => {
+      const data = {
+        isForesideReviewRequired: false,
       };
 
       const result = closeoutWithTrackingIdSchema.safeParse(data);

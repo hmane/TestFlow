@@ -121,7 +121,7 @@ These fields exist on the Requests list but are not displayed or populated for G
 - Portfolio Manager Approval: HasPortfolioManagerApproval, PortfolioManagerApprovalDate, PortfolioManager, PortfolioMgrApprovalNotes
 - SME Approval: HasSMEApproval, SMEApprovalDate, SubjectMatterExpert, SMEApprovalNotes
 - Distribution Method: DistributionMethod
-- Compliance Review: All ComplianceReview* fields, IsForesideReviewRequired, IsRetailUse
+- Compliance Review: All ComplianceReview* fields, IsForesideReviewRequired, RecordRetentionOnly, IsRetailUse
 - FINRA Documents: FINRACompletedBy, FINRACompletedOn, FINRANotes, AwaitingFINRASince, FINRACommentsReceived
 
 ---

@@ -12,7 +12,7 @@
  */
 
 import * as React from 'react';
-import { useForm, FormProvider as RHFFormProvider } from 'react-hook-form';
+import { FormProvider as RHFFormProvider, useForm } from 'react-hook-form';
 
 // Fluent UI - tree-shaken imports
 import { PrimaryButton } from '@fluentui/react/lib/Button';
@@ -27,31 +27,28 @@ import { Text } from '@fluentui/react/lib/Text';
 
 // spfx-toolkit - tree-shaken imports
 import { Card, Content, Footer, Header, useCardController } from 'spfx-toolkit/lib/components/Card';
-import { SPContext } from 'spfx-toolkit/lib/utilities/context';
+import { SPTextField, SPTextFieldMode } from 'spfx-toolkit/lib/components/spFields';
 import {
   FormContainer,
   FormItem,
   FormLabel,
   FormProvider,
 } from 'spfx-toolkit/lib/components/spForm';
-import {
-  SPTextField,
-  SPTextFieldMode,
-} from 'spfx-toolkit/lib/components/spFields';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 
 // App imports using path aliases
+import { DocumentType } from '@appTypes/documentTypes';
+import { ReviewAudience, ReviewOutcome } from '@appTypes/index';
 import { DocumentUpload } from '@components/DocumentUpload';
 import { ValidationErrorContainer } from '@components/ValidationErrorContainer';
 import { WorkflowCardHeader } from '@components/WorkflowCardHeader';
+import { CLOSEOUT_NOTES_MAX_LENGTH, TRACKING_ID_MAX_LENGTH } from '@constants/fieldLimits';
 import { useRequestFormContext } from '@contexts/RequestFormContext';
+import { Lists } from '@sp/Lists';
+import { useCloseoutStore } from '@stores/closeoutStore';
 import { useDocumentsStore } from '@stores/documentsStore';
 import { useRequestStore } from '@stores/requestStore';
 import { useShallow } from 'zustand/react/shallow';
-import { useCloseoutStore } from '@stores/closeoutStore';
-import { Lists } from '@sp/Lists';
-import { DocumentType } from '@appTypes/documentTypes';
-import { ReviewAudience, ReviewOutcome } from '@appTypes/index';
-import { TRACKING_ID_MAX_LENGTH, CLOSEOUT_NOTES_MAX_LENGTH } from '@constants/fieldLimits';
 
 /**
  * CloseoutForm props
@@ -94,7 +91,7 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
   readOnly = false,
 }) => {
   const { itemId, currentRequest, closeoutRequest } = useRequestStore(
-    useShallow((s) => ({
+    useShallow(s => ({
       itemId: s.itemId,
       currentRequest: s.currentRequest,
       closeoutRequest: s.closeoutRequest,
@@ -154,7 +151,12 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
   }, [documents, stagedFiles]);
 
   // Filter validation errors to only show Closeout related fields
-  const closeoutFields = ['trackingId', 'commentsAcknowledged', 'closeoutNotes', 'reviewFinalDocuments'];
+  const closeoutFields = [
+    'trackingId',
+    'commentsAcknowledged',
+    'closeoutNotes',
+    'reviewFinalDocuments',
+  ];
   const closeoutValidationErrors = React.useMemo(() => {
     if (!validationErrors) return [];
     return validationErrors.filter(err => closeoutFields.includes(err.field));
@@ -162,11 +164,14 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
 
   // Scroll to field handler for validation errors
   const handleScrollToField = React.useCallback((fieldName: string) => {
-    const element = document.querySelector(`[data-field-name="${fieldName}"]`) ||
+    const element =
+      document.querySelector(`[data-field-name="${fieldName}"]`) ||
       document.getElementById(`closeout-${fieldName}`);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      const focusable = element.querySelector('input, textarea, select, [tabindex]:not([tabindex="-1"])') as HTMLElement;
+      const focusable = element.querySelector(
+        'input, textarea, select, [tabindex]:not([tabindex="-1"])'
+      ) as HTMLElement;
       if (focusable) {
         focusable.focus();
       }
@@ -210,10 +215,14 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
   React.useEffect(() => {
     if (trackingIdValue && trackingIdValue.trim() !== '' && validationErrors) {
       // Check if there's a trackingId error in the context
-      const hasTrackingIdError = validationErrors.some((err: { field: string }) => err.field === 'trackingId');
+      const hasTrackingIdError = validationErrors.some(
+        (err: { field: string }) => err.field === 'trackingId'
+      );
       if (hasTrackingIdError) {
         // Remove trackingId error from the list
-        const filteredErrors = validationErrors.filter((err: { field: string }) => err.field !== 'trackingId');
+        const filteredErrors = validationErrors.filter(
+          (err: { field: string }) => err.field !== 'trackingId'
+        );
         setValidationErrors(filteredErrors);
       }
     }
@@ -223,10 +232,14 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
   React.useEffect(() => {
     if (commentsAcknowledged && validationErrors) {
       // Check if there's a commentsAcknowledged error in the context
-      const hasCommentsError = validationErrors.some((err: { field: string }) => err.field === 'commentsAcknowledged');
+      const hasCommentsError = validationErrors.some(
+        (err: { field: string }) => err.field === 'commentsAcknowledged'
+      );
       if (hasCommentsError) {
         // Remove commentsAcknowledged error from the list
-        const filteredErrors = validationErrors.filter((err: { field: string }) => err.field !== 'commentsAcknowledged');
+        const filteredErrors = validationErrors.filter(
+          (err: { field: string }) => err.field !== 'commentsAcknowledged'
+        );
         setValidationErrors(filteredErrors);
       }
     }
@@ -235,9 +248,13 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
   // Clear reviewFinalDocuments validation error when documents are added
   React.useEffect(() => {
     if (reviewFinalDocumentCount > 0 && validationErrors) {
-      const hasDocsError = validationErrors.some((err: { field: string }) => err.field === 'reviewFinalDocuments');
+      const hasDocsError = validationErrors.some(
+        (err: { field: string }) => err.field === 'reviewFinalDocuments'
+      );
       if (hasDocsError) {
-        const filteredErrors = validationErrors.filter((err: { field: string }) => err.field !== 'reviewFinalDocuments');
+        const filteredErrors = validationErrors.filter(
+          (err: { field: string }) => err.field !== 'reviewFinalDocuments'
+        );
         setValidationErrors(filteredErrors);
       }
     }
@@ -262,12 +279,9 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
   /**
    * Handle review final document error
    */
-  const handleReviewFinalError = React.useCallback(
-    (error: string) => {
-      SPContext.logger.error('CloseoutForm: Review final document error', new Error(error));
-    },
-    []
-  );
+  const handleReviewFinalError = React.useCallback((error: string) => {
+    SPContext.logger.error('CloseoutForm: Review final document error', new Error(error));
+  }, []);
 
   /**
    * Handle Complete Request button click
@@ -278,18 +292,17 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
     setValidationErrors([]);
 
     try {
-      // Validate tracking ID if required
+      // Validate tracking ID if required — only when Foreside Review Required is checked
       const isTrackingIdRequired =
-        currentRequest?.reviewAudience !== ReviewAudience.Legal &&
-        (currentRequest?.complianceReview?.isForesideReviewRequired === true ||
-        currentRequest?.complianceReview?.isRetailUse === true);
+        currentRequest?.isForesideReviewRequired === true;
 
       const errors: { field: string; message: string }[] = [];
 
       if (isTrackingIdRequired && (!trackingIdValue || trackingIdValue.trim() === '')) {
         errors.push({
           field: 'trackingId',
-          message: 'Tracking ID is required because Foreside Review Required or Retail Use was indicated during compliance review.',
+          message:
+            'Tracking ID is required because Foreside Review Required was indicated during compliance review.',
         });
       }
 
@@ -307,7 +320,9 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
 
       if (errors.length > 0) {
         setValidationErrors(errors);
-        SPContext.logger.warn('CloseoutForm: Validation failed', { errors: errors.map(e => e.field) });
+        SPContext.logger.warn('CloseoutForm: Validation failed', {
+          errors: errors.map(e => e.field),
+        });
         return;
       }
 
@@ -325,7 +340,14 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
     } finally {
       setIsCompleting(false);
     }
-  }, [currentRequest, trackingIdValue, closeoutNotesValue, commentsAcknowledged, closeoutRequest, setValidationErrors]);
+  }, [
+    currentRequest,
+    trackingIdValue,
+    closeoutNotesValue,
+    commentsAcknowledged,
+    closeoutRequest,
+    setValidationErrors,
+  ]);
 
   if (!currentRequest) {
     return null;
@@ -333,8 +355,10 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
 
   // Determine if there are "Approved with Comments" outcomes that need acknowledgment
   const getReviewCommentsInfo = (): IReviewCommentsInfo => {
-    const legalHasComments = currentRequest.legalReviewOutcome === ReviewOutcome.ApprovedWithComments;
-    const complianceHasComments = currentRequest.complianceReviewOutcome === ReviewOutcome.ApprovedWithComments;
+    const legalHasComments =
+      currentRequest.legalReviewOutcome === ReviewOutcome.ApprovedWithComments;
+    const complianceHasComments =
+      currentRequest.complianceReviewOutcome === ReviewOutcome.ApprovedWithComments;
 
     return {
       hasCommentsToAcknowledge: legalHasComments || complianceHasComments,
@@ -343,17 +367,17 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
       legalCompletedBy: legalHasComments ? currentRequest.legalReviewCompletedBy?.title : undefined,
       complianceHasComments,
       complianceNotes: complianceHasComments ? currentRequest.complianceReviewNotes : undefined,
-      complianceCompletedBy: complianceHasComments ? currentRequest.complianceReviewCompletedBy?.title : undefined,
+      complianceCompletedBy: complianceHasComments
+        ? currentRequest.complianceReviewCompletedBy?.title
+        : undefined,
     };
   };
 
   const reviewCommentsInfo = getReviewCommentsInfo();
 
-  // Determine if tracking ID is required based on compliance review flags
+  // Tracking ID is visible/required only when Foreside Review Required is checked
   const isTrackingIdRequired =
-    currentRequest.reviewAudience !== ReviewAudience.Legal &&
-    (currentRequest.complianceReview?.isForesideReviewRequired === true ||
-    currentRequest.complianceReview?.isRetailUse === true);
+    currentRequest.isForesideReviewRequired === true;
 
   // Determine the last review completion date based on review audience
   // This represents when reviews were approved and closeout started
@@ -366,8 +390,12 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
       const complianceDate = currentRequest.complianceReviewCompletedOn;
 
       if (legalDate && complianceDate) {
-        const legalTime = legalDate instanceof Date ? legalDate.getTime() : new Date(legalDate).getTime();
-        const complianceTime = complianceDate instanceof Date ? complianceDate.getTime() : new Date(complianceDate).getTime();
+        const legalTime =
+          legalDate instanceof Date ? legalDate.getTime() : new Date(legalDate).getTime();
+        const complianceTime =
+          complianceDate instanceof Date
+            ? complianceDate.getTime()
+            : new Date(complianceDate).getTime();
         return legalTime > complianceTime ? legalDate : complianceDate;
       }
       return legalDate || complianceDate;
@@ -395,10 +423,12 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
   const durationMinutes = calculateCloseoutDuration();
 
   // Get completed by info for header
-  const completedBy = currentRequest.closeoutBy ? {
-    title: currentRequest.closeoutBy.title || '',
-    email: currentRequest.closeoutBy.email,
-  } : undefined;
+  const completedBy = currentRequest.closeoutBy
+    ? {
+        title: currentRequest.closeoutBy.title || '',
+        email: currentRequest.closeoutBy.email,
+      }
+    : undefined;
 
   // Determine header status
   const headerStatus = readOnly ? 'completed' : 'in-progress';
@@ -426,319 +456,387 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
         <RHFFormProvider {...formMethods}>
           <FormProvider control={control as any} autoShowErrors={true}>
             <Stack tokens={{ childrenGap: 20 }}>
-            {/* Review Comments Acknowledgment Section - FIRST, show only if there are "Approved with Comments" reviews */}
-            {reviewCommentsInfo.hasCommentsToAcknowledge && !readOnly && (
-              <Stack tokens={{ childrenGap: 16 }}>
-                <MessageBar
-                  messageBarType={MessageBarType.warning}
-                  isMultiline
-                  styles={{
-                    root: { marginBottom: 8 },
-                    icon: { color: '#d83b01' },
-                  }}
-                >
-                  <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
-                    <Icon iconName="Warning" styles={{ root: { marginRight: 8 } }} />
-                    Review Comments Require Acknowledgment
-                  </Text>
-                  <Text block styles={{ root: { marginTop: 8 } }}>
-                    One or more reviews were approved with comments. Please review the comments and
-                    confirm that you have addressed or acknowledged them before completing closeout.
-                  </Text>
-                </MessageBar>
-
-                {/* Legal Review Comments - with link to view */}
-                {reviewCommentsInfo.legalHasComments && (
-                  <Stack
+              {/* Review Comments Acknowledgment Section - FIRST, show only if there are "Approved with Comments" reviews */}
+              {reviewCommentsInfo.hasCommentsToAcknowledge && !readOnly && (
+                <Stack tokens={{ childrenGap: 16 }}>
+                  <MessageBar
+                    messageBarType={MessageBarType.warning}
+                    isMultiline
                     styles={{
-                      root: {
-                        backgroundColor: '#f3f2f1',
-                        padding: 16,
-                        borderRadius: 4,
-                        borderLeft: '4px solid #0078d4',
-                      },
+                      root: { marginBottom: 8 },
+                      icon: { color: '#d83b01' },
                     }}
                   >
-                    <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
-                      <Text variant="mediumPlus" styles={{ root: { fontWeight: 600, color: '#0078d4' } }}>
-                        <Icon iconName="Scale" styles={{ root: { marginRight: 8 } }} />
-                        Legal Review Comments
-                      </Text>
-                      {reviewCommentsInfo.legalCompletedBy && (
-                        <Text variant="small" styles={{ root: { color: '#605e5c' } }}>
-                          by {reviewCommentsInfo.legalCompletedBy}
-                        </Text>
-                      )}
-                    </Stack>
-                    <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: 12 } }}>
-                      <Link
-                        onClick={() => {
-                          // Use card controller to expand and scroll to Legal Review card
-                          void expandAndScrollTo('legal-review-card', { smooth: true, block: 'start', highlight: true });
-                        }}
-                        styles={{ root: { fontWeight: 500 } }}
-                      >
-                        <Icon iconName="OpenInNewTab" styles={{ root: { marginRight: 6, fontSize: 12 } }} />
-                        View comments in Legal Review section
-                      </Link>
-                    </Stack>
-                  </Stack>
-                )}
-
-                {/* Compliance Review Comments - with link to view */}
-                {reviewCommentsInfo.complianceHasComments && (
-                  <Stack
-                    styles={{
-                      root: {
-                        backgroundColor: '#f3f2f1',
-                        padding: 16,
-                        borderRadius: 4,
-                        borderLeft: '4px solid #107c10',
-                      },
-                    }}
-                  >
-                    <Stack horizontal horizontalAlign="space-between" verticalAlign="center">
-                      <Text variant="mediumPlus" styles={{ root: { fontWeight: 600, color: '#107c10' } }}>
-                        <Icon iconName="Shield" styles={{ root: { marginRight: 8 } }} />
-                        Compliance Review Comments
-                      </Text>
-                      {reviewCommentsInfo.complianceCompletedBy && (
-                        <Text variant="small" styles={{ root: { color: '#605e5c' } }}>
-                          by {reviewCommentsInfo.complianceCompletedBy}
-                        </Text>
-                      )}
-                    </Stack>
-                    <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: 12 } }}>
-                      <Link
-                        onClick={() => {
-                          // Use card controller to expand and scroll to Compliance Review card
-                          void expandAndScrollTo('compliance-review-card', { smooth: true, block: 'start', highlight: true });
-                        }}
-                        styles={{ root: { fontWeight: 500 } }}
-                      >
-                        <Icon iconName="OpenInNewTab" styles={{ root: { marginRight: 6, fontSize: 12 } }} />
-                        View comments in Compliance Review section
-                      </Link>
-                    </Stack>
-                  </Stack>
-                )}
-
-                {/* Acknowledgment Checkbox */}
-                <Stack
-                  styles={{
-                    root: {
-                      backgroundColor: commentsAcknowledged ? '#dff6dd' : commentsAcknowledgedError ? '#fde7e9' : '#fff4ce',
-                      padding: 16,
-                      borderRadius: 4,
-                      border: commentsAcknowledged ? '1px solid #107c10' : commentsAcknowledgedError ? '2px solid #a80000' : '1px solid #d83b01',
-                    },
-                  }}
-                >
-                  <Checkbox
-                    label="I have reviewed and addressed the comments above, or acknowledge that I have read and understand them."
-                    checked={commentsAcknowledged}
-                    onChange={(_, checked) => setCommentsAcknowledged(checked ?? false)}
-                    styles={{
-                      root: { fontWeight: 500 },
-                      checkbox: {
-                        borderColor: commentsAcknowledged ? '#107c10' : commentsAcknowledgedError ? '#a80000' : '#d83b01',
-                        borderWidth: commentsAcknowledgedError ? 2 : 1,
-                        backgroundColor: commentsAcknowledged ? '#107c10' : 'transparent',
-                      },
-                      checkmark: {
-                        color: '#ffffff',
-                        fontWeight: 'bold',
-                      },
-                    }}
-                    ariaLabel="Acknowledge review comments"
-                  />
-                  {commentsAcknowledgedError && (
-                    <Text
-                      variant="small"
-                      styles={{
-                        root: {
-                          color: '#a80000',
-                          marginTop: 8,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                        },
-                      }}
-                    >
-                      <Icon iconName="ErrorBadge" styles={{ root: { fontSize: 12 } }} />
-                      {commentsAcknowledgedError.message}
-                    </Text>
-                  )}
-                </Stack>
-
-                {/* Final Document Upload — required when Approved With Comments */}
-                <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: 8 } }}>
-                  <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
-                    <Icon iconName='Attach' styles={{ root: { fontSize: 16, color: '#0078d4' } }} />
                     <Text variant='mediumPlus' styles={{ root: { fontWeight: 600 } }}>
-                      Final Document(s) with Implemented Comments
+                      <Icon iconName='Warning' styles={{ root: { marginRight: 8 } }} />
+                      Review Comments Require Acknowledgment
                     </Text>
-                    <Text variant='small' styles={{ root: { color: '#a4262c' } }}>*</Text>
-                  </Stack>
-                  <Text variant='small' styles={{ root: { color: '#605e5c' } }}>
-                    Upload the final version of document(s) with review comments addressed. At least one document is required.
-                  </Text>
-                  <DocumentUpload
-                    itemId={itemId}
-                    documentType={DocumentType.ReviewFinal}
-                    isReadOnly={false}
-                    required={true}
-                    hasError={reviewFinalDocsError !== undefined && reviewFinalDocumentCount === 0}
-                    siteUrl={SPContext.webAbsoluteUrl}
-                    documentLibraryTitle={Lists.RequestDocuments.Title}
-                    maxFiles={10}
-                    maxFileSize={250 * 1024 * 1024}
-                    onFilesChange={handleReviewFinalFilesChange}
-                    onError={handleReviewFinalError}
-                  />
-                  {reviewFinalDocsError && reviewFinalDocumentCount === 0 && (
-                    <Text
-                      variant='small'
+                    <Text block styles={{ root: { marginTop: 8 } }}>
+                      One or more reviews were approved with comments. Please review the comments
+                      and confirm that you have addressed or acknowledged them before completing
+                      closeout.
+                    </Text>
+                  </MessageBar>
+
+                  {/* Legal Review Comments - with link to view */}
+                  {reviewCommentsInfo.legalHasComments && (
+                    <Stack
                       styles={{
                         root: {
-                          color: '#a80000',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
+                          backgroundColor: '#f3f2f1',
+                          padding: 16,
+                          borderRadius: 4,
+                          borderLeft: '4px solid #0078d4',
                         },
                       }}
                     >
-                      <Icon iconName='ErrorBadge' styles={{ root: { fontSize: 12 } }} />
-                      {reviewFinalDocsError.message}
-                    </Text>
+                      <Stack horizontal horizontalAlign='space-between' verticalAlign='center'>
+                        <Text
+                          variant='mediumPlus'
+                          styles={{ root: { fontWeight: 600, color: '#0078d4' } }}
+                        >
+                          <Icon iconName='Scale' styles={{ root: { marginRight: 8 } }} />
+                          Legal Review Comments
+                        </Text>
+                        {reviewCommentsInfo.legalCompletedBy && (
+                          <Text variant='small' styles={{ root: { color: '#605e5c' } }}>
+                            by {reviewCommentsInfo.legalCompletedBy}
+                          </Text>
+                        )}
+                      </Stack>
+                      <Stack
+                        horizontal
+                        verticalAlign='center'
+                        tokens={{ childrenGap: 8 }}
+                        styles={{ root: { marginTop: 12 } }}
+                      >
+                        <Link
+                          onClick={() => {
+                            // Use card controller to expand and scroll to Legal Review card
+                            void expandAndScrollTo('legal-review-card', {
+                              smooth: true,
+                              block: 'start',
+                              highlight: true,
+                            });
+                          }}
+                          styles={{ root: { fontWeight: 500 } }}
+                        >
+                          <Icon
+                            iconName='OpenInNewTab'
+                            styles={{ root: { marginRight: 6, fontSize: 12 } }}
+                          />
+                          View comments in Legal Review section
+                        </Link>
+                      </Stack>
+                    </Stack>
                   )}
-                </Stack>
 
-                <Separator />
-              </Stack>
-            )}
-
-            {/* Tracking ID and Closeout Notes */}
-            <FormContainer labelWidth='180px'>
-              <FormItem fieldName='trackingId'>
-                <FormLabel
-                  isRequired={!readOnly && isTrackingIdRequired}
-                  infoText={
-                    readOnly
-                      ? undefined
-                      : isTrackingIdRequired
-                        ? 'Tracking ID is required because Foreside Review Required or Retail Use was indicated during compliance review'
-                        : 'Enter the tracking ID assigned to this request (optional)'
-                  }
-                >
-                  Foreside Tracking Id
-                </FormLabel>
-                {readOnly ? (
-                  <span>{currentRequest.trackingId || '—'}</span>
-                ) : (
-                  <SPTextField
-                    name='trackingId'
-                    placeholder='Enter Foreside tracking ID'
-                    mode={SPTextFieldMode.SingleLine}
-                    maxLength={TRACKING_ID_MAX_LENGTH}
-                    showCharacterCount
-                    stylingMode='outlined'
-                  />
-                )}
-              </FormItem>
-
-              {/* Final Notes - show in both edit and read-only mode */}
-              {(!readOnly || currentRequest.closeoutNotes) && (
-                <FormItem fieldName='closeoutNotes'>
-                  <FormLabel infoText={readOnly ? undefined : 'Add any final notes or comments about this request'}>
-                    Closeout Notes
-                  </FormLabel>
-                  {readOnly ? (
-                    <Text
+                  {/* Compliance Review Comments - with link to view */}
+                  {reviewCommentsInfo.complianceHasComments && (
+                    <Stack
                       styles={{
                         root: {
-                          whiteSpace: 'pre-wrap',
-                          lineHeight: '1.5',
-                          color: currentRequest.closeoutNotes ? '#323130' : '#8a8886',
+                          backgroundColor: '#f3f2f1',
+                          padding: 16,
+                          borderRadius: 4,
+                          borderLeft: '4px solid #107c10',
                         },
                       }}
                     >
-                      {currentRequest.closeoutNotes || '—'}
-                    </Text>
-                  ) : (
-                    <SPTextField
-                      name='closeoutNotes'
-                      placeholder='Add any final notes or comments'
-                      mode={SPTextFieldMode.MultiLine}
-                      rows={3}
-                      maxLength={CLOSEOUT_NOTES_MAX_LENGTH}
-                      showCharacterCount
-                      stylingMode='outlined'
-                      spellCheck
+                      <Stack horizontal horizontalAlign='space-between' verticalAlign='center'>
+                        <Text
+                          variant='mediumPlus'
+                          styles={{ root: { fontWeight: 600, color: '#107c10' } }}
+                        >
+                          <Icon iconName='Shield' styles={{ root: { marginRight: 8 } }} />
+                          Compliance Review Comments
+                        </Text>
+                        {reviewCommentsInfo.complianceCompletedBy && (
+                          <Text variant='small' styles={{ root: { color: '#605e5c' } }}>
+                            by {reviewCommentsInfo.complianceCompletedBy}
+                          </Text>
+                        )}
+                      </Stack>
+                      <Stack
+                        horizontal
+                        verticalAlign='center'
+                        tokens={{ childrenGap: 8 }}
+                        styles={{ root: { marginTop: 12 } }}
+                      >
+                        <Link
+                          onClick={() => {
+                            // Use card controller to expand and scroll to Compliance Review card
+                            void expandAndScrollTo('compliance-review-card', {
+                              smooth: true,
+                              block: 'start',
+                              highlight: true,
+                            });
+                          }}
+                          styles={{ root: { fontWeight: 500 } }}
+                        >
+                          <Icon
+                            iconName='OpenInNewTab'
+                            styles={{ root: { marginRight: 6, fontSize: 12 } }}
+                          />
+                          View comments in Compliance Review section
+                        </Link>
+                      </Stack>
+                    </Stack>
+                  )}
+
+                  {/* Acknowledgment Checkbox */}
+                  <Stack
+                    styles={{
+                      root: {
+                        backgroundColor: commentsAcknowledged
+                          ? '#dff6dd'
+                          : commentsAcknowledgedError
+                            ? '#fde7e9'
+                            : '#fff4ce',
+                        padding: 16,
+                        borderRadius: 4,
+                        border: commentsAcknowledged
+                          ? '1px solid #107c10'
+                          : commentsAcknowledgedError
+                            ? '2px solid #a80000'
+                            : '1px solid #d83b01',
+                      },
+                    }}
+                  >
+                    <Checkbox
+                      label='I have reviewed the comments and have either incorporated them as shown or received approval from the reviewer for the final text'
+                      checked={commentsAcknowledged}
+                      onChange={(_, checked) => setCommentsAcknowledged(checked ?? false)}
+                      styles={{
+                        root: { fontWeight: 500 },
+                        checkbox: {
+                          borderColor: commentsAcknowledged
+                            ? '#107c10'
+                            : commentsAcknowledgedError
+                              ? '#a80000'
+                              : '#d83b01',
+                          borderWidth: commentsAcknowledgedError ? 2 : 1,
+                          backgroundColor: commentsAcknowledged ? '#107c10' : 'transparent',
+                        },
+                        checkmark: {
+                          color: '#ffffff',
+                          fontWeight: 'bold',
+                        },
+                      }}
+                      ariaLabel='Acknowledge review comments'
                     />
-                  )}
-                </FormItem>
-              )}
-            </FormContainer>
-
-            {/* Show acknowledgment status in read-only mode if comments were acknowledged */}
-            {readOnly && currentRequest.commentsAcknowledged && (
-              <>
-                <Separator />
-                <Stack
-                  horizontal
-                  verticalAlign="center"
-                  tokens={{ childrenGap: 8 }}
-                  styles={{
-                    root: {
-                      backgroundColor: '#dff6dd',
-                      padding: 12,
-                      borderRadius: 4,
-                      border: '1px solid #107c10',
-                    },
-                  }}
-                >
-                  <Icon iconName="CheckMark" styles={{ root: { color: '#107c10', fontSize: 16 } }} />
-                  <Text styles={{ root: { color: '#107c10', fontWeight: 500 } }}>
-                    Review comments were acknowledged
-                    {currentRequest.commentsAcknowledgedOn && (
-                      <> on {currentRequest.commentsAcknowledgedOn instanceof Date
-                        ? currentRequest.commentsAcknowledgedOn.toLocaleDateString()
-                        : new Date(currentRequest.commentsAcknowledgedOn).toLocaleDateString()}</>
+                    {commentsAcknowledgedError && (
+                      <Text
+                        variant='small'
+                        styles={{
+                          root: {
+                            color: '#a80000',
+                            marginTop: 8,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                          },
+                        }}
+                      >
+                        <Icon iconName='ErrorBadge' styles={{ root: { fontSize: 12 } }} />
+                        {commentsAcknowledgedError.message}
+                      </Text>
                     )}
-                  </Text>
-                </Stack>
+                  </Stack>
 
-                {/* Show ReviewFinal documents in read-only mode */}
-                {reviewFinalDocumentCount > 0 && (
+                  {/* Final Document Upload — required when Approved With Comments */}
                   <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: 8 } }}>
                     <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
-                      <Icon iconName='Attach' styles={{ root: { fontSize: 16, color: '#0078d4' } }} />
+                      <Icon
+                        iconName='Attach'
+                        styles={{ root: { fontSize: 16, color: '#0078d4' } }}
+                      />
                       <Text variant='mediumPlus' styles={{ root: { fontWeight: 600 } }}>
                         Final Document(s) with Implemented Comments
                       </Text>
-                      <span style={{ fontSize: 12, color: '#605e5c' }}>({reviewFinalDocumentCount})</span>
+                      <Text variant='small' styles={{ root: { color: '#a4262c' } }}>
+                        *
+                      </Text>
                     </Stack>
+                    <Text variant='small' styles={{ root: { color: '#605e5c' } }}>
+                      Upload the final version of document(s) with review comments addressed. At
+                      least one document is required.
+                    </Text>
                     <DocumentUpload
                       itemId={itemId}
                       documentType={DocumentType.ReviewFinal}
-                      isReadOnly={true}
+                      isReadOnly={false}
+                      required={true}
+                      hasError={
+                        reviewFinalDocsError !== undefined && reviewFinalDocumentCount === 0
+                      }
                       siteUrl={SPContext.webAbsoluteUrl}
                       documentLibraryTitle={Lists.RequestDocuments.Title}
+                      maxFiles={10}
+                      maxFileSize={250 * 1024 * 1024}
+                      onFilesChange={handleReviewFinalFilesChange}
+                      onError={handleReviewFinalError}
                     />
+                    {reviewFinalDocsError && reviewFinalDocumentCount === 0 && (
+                      <Text
+                        variant='small'
+                        styles={{
+                          root: {
+                            color: '#a80000',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                          },
+                        }}
+                      >
+                        <Icon iconName='ErrorBadge' styles={{ root: { fontSize: 12 } }} />
+                        {reviewFinalDocsError.message}
+                      </Text>
+                    )}
                   </Stack>
-                )}
-              </>
-            )}
 
-            {/* Validation errors - at the end of content (only in edit mode) */}
-            {!readOnly && (
-              <ValidationErrorContainer
-                errors={closeoutValidationErrors}
-                onScrollToField={handleScrollToField}
-                filterFields={closeoutFields}
-              />
-            )}
+                  <Separator />
+                </Stack>
+              )}
+
+              {/* Tracking ID and Closeout Notes */}
+              <FormContainer labelWidth='180px'>
+                {/* Tracking ID - only visible when Foreside Review Required is checked */}
+                {(isTrackingIdRequired || (readOnly && currentRequest.trackingId)) && (
+                  <FormItem fieldName='trackingId'>
+                    <FormLabel
+                      isRequired={!readOnly && isTrackingIdRequired}
+                      infoText={
+                        readOnly
+                          ? undefined
+                          : 'Tracking ID is required because Foreside Review Required was indicated during compliance review'
+                      }
+                    >
+                      Foreside Tracking Id
+                    </FormLabel>
+                    {readOnly ? (
+                      <span>{currentRequest.trackingId || '—'}</span>
+                    ) : (
+                      <SPTextField
+                        name='trackingId'
+                        placeholder='Enter Foreside tracking ID'
+                        mode={SPTextFieldMode.SingleLine}
+                        maxLength={TRACKING_ID_MAX_LENGTH}
+                        showCharacterCount
+                        stylingMode='outlined'
+                      />
+                    )}
+                  </FormItem>
+                )}
+
+                {/* Final Notes - show in both edit and read-only mode */}
+                {(!readOnly || currentRequest.closeoutNotes) && (
+                  <FormItem fieldName='closeoutNotes'>
+                    <FormLabel
+                      infoText={
+                        readOnly ? undefined : 'Add any final notes or comments about this request'
+                      }
+                    >
+                      Closeout Notes
+                    </FormLabel>
+                    {readOnly ? (
+                      <Text
+                        styles={{
+                          root: {
+                            whiteSpace: 'pre-wrap',
+                            lineHeight: '1.5',
+                            color: currentRequest.closeoutNotes ? '#323130' : '#8a8886',
+                          },
+                        }}
+                      >
+                        {currentRequest.closeoutNotes || '—'}
+                      </Text>
+                    ) : (
+                      <SPTextField
+                        name='closeoutNotes'
+                        placeholder='Add any final notes or comments'
+                        mode={SPTextFieldMode.MultiLine}
+                        rows={3}
+                        maxLength={CLOSEOUT_NOTES_MAX_LENGTH}
+                        showCharacterCount
+                        stylingMode='outlined'
+                        spellCheck
+                      />
+                    )}
+                  </FormItem>
+                )}
+              </FormContainer>
+
+              {/* Show acknowledgment status in read-only mode if comments were acknowledged */}
+              {readOnly && currentRequest.commentsAcknowledged && (
+                <>
+                  <Separator />
+                  <Stack
+                    horizontal
+                    verticalAlign='center'
+                    tokens={{ childrenGap: 8 }}
+                    styles={{
+                      root: {
+                        backgroundColor: '#dff6dd',
+                        padding: 12,
+                        borderRadius: 4,
+                        border: '1px solid #107c10',
+                      },
+                    }}
+                  >
+                    <Icon
+                      iconName='CheckMark'
+                      styles={{ root: { color: '#107c10', fontSize: 16 } }}
+                    />
+                    <Text styles={{ root: { color: '#107c10', fontWeight: 500 } }}>
+                      Review comments were acknowledged
+                      {currentRequest.commentsAcknowledgedOn && (
+                        <>
+                          {' '}
+                          on{' '}
+                          {currentRequest.commentsAcknowledgedOn instanceof Date
+                            ? currentRequest.commentsAcknowledgedOn.toLocaleDateString()
+                            : new Date(currentRequest.commentsAcknowledgedOn).toLocaleDateString()}
+                        </>
+                      )}
+                    </Text>
+                  </Stack>
+
+                  {/* Show ReviewFinal documents in read-only mode */}
+                  {reviewFinalDocumentCount > 0 && (
+                    <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: 8 } }}>
+                      <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
+                        <Icon
+                          iconName='Attach'
+                          styles={{ root: { fontSize: 16, color: '#0078d4' } }}
+                        />
+                        <Text variant='mediumPlus' styles={{ root: { fontWeight: 600 } }}>
+                          Final Document(s) with Implemented Comments
+                        </Text>
+                        <span style={{ fontSize: 12, color: '#605e5c' }}>
+                          ({reviewFinalDocumentCount})
+                        </span>
+                      </Stack>
+                      <DocumentUpload
+                        itemId={itemId}
+                        documentType={DocumentType.ReviewFinal}
+                        isReadOnly={true}
+                        siteUrl={SPContext.webAbsoluteUrl}
+                        documentLibraryTitle={Lists.RequestDocuments.Title}
+                      />
+                    </Stack>
+                  )}
+                </>
+              )}
+
+              {/* Validation errors - at the end of content (only in edit mode) */}
+              {!readOnly && (
+                <ValidationErrorContainer
+                  errors={closeoutValidationErrors}
+                  onScrollToField={handleScrollToField}
+                  filterFields={closeoutFields}
+                />
+              )}
             </Stack>
           </FormProvider>
         </RHFFormProvider>
@@ -749,7 +847,10 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
         <Footer>
           <Stack tokens={{ childrenGap: 8 }}>
             {closeoutError && (
-              <MessageBar messageBarType={MessageBarType.error} onDismiss={() => setCloseoutError(undefined)}>
+              <MessageBar
+                messageBarType={MessageBarType.error}
+                onDismiss={() => setCloseoutError(undefined)}
+              >
                 {closeoutError}
               </MessageBar>
             )}
@@ -759,7 +860,9 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
                 disabled={isCompleting}
                 iconProps={{ iconName: 'Completed' }}
               >
-                {isCompleting && <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />}
+                {isCompleting && (
+                  <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />
+                )}
                 {isCompleting ? 'Completing...' : 'Complete Request'}
               </PrimaryButton>
             </Stack>

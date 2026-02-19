@@ -272,15 +272,15 @@ Before testing, confirm which role(s) you will be testing:
    - Check the acknowledgment box
 
 3. **Enter Tracking ID (if required)**
-   - If Foreside Review or Retail Use was flagged during Compliance review
+   - If Foreside Review Required was flagged during Compliance review
    - Enter the external Tracking ID
 
 4. **Complete Request**
    - Click "Complete Request"
-   - **If Foreside Review Required:** Status changes to "Awaiting Foreside Documents"
-   - **If No Foreside Required:** Status changes to "Completed"
+   - **If Retail Use is checked:** Status changes to "Awaiting Foreside Documents"
+   - **If Retail Use is not checked:** Status changes to "Completed"
 
-**Expected Outcome:** Request moves to Completed or Awaiting Foreside Documents based on compliance flags.
+**Expected Outcome:** Request moves to Completed or Awaiting Foreside Documents based on Retail Use flag.
 
 ---
 

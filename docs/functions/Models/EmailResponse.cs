@@ -45,6 +45,12 @@ namespace LegalWorkflow.Functions.Models
         public List<string> Cc { get; set; } = new();
 
         /// <summary>
+        /// List of BCC recipient email addresses.
+        /// Optional - may be empty.
+        /// </summary>
+        public List<string> Bcc { get; set; } = new();
+
+        /// <summary>
         /// Email importance level (Low, Normal, High).
         /// Power Automate uses this to set the email priority.
         /// </summary>

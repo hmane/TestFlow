@@ -428,7 +428,7 @@ The system supports six distinct user roles, each with specific permissions and 
 
 - Review assigned requests requiring compliance review  
 - Verify regulatory compliance  
-- Set compliance-specific flags (Foreside review, retail use)  
+- Set compliance-specific flags (Foreside review, record retention, retail use)  
 - Approve, approve with comments, or reject materials  
 - Document compliance review findings
 
@@ -437,7 +437,7 @@ The system supports six distinct user roles, each with specific permissions and 
 - View requests requiring compliance review  
 - Edit requests during compliance review  
 - Complete compliance review forms  
-- Set Foreside and retail use flags  
+- Set Foreside, record retention, and retail use flags  
 - Upload additional documents  
 - Transition requests to next status upon review completion
 
@@ -694,7 +694,7 @@ The system supports six distinct user roles, each with specific permissions and 
 | REQ-126 | The system shall display Closeout form to authorized users |
 | REQ-127 | The system shall capture Tracking ID (free text) |
 | REQ-128 | The system shall make Tracking ID conditionally required based on business rules (see REQ-118 \- REQ-119) |
-| REQ-129 | The system shall require Tracking ID if: Compliance Review was performed AND (Is Foreside Review Required \= Yes OR Is Retail Use \= Yes) |
+| REQ-129 | The system shall require Tracking ID if: Is Foreside Review Required \= Yes |
 | REQ-130 | The system shall validate Tracking ID requirement before allowing transition to Completed |
 | REQ-131 | The system shall allow users to add final closeout notes |
 | REQ-132 | The system shall capture Closeout Completion Date automatically |
@@ -894,7 +894,7 @@ The system supports six distinct user roles, each with specific permissions and 
 | REQ-224 | Legal Review Date | Date | Auto |
 | REQ-225 | Legal Reviewer | People Picker | Auto |
 
-**Compliance Review Section (7 fields):**
+**Compliance Review Section (8 fields):**
 
 | Req ID | Field Name | Data Type | Required |
 | :---- | :---- | :---- | :---- |
@@ -904,6 +904,7 @@ The system supports six distinct user roles, each with specific permissions and 
 | REQ-229 | Compliance Review Date | Date | Auto |
 | REQ-230 | Compliance Reviewer | People Picker | Auto |
 | REQ-231 | Is Foreside Review Required | Yes/No | Conditional |
+| REQ-231a | Record Retention Only | Yes/No | Conditional |
 | REQ-232 | Is Retail Use | Yes/No | Conditional |
 
 **Closeout Section (1 field):**
@@ -1161,7 +1162,7 @@ The system supports six distinct user roles, each with specific permissions and 
 | :---- | :---- |
 | REQ-354 | The system shall require Tracking ID at Closeout IF compliance review was performed |
 | REQ-355 | The system shall require Tracking ID at Closeout IF Is Foreside Review Required \= Yes |
-| REQ-356 | The system shall require Tracking ID at Closeout IF Is Retail Use \= Yes |
+| REQ-356 | ~~The system shall require Tracking ID at Closeout IF Is Retail Use \= Yes~~ **Superseded**: Retail Use alone no longer triggers Tracking ID requirement. Tracking ID is required only when Is Foreside Review Required \= Yes (see REQ-129, REQ-355) |
 | REQ-357 | The system shall make Tracking ID optional if none of the above conditions are met |
 | REQ-358 | The system shall validate Tracking ID requirement before allowing transition to Completed |
 
@@ -1259,7 +1260,7 @@ The system supports six distinct user roles, each with specific permissions and 
 | TS-016 | Calculate rush request: Target date \= 7 business days, Turnaround \= 5 business days | Request NOT marked as Rush |
 | TS-017 | Calculate expected turnaround date excluding weekends | Expected date calculated correctly (e.g., submit Friday \+ 3 days \= Wednesday) |
 | TS-018 | Verify Tracking ID required: Compliance reviewed \+ Foreside Required \= Yes | Tracking ID field marked required, validation enforced |
-| TS-019 | Verify Tracking ID required: Compliance reviewed \+ Retail Use \= Yes | Tracking ID field marked required, validation enforced |
+| TS-019 | Verify Tracking ID NOT required when only Retail Use \= Yes (without Foreside Required) | Tracking ID field remains optional, closeout allowed without it (Retail Use alone no longer triggers requirement; see REQ-356 superseded) |
 | TS-020 | Verify Tracking ID optional: No compliance review | Tracking ID field optional, closeout allowed without it |
 | TS-021 | Legal Admin overrides Review Audience from "Legal" to "Both" | Request routed to both legal and compliance reviews, change logged |
 | TS-022 | Review Audience \= "Both": Complete legal review first | Request routed to compliance review next |

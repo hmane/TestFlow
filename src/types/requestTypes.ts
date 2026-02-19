@@ -223,6 +223,7 @@ additionalParty?: IPrincipal[];
   complianceReviewOutcome?: string;
   complianceReviewNotes?: string;
   isForesideReviewRequired?: boolean;
+  recordRetentionOnly?: boolean;
   isRetailUse?: boolean;
   complianceStatusUpdatedBy?: IPrincipal;
   complianceStatusUpdatedOn?: Date;
@@ -425,6 +426,7 @@ export interface IRequestListItem {
   ComplianceReviewOutcome?: string;
   ComplianceReviewNotes?: string;
   IsForesideReviewRequired?: boolean;
+  RecordRetentionOnly?: boolean;
   IsRetailUse?: boolean;
   ComplianceReviewCompletedOn?: string;
   ComplianceReviewCompletedById?: number;

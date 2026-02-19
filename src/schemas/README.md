@@ -131,11 +131,9 @@ import { closeoutWithTrackingIdSchema } from '@/schemas';
 const closeoutData = {
   trackingId: 'TRK-2025-001',
   isForesideReviewRequired: true,
-  isRetailUse: false,
-  complianceReviewed: true,
 };
 
-// Tracking ID required if compliance reviewed AND (foreside AND retail)
+// Tracking ID required if isForesideReviewRequired is true
 const closeoutResult = closeoutWithTrackingIdSchema.safeParse(closeoutData);
 ```
 
@@ -271,21 +269,19 @@ Zod supports custom validation logic with `refine()`:
 // Example: Conditional validation
 export const closeoutWithTrackingIdSchema = z
   .object({
-    trackingId: z.string().min(1, 'Tracking ID is required'),
+    trackingId: z.string().optional(),
     isForesideReviewRequired: z.boolean(),
-    isRetailUse: z.boolean(),
-    complianceReviewed: z.boolean(),
   })
   .refine(
     (data) => {
-      // Custom logic: Tracking ID required if specific conditions met (foreside AND retail)
-      if (data.complianceReviewed && (data.isForesideReviewRequired || data.isRetailUse)) {
-        return data.trackingId && data.trackingId.length > 0;
+      // Tracking ID required when Foreside Review Required is checked
+      if (data.isForesideReviewRequired) {
+        return !!data.trackingId && data.trackingId.trim().length > 0;
       }
       return true;
     },
     {
-      message: 'Tracking ID is required when Compliance reviewed and either Foreside Review Required or Retail Use is true',
+      message: 'Tracking ID is required when Foreside Review Required is indicated during compliance review',
       path: ['trackingId'],
     }
   );

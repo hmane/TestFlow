@@ -498,8 +498,12 @@ export const submitRequestSchema = z
     // APPROVAL VALIDATIONS
     // ========================================
 
-    // At least one approval is required
-    if (approvals.length === 0) {
+    // RFP submissions are exempt from approval requirements
+    const isRFPSubmission = typeof data.submissionItem === 'string' &&
+      data.submissionItem.indexOf('RFP Related Review Substantial') === 0;
+
+    // At least one approval is required (unless RFP submission)
+    if (!isRFPSubmission && approvals.length === 0) {
       ctx.addIssue({
         code: 'custom',
         message: 'At least one approval is required',
@@ -516,113 +520,116 @@ export const submitRequestSchema = z
       });
     }
 
-    // At least 1 additional (non-Communications) approval required
-    // Skip this check if communicationsOnly is true (only Communications approval needed)
-    if (!data.communicationsOnly) {
-      let additionalCount = 0;
-      for (let i = 0; i < approvals.length; i++) {
-        if (approvals[i].type !== ApprovalType.Communications) {
-          additionalCount++;
+    // All approval detail validations are skipped for RFP submissions
+    if (!isRFPSubmission) {
+      // At least 1 additional (non-Communications) approval required
+      // Skip this check if communicationsOnly is true (only Communications approval needed)
+      if (!data.communicationsOnly) {
+        let additionalCount = 0;
+        for (let i = 0; i < approvals.length; i++) {
+          if (approvals[i].type !== ApprovalType.Communications) {
+            additionalCount++;
+          }
+        }
+        if (additionalCount < 1) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'At least one additional approval (non-Communications) is required',
+            path: ['approvals'],
+          });
         }
       }
-      if (additionalCount < 1) {
+
+      // Communications approval validation (if required)
+      if (data.requiresCommunicationsApproval) {
+        let commApproval: any = undefined;
+        let commApprovalIndex = -1;
+        for (let i = 0; i < approvals.length; i++) {
+          if (approvals[i].type === ApprovalType.Communications) {
+            commApproval = approvals[i];
+            commApprovalIndex = i;
+            break;
+          }
+        }
+
+        if (!commApproval) {
+          ctx.addIssue({
+            code: 'custom',
+            message: 'Communications approval is required but not provided',
+            path: ['approvals'],
+          });
+        } else {
+          if (!hasValidApproverId(commApproval.approver)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: 'Approver is required for Communications approval',
+              path: ['approvals', commApprovalIndex, 'approver'],
+            });
+          }
+          if (!commApproval.approvalDate) {
+            ctx.addIssue({
+              code: 'custom',
+              message: 'Approval date is required for Communications approval',
+              path: ['approvals', commApprovalIndex, 'approvalDate'],
+            });
+          }
+          if (!hasDocument(commApproval)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: 'Approval document is required for Communications approval',
+              path: ['approvals', commApprovalIndex, '_document'],
+            });
+          }
+        }
+      }
+
+      // Validate each additional approval has all required fields
+      for (let i = 0; i < approvals.length; i++) {
+        const approval = approvals[i];
+        if (approval.type === ApprovalType.Communications) {
+          continue;
+        }
+
+        const approvalName = getApprovalTypeName(approval.type);
+
+        if (!hasValidApproverId(approval.approver)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `Approver is required for ${approvalName} approval`,
+            path: ['approvals', i, 'approver'],
+          });
+        }
+        if (!approval.approvalDate) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `Approval date is required for ${approvalName} approval`,
+            path: ['approvals', i, 'approvalDate'],
+          });
+        }
+        if (!hasDocument(approval)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `Approval document is required for ${approvalName} approval`,
+            path: ['approvals', i, '_document'],
+          });
+        }
+      }
+
+      // At least 1 approval document is required for the entire request
+      let totalApprovalDocuments = 0;
+      for (let i = 0; i < approvals.length; i++) {
+        if (hasDocument(approvals[i])) {
+          totalApprovalDocuments++;
+        }
+      }
+      if (totalApprovalDocuments < 1 && approvals.length > 0) {
         ctx.addIssue({
           code: 'custom',
-          message: 'At least one additional approval (non-Communications) is required',
+          message: 'At least one approval document is required',
           path: ['approvals'],
         });
       }
-    }
-
-    // Communications approval validation (if required)
-    if (data.requiresCommunicationsApproval) {
-      let commApproval: any = undefined;
-      let commApprovalIndex = -1;
-      for (let i = 0; i < approvals.length; i++) {
-        if (approvals[i].type === ApprovalType.Communications) {
-          commApproval = approvals[i];
-          commApprovalIndex = i;
-          break;
-        }
-      }
-
-      if (!commApproval) {
-        ctx.addIssue({
-          code: 'custom',
-          message: 'Communications approval is required but not provided',
-          path: ['approvals'],
-        });
-      } else {
-        if (!hasValidApproverId(commApproval.approver)) {
-          ctx.addIssue({
-            code: 'custom',
-            message: 'Approver is required for Communications approval',
-            path: ['approvals', commApprovalIndex, 'approver'],
-          });
-        }
-        if (!commApproval.approvalDate) {
-          ctx.addIssue({
-            code: 'custom',
-            message: 'Approval date is required for Communications approval',
-            path: ['approvals', commApprovalIndex, 'approvalDate'],
-          });
-        }
-        if (!hasDocument(commApproval)) {
-          ctx.addIssue({
-            code: 'custom',
-            message: 'Approval document is required for Communications approval',
-            path: ['approvals', commApprovalIndex, '_document'],
-          });
-        }
-      }
-    }
-
-    // Validate each additional approval has all required fields
-    for (let i = 0; i < approvals.length; i++) {
-      const approval = approvals[i];
-      if (approval.type === ApprovalType.Communications) {
-        continue;
-      }
-
-      const approvalName = getApprovalTypeName(approval.type);
-
-      if (!hasValidApproverId(approval.approver)) {
-        ctx.addIssue({
-          code: 'custom',
-          message: `Approver is required for ${approvalName} approval`,
-          path: ['approvals', i, 'approver'],
-        });
-      }
-      if (!approval.approvalDate) {
-        ctx.addIssue({
-          code: 'custom',
-          message: `Approval date is required for ${approvalName} approval`,
-          path: ['approvals', i, 'approvalDate'],
-        });
-      }
-      if (!hasDocument(approval)) {
-        ctx.addIssue({
-          code: 'custom',
-          message: `Approval document is required for ${approvalName} approval`,
-          path: ['approvals', i, '_document'],
-        });
-      }
-    }
-
-    // At least 1 approval document is required for the entire request
-    let totalApprovalDocuments = 0;
-    for (let i = 0; i < approvals.length; i++) {
-      if (hasDocument(approvals[i])) {
-        totalApprovalDocuments++;
-      }
-    }
-    if (totalApprovalDocuments < 1 && approvals.length > 0) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'At least one approval document is required',
-        path: ['approvals'],
-      });
-    }
+    } // end !isRFPSubmission
 
     // At least 1 attachment (Review or Supplemental) is required
     if (data._hasAttachments !== true) {
@@ -686,19 +693,17 @@ export const closeoutWithTrackingIdSchema = z
   .object({
     trackingId: z.string().optional(),
     isForesideReviewRequired: z.boolean(),
-    isRetailUse: z.boolean(),
-    complianceReviewed: z.boolean(),
   })
   .refine(
     data => {
-      // Tracking ID required if compliance reviewed AND (foreside review required OR retail use)
-      if (data.complianceReviewed && (data.isForesideReviewRequired || data.isRetailUse)) {
+      // Tracking ID required only when Foreside Review Required is checked
+      if (data.isForesideReviewRequired) {
         return !!data.trackingId && data.trackingId.trim().length > 0;
       }
       return true;
     },
     {
-      message: 'Tracking ID is required when Compliance reviewed and either Foreside Review Required or Retail Use is true',
+      message: 'Tracking ID is required when Foreside Review Required is indicated during compliance review',
       path: ['trackingId'],
     }
   );

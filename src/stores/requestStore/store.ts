@@ -593,7 +593,7 @@ export const useRequestStore = create<IRequestState>()(
       submitComplianceReview: async (
         outcome: string,
         notes: string,
-        flags?: { isForesideReviewRequired?: boolean; isRetailUse?: boolean }
+        flags?: { isForesideReviewRequired?: boolean; recordRetentionOnly?: boolean; isRetailUse?: boolean }
       ): Promise<void> => {
         const state = get();
 
@@ -605,6 +605,7 @@ export const useRequestStore = create<IRequestState>()(
           outcome: outcome as ReviewOutcome,
           notes,
           isForesideReviewRequired: flags?.isForesideReviewRequired,
+          recordRetentionOnly: flags?.recordRetentionOnly,
           isRetailUse: flags?.isRetailUse,
         });
 
