@@ -3,18 +3,18 @@
 // NotificationFunctions.cs - HTTP endpoint for notification processing
 // =============================================================================
 //
-// This function processes notification requests from Power Automate.
+// This function processes notification requests.
 // It compares the current version with the previous version of a request
 // to determine if a notification should be sent.
 //
 // Authorization:
-// - SendNotification: Function-level auth for Power Automate, or user token
+// - Power Automate service account (matched via config) bypasses permission checks
+// - Users must have Contribute or Contribute Without Delete on the request item
 // - Health: Anonymous (for monitoring)
 // =============================================================================
 
 using System;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -115,50 +115,27 @@ namespace LegalWorkflow.Functions
         /// </summary>
         [Function("SendNotification")]
         public async Task<IActionResult> SendNotification(
-            [HttpTrigger(AuthorizationLevel.Function, "post", Route = "notifications/send")] HttpRequest req)
+            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "notifications/send")] HttpRequest req)
         {
             var logger = new Logger(_logger, "SendNotification");
             logger.Info("Notification request received");
 
             try
             {
-                // Check for user token (if present, validate and authorize)
-                var authHeader = req.Headers["Authorization"].FirstOrDefault();
-                if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                // Step 1: Authenticate - Extract user identity from token
+                var authResult = await AuthenticateAsync(req, logger);
+                if (!authResult.IsAuthorized)
                 {
-                    // User token present - validate and authorize
-                    var authResult = await AuthenticateAsync(req, logger);
-                    if (!authResult.IsAuthorized)
+                    return new UnauthorizedObjectResult(new SendNotificationResponse
                     {
-                        return new UnauthorizedObjectResult(new SendNotificationResponse
-                        {
-                            ShouldSendNotification = false,
-                            Reason = authResult.ErrorMessage
-                        });
-                    }
-
-                    // Check SharePoint group membership
-                    var authzResult = await AuthorizeAsync(authResult.User!, AuthorizationAction.SendNotification, null, logger);
-                    if (!authzResult.IsAuthorized)
-                    {
-                        return new ObjectResult(new SendNotificationResponse
-                        {
-                            ShouldSendNotification = false,
-                            Reason = authzResult.ErrorMessage
-                        })
-                        { StatusCode = 403 };
-                    }
-
-                    logger.SetUserContext(authResult.User!.Email, authResult.User.SharePointLoginName);
-                    logger.Info("User authenticated and authorized for notification processing");
-                }
-                else
-                {
-                    // Function key auth (Power Automate) - log as system call
-                    logger.Info("Notification called via function key (system/Power Automate)");
+                        ShouldSendNotification = false,
+                        Reason = authResult.ErrorMessage
+                    });
                 }
 
-                // Parse request body
+                logger.SetUserContext(authResult.User!.Email, authResult.User.SharePointLoginName);
+
+                // Step 2: Parse request body
                 string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
                 var request = JsonSerializer.Deserialize<SendNotificationRequest>(requestBody, _jsonOptions);
 
@@ -172,7 +149,19 @@ namespace LegalWorkflow.Functions
                     });
                 }
 
-                logger.Info("Processing notification for request", new { request.RequestId });
+                // Step 3: Authorize - Service account check or item-level permission check
+                var authzResult = await AuthorizeAsync(authResult.User!, request.RequestId, logger);
+                if (!authzResult.IsAuthorized)
+                {
+                    return new ObjectResult(new SendNotificationResponse
+                    {
+                        ShouldSendNotification = false,
+                        Reason = authzResult.ErrorMessage
+                    })
+                    { StatusCode = 403 };
+                }
+
+                logger.Info("Processing notification for request", new { request.RequestId, AuthReason = authzResult.Reason });
 
                 // Create services with injected dependencies
                 var requestServiceLogger = new Logger(_logger, "RequestService");
@@ -238,7 +227,8 @@ namespace LegalWorkflow.Functions
         #region Private Helper Methods
 
         /// <summary>
-        /// Authenticates the request by validating the JWT token.
+        /// Authenticates the request by validating the JWT token and extracting user identity.
+        /// APIM handles primary authentication; this provides defense-in-depth.
         /// </summary>
         private async Task<AuthorizationResult> AuthenticateAsync(HttpRequest request, Logger logger)
         {
@@ -247,16 +237,15 @@ namespace LegalWorkflow.Functions
         }
 
         /// <summary>
-        /// Authorizes the action by checking SharePoint group membership.
+        /// Authorizes the request by checking service account match or item-level permissions.
         /// </summary>
         private async Task<SharePointAuthorizationResult> AuthorizeAsync(
             UserAuthInfo userInfo,
-            AuthorizationAction action,
-            int? requestId,
+            int requestId,
             Logger logger)
         {
             var authzService = new SharePointAuthorizationService(_contextFactory, logger, _groupConfig);
-            return await authzService.AuthorizeAsync(userInfo, action, requestId);
+            return await authzService.AuthorizeAsync(userInfo, requestId);
         }
 
         #endregion

@@ -183,5 +183,12 @@ namespace LegalWorkflow.Functions.Models
 
         /// <summary>SharePoint group name for Admins (full control)</summary>
         public string AdminGroup { get; set; } = "LW - Admin";
+
+        /// <summary>
+        /// UPN (User Principal Name) of the Power Automate service account.
+        /// Requests from this account bypass item-level permission checks.
+        /// Example: "svc-powerautomate@company.com"
+        /// </summary>
+        public string ServiceAccountUpn { get; set; } = string.Empty;
     }
 }

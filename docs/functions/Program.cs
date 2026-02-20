@@ -57,7 +57,8 @@ namespace LegalWorkflow.Functions
                             AttorneyAssignerGroup = configuration["Permissions:AttorneyAssignerGroup"] ?? "LW - Attorney Assigner",
                             AttorneysGroup = configuration["Permissions:AttorneysGroup"] ?? "LW - Attorneys",
                             ComplianceGroup = configuration["Permissions:ComplianceGroup"] ?? "LW - Compliance Users",
-                            AdminGroup = configuration["Permissions:AdminGroup"] ?? "LW - Admin"
+                            AdminGroup = configuration["Permissions:AdminGroup"] ?? "LW - Admin",
+                            ServiceAccountUpn = configuration["Permissions:ServiceAccountUpn"] ?? string.Empty
                         };
                     });
 

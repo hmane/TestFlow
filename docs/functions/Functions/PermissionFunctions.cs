@@ -4,14 +4,13 @@
 // =============================================================================
 //
 // These endpoints manage SharePoint permissions on Legal Review Requests.
-// All endpoints require authentication via APIM and authorization via
-// SharePoint group membership.
 //
 // Authorization Flow:
-// 1. APIM passes the user's OAuth token in the Authorization header
-// 2. AuthorizationHelper validates the token and extracts user identity
-// 3. SharePointAuthorizationService checks SharePoint group membership
-// 4. Action-specific authorization is enforced (e.g., ownership checks)
+// 1. APIM handles authentication (token validation)
+// 2. AuthorizationHelper extracts user identity from the token
+// 3. SharePointAuthorizationService checks:
+//    a. Is this the Power Automate service account? → Authorized
+//    b. Does the user have Contribute/Contribute Without Delete on the item? → Authorized
 // =============================================================================
 
 using System;
@@ -40,9 +39,8 @@ namespace LegalWorkflow.Functions
     /// - POST /api/permissions/complete - Set final permissions when request is completed
     ///
     /// Authorization:
-    /// - All endpoints require a valid Azure AD token (passed from APIM)
-    /// - User must be a member of an authorized SharePoint group
-    /// - Some actions require ownership (submitter) or elevated permissions (admin)
+    /// - Power Automate service account (matched via config) bypasses permission checks
+    /// - Users must have Contribute or Contribute Without Delete on the request item
     /// </summary>
     public class PermissionFunctions
     {
@@ -55,10 +53,6 @@ namespace LegalWorkflow.Functions
         /// <summary>
         /// Creates a new PermissionFunctions instance with dependency injection.
         /// </summary>
-        /// <param name="contextFactory">PnP Core context factory for SharePoint access</param>
-        /// <param name="configuration">Application configuration</param>
-        /// <param name="logger">ILogger instance for Azure Functions logging</param>
-        /// <param name="groupConfig">SharePoint group configuration</param>
         public PermissionFunctions(
             IPnPContextFactory contextFactory,
             IConfiguration configuration,
@@ -83,8 +77,6 @@ namespace LegalWorkflow.Functions
         ///
         /// Called from SPFx app when request is saved (Draft or Legal Intake).
         ///
-        /// Authorization: Any authorized group member (they're creating their own request)
-        ///
         /// POST /api/permissions/initialize
         /// Body: { "requestId": 123, "requestTitle": "LRQ-2024-001234" }
         /// </summary>
@@ -97,7 +89,7 @@ namespace LegalWorkflow.Functions
 
             try
             {
-                // Step 1: Authenticate - Validate the token
+                // Step 1: Authenticate - Extract user identity from token
                 var authResult = await AuthenticateAsync(req, logger);
                 if (!authResult.IsAuthorized)
                 {
@@ -126,8 +118,8 @@ namespace LegalWorkflow.Functions
 
                 logger.SetRequestContext(request.RequestId, request.RequestTitle);
 
-                // Step 3: Authorize - Check SharePoint group membership
-                var authzResult = await AuthorizeAsync(authResult.User!, AuthorizationAction.InitializePermissions, request.RequestId, logger);
+                // Step 3: Authorize - Service account check or item-level permission check
+                var authzResult = await AuthorizeAsync(authResult.User!, request.RequestId, logger);
                 if (!authzResult.IsAuthorized)
                 {
                     return new ObjectResult(new PermissionResponse
@@ -142,10 +134,11 @@ namespace LegalWorkflow.Functions
                 {
                     request.RequestId,
                     request.RequestTitle,
-                    User = authResult.User!.Email
+                    User = authResult.User!.Email,
+                    AuthReason = authzResult.Reason
                 });
 
-                // Step 4: Execute - Create permission service and process request
+                // Step 4: Execute
                 var permissionService = new PermissionService(_contextFactory, logger);
                 var result = await permissionService.InitializePermissionsAsync(request);
 
@@ -179,10 +172,6 @@ namespace LegalWorkflow.Functions
         /// <summary>
         /// Adds Read permission for a user on the request and documents folder.
         /// Called from SPFx app when user is added via Manage Access component.
-        ///
-        /// Authorization:
-        /// - Admin or Legal Admin: Can add users to any request
-        /// - Submitter: Can only add users to their own request
         ///
         /// POST /api/permissions/add-user
         /// Body: { "requestId": 123, "requestTitle": "LRQ-2024-001234",
@@ -229,8 +218,8 @@ namespace LegalWorkflow.Functions
 
                 logger.SetRequestContext(request.RequestId, request.RequestTitle);
 
-                // Step 3: Authorize - Check SharePoint group membership and ownership
-                var authzResult = await AuthorizeAsync(authResult.User!, AuthorizationAction.AddUserPermission, request.RequestId, logger);
+                // Step 3: Authorize
+                var authzResult = await AuthorizeAsync(authResult.User!, request.RequestId, logger);
                 if (!authzResult.IsAuthorized)
                 {
                     return new ObjectResult(new PermissionResponse
@@ -281,10 +270,6 @@ namespace LegalWorkflow.Functions
         /// Removes a user's permission from the request and documents folder.
         /// Called from SPFx app when user is removed via Manage Access component.
         ///
-        /// Authorization:
-        /// - Admin or Legal Admin: Can remove users from any request
-        /// - Submitter: Can only remove users from their own request
-        ///
         /// POST /api/permissions/remove-user
         /// Body: { "requestId": 123, "requestTitle": "LRQ-2024-001234",
         ///         "userLoginName": "i:0#.f|membership|user@domain.com",
@@ -331,7 +316,7 @@ namespace LegalWorkflow.Functions
                 logger.SetRequestContext(request.RequestId, request.RequestTitle);
 
                 // Step 3: Authorize
-                var authzResult = await AuthorizeAsync(authResult.User!, AuthorizationAction.RemoveUserPermission, request.RequestId, logger);
+                var authzResult = await AuthorizeAsync(authResult.User!, request.RequestId, logger);
                 if (!authzResult.IsAuthorized)
                 {
                     return new ObjectResult(new PermissionResponse
@@ -383,60 +368,32 @@ namespace LegalWorkflow.Functions
         /// Admin keeps Full Control, everyone else gets Read only.
         /// Called from Power Automate when status changes to Completed.
         ///
-        /// Authorization:
-        /// - Admin only (Power Automate uses function key for service calls)
-        ///
         /// POST /api/permissions/complete
         /// Body: { "requestId": 123, "requestTitle": "LRQ-2024-001234" }
         /// </summary>
         [Function("CompletePermissions")]
         public async Task<IActionResult> CompletePermissions(
-            [HttpTrigger(AuthorizationLevel.Function, "post", Route = "permissions/complete")] HttpRequest req)
+            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "permissions/complete")] HttpRequest req)
         {
             var logger = new Logger(_logger, "CompletePermissions");
             logger.Info("Complete permissions request received");
 
             try
             {
-                // Note: This endpoint uses Function-level auth for Power Automate calls
-                // Power Automate uses the function key, not user tokens
-                // For user-initiated calls through APIM, we also check authorization
-
-                var authHeader = req.Headers["Authorization"].FirstOrDefault();
-                if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                // Step 1: Authenticate
+                var authResult = await AuthenticateAsync(req, logger);
+                if (!authResult.IsAuthorized)
                 {
-                    // User token present - validate and authorize
-                    var authResult = await AuthenticateAsync(req, logger);
-                    if (!authResult.IsAuthorized)
+                    return new UnauthorizedObjectResult(new PermissionResponse
                     {
-                        return new UnauthorizedObjectResult(new PermissionResponse
-                        {
-                            Success = false,
-                            Message = authResult.ErrorMessage
-                        });
-                    }
-
-                    // Only admin can complete permissions via user call
-                    var authzResult = await AuthorizeAsync(authResult.User!, AuthorizationAction.CompletePermissions, null, logger);
-                    if (!authzResult.IsAuthorized)
-                    {
-                        return new ObjectResult(new PermissionResponse
-                        {
-                            Success = false,
-                            Message = authzResult.ErrorMessage
-                        })
-                        { StatusCode = 403 };
-                    }
-
-                    logger.SetUserContext(authResult.User!.Email, authResult.User.SharePointLoginName);
-                }
-                else
-                {
-                    // Function key auth (Power Automate) - log as system call
-                    logger.Info("Complete permissions called via function key (system/Power Automate)");
+                        Success = false,
+                        Message = authResult.ErrorMessage
+                    });
                 }
 
-                // Parse request body
+                logger.SetUserContext(authResult.User!.Email, authResult.User.SharePointLoginName);
+
+                // Step 2: Parse request body
                 string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
                 var request = JsonSerializer.Deserialize<CompletePermissionsRequest>(requestBody, _jsonOptions);
 
@@ -451,13 +408,27 @@ namespace LegalWorkflow.Functions
                 }
 
                 logger.SetRequestContext(request.RequestId, request.RequestTitle);
+
+                // Step 3: Authorize - service account or item-level permission
+                var authzResult = await AuthorizeAsync(authResult.User!, request.RequestId, logger);
+                if (!authzResult.IsAuthorized)
+                {
+                    return new ObjectResult(new PermissionResponse
+                    {
+                        Success = false,
+                        Message = authzResult.ErrorMessage
+                    })
+                    { StatusCode = 403 };
+                }
+
                 logger.Info("Processing complete permissions", new
                 {
                     request.RequestId,
-                    request.RequestTitle
+                    request.RequestTitle,
+                    AuthReason = authzResult.Reason
                 });
 
-                // Execute
+                // Step 4: Execute
                 var permissionService = new PermissionService(_contextFactory, logger);
                 var result = await permissionService.CompletePermissionsAsync(request);
 
@@ -491,7 +462,8 @@ namespace LegalWorkflow.Functions
         #region Private Helper Methods
 
         /// <summary>
-        /// Authenticates the request by validating the JWT token.
+        /// Authenticates the request by validating the JWT token and extracting user identity.
+        /// APIM handles primary authentication; this provides defense-in-depth.
         /// </summary>
         private async Task<AuthorizationResult> AuthenticateAsync(HttpRequest request, Logger logger)
         {
@@ -500,16 +472,15 @@ namespace LegalWorkflow.Functions
         }
 
         /// <summary>
-        /// Authorizes the action by checking SharePoint group membership.
+        /// Authorizes the request by checking service account match or item-level permissions.
         /// </summary>
         private async Task<SharePointAuthorizationResult> AuthorizeAsync(
             UserAuthInfo userInfo,
-            AuthorizationAction action,
-            int? requestId,
+            int requestId,
             Logger logger)
         {
             var authzService = new SharePointAuthorizationService(_contextFactory, logger, _groupConfig);
-            return await authzService.AuthorizeAsync(userInfo, action, requestId);
+            return await authzService.AuthorizeAsync(userInfo, requestId);
         }
 
         #endregion

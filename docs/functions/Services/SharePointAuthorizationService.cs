@@ -3,117 +3,117 @@
 // SharePointAuthorizationService.cs - SharePoint-based authorization service
 // =============================================================================
 //
-// This service performs authorization checks against SharePoint:
-// 1. Verifies user membership in SharePoint site groups
-// 2. Verifies request ownership (submitter can only modify their own request)
+// This service performs authorization checks:
+// 1. Checks if the caller is the Power Automate service account
+// 2. If not, verifies the user has Contribute or Contribute Without Delete
+//    permissions on the specific request item
 //
-// SharePoint Groups (from PermissionGroupConfig):
-// - LW - Admin: Full system administration
-// - LW - Submitters: Create and view requests
-// - LW - Legal Admin: Triage and assign attorneys
-// - LW - Attorney Assigner: Committee members who assign attorneys
-// - LW - Attorneys: Review assigned requests
-// - LW - Compliance Users: Review compliance requests
+// APIM handles authentication (token validation). This service only handles
+// authorization (permission checks).
 // =============================================================================
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Caching.Memory;
 using PnP.Core.Model.SharePoint;
 using PnP.Core.Services;
 using LegalWorkflow.Functions.Constants;
-using LegalWorkflow.Functions.Constants.SharePointFields;
 using LegalWorkflow.Functions.Helpers;
 using LegalWorkflow.Functions.Models;
 
 namespace LegalWorkflow.Functions.Services
 {
     /// <summary>
-    /// Service for SharePoint-based authorization checks.
-    /// Validates user membership in SharePoint groups and request ownership.
+    /// Service for authorizing requests to the Azure Functions.
+    /// Uses a two-tier approach:
+    /// 1. Service account check: matches caller against the configured Power Automate service account
+    /// 2. Item-level permission check: verifies the user has Contribute or Contribute Without Delete
+    ///    permissions on the specific request item in SharePoint
     /// </summary>
     public class SharePointAuthorizationService
     {
         private readonly IPnPContextFactory _contextFactory;
         private readonly Logger _logger;
         private readonly PermissionGroupConfig _groupConfig;
-        private readonly IMemoryCache _membershipCache;
 
         /// <summary>
-        /// Cache expiration time for group membership (5 minutes).
-        /// This allows for reasonable performance while ensuring group membership
-        /// changes are reflected within a reasonable time frame.
+        /// Permission levels that grant write access to a request.
+        /// Users with any of these permission levels are authorized to perform actions.
         /// </summary>
-        private static readonly TimeSpan CacheExpiration = TimeSpan.FromMinutes(5);
+        private static readonly string[] WritePermissionLevels = new[]
+        {
+            RoleDefinitions.FullControl,
+            RoleDefinitions.Contribute,
+            RoleDefinitions.ContributeWithoutDelete,
+            RoleDefinitions.Edit
+        };
 
         /// <summary>
         /// Creates a new SharePointAuthorizationService instance.
         /// </summary>
         /// <param name="contextFactory">PnP Core context factory for SharePoint access</param>
         /// <param name="logger">Logger instance for logging operations</param>
-        /// <param name="groupConfig">SharePoint group name configuration</param>
-        /// <param name="memoryCache">Memory cache for caching group membership (optional, creates internal cache if not provided)</param>
+        /// <param name="groupConfig">Configuration containing service account and group settings</param>
         public SharePointAuthorizationService(
             IPnPContextFactory contextFactory,
             Logger logger,
-            PermissionGroupConfig groupConfig,
-            IMemoryCache? memoryCache = null)
+            PermissionGroupConfig groupConfig)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _groupConfig = groupConfig ?? throw new ArgumentNullException(nameof(groupConfig));
-            _membershipCache = memoryCache ?? new MemoryCache(new MemoryCacheOptions());
         }
 
         /// <summary>
         /// Checks if a user is authorized to perform an action on a request.
+        ///
+        /// Authorization logic:
+        /// 1. If the caller matches the configured Power Automate service account → Authorized
+        /// 2. If a requestId is provided, check if the user has Contribute or Contribute Without Delete
+        ///    permissions on the request item → Authorized
+        /// 3. Otherwise → Denied
         /// </summary>
         /// <param name="userInfo">User information from the validated token</param>
-        /// <param name="action">The action being performed</param>
-        /// <param name="requestId">The request ID (optional, for ownership checks)</param>
+        /// <param name="requestId">The request ID to check permissions on (required for user calls)</param>
         /// <returns>SharePointAuthorizationResult with authorization status</returns>
         public async Task<SharePointAuthorizationResult> AuthorizeAsync(
             UserAuthInfo userInfo,
-            AuthorizationAction action,
             int? requestId = null)
         {
-            using var tracker = _logger.StartOperation($"Authorize({action}, RequestId={requestId})");
+            using var tracker = _logger.StartOperation($"Authorize(User={userInfo.Email}, RequestId={requestId})");
 
             try
             {
-                // Get user's SharePoint group membership
-                var membership = await GetUserGroupMembershipAsync(userInfo);
-
-                if (membership == null)
+                // 1. Check if this is the Power Automate service account
+                if (IsServiceAccount(userInfo))
                 {
-                    _logger.Warning($"Could not retrieve group membership for user: {userInfo.Email}");
-                    return SharePointAuthorizationResult.Denied("Unable to verify user permissions");
+                    _logger.Info($"Authorized as Power Automate service account: {userInfo.Email}");
+                    tracker.Complete(true, "Service account");
+                    return SharePointAuthorizationResult.Authorized("Service account");
                 }
 
-                // Check if user is in any authorized group
-                if (!membership.IsInAnyGroup)
+                // 2. Check item-level permissions on the request
+                if (!requestId.HasValue)
                 {
-                    _logger.Warning($"User {userInfo.Email} is not a member of any authorized SharePoint group");
+                    _logger.Warning($"No requestId provided for non-service-account user: {userInfo.Email}");
+                    tracker.Complete(false, "RequestId required");
                     return SharePointAuthorizationResult.Denied(
-                        "Access denied. You must be a member of an authorized SharePoint group.");
+                        "Request ID is required to verify permissions");
                 }
 
-                // Perform action-specific authorization
-                var result = await AuthorizeActionAsync(userInfo, membership, action, requestId);
+                var hasPermission = await UserHasWritePermissionAsync(userInfo, requestId.Value);
 
-                if (result.IsAuthorized)
+                if (hasPermission)
                 {
-                    _logger.Info($"Authorization granted for {userInfo.Email} - Action: {action}");
-                }
-                else
-                {
-                    _logger.Warning($"Authorization denied for {userInfo.Email} - Action: {action} - Reason: {result.ErrorMessage}");
+                    _logger.Info($"Authorization granted for {userInfo.Email} on request {requestId}");
+                    tracker.Complete(true, "Item-level permission");
+                    return SharePointAuthorizationResult.Authorized("Item-level permission");
                 }
 
-                tracker.Complete(result.IsAuthorized);
-                return result;
+                _logger.Warning($"Authorization denied for {userInfo.Email} on request {requestId} - insufficient permissions");
+                tracker.Complete(false, "Insufficient permissions");
+                return SharePointAuthorizationResult.Denied(
+                    "You do not have sufficient permissions on this request");
             }
             catch (Exception ex)
             {
@@ -124,338 +124,126 @@ namespace LegalWorkflow.Functions.Services
         }
 
         /// <summary>
-        /// Gets the SharePoint group membership for a user.
-        /// Uses caching to avoid repeated SharePoint calls.
+        /// Checks if the user is the configured Power Automate service account.
+        /// Matches against the ServiceAccountUpn setting in PermissionGroupConfig.
         /// </summary>
-        private async Task<UserGroupMembership?> GetUserGroupMembershipAsync(UserAuthInfo userInfo)
+        private bool IsServiceAccount(UserAuthInfo userInfo)
         {
-            var cacheKey = $"membership:{userInfo.Email.ToLowerInvariant()}";
-
-            // Check cache first
-            if (_membershipCache.TryGetValue(cacheKey, out UserGroupMembership? cachedMembership) && cachedMembership != null)
+            if (string.IsNullOrEmpty(_groupConfig.ServiceAccountUpn))
             {
-                _logger.Info($"Using cached group membership for {userInfo.Email}");
-                return cachedMembership;
+                return false;
             }
 
-            using var tracker = _logger.StartOperation($"GetUserGroupMembership({userInfo.Email})");
+            // Match against email or UPN (case-insensitive)
+            return _groupConfig.ServiceAccountUpn.Equals(userInfo.Email, StringComparison.OrdinalIgnoreCase) ||
+                   _groupConfig.ServiceAccountUpn.Equals(userInfo.UserPrincipalName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Checks if the user has Contribute or Contribute Without Delete permissions
+        /// on the specific request item. This leverages the item-level permissions that
+        /// are set when a request is submitted (inheritance is broken).
+        ///
+        /// Before inheritance is broken (Draft), users inherit from the list, so this
+        /// check still works correctly.
+        /// </summary>
+        /// <param name="userInfo">User information from the validated token</param>
+        /// <param name="requestId">SharePoint list item ID of the request</param>
+        /// <returns>True if the user has write permission on the item</returns>
+        private async Task<bool> UserHasWritePermissionAsync(UserAuthInfo userInfo, int requestId)
+        {
+            using var tracker = _logger.StartOperation($"CheckItemPermission({requestId})");
 
             try
             {
                 using var context = await _contextFactory.CreateAsync("Default");
 
-                // Get site groups and check membership
-                var siteGroups = await context.Web.SiteGroups.ToListAsync();
-
-                var membership = new UserGroupMembership
+                // Ensure the user exists in SharePoint
+                var user = await context.Web.EnsureUserAsync(userInfo.SharePointLoginName);
+                if (user == null)
                 {
-                    UserEmail = userInfo.Email,
-                    UserLoginName = userInfo.SharePointLoginName
-                };
-
-                // Check each relevant group
-                foreach (var group in siteGroups.AsRequested())
-                {
-                    var groupName = group.Title;
-
-                    // Only check our Legal Workflow groups
-                    if (!IsLegalWorkflowGroup(groupName))
-                    {
-                        continue;
-                    }
-
-                    // Load group members
-                    await group.LoadAsync(g => g.Users);
-
-                    // Check if user is a member
-                    var isMember = group.Users.AsRequested()
-                        .Any(u => u.LoginName.Equals(userInfo.SharePointLoginName, StringComparison.OrdinalIgnoreCase) ||
-                                  u.Mail?.Equals(userInfo.Email, StringComparison.OrdinalIgnoreCase) == true);
-
-                    if (isMember)
-                    {
-                        membership.Groups.Add(groupName);
-
-                        // Set role flags based on group membership
-                        SetRoleFlags(membership, groupName);
-
-                        _logger.Info($"User {userInfo.Email} is member of group: {groupName}");
-                    }
-                }
-
-                // Cache the result with sliding expiration
-                var cacheEntryOptions = new MemoryCacheEntryOptions()
-                    .SetSlidingExpiration(CacheExpiration)
-                    .SetAbsoluteExpiration(TimeSpan.FromMinutes(15)); // Maximum cache time
-                _membershipCache.Set(cacheKey, membership, cacheEntryOptions);
-
-                _logger.Info($"Group membership resolved for {userInfo.Email}", new
-                {
-                    GroupCount = membership.Groups.Count,
-                    IsAdmin = membership.IsAdmin,
-                    IsSubmitter = membership.IsSubmitter,
-                    IsLegalAdmin = membership.IsLegalAdmin,
-                    IsAttorney = membership.IsAttorney,
-                    IsCompliance = membership.IsCompliance
-                });
-
-                tracker.Complete(true);
-                return membership;
-            }
-            catch (Exception ex)
-            {
-                _logger.Error($"Failed to get group membership for {userInfo.Email}", ex);
-                tracker.Complete(false, ex.Message);
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Checks if a group name is one of our Legal Workflow groups.
-        /// </summary>
-        private bool IsLegalWorkflowGroup(string groupName)
-        {
-            return groupName.Equals(_groupConfig.AdminGroup, StringComparison.OrdinalIgnoreCase) ||
-                   groupName.Equals(_groupConfig.SubmittersGroup, StringComparison.OrdinalIgnoreCase) ||
-                   groupName.Equals(_groupConfig.LegalAdminGroup, StringComparison.OrdinalIgnoreCase) ||
-                   groupName.Equals(_groupConfig.AttorneyAssignerGroup, StringComparison.OrdinalIgnoreCase) ||
-                   groupName.Equals(_groupConfig.AttorneysGroup, StringComparison.OrdinalIgnoreCase) ||
-                   groupName.Equals(_groupConfig.ComplianceGroup, StringComparison.OrdinalIgnoreCase);
-        }
-
-        /// <summary>
-        /// Sets role flags based on group membership.
-        /// </summary>
-        private void SetRoleFlags(UserGroupMembership membership, string groupName)
-        {
-            if (groupName.Equals(_groupConfig.AdminGroup, StringComparison.OrdinalIgnoreCase))
-                membership.IsAdmin = true;
-            else if (groupName.Equals(_groupConfig.SubmittersGroup, StringComparison.OrdinalIgnoreCase))
-                membership.IsSubmitter = true;
-            else if (groupName.Equals(_groupConfig.LegalAdminGroup, StringComparison.OrdinalIgnoreCase))
-                membership.IsLegalAdmin = true;
-            else if (groupName.Equals(_groupConfig.AttorneyAssignerGroup, StringComparison.OrdinalIgnoreCase))
-                membership.IsAttorneyAssigner = true;
-            else if (groupName.Equals(_groupConfig.AttorneysGroup, StringComparison.OrdinalIgnoreCase))
-                membership.IsAttorney = true;
-            else if (groupName.Equals(_groupConfig.ComplianceGroup, StringComparison.OrdinalIgnoreCase))
-                membership.IsCompliance = true;
-        }
-
-        /// <summary>
-        /// Performs action-specific authorization checks.
-        /// </summary>
-        private async Task<SharePointAuthorizationResult> AuthorizeActionAsync(
-            UserAuthInfo userInfo,
-            UserGroupMembership membership,
-            AuthorizationAction action,
-            int? requestId)
-        {
-            switch (action)
-            {
-                case AuthorizationAction.InitializePermissions:
-                    // Any authorized group member can initialize permissions
-                    // (they're creating a new request)
-                    return SharePointAuthorizationResult.Authorized(membership);
-
-                case AuthorizationAction.AddUserPermission:
-                case AuthorizationAction.RemoveUserPermission:
-                    // Only Admin and Legal Admin can manage user permissions
-                    if (membership.IsAdmin || membership.IsLegalAdmin)
-                    {
-                        return SharePointAuthorizationResult.Authorized(membership);
-                    }
-
-                    // Submitter can only manage permissions on their own request
-                    if (membership.IsSubmitter && requestId.HasValue)
-                    {
-                        var isOwner = await IsRequestOwnerAsync(userInfo, requestId.Value);
-                        if (isOwner)
-                        {
-                            return SharePointAuthorizationResult.Authorized(membership);
-                        }
-                    }
-
-                    return SharePointAuthorizationResult.Denied(
-                        "Only administrators, legal admin, or the request owner can manage permissions");
-
-                case AuthorizationAction.CompletePermissions:
-                    // Only Admin or system (Power Automate) can complete permissions
-                    // Since Power Automate won't have a user context, this is typically
-                    // called with function-level auth
-                    if (membership.IsAdmin)
-                    {
-                        return SharePointAuthorizationResult.Authorized(membership);
-                    }
-                    return SharePointAuthorizationResult.Denied(
-                        "Only administrators can complete permissions");
-
-                case AuthorizationAction.SendNotification:
-                    // Notifications are typically triggered by Power Automate
-                    // Any authorized group member can trigger a notification check
-                    return SharePointAuthorizationResult.Authorized(membership);
-
-                case AuthorizationAction.ModifyRequest:
-                    // Check if user can modify the specific request
-                    if (membership.IsAdmin || membership.IsLegalAdmin)
-                    {
-                        return SharePointAuthorizationResult.Authorized(membership);
-                    }
-
-                    // Submitter can only modify their own request
-                    if (requestId.HasValue)
-                    {
-                        var isOwner = await IsRequestOwnerAsync(userInfo, requestId.Value);
-                        if (isOwner)
-                        {
-                            return SharePointAuthorizationResult.Authorized(membership);
-                        }
-                        return SharePointAuthorizationResult.Denied(
-                            "You can only modify requests that you submitted");
-                    }
-
-                    return SharePointAuthorizationResult.Denied(
-                        "Request ID is required for this operation");
-
-                case AuthorizationAction.ViewRequest:
-                    // Any authorized group member can view requests
-                    return SharePointAuthorizationResult.Authorized(membership);
-
-                default:
-                    return SharePointAuthorizationResult.Denied("Unknown action");
-            }
-        }
-
-        /// <summary>
-        /// Checks if the user is the owner (submitter) of a request.
-        /// </summary>
-        private async Task<bool> IsRequestOwnerAsync(UserAuthInfo userInfo, int requestId)
-        {
-            using var tracker = _logger.StartOperation($"IsRequestOwner({requestId})");
-
-            try
-            {
-                using var context = await _contextFactory.CreateAsync("Default");
-
-                var list = await context.Web.Lists.GetByTitleAsync(SharePointLists.Requests);
-                var item = await list.Items.GetByIdAsync(requestId,
-                    i => i.All,
-                    i => i.FieldValuesAsText);
-
-                if (item == null)
-                {
-                    _logger.Warning($"Request {requestId} not found for ownership check");
-                    tracker.Complete(false, "Request not found");
+                    _logger.Warning($"User not found in SharePoint: {userInfo.SharePointLoginName}");
+                    tracker.Complete(false, "User not found");
                     return false;
                 }
 
-                // Check SubmittedBy field
-                if (item.Values.TryGetValue(RequestsFields.SubmittedBy, out var submittedByValue) && submittedByValue != null)
-                {
-                    if (submittedByValue is IFieldUserValue userValue)
-                    {
-                        var isOwner = userValue.Email?.Equals(userInfo.Email, StringComparison.OrdinalIgnoreCase) == true ||
-                                      userValue.Principal?.LoginName?.Equals(userInfo.SharePointLoginName, StringComparison.OrdinalIgnoreCase) == true;
+                // Get the request item
+                var list = await context.Web.Lists.GetByTitleAsync(SharePointLists.Requests);
+                var item = await list.Items.GetByIdAsync(requestId);
 
-                        _logger.Info($"Ownership check for request {requestId}: {isOwner}", new
+                // Load role assignments on the item
+                await item.LoadAsync(i => i.RoleAssignments.QueryProperties(
+                    ra => ra.PrincipalId,
+                    ra => ra.RoleDefinitions.QueryProperties(rd => rd.Name)));
+
+                // Check direct user permission
+                foreach (var roleAssignment in item.RoleAssignments.AsRequested())
+                {
+                    if (roleAssignment.PrincipalId == user.Id)
+                    {
+                        var roleNames = roleAssignment.RoleDefinitions.AsRequested()
+                            .Select(rd => rd.Name)
+                            .ToList();
+
+                        if (roleNames.Any(rn => WritePermissionLevels.Contains(rn)))
                         {
-                            RequestSubmitter = userValue.Email,
-                            CurrentUser = userInfo.Email
-                        });
-
-                        tracker.Complete(true);
-                        return isOwner;
+                            _logger.Info($"User {userInfo.Email} has direct write permission on request {requestId}",
+                                new { Roles = string.Join(", ", roleNames) });
+                            tracker.Complete(true, "Direct permission");
+                            return true;
+                        }
                     }
                 }
 
-                // Also check the Created By (Author) field as fallback
-                if (item.Values.TryGetValue(RequestsFields.Author, out var authorValue) && authorValue != null)
+                // Check group-based permissions (user may have access through a SharePoint group)
+                var userGroups = await context.Web.GetUserEffectivePermissionsAsync(userInfo.SharePointLoginName);
+
+                // Alternative: check each role assignment's principal to see if user is a member
+                var siteGroups = await context.Web.SiteGroups.ToListAsync();
+
+                foreach (var roleAssignment in item.RoleAssignments.AsRequested())
                 {
-                    if (authorValue is IFieldUserValue userValue)
-                    {
-                        var isOwner = userValue.Email?.Equals(userInfo.Email, StringComparison.OrdinalIgnoreCase) == true ||
-                                      userValue.Principal?.LoginName?.Equals(userInfo.SharePointLoginName, StringComparison.OrdinalIgnoreCase) == true;
+                    // Check if this principal is a group the user belongs to
+                    var group = siteGroups.AsRequested()
+                        .FirstOrDefault(g => g.Id == roleAssignment.PrincipalId);
 
-                        _logger.Info($"Ownership check (Author) for request {requestId}: {isOwner}");
-                        tracker.Complete(true);
-                        return isOwner;
+                    if (group != null)
+                    {
+                        // Load group members
+                        await group.LoadAsync(g => g.Users);
+
+                        var isMember = group.Users.AsRequested()
+                            .Any(u => u.LoginName.Equals(userInfo.SharePointLoginName, StringComparison.OrdinalIgnoreCase) ||
+                                      u.Mail?.Equals(userInfo.Email, StringComparison.OrdinalIgnoreCase) == true);
+
+                        if (isMember)
+                        {
+                            var roleNames = roleAssignment.RoleDefinitions.AsRequested()
+                                .Select(rd => rd.Name)
+                                .ToList();
+
+                            if (roleNames.Any(rn => WritePermissionLevels.Contains(rn)))
+                            {
+                                _logger.Info($"User {userInfo.Email} has write permission through group '{group.Title}' on request {requestId}",
+                                    new { Group = group.Title, Roles = string.Join(", ", roleNames) });
+                                tracker.Complete(true, $"Group permission via {group.Title}");
+                                return true;
+                            }
+                        }
                     }
                 }
 
-                _logger.Warning($"Could not determine owner for request {requestId}");
-                tracker.Complete(false, "Owner field not found");
+                _logger.Info($"User {userInfo.Email} does not have write permission on request {requestId}");
+                tracker.Complete(false, "No write permission found");
                 return false;
             }
             catch (Exception ex)
             {
-                _logger.Error($"Failed to check ownership for request {requestId}", ex);
+                _logger.Error($"Failed to check item permissions for request {requestId}", ex);
                 tracker.Complete(false, ex.Message);
                 return false;
             }
         }
-    }
-
-    /// <summary>
-    /// Actions that can be authorized.
-    /// </summary>
-    public enum AuthorizationAction
-    {
-        /// <summary>Initialize permissions on a new request</summary>
-        InitializePermissions,
-
-        /// <summary>Add a user's permission to a request</summary>
-        AddUserPermission,
-
-        /// <summary>Remove a user's permission from a request</summary>
-        RemoveUserPermission,
-
-        /// <summary>Set final permissions when request is completed</summary>
-        CompletePermissions,
-
-        /// <summary>Send or process a notification</summary>
-        SendNotification,
-
-        /// <summary>Modify a request's data</summary>
-        ModifyRequest,
-
-        /// <summary>View a request</summary>
-        ViewRequest
-    }
-
-    /// <summary>
-    /// User's SharePoint group membership information.
-    /// </summary>
-    public class UserGroupMembership
-    {
-        /// <summary>User's email address</summary>
-        public string UserEmail { get; set; } = string.Empty;
-
-        /// <summary>User's SharePoint login name</summary>
-        public string UserLoginName { get; set; } = string.Empty;
-
-        /// <summary>List of SharePoint groups the user belongs to</summary>
-        public List<string> Groups { get; set; } = new();
-
-        /// <summary>User is in the Admin group</summary>
-        public bool IsAdmin { get; set; }
-
-        /// <summary>User is in the Submitters group</summary>
-        public bool IsSubmitter { get; set; }
-
-        /// <summary>User is in the Legal Admin group</summary>
-        public bool IsLegalAdmin { get; set; }
-
-        /// <summary>User is in the Attorney Assigner group</summary>
-        public bool IsAttorneyAssigner { get; set; }
-
-        /// <summary>User is in the Attorneys group</summary>
-        public bool IsAttorney { get; set; }
-
-        /// <summary>User is in the Compliance group</summary>
-        public bool IsCompliance { get; set; }
-
-        /// <summary>Whether user is a member of at least one authorized group</summary>
-        public bool IsInAnyGroup => Groups.Count > 0;
     }
 
     /// <summary>
@@ -469,16 +257,16 @@ namespace LegalWorkflow.Functions.Services
         /// <summary>Error message if not authorized</summary>
         public string ErrorMessage { get; private set; } = string.Empty;
 
-        /// <summary>User's group membership (if authorized)</summary>
-        public UserGroupMembership? Membership { get; private set; }
+        /// <summary>Reason for authorization (e.g., "Service account", "Item-level permission")</summary>
+        public string Reason { get; private set; } = string.Empty;
 
         /// <summary>Creates an authorized result</summary>
-        public static SharePointAuthorizationResult Authorized(UserGroupMembership membership)
+        public static SharePointAuthorizationResult Authorized(string reason)
         {
             return new SharePointAuthorizationResult
             {
                 IsAuthorized = true,
-                Membership = membership
+                Reason = reason
             };
         }
 

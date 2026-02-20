@@ -26,7 +26,8 @@
     "Permissions:AttorneyAssignerGroup": "LW - Attorney Assigner",
     "Permissions:AttorneysGroup": "LW - Attorneys",
     "Permissions:ComplianceGroup": "LW - Compliance Users",
-    "Permissions:AdminGroup": "LW - Admin"
+    "Permissions:AdminGroup": "LW - Admin",
+    "Permissions:ServiceAccountUpn": "svc-powerautomate@company.com"
   },
   "Host": {
     "LocalHttpPort": 7071,
