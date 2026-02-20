@@ -476,8 +476,12 @@ export const submitRequestSchema = z
       });
     }
 
-    // Distribution Method validation
-    if (!data.distributionMethod || !Array.isArray(data.distributionMethod) || data.distributionMethod.length === 0) {
+    // RFP submissions are exempt from approval, distribution method, and date of first use requirements
+    const isRFPSubmission = typeof data.submissionItem === 'string' &&
+      data.submissionItem.indexOf('RFP Related Review') === 0;
+
+    // Distribution Method validation (not required for RFP submissions)
+    if (!isRFPSubmission && (!data.distributionMethod || !Array.isArray(data.distributionMethod) || data.distributionMethod.length === 0)) {
       ctx.addIssue({
         code: 'custom',
         message: 'At least one distribution method is required',
@@ -485,8 +489,8 @@ export const submitRequestSchema = z
       });
     }
 
-    // Date of First Use validation
-    if (!data.dateOfFirstUse || !(data.dateOfFirstUse instanceof Date) || isNaN(data.dateOfFirstUse.getTime())) {
+    // Date of First Use validation (not required for RFP submissions)
+    if (!isRFPSubmission && (!data.dateOfFirstUse || !(data.dateOfFirstUse instanceof Date) || isNaN(data.dateOfFirstUse.getTime()))) {
       ctx.addIssue({
         code: 'custom',
         message: 'Date of first use is required',
@@ -497,10 +501,6 @@ export const submitRequestSchema = z
     // ========================================
     // APPROVAL VALIDATIONS
     // ========================================
-
-    // RFP submissions are exempt from approval requirements
-    const isRFPSubmission = typeof data.submissionItem === 'string' &&
-      data.submissionItem.indexOf('RFP Related Review Substantial') === 0;
 
     // At least one approval is required (unless RFP submission)
     if (!isRFPSubmission && approvals.length === 0) {

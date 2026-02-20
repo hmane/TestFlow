@@ -352,17 +352,24 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
 interface DistributionSectionProps {
   errors: FieldErrors<ILegalRequest>;
   requestType?: RequestType;
+  submissionItem?: string;
 }
 
 export const DistributionSection: React.FC<DistributionSectionProps> = ({
   errors,
   requestType,
+  submissionItem,
 }) => {
   const requestListIdentifier = Lists.Requests.Title;
   const distributionChoices = React.useMemo(() => DISTRIBUTION_METHOD_CHOICES, []);
 
   // Determine if section should be visible
   const isVisible = requestType === RequestType.Communication;
+
+  // RFP submissions exempt distribution method and date of first use from being required
+  const isRFPSubmission = typeof submissionItem === 'string' &&
+    submissionItem.indexOf('RFP Related Review') === 0;
+  const isRequired = isVisible && !isRFPSubmission;
 
   return (
     <>
@@ -376,7 +383,7 @@ export const DistributionSection: React.FC<DistributionSectionProps> = ({
       </div>
       <FormContainer labelWidth='220px' style={{ display: isVisible ? 'block' : 'none' }}>
         <FormItem fieldName='distributionMethod'>
-          <FormLabel isRequired={isVisible}>Distribution Method</FormLabel>
+          <FormLabel isRequired={isRequired}>Distribution Method</FormLabel>
           <SPChoiceField
             name='distributionMethod'
             placeholder='Select one or more distribution methods'
@@ -389,13 +396,13 @@ export const DistributionSection: React.FC<DistributionSectionProps> = ({
               fieldInternalName: 'DistributionMethod',
             }}
             rules={{
-              required: isVisible ? 'At least one distribution method is required' : false,
+              required: isRequired ? 'At least one distribution method is required' : false,
             }}
           />
         </FormItem>
 
         <FormItem fieldName='dateOfFirstUse'>
-          <FormLabel isRequired={isVisible}>Date of First Use</FormLabel>
+          <FormLabel isRequired={isRequired}>Date of First Use</FormLabel>
           <SPDateField
             name='dateOfFirstUse'
             placeholder='Select date of first use'
@@ -405,7 +412,7 @@ export const DistributionSection: React.FC<DistributionSectionProps> = ({
             minDate={new Date()}
             calendarButtonPosition='before'
             rules={{
-              required: isVisible ? 'Date of first use is required' : false,
+              required: isRequired ? 'Date of first use is required' : false,
             }}
           />
         </FormItem>

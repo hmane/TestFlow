@@ -677,6 +677,7 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({
                   <DistributionSection
                     errors={errors}
                     requestType={requestType}
+                    submissionItem={submissionItemSelection}
                   />
                   <ProductAudienceSection
                     errors={errors}

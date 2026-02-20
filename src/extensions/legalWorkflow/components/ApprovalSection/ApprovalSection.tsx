@@ -441,7 +441,7 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
   });
 
   const isRFPSubmission = typeof submissionItem === 'string' &&
-    submissionItem.indexOf('RFP Related Review Substantial') === 0;
+    submissionItem.indexOf('RFP Related Review') === 0;
 
   // Count additional (non-Communications) approvals
   const additionalApprovalsCount = React.useMemo(() => {
