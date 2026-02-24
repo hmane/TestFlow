@@ -684,7 +684,11 @@ export function useRequestActionsState(props: {
       }
 
       // Validate ReviewFinal documents when there are Approved With Comments outcomes
-      if (hasApprovedWithComments) {
+      // RFP submissions are exempt from final document upload requirement
+      const isRFPSubmission = typeof currentRequest?.submissionItem === 'string' &&
+        currentRequest.submissionItem.indexOf('RFP Related Review') === 0;
+
+      if (hasApprovedWithComments && !isRFPSubmission) {
         const { documents: docs, stagedFiles: staged } = useDocumentsStore.getState();
         const existingCount = docs.get(DocumentType.ReviewFinal)?.length || 0;
         const stagedCount = staged.filter(f => f.documentType === DocumentType.ReviewFinal).length;

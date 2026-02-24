@@ -375,6 +375,10 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
 
   const reviewCommentsInfo = getReviewCommentsInfo();
 
+  // RFP submissions are exempt from final document upload requirement
+  const isRFPSubmission = typeof currentRequest.submissionItem === 'string' &&
+    currentRequest.submissionItem.indexOf('RFP Related Review') === 0;
+
   // Tracking ID is visible/required only when Foreside Review Required is checked
   const isTrackingIdRequired =
     currentRequest.isForesideReviewRequired === true;
@@ -644,56 +648,58 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
                     )}
                   </Stack>
 
-                  {/* Final Document Upload — required when Approved With Comments */}
-                  <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: 8 } }}>
-                    <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
-                      <Icon
-                        iconName='Attach'
-                        styles={{ root: { fontSize: 16, color: '#0078d4' } }}
+                  {/* Final Document Upload — required when Approved With Comments (hidden for RFP submissions) */}
+                  {!isRFPSubmission && (
+                    <Stack tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: 8 } }}>
+                      <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
+                        <Icon
+                          iconName='Attach'
+                          styles={{ root: { fontSize: 16, color: '#0078d4' } }}
+                        />
+                        <Text variant='mediumPlus' styles={{ root: { fontWeight: 600 } }}>
+                          Final Document(s) with Implemented Comments
+                        </Text>
+                        <Text variant='small' styles={{ root: { color: '#a4262c' } }}>
+                          *
+                        </Text>
+                      </Stack>
+                      <Text variant='small' styles={{ root: { color: '#605e5c' } }}>
+                        Upload the final version of document(s) with review comments addressed. At
+                        least one document is required.
+                      </Text>
+                      <DocumentUpload
+                        itemId={itemId}
+                        documentType={DocumentType.ReviewFinal}
+                        isReadOnly={false}
+                        required={true}
+                        hasError={
+                          reviewFinalDocsError !== undefined && reviewFinalDocumentCount === 0
+                        }
+                        siteUrl={SPContext.webAbsoluteUrl}
+                        documentLibraryTitle={Lists.RequestDocuments.Title}
+                        maxFiles={10}
+                        maxFileSize={250 * 1024 * 1024}
+                        onFilesChange={handleReviewFinalFilesChange}
+                        onError={handleReviewFinalError}
                       />
-                      <Text variant='mediumPlus' styles={{ root: { fontWeight: 600 } }}>
-                        Final Document(s) with Implemented Comments
-                      </Text>
-                      <Text variant='small' styles={{ root: { color: '#a4262c' } }}>
-                        *
-                      </Text>
+                      {reviewFinalDocsError && reviewFinalDocumentCount === 0 && (
+                        <Text
+                          variant='small'
+                          styles={{
+                            root: {
+                              color: '#a80000',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            },
+                          }}
+                        >
+                          <Icon iconName='ErrorBadge' styles={{ root: { fontSize: 12 } }} />
+                          {reviewFinalDocsError.message}
+                        </Text>
+                      )}
                     </Stack>
-                    <Text variant='small' styles={{ root: { color: '#605e5c' } }}>
-                      Upload the final version of document(s) with review comments addressed. At
-                      least one document is required.
-                    </Text>
-                    <DocumentUpload
-                      itemId={itemId}
-                      documentType={DocumentType.ReviewFinal}
-                      isReadOnly={false}
-                      required={true}
-                      hasError={
-                        reviewFinalDocsError !== undefined && reviewFinalDocumentCount === 0
-                      }
-                      siteUrl={SPContext.webAbsoluteUrl}
-                      documentLibraryTitle={Lists.RequestDocuments.Title}
-                      maxFiles={10}
-                      maxFileSize={250 * 1024 * 1024}
-                      onFilesChange={handleReviewFinalFilesChange}
-                      onError={handleReviewFinalError}
-                    />
-                    {reviewFinalDocsError && reviewFinalDocumentCount === 0 && (
-                      <Text
-                        variant='small'
-                        styles={{
-                          root: {
-                            color: '#a80000',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 4,
-                          },
-                        }}
-                      >
-                        <Icon iconName='ErrorBadge' styles={{ root: { fontSize: 12 } }} />
-                        {reviewFinalDocsError.message}
-                      </Text>
-                    )}
-                  </Stack>
+                  )}
 
                   <Separator />
                 </Stack>
