@@ -164,9 +164,10 @@ namespace LegalWorkflow.Functions.Models
         EmailMail,
         MobileApp,
         DisplayCardSignage,
-        Hangout,
+        Handout,
         LiveTalkingPoints,
-        SocialMedia
+        SocialMedia,
+        InternalUseOnly
     }
 
     /// <summary>

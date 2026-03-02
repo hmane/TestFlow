@@ -24,7 +24,7 @@
         <CHOICES><CHOICE>New</CHOICE><CHOICE>Material Updates</CHOICE></CHOICES>
       </Field>
       <Field Type="Text" Name="SubmissionItem" DisplayName="Submission Item" Required="TRUE" MaxLength="255" Group="Request Information" ID="{547A2A3A-E037-47F6-B1DE-D2F4A9D19DBC}" />
-      <Field Type="MultiChoice" Name="DistributionMethod" DisplayName="Distribution Method" Group="Request Information" ID="{85249F9F-B480-4A48-BA14-7D58D4559B32}">
+      <Field Type="MultiChoice" Name="DistributionMethod" DisplayName="Distribution Method" Group="Request Information" ID="{85249F9F-B480-4A48-BA14-7D58D4559B32}" FillInChoice="TRUE">
         <CHOICES>
           <CHOICE>Dodge &amp; Cox Website - U.S.</CHOICE>
           <CHOICE>Dodge &amp; Cox Website - Non-U.S.</CHOICE>
@@ -32,9 +32,10 @@
           <CHOICE>Email / Mail</CHOICE>
           <CHOICE>Mobile App</CHOICE>
           <CHOICE>Display Card / Signage</CHOICE>
-          <CHOICE>Hangout</CHOICE>
+          <CHOICE>Handout</CHOICE>
           <CHOICE>Live - Talking Points</CHOICE>
           <CHOICE>Social Media</CHOICE>
+          <CHOICE>Internal Use Only</CHOICE>
         </CHOICES>
       </Field>
       <Field Type="DateTime" Name="TargetReturnDate" DisplayName="Target Return Date" Required="TRUE" Format="DateTime" Group="Request Information" ID="{FAFC8860-3A38-436A-BDF6-019FF3CAC7C1}" Indexed="TRUE" ClientSideComponentId="2836aed3-5ad3-4495-a1b0-ff3924feec4e" />

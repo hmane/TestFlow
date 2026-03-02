@@ -78,7 +78,7 @@ This document provides a comprehensive reference for the SharePoint site schema 
 | Purpose | Purpose | Note (Multi-line) | Yes | - | - | 6 lines, no rich text |
 | SubmissionType | Submission Type | Choice | Yes | - | - | `New`, `Material Updates` |
 | SubmissionItem | Submission Item | Text | Yes | 255 | - | Linked to SubmissionItems list |
-| DistributionMethod | Distribution Method | MultiChoice | No | - | - | `Dodge & Cox Website - U.S.`, `Dodge & Cox Website - Non-U.S.`, `Third Party Website`, `Email / Mail`, `Mobile App`, `Display Card / Signage`, `Hangout`, `Live - Talking Points`, `Social Media` |
+| DistributionMethod | Distribution Method | MultiChoice | No | - | - | `Dodge & Cox Website - U.S.`, `Dodge & Cox Website - Non-U.S.`, `Third Party Website`, `Email / Mail`, `Mobile App`, `Display Card / Signage`, `Handout`, `Live - Talking Points`, `Social Media`, `Internal Use Only` (Fill In Choice enabled) |
 | TargetReturnDate | Target Return Date | DateTime | Yes | - | - | Has field customizer (TurnAroundDate) |
 | IsRushRequest | Is Rush Request | Boolean | No | - | 0 (No) | - |
 | RushRationale | Rush Rationale | Note (Multi-line) | No | - | - | 6 lines, no rich text |
@@ -327,7 +327,7 @@ This document provides a comprehensive reference for the SharePoint site schema 
 |-------|-------------------------|-------------|---------------|
 | New Exhibit | 3 | New exhibit submission | 10 |
 | Updated Exhibit | 2 | Updates to existing exhibit | 20 |
-| White Paper | 5 | White paper review | 30 |
+| Insights Paper | 5 | Insights paper review | 30 |
 | Website Update - Substantial (4 pages or more) | 5 | Major website updates | 40 |
 | Marketing Communication | 3 | Marketing communication materials | 50 |
 

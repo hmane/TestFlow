@@ -228,9 +228,10 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
       [DistributionMethod.EmailMail]: 'Email/Mail',
       [DistributionMethod.MobileApp]: 'Mobile App',
       [DistributionMethod.DisplayCardSignage]: 'Display/Signage',
-      [DistributionMethod.Hangout]: 'Hangout',
+      [DistributionMethod.Handout]: 'Handout',
       [DistributionMethod.LiveTalkingPoints]: 'Live Talking Points',
       [DistributionMethod.SocialMedia]: 'Social Media',
+      [DistributionMethod.InternalUseOnly]: 'Internal Use Only',
     };
     return labels[method] || method;
   };

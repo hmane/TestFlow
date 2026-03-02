@@ -66,7 +66,7 @@ This is the main card containing all required information about your request.
 |-------|----------|-------------|
 | **Request Title** | Yes | A brief, descriptive title for your request |
 | **Submission Type** | Yes | Select "New" or "Material Updates" |
-| **Submission Item** | Yes | Select the type of material being submitted (e.g., New Exhibit, White Paper, Marketing Communication) |
+| **Submission Item** | Yes | Select the type of material being submitted (e.g., New Exhibit, Insights Paper, Marketing Communication) |
 | **Purpose** | Yes | Describe the purpose and context of this communication |
 | **Target Return Date** | Yes | When you need the review completed |
 | **Review Audience** | Yes | Select who needs to review: Legal, Compliance, or Both |
@@ -99,9 +99,10 @@ Select how this communication will be distributed:
 - Email / Mail
 - Mobile App
 - Display Card / Signage
-- Hangout
+- Handout
 - Live - Talking Points
 - Social Media
+- Internal Use Only
 
 #### Prior Submissions Section
 

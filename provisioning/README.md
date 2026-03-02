@@ -101,7 +101,7 @@ Get-PnPField -List "Requests" | Select-Object Title, InternalName, Id | Format-T
 **Sample Data:**
 - New Exhibit (3 days)
 - Updated Exhibit (2 days)
-- White Paper (5 days)
+- Insights Paper (5 days)
 - Website Update - Substantial (5 days)
 - Marketing Communication (3 days)
 

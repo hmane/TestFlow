@@ -14,7 +14,6 @@ import {
 } from '@constants/fieldLimits';
 import {
   Audience,
-  DistributionMethod,
   FINRAAudienceCategory,
   RequestType,
   SeparateAcctStrategies,
@@ -105,19 +104,7 @@ export const requestInformationSchema = z.object({
   communicationsOnly: z.boolean(),
   department: z.string().max(DEPARTMENT_MAX_LENGTH).optional(),
   distributionMethod: z
-    .array(
-      z.enum([
-        DistributionMethod.DodgeCoxWebsiteUS,
-        DistributionMethod.DodgeCoxWebsiteNonUS,
-        DistributionMethod.ThirdPartyWebsite,
-        DistributionMethod.EmailMail,
-        DistributionMethod.MobileApp,
-        DistributionMethod.DisplayCardSignage,
-        DistributionMethod.Hangout,
-        DistributionMethod.LiveTalkingPoints,
-        DistributionMethod.SocialMedia,
-      ])
-    )
+    .array(z.string())
     .optional(),
   contentId: z.string().max(255).optional(),
   priorSubmissions: z.array(lookupSchema).optional(),
@@ -658,19 +645,7 @@ export const updateRequestSchema = z.object({
     .enum([ReviewAudience.Legal, ReviewAudience.Compliance, ReviewAudience.Both])
     .optional(),
   distributionMethod: z
-    .array(
-      z.enum([
-        DistributionMethod.DodgeCoxWebsiteUS,
-        DistributionMethod.DodgeCoxWebsiteNonUS,
-        DistributionMethod.ThirdPartyWebsite,
-        DistributionMethod.EmailMail,
-        DistributionMethod.MobileApp,
-        DistributionMethod.DisplayCardSignage,
-        DistributionMethod.Hangout,
-        DistributionMethod.LiveTalkingPoints,
-        DistributionMethod.SocialMedia,
-      ])
-    )
+    .array(z.string())
     .optional(),
   contentId: z.string().max(255).optional(),
   usFundShares: z.array(z.any()).optional(),
@@ -800,19 +775,7 @@ export const fullRequestSchema = z.object({
   trackingId: z.string().optional(),
   department: z.string().optional(),
   distributionMethod: z
-    .array(
-      z.enum([
-        DistributionMethod.DodgeCoxWebsiteUS,
-        DistributionMethod.DodgeCoxWebsiteNonUS,
-        DistributionMethod.ThirdPartyWebsite,
-        DistributionMethod.EmailMail,
-        DistributionMethod.MobileApp,
-        DistributionMethod.DisplayCardSignage,
-        DistributionMethod.Hangout,
-        DistributionMethod.LiveTalkingPoints,
-        DistributionMethod.SocialMedia,
-      ])
-    )
+    .array(z.string())
     .optional(),
   priorSubmissions: z.array(lookupSchema).optional(),
   priorSubmissionNotes: z.string().optional(),

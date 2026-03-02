@@ -919,9 +919,10 @@ namespace LegalWorkflow.Functions.Services
                 DistributionMethod.EmailMail => "Email/Mail",
                 DistributionMethod.MobileApp => "Mobile App",
                 DistributionMethod.DisplayCardSignage => "Display/Card/Signage",
-                DistributionMethod.Hangout => "Hangout",
+                DistributionMethod.Handout => "Handout",
                 DistributionMethod.LiveTalkingPoints => "Live/Talking Points",
                 DistributionMethod.SocialMedia => "Social Media",
+                DistributionMethod.InternalUseOnly => "Internal Use Only",
                 _ => method.ToString()
             };
         }

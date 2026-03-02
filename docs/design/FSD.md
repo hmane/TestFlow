@@ -2579,7 +2579,7 @@ The system supports six approval types to accommodate various organizational app
 |---------------|-------------|--------------|----------------------|
 | **Communications Approval** | Approval from Communications department for messaging, tone, and brand compliance | Marketing emails, shareholder letters, external communications | Communications Director, Marketing Manager |
 | **Portfolio Manager Approval** | Approval from Portfolio Manager for investment strategy, portfolio composition, and performance attribution | Investment strategy materials, portfolio commentaries, performance reports | Portfolio Manager, CIO |
-| **Research Analyst Approval** | Approval from Research Analyst for research findings, data accuracy, and methodology | Research reports, market outlooks, white papers | Senior Research Analyst, Head of Research |
+| **Research Analyst Approval** | Approval from Research Analyst for research findings, data accuracy, and methodology | Research reports, market outlooks, insights papers | Senior Research Analyst, Head of Research |
 | **Subject Matter Expert (SME) Approval** | Approval from domain expert for technical accuracy and subject matter correctness | Technical content, product specifications, complex strategies | Product Specialist, Technical Expert, Economist |
 | **Performance Review Approval** | Approval from Performance team for performance data accuracy, calculation methodology, and compliance | Performance advertising, fact sheets, presentations with returns | Performance Analyst, Compliance (Performance) |
 | **Other Approval** | Custom approval type for non-standard approval requirements | Any material requiring approval not fitting above categories | Varies (user specifies custom title) |

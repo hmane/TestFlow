@@ -76,9 +76,9 @@
       <pnp:DataValue FieldName="DisplayOrder">20</pnp:DataValue>
     </pnp:DataRow>
     <pnp:DataRow>
-      <pnp:DataValue FieldName="Title">White Paper</pnp:DataValue>
+      <pnp:DataValue FieldName="Title">Insights Paper</pnp:DataValue>
       <pnp:DataValue FieldName="TurnAroundTimeInDays">5</pnp:DataValue>
-      <pnp:DataValue FieldName="Description">White paper review</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Insights paper review</pnp:DataValue>
       <pnp:DataValue FieldName="DisplayOrder">30</pnp:DataValue>
     </pnp:DataRow>
     <pnp:DataRow>

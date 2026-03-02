@@ -160,7 +160,7 @@ RequestTitle (Text) - 3-255 chars, required
 Purpose (Note/Rich) - 10-10,000 chars, required
 SubmissionType (Choice) - New, Material Updates
 SubmissionItem (Text) - Display value for submission item, selected from Submission Items list. If other then specified.
-DistributionMethod (Multi-Choice) - Dodge & Cox Website - U.S., Dodge & Cox Website - Non-U.S., Third Party Website, Email / Mail, Mobile App, Display Card / Signage, Hangout, Live - Talking Points, Social Media
+DistributionMethod (Multi-Choice) - Dodge & Cox Website - U.S., Dodge & Cox Website - Non-U.S., Third Party Website, Email / Mail, Mobile App, Display Card / Signage, Handout, Live - Talking Points, Social Media, Internal Use Only
 TargetReturnDate (DateTime) - Future date only, required
 IsRushRequest (Boolean) - Auto-calculated
 RushRationale (Note) - Required if rush, min 10 chars
@@ -279,7 +279,7 @@ PreviousStatus (Text) - For resume functionality
 ### 3.3 SubmissionItems List
 
 ```
-Title (Text) - "White Papers", "Marketing Brochures", etc.
+Title (Text) - "Insights Papers", "Marketing Brochures", etc.
 TurnAroundTimeInDays (Number) - Business days for review
 Description (Note) - Optional description
 ```
@@ -288,7 +288,7 @@ Description (Note) - Optional description
 
 - New Exhibit : 3 days
 - Updated Exhibit : 2 days
-- White Paper : 5 days
+- Insights Paper : 5 days
 - Website Update - Substantial (4 pages or more) : 5 days
 - Website Update - Non-Substantial (1-3 pages) : 5 days
 - Email Blast : 1 day

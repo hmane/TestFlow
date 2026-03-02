@@ -64,9 +64,10 @@ const DISTRIBUTION_METHOD_CHOICES: DistributionMethod[] = [
   DistributionMethod.EmailMail,
   DistributionMethod.MobileApp,
   DistributionMethod.DisplayCardSignage,
-  DistributionMethod.Hangout,
+  DistributionMethod.Handout,
   DistributionMethod.LiveTalkingPoints,
   DistributionMethod.SocialMedia,
+  DistributionMethod.InternalUseOnly,
 ];
 
 const FINRA_AUDIENCE_CATEGORY_CHOICES: FINRAAudienceCategory[] = [

@@ -47,9 +47,10 @@ export enum DistributionMethod {
   EmailMail = 'Email / Mail',
   MobileApp = 'Mobile App',
   DisplayCardSignage = 'Display Card / Signage',
-  Hangout = 'Hangout',
+  Handout = 'Handout',
   LiveTalkingPoints = 'Live - Talking Points',
   SocialMedia = 'Social Media',
+  InternalUseOnly = 'Internal Use Only',
 }
 
 /**
