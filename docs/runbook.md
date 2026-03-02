@@ -22,6 +22,10 @@
 11. [Troubleshooting Guide](#11-troubleshooting-guide)
 12. [Deployment & Provisioning](#12-deployment--provisioning)
 13. [Escalation Procedures](#13-escalation-procedures)
+14. [Appendix A: Quick Reference Card](#appendix-a)
+15. [Appendix B: SPFx Components — Web Parts, Form Customizers & Field Customizers](#appendix-b-spfx-components--web-parts-form-customizers--field-customizers)
+16. [Appendix C: Lists & Libraries Reference](#appendix-c-lists--libraries-reference)
+17. [Appendix D: Request Flow — Events on Create & Modify](#appendix-d-request-flow--events-on-create--modify)
 
 ---
 
@@ -444,6 +448,39 @@ Update the following Configuration list items:
 ---
 
 ## 6. Workflow Statuses & Transitions
+
+### 6.0 Request Lifecycle — End-to-End Flow
+
+A request moves through the following stages from creation to completion:
+
+**1. Draft** — Submitter creates a new request, fills in request information (title, purpose, submission type, target return date, review audience), uploads documents for review, and provides at least one approval (e.g., Communications, Portfolio Manager). The request remains editable until submitted.
+
+**2. Submit** — Submitter clicks "Submit." The system validates required fields, auto-generates the Request ID (e.g., CRR-26-42), calculates whether the request is a rush, breaks item-level permissions, and notifies the Legal Admin group. Status changes to **Legal Intake**.
+
+**3. Legal Intake** — Legal Admin triages the request. They can override the review audience (Legal, Compliance, or Both) and choose one of two paths:
+   - **Direct Assignment** — Legal Admin selects an attorney and assigns directly. Status moves to **In Review**.
+   - **Committee Assignment** — Legal Admin sends the request to the Attorney Assigner committee. Status moves to **Assign Attorney**, then to **In Review** once the committee assigns an attorney.
+
+**4. In Review** — The assigned attorney (and/or compliance reviewer, if required) reviews the request. Each reviewer can:
+   - **Approve** or **Approve With Comments** — Review is complete. If all required reviews are done with positive outcomes, the request automatically moves to **Closeout**.
+   - **Respond To Comments And Resubmit** — Reviewer requests changes. The submitter is notified, updates the request, and resubmits. This cycle can repeat multiple times.
+   - **Not Approved** — The request is rejected and moves directly to **Completed**, bypassing Closeout.
+
+   When the review audience is "Both," legal and compliance reviews run in parallel. Both must complete before the request can advance.
+
+**5. Closeout** — The submitter completes the closeout:
+   - Acknowledges reviewer comments (if outcome was "Approved With Comments")
+   - Uploads final documents showing how comments were addressed
+   - Provides a Tracking ID (if FINRA/Foreside review was required)
+   - Optionally moves to **Awaiting FINRA Documents** if Foreside review is required, or clicks "Complete Request"
+
+**6. Awaiting FINRA Documents** *(conditional)* — If Foreside/FINRA review was required, the submitter uploads FINRA approval documents, optionally marks whether FINRA comments were received, and then completes the request.
+
+**7. Completed** — Terminal state. All permissions are set to read-only. The full audit trail (field changes, timestamps, review notes, documents) is preserved in version history.
+
+**Special Actions** (available at most stages):
+- **On Hold** — Legal Admin or Admin can pause a request. Time tracking stops. Resumes to the previous status.
+- **Cancel** — Legal Admin or Admin can cancel a request (submitter can cancel own Draft). Records the reason and notifies all parties.
 
 ### 6.1 Status Flow Diagram
 
@@ -1118,7 +1155,7 @@ To deploy a new version:
 
 ---
 
-## Appendix A: Quick Reference Card
+## Appendix A: Quick Reference Card {#appendix-a}
 
 ### Key URLs
 
@@ -1152,3 +1189,756 @@ To deploy a new version:
 | Completed | Green | Workflow complete |
 | Cancelled | Red | Request cancelled |
 | On Hold | Orange | Temporarily paused |
+
+---
+
+## Appendix B: SPFx Components — Web Parts, Form Customizers & Field Customizers
+
+All SPFx components packaged in the `legal-workflow.sppkg` solution.
+
+**Solution Details:**
+
+| Property | Value |
+|----------|-------|
+| **Solution Name** | `legal-workflow-client-side-solution` |
+| **Solution ID** | `877d48f8-af3b-4965-be4c-d9c00cf239b2` |
+| **Feature ID** | `e7c39642-dc0c-4a54-913a-77ae7871d79a` |
+| **Package File** | `legal-workflow.sppkg` |
+| **Skip Feature Deployment** | Yes (tenant-scoped) |
+| **Domain Isolated** | No |
+
+---
+
+### Web Parts
+
+#### Request Dashboard
+
+| Property | Value |
+|----------|-------|
+| **Component ID** | `714bf59c-3cd3-4c4a-b3e2-25db6e7f5eee` |
+| **Alias** | `ReportDashboardWebPart` |
+| **Component Type** | WebPart |
+| **Group** | Legal Workflow |
+| **Icon** | ViewList |
+| **Supported Hosts** | SharePoint Web Part, Teams Personal App, Teams Tab, SharePoint Full Page |
+| **Theme Variants** | Supported |
+| **Source** | `src/webparts/reportDashboard/` |
+
+**Description:** Navigation toolbar web part with quick links to dashboards and request search. Provides the main entry point for users to browse, filter, and navigate to review requests.
+
+---
+
+#### Analytics Dashboard
+
+| Property | Value |
+|----------|-------|
+| **Component ID** | `a8c3f2d1-5e7b-4a9c-8d6e-3f1b2c4d5e6f` |
+| **Alias** | `AnalyticsDashboardWebPart` |
+| **Component Type** | WebPart |
+| **Group** | Legal Workflow |
+| **Icon** | AnalyticsReport |
+| **Supported Hosts** | SharePoint Web Part, Teams Personal App, Teams Tab, SharePoint Full Page |
+| **Full Bleed** | Supported |
+| **Source** | `src/webparts/analyticsDashboard/` |
+
+**Description:** Admin analytics dashboard for Legal Review System metrics and reporting. Displays KPIs (pending reviews, average turnaround, completion rates), trend charts, and filterable data for a configurable date range (default: 30 days). Intended for Legal Admin and Admin users.
+
+**Properties:**
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `title` | Analytics Dashboard | Web part title |
+| `useMockData` | false | Use sample data instead of live SharePoint data |
+| `defaultDateRange` | 30 | Default number of days for date range filter |
+
+---
+
+### Form Customizers
+
+#### Legal Workflow Form Customizer
+
+| Property | Value |
+|----------|-------|
+| **Component ID** | `419289ae-db48-48cf-84d8-bd90dcbc6aab` |
+| **Alias** | `LegalWorkflowFormCustomizer` |
+| **Component Type** | Extension (FormCustomizer) |
+| **Target List** | Requests |
+| **Source** | `src/extensions/legalWorkflow/` |
+
+**Description:** The primary SPFx Form Customizer that replaces the default SharePoint New/Edit/Display forms on the Requests list. Renders the full legal workflow application — a React-based form with card-based layout (70/30 split: form on the left, comments on the right). Handles all workflow stages: request creation (Draft), submission, legal intake, attorney assignment, legal/compliance review, closeout, and FINRA document handling. Integrates React Hook Form + Zod validation, Zustand state management, and spfx-toolkit for SharePoint operations.
+
+**Association:** Must be registered as the form customizer on the Requests list for New, Edit, and Display forms. This is configured during provisioning.
+
+---
+
+### Field Customizers
+
+#### Request ID Field Customizer
+
+| Property | Value |
+|----------|-------|
+| **Component ID** | `9e11eae7-2de7-45de-b558-0976203f13aa` |
+| **Alias** | `RequestIdFieldCustomizer` |
+| **Component Type** | Extension (FieldCustomizer) |
+| **Target Field** | Title (Request ID) |
+| **Target List** | Requests |
+| **Source** | `src/extensions/requestId/` |
+
+**Description:** Renders a clickable Request ID link with a hover card in the Title column of the Requests list view. Clicking the link opens the request edit form. The hover card shows a request summary: request title, status, request type, review audience, target return date, and created/modified info. Provides a compact card preview on quick hover.
+
+---
+
+#### Request Title Field Customizer
+
+| Property | Value |
+|----------|-------|
+| **Component ID** | `f356df03-765c-466e-bc0f-d61304b1cde1` |
+| **Alias** | `RequestTitleFieldCustomizer` |
+| **Component Type** | Extension (FieldCustomizer) |
+| **Target Field** | RequestTitle |
+| **Target List** | Requests |
+| **Source** | `src/extensions/requestTitle/` |
+
+**Description:** Renders a custom display for the RequestTitle field in the Requests list view. Provides truncation with tooltip for long titles to keep list views clean and readable.
+
+---
+
+#### Request Status Field Customizer
+
+| Property | Value |
+|----------|-------|
+| **Component ID** | `e55dcdea-8fa3-4708-9fbe-35c866026289` |
+| **Alias** | `RequestStatusFieldCustomizer` |
+| **Component Type** | Extension (FieldCustomizer) |
+| **Target Field** | Status |
+| **Target List** | Requests |
+| **Source** | `src/extensions/requestStatus/` |
+
+**Description:** Renders a visual progress bar with a hover card in the Status column of the Requests list view. The progress bar shows workflow stage completion with color-coded indicators: blue for active stages, green for completed, red for cancelled, and yellow/orange for on hold. The hover card displays detailed status information including current workflow stage, review progress (Legal/Compliance), time in current stage, and key dates and assignees.
+
+---
+
+#### Turn Around Date Field Customizer
+
+| Property | Value |
+|----------|-------|
+| **Component ID** | `2836aed3-5ad3-4495-a1b0-ff3924feec4e` |
+| **Alias** | `TurnAroundDateFieldCustomizer` |
+| **Component Type** | Extension (FieldCustomizer) |
+| **Target Field** | TargetReturnDate |
+| **Target List** | Requests |
+| **Source** | `src/extensions/turnAroundDate/` |
+
+**Description:** Renders a smart date display with a hover card in the TargetReturnDate column of the Requests list view. Dates are color-coded: red for overdue (past target date), orange for due soon (within 2 business days), and green for on track. Rush requests display a bolt icon indicator. The hover card shows days remaining/overdue, rush rationale (if applicable), and submission date context. Only shows countdown for active requests (not Completed or Cancelled).
+
+---
+
+### Component Summary
+
+| Component | Type | ID | Target |
+|-----------|------|----|--------|
+| Request Dashboard | WebPart | `714bf59c-...5eee` | Any page |
+| Analytics Dashboard | WebPart | `a8c3f2d1-...5e6f` | Any page |
+| Legal Workflow Form | FormCustomizer | `419289ae-...6aab` | Requests list (New/Edit/Display) |
+| Request ID | FieldCustomizer | `9e11eae7-...3aa` | Requests → Title |
+| Request Title | FieldCustomizer | `f356df03-...cde1` | Requests → RequestTitle |
+| Request Status | FieldCustomizer | `e55dcdea-...6289` | Requests → Status |
+| Turn Around Date | FieldCustomizer | `2836aed3-...ec4e` | Requests → TargetReturnDate |
+
+---
+
+## Appendix C: Lists & Libraries Reference {#appendix-c}
+
+A consolidated reference of every SharePoint list and library in the LRS site, including purpose, key fields, and permission assignments.
+
+### Requests
+
+| Property | Value |
+|----------|-------|
+| **URL** | `/Lists/Requests` |
+| **Type** | Generic List (100) |
+| **Versioning** | Enabled |
+| **Grid Editing** | Disabled (`DisableGridEditing=true`) |
+| **Item Count** | ~80 fields |
+| **Description** | The main workflow list. Each item represents a single legal/compliance review request that moves through the full lifecycle: Draft → Legal Intake → In Review → Closeout → Completed. Contains request information, approvals, legal review, compliance review, closeout, FINRA, time tracking, and system tracking fields. |
+
+**Permissions (Inheritance Broken):**
+
+| Group | Permission Level | Notes |
+|-------|-----------------|-------|
+| LW - Admin | Admin Without Delete | Full control except delete (audit trail protection) |
+| LW - Submitters | Read + Contribute on own items | Can create and edit own Draft requests; read-only on others |
+| LW - Legal Admin | Contribute Without Delete | Full management of all requests except delete |
+| LW - Attorneys | Contribute Without Delete | Edit assigned requests during review |
+| LW - Compliance Users | Contribute Without Delete | Edit requests during compliance review |
+
+**Item-Level Permissions:** Broken on transition from Draft → Legal Intake. See [Section 3.4](#34-item-level-permissions-requests) for per-stage breakdown.
+
+---
+
+### RequestDocuments
+
+| Property | Value |
+|----------|-------|
+| **URL** | `/RequestDocuments` |
+| **Type** | Document Library (101) |
+| **Versioning** | Enabled |
+| **Description** | Stores all documents associated with review requests. Organized into per-request folders (`/{ItemID}/`) with subfolders for each approval type and FINRA documents. Contains review documents, supplemental materials, approval evidence, and final reviewed documents. |
+
+**Permissions (Inheritance Broken):**
+
+| Group | Permission Level | Notes |
+|-------|-----------------|-------|
+| LW - Admin | Full Control | Complete document management |
+| LW - Submitters | Read / Contribute on own | Can upload to own request folders |
+| LW - Legal Admin | Full Control | Manage all documents |
+| LW - Attorneys | Contribute | Upload/edit documents for assigned reviews |
+| LW - Compliance Users | Contribute | Upload/edit documents for compliance reviews |
+
+**Folder Structure:** `/{ItemID}/` root contains review and supplemental documents; subfolders for each approval type (`CommunicationsApproval/`, `PortfolioManagerApproval/`, etc.) and `FINRADocuments/`.
+
+---
+
+### SubmissionItems
+
+| Property | Value |
+|----------|-------|
+| **URL** | `/Lists/SubmissionItems` |
+| **Type** | Generic List (100) |
+| **Versioning** | Enabled |
+| **Item Count** | 19 default items |
+| **Description** | Configuration list that defines the types of submissions available (e.g., New Exhibit, Email Blast, Custom Presentation). Each item specifies a turnaround time in business days used to calculate rush requests. The form reads this list dynamically — no code changes needed to add new submission types. |
+
+**Key Fields:** Title, TurnAroundTimeInDays, Description, DisplayOrder
+
+**Permissions (Inheritance Broken):**
+
+| Group | Permission Level |
+|-------|-----------------|
+| LW - Admin | Full Control |
+| LW - Submitters | Read |
+| LW - Legal Admin | Read |
+| LW - Attorneys | Read |
+| LW - Compliance Users | Read |
+
+---
+
+### Configuration
+
+| Property | Value |
+|----------|-------|
+| **URL** | `/Lists/Configuration` |
+| **Type** | Generic List (100) |
+| **Versioning** | Enabled |
+| **Item Count** | 9 default items |
+| **Description** | Key-value store for application settings. Controls business hours (time tracking), file upload limits, Azure integration URLs, and search settings. Changes take effect within 5 minutes (cache TTL). Only items with `IsActive = true` are used. |
+
+**Key Fields:** Title (key), ConfigValue, Description, Category, IsActive
+
+**Permissions (Inheritance Broken):**
+
+| Group | Permission Level |
+|-------|-----------------|
+| LW - Admin | Full Control |
+| LW - Submitters | Read |
+| LW - Legal Admin | Read |
+| LW - Attorneys | Read |
+| LW - Compliance Users | Read |
+
+---
+
+### RequestIds
+
+| Property | Value |
+|----------|-------|
+| **URL** | `/Lists/RequestIds` |
+| **Type** | Generic List (100) |
+| **Versioning** | Disabled |
+| **Hidden** | Yes |
+| **Description** | System list used internally for sequential request ID generation. Stores a counter per request type prefix (CRR, GRR, IMA) per year. When a new request is created, the application increments the counter and generates the ID in `{PREFIX}-{YY}-{N}` format (e.g., CRR-26-42). Not visible in Site Contents or to end users. |
+
+**Permissions:** Inherited from site (not broken). Access controlled at the application level.
+
+---
+
+### Notifications
+
+| Property | Value |
+|----------|-------|
+| **URL** | `/Lists/Notifications` |
+| **Type** | Generic List (100) |
+| **Versioning** | Enabled |
+| **Item Count** | 19 templates |
+| **Description** | Stores email notification templates used by the system. Each item defines a trigger event, recipient list (using template variables), subject, HTML body, importance level, and active flag. Power Automate flows read templates from this list and call Azure Functions to send emails. Admins can modify subjects, bodies, or disable templates without code changes. |
+
+**Key Fields:** Title (template ID), Category, TriggerEvent, ToRecipients, CcRecipients, Subject, Body (HTML), IncludeDocuments, Importance, IsActive
+
+**Permissions:** Inherited from site (not broken). Only admins should modify templates.
+
+---
+
+## Appendix D: Request Flow — Events on Create & Modify
+
+This section documents what happens at each stage when a request is created or modified, including field updates, permission changes, notifications, and time tracking events.
+
+### New Request Created (Draft)
+
+| Event | Detail |
+|-------|--------|
+| **Trigger** | User clicks "New" on the Requests list |
+| **Status Set** | `Draft` |
+| **Request ID** | Auto-generated from RequestIds list (e.g., CRR-26-1) |
+| **Permissions** | Inherited from list — creator has Full Control, Legal Admin and Admin have access via list permissions |
+| **Notifications** | None |
+| **Time Tracking** | Not started |
+
+**What the user sees:** Custom SPFx form loads with empty request fields. User fills in request information, uploads documents, and provides at least one approval before submitting.
+
+---
+
+### Draft → Legal Intake (Submit)
+
+| Event | Detail |
+|-------|--------|
+| **Trigger** | Submitter clicks "Submit" on a Draft request |
+| **Who Can Do This** | Request owner (Submitter) or Admin |
+| **Validation** | Required fields checked (Request Title, Purpose, Target Return Date, Review Audience, Submission Item, at least one approval unless RFP exemption) |
+
+**Field Updates:**
+
+| Field | Value |
+|-------|-------|
+| Status | `Legal Intake` |
+| SubmittedBy | Current user |
+| SubmittedOn | Current timestamp |
+| IsRushRequest | Calculated (`TargetReturnDate < SubmittedOn + TurnAroundDays`) |
+
+**Permission Changes:**
+- Item-level permissions **broken** (Azure Function: `POST /api/permissions/initialize`)
+- Submitter: demoted to **Read**
+- Legal Admin: granted **Contribute**
+- Admin: **Full Control**
+
+**Notifications Sent:**
+
+| Template | To | Importance |
+|----------|-----|-----------|
+| `RequestSubmitted` | LW - Legal Admin group | Normal |
+| `RushRequestAlert` | LW - Legal Admin group | High (only if rush) |
+
+**Time Tracking:** Legal Intake stage timer starts (Legal Admin is current owner).
+
+---
+
+### Legal Intake → Assign Attorney (Send to Committee)
+
+| Event | Detail |
+|-------|--------|
+| **Trigger** | Legal Admin clicks "Send to Committee" |
+| **Who Can Do This** | Legal Admin, Admin |
+
+**Field Updates:**
+
+| Field | Value |
+|-------|-------|
+| Status | `Assign Attorney` |
+| SubmittedToAssignAttorneyBy | Current user |
+| SubmittedToAssignAttorneyOn | Current timestamp |
+| ReviewAudience | May be overridden by Legal Admin |
+
+**Notifications Sent:**
+
+| Template | To | Importance |
+|----------|-----|-----------|
+| `ReadyForAttorneyAssignment` | LW - Attorney Assigner group | Normal |
+
+**Time Tracking:** Legal Intake stage time calculated and saved. Assign Attorney timer starts.
+
+---
+
+### Legal Intake → In Review (Direct Assignment)
+
+| Event | Detail |
+|-------|--------|
+| **Trigger** | Legal Admin assigns attorney directly and clicks "Assign" |
+| **Who Can Do This** | Legal Admin, Admin |
+
+**Field Updates:**
+
+| Field | Value |
+|-------|-------|
+| Status | `In Review` |
+| Attorney | Selected attorney(s) |
+| AttorneyAssignNotes | Notes (if provided) |
+| SubmittedForReviewBy | Current user |
+| SubmittedForReviewOn | Current timestamp |
+| LegalReviewStatus | `Not Started` |
+| ComplianceReviewStatus | `Not Started` (if compliance needed) or `Not Required` |
+
+**Permission Changes:**
+- Assigned Attorney: granted **Contribute Without Delete**
+- Compliance Users: granted **Contribute Without Delete** (if review audience includes Compliance)
+
+**Notifications Sent:**
+
+| Template | To | Importance |
+|----------|-----|-----------|
+| `AttorneyAssigned` | Assigned Attorney; CC: Submitter, Additional Parties | Normal |
+| `ComplianceReviewRequired` | LW - Compliance Users (only if compliance review needed) | Normal |
+
+**Time Tracking:** Legal Intake stage time calculated. In Review timer starts.
+
+---
+
+### Assign Attorney → In Review (Committee Assignment)
+
+| Event | Detail |
+|-------|--------|
+| **Trigger** | Attorney Assigner selects attorney and clicks "Assign" |
+| **Who Can Do This** | Attorney Assigner, Legal Admin, Admin |
+
+**Field Updates:** Same as direct assignment above.
+
+**Notifications Sent:** Same as direct assignment above.
+
+---
+
+### In Review — Legal Review Started
+
+| Event | Detail |
+|-------|--------|
+| **Trigger** | Attorney opens the request and begins review |
+
+**Field Updates:**
+
+| Field | Value |
+|-------|-------|
+| LegalReviewStatus | `In Progress` |
+| LegalStatusUpdatedOn | Current timestamp |
+| LegalStatusUpdatedBy | Current user |
+
+---
+
+### In Review — Legal Review Completed
+
+| Event | Detail |
+|-------|--------|
+| **Trigger** | Attorney submits legal review outcome |
+
+**Field Updates:**
+
+| Field | Value |
+|-------|-------|
+| LegalReviewStatus | `Completed` |
+| LegalReviewOutcome | `Approved`, `Approved With Comments`, or `Not Approved` |
+| LegalReviewNotes | Attorney's review notes |
+| LegalReviewCompletedOn | Current timestamp |
+| LegalReviewCompletedBy | Current user |
+| LegalStatusUpdatedOn | Current timestamp |
+
+**Notifications Sent:**
+
+| Outcome | Template | To |
+|---------|----------|-----|
+| Approved / Approved With Comments | `LegalReviewApproved` | Submitter; CC: Additional Parties |
+| Not Approved | `LegalReviewNotApproved` | Submitter; CC: Legal Admin |
+
+**Time Tracking:** Attorney review time calculated and saved to `LegalReviewAttorneyHours`.
+
+---
+
+### In Review — Legal Changes Requested (Respond To Comments And Resubmit)
+
+| Event | Detail |
+|-------|--------|
+| **Trigger** | Attorney sets outcome to "Respond To Comments And Resubmit" |
+
+**Field Updates:**
+
+| Field | Value |
+|-------|-------|
+| LegalReviewStatus | `Waiting On Submitter` |
+| LegalReviewOutcome | `Respond To Comments And Resubmit` |
+| LegalReviewNotes | Attorney's comments |
+| LegalStatusUpdatedOn | Current timestamp |
+
+**Notifications Sent:**
+
+| Template | To | Importance |
+|----------|-----|-----------|
+| `LegalChangesRequested` | Submitter; CC: Additional Parties | **High** |
+
+**Time Tracking:** Attorney review time calculated up to this handoff point.
+
+---
+
+### In Review — Submitter Resubmits for Legal Review
+
+| Event | Detail |
+|-------|--------|
+| **Trigger** | Submitter updates request and clicks "Resubmit for Review" |
+
+**Field Updates:**
+
+| Field | Value |
+|-------|-------|
+| LegalReviewStatus | `Waiting On Attorney` |
+| LegalStatusUpdatedOn | Current timestamp |
+
+**Notifications Sent:**
+
+| Template | To | Importance |
+|----------|-----|-----------|
+| `ResubmissionReceivedLegal` | Assigned Attorney | Normal |
+
+**Time Tracking:** Submitter response time calculated and saved to `LegalReviewSubmitterHours`.
+
+---
+
+### In Review — Compliance Review Started / Completed / Changes Requested / Resubmitted
+
+Compliance review follows the same pattern as Legal review above:
+
+| Legal Event | Compliance Equivalent |
+|------------|----------------------|
+| LegalReviewStatus | ComplianceReviewStatus |
+| LegalReviewOutcome | ComplianceReviewOutcome |
+| LegalReviewNotes | ComplianceReviewNotes |
+| Waiting On Attorney | Waiting On Compliance |
+| `LegalReviewApproved` | `ComplianceReviewApproved` |
+| `LegalChangesRequested` | `ComplianceChangesRequested` |
+| `LegalReviewNotApproved` | `ComplianceReviewNotApproved` |
+| `ResubmissionReceivedLegal` | `ResubmissionReceivedCompliance` |
+| LegalReviewAttorneyHours | ComplianceReviewReviewerHours |
+| LegalReviewSubmitterHours | ComplianceReviewSubmitterHours |
+
+**Additional compliance-only fields set during review:**
+- `IsForesideReviewRequired` (Boolean) — controls Tracking ID and FINRA fields visibility
+- `RecordRetentionOnly` (Boolean) — visible when `IsForesideReviewRequired = true`
+- `IsRetailUse` (Boolean) — visible when `IsForesideReviewRequired = true`
+
+---
+
+### In Review → Closeout (All Reviews Approved)
+
+| Event | Detail |
+|-------|--------|
+| **Trigger** | All required reviews completed with Approved or Approved With Comments |
+| **Automatic** | System transitions status after final review is submitted |
+
+**Field Updates:**
+
+| Field | Value |
+|-------|-------|
+| Status | `Closeout` |
+
+**Permission Changes:**
+- Submitter: upgraded to **Contribute** (closeout fields only)
+- Attorney: demoted to **Read**
+- Compliance Users: demoted to **Read**
+
+**Notifications Sent:**
+
+| Template | To | Importance |
+|----------|-----|-----------|
+| `ReadyForCloseout` | Submitter | Normal |
+
+**Time Tracking:** In Review stage time finalized. Closeout timer starts.
+
+---
+
+### In Review → Completed (Not Approved)
+
+| Event | Detail |
+|-------|--------|
+| **Trigger** | Any review outcome = "Not Approved" |
+| **Automatic** | System transitions status, bypassing Closeout |
+
+**Field Updates:**
+
+| Field | Value |
+|-------|-------|
+| Status | `Completed` |
+
+**Permission Changes:** All users set to **Read** (except Admin: Full Control).
+
+**Notifications Sent:**
+
+| Template | To | Importance |
+|----------|-----|-----------|
+| `RequestCompleted` | Submitter; CC: Additional Parties | Normal |
+
+---
+
+### Closeout → Completed (Normal Completion)
+
+| Event | Detail |
+|-------|--------|
+| **Trigger** | Submitter completes closeout and clicks "Complete Request" |
+| **Who Can Do This** | Submitter (own request), Legal Admin, Admin |
+
+**Validation:**
+- Comments acknowledged (if any outcome = Approved With Comments)
+- Tracking ID provided (if `IsForesideReviewRequired = true`)
+- Final document uploaded (unless RFP exemption)
+
+**Field Updates:**
+
+| Field | Value |
+|-------|-------|
+| Status | `Completed` |
+| CloseoutBy | Current user |
+| CloseoutOn | Current timestamp |
+| CommentsAcknowledged | `true` (if applicable) |
+| CommentsAcknowledgedOn | Current timestamp (if applicable) |
+| TrackingId | Provided value (if applicable) |
+| CloseoutNotes | Closeout notes (if provided) |
+
+**Permission Changes:** All users set to **Read** (except Admin: Full Control).
+
+**Notifications Sent:**
+
+| Template | To | Importance |
+|----------|-----|-----------|
+| `RequestCompleted` | Submitter; CC: Additional Parties | Normal |
+
+**Time Tracking:** Closeout stage time finalized. Total reviewer and submitter hours calculated.
+
+---
+
+### Closeout → Awaiting FINRA Documents
+
+| Event | Detail |
+|-------|--------|
+| **Trigger** | Submitter clicks "Awaiting FINRA Documents" during closeout |
+| **Condition** | `IsForesideReviewRequired = true` |
+
+**Field Updates:**
+
+| Field | Value |
+|-------|-------|
+| Status | `Awaiting FINRA Documents` |
+| AwaitingFINRASince | Current timestamp |
+
+---
+
+### Awaiting FINRA Documents → Completed
+
+| Event | Detail |
+|-------|--------|
+| **Trigger** | Submitter uploads FINRA documents and clicks "Complete Request" |
+
+**Field Updates:**
+
+| Field | Value |
+|-------|-------|
+| Status | `Completed` |
+| FINRACompletedBy | Current user |
+| FINRACompletedOn | Current timestamp |
+| FINRACommentsReceived | `true` / `false` |
+| FINRAComment | Comments (if `FINRACommentsReceived = true`) |
+
+**Notifications Sent:**
+
+| Template | To | Importance |
+|----------|-----|-----------|
+| `RequestCompleted` | Submitter; CC: Additional Parties | Normal |
+
+---
+
+### Any Status → On Hold
+
+| Event | Detail |
+|-------|--------|
+| **Trigger** | Legal Admin or Admin clicks "Place On Hold" |
+| **Available From** | Legal Intake, Assign Attorney, In Review, Closeout |
+
+**Field Updates:**
+
+| Field | Value |
+|-------|-------|
+| Status | `On Hold` |
+| PreviousStatus | Status before hold |
+| OnHoldBy | Current user |
+| OnHoldSince | Current timestamp |
+| OnHoldReason | Required notes |
+
+**Notifications Sent:**
+
+| Template | To | Importance |
+|----------|-----|-----------|
+| `RequestOnHold` | Submitter, Attorney; CC: Legal Admin | Normal |
+
+**Time Tracking:** Stage timer paused. Hold time excluded from SLA calculations.
+
+---
+
+### On Hold → Previous Status (Resume)
+
+| Event | Detail |
+|-------|--------|
+| **Trigger** | Legal Admin or Admin clicks "Resume" |
+
+**Field Updates:**
+
+| Field | Value |
+|-------|-------|
+| Status | Restored from `PreviousStatus` |
+| PreviousStatus | Cleared |
+
+**Notifications Sent:**
+
+| Template | To | Importance |
+|----------|-----|-----------|
+| `RequestResumed` | Submitter, Attorney; CC: Legal Admin | Normal |
+
+**Time Tracking:** Stage timer resumes from where it was paused.
+
+---
+
+### Any Status → Cancelled
+
+| Event | Detail |
+|-------|--------|
+| **Trigger** | Legal Admin or Admin clicks "Cancel" (Submitter can cancel own Draft) |
+| **Available From** | Draft, Legal Intake, Assign Attorney, In Review, Closeout |
+
+**Field Updates:**
+
+| Field | Value |
+|-------|-------|
+| Status | `Cancelled` |
+| PreviousStatus | Status before cancellation (for audit) |
+| CancelledBy | Current user |
+| CancelledOn | Current timestamp |
+| CancelReason | Required notes |
+
+**Notifications Sent:**
+
+| Template | To | Importance |
+|----------|-----|-----------|
+| `RequestCancelled` | Submitter; CC: Attorney, Legal Admin, Additional Parties | Normal |
+
+---
+
+### Attorney Reassigned
+
+| Event | Detail |
+|-------|--------|
+| **Trigger** | Legal Admin changes the Attorney field on a request in In Review |
+
+**Field Updates:**
+
+| Field | Value |
+|-------|-------|
+| Attorney | New attorney(s) |
+
+**Permission Changes:**
+- Previous attorney: permissions removed
+- New attorney: granted **Contribute Without Delete**
+
+**Notifications Sent:**
+
+| Template | To | Importance |
+|----------|-----|-----------|
+| `AttorneyReassigned` | New Attorney; CC: Submitter, Legal Admin | Normal |
