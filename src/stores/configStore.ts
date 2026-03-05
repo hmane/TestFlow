@@ -96,10 +96,10 @@ export const useConfigStore = create<IConfigState>()(
           SPContext.logger.info('Loading configuration with SPContext');
 
           // Use SPContext for reliable SP operations
-          const listItems = (await SPContext.sp.web.lists
+          const listItems = (await SPContext.spPessimistic.web.lists
             .getByTitle(Lists.Configuration.Title)
             .items.select(ConfigurationFields.ID, ConfigurationFields.Title, ConfigurationFields.ConfigValue, ConfigurationFields.Description, ConfigurationFields.IsActive, ConfigurationFields.Category)
-            .filter(`${ConfigurationFields.IsActive} eq true`)
+            .filter(`${ConfigurationFields.IsActive} eq 1`)
             .top(500)()) as IConfigurationListItem[];
 
           const mappedConfigs = listItems.map(mapConfiguration);

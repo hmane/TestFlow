@@ -27,7 +27,7 @@ jest.mock('spfx-toolkit/lib/utilities/context', () => ({
 
 // Mock configurationService
 jest.mock('../configurationService', () => ({
-  getWorkingHoursConfig: jest.fn().mockResolvedValue({
+  getWorkingHoursConfig: jest.fn().mockReturnValue({
     startHour: 8,
     endHour: 17,
     workingDays: [1, 2, 3, 4, 5],

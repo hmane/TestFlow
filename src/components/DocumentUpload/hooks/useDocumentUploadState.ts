@@ -7,12 +7,8 @@
 
 import * as React from 'react';
 
-import { SPContext } from 'spfx-toolkit/lib/utilities/context';
-import {
-  getFileUploadConfig,
-  DEFAULT_ALLOWED_EXTENSIONS,
-  type IFileUploadConfig,
-} from '@services/configurationService';
+import { DEFAULT_ALLOWED_EXTENSIONS } from '@services/configurationService';
+import { useConfigStore } from '@stores/configStore';
 
 import { useDocumentsStore, type IStagedDocument } from '@stores/documentsStore';
 import { DocumentType } from '@appTypes/documentTypes';
@@ -146,40 +142,39 @@ export function useDocumentUploadState(props: IUseDocumentUploadStateProps): IUs
   // Determine mode
   const mode: UploadMode = documentType ? UploadMode.Approval : UploadMode.Attachment;
 
-  // File upload configuration from SharePoint (loaded once)
-  const [fileUploadConfig, setFileUploadConfig] = React.useState<IFileUploadConfig | undefined>(undefined);
+  // File upload configuration from configStore (already loaded at app startup)
+  const { getConfig, isLoaded: isConfigLoaded } = useConfigStore();
 
-  // Load file upload configuration on mount
-  React.useEffect(() => {
-    let isMounted = true;
+  const allowedExtensions = React.useMemo(() => {
+    if (allowedExtensionsProp) return allowedExtensionsProp;
+    if (!isConfigLoaded) return DEFAULT_ALLOWED_EXTENSIONS;
 
-    const loadConfig = async (): Promise<void> => {
-      try {
-        const config = await getFileUploadConfig();
-        if (isMounted) {
-          setFileUploadConfig(config);
-        }
-      } catch (error) {
-        SPContext.logger.error('Failed to load file upload config, using defaults', error);
-        if (isMounted) {
-          setFileUploadConfig({
-            allowedExtensions: DEFAULT_ALLOWED_EXTENSIONS,
-            maxFileSizeMB: 250,
-          });
-        }
-      }
-    };
+    const extensionsStr = getConfig('allowedFileExtensions');
+    if (!extensionsStr) return DEFAULT_ALLOWED_EXTENSIONS;
 
-    void loadConfig();
+    const parsed = extensionsStr
+      .split(',')
+      .map(function(ext) { return ext.trim().toLowerCase(); })
+      .filter(function(ext) { return ext.length > 0; })
+      .filter(function(ext) {
+        const normalized = ext.charAt(0) === '.' ? ext.substring(1) : ext;
+        return /^[a-z0-9]+$/.test(normalized);
+      })
+      .map(function(ext) { return ext.charAt(0) === '.' ? ext : '.' + ext; });
 
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    return parsed.length > 0 ? parsed : DEFAULT_ALLOWED_EXTENSIONS;
+  }, [allowedExtensionsProp, isConfigLoaded, getConfig]);
 
-  // Use prop values if provided, otherwise use config values (with fallback to defaults)
-  const allowedExtensions = allowedExtensionsProp ?? fileUploadConfig?.allowedExtensions ?? DEFAULT_ALLOWED_EXTENSIONS;
-  const maxFileSize = maxFileSizeProp ?? (fileUploadConfig ? fileUploadConfig.maxFileSizeMB * 1024 * 1024 : DEFAULT_MAX_FILE_SIZE);
+  const maxFileSize = React.useMemo(() => {
+    if (maxFileSizeProp !== undefined) return maxFileSizeProp;
+    if (!isConfigLoaded) return DEFAULT_MAX_FILE_SIZE;
+
+    const maxFileSizeStr = getConfig('maxFileSizeMB');
+    if (!maxFileSizeStr) return DEFAULT_MAX_FILE_SIZE;
+
+    const parsed = parseInt(maxFileSizeStr, 10);
+    return isNaN(parsed) ? DEFAULT_MAX_FILE_SIZE : parsed * 1024 * 1024;
+  }, [maxFileSizeProp, isConfigLoaded, getConfig]);
 
   // Store state
   const {
@@ -278,24 +273,22 @@ export function useDocumentUploadState(props: IUseDocumentUploadStateProps): IUs
         };
       }
 
-      // Only validate extensions if config has loaded (skip check while loading to avoid rejecting valid files)
-      if (fileUploadConfig) {
-        const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
-        const extWithDot = `.${fileExt}`;
-        const extWithoutDot = fileExt;
+      // Check extension
+      const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
+      const extWithDot = `.${fileExt}`;
+      const extWithoutDot = fileExt;
 
-        const isAllowed = allowedExtensions.indexOf(extWithDot) !== -1 ||
-                          allowedExtensions.indexOf(extWithoutDot) !== -1;
+      const isAllowed = allowedExtensions.indexOf(extWithDot) !== -1 ||
+                        allowedExtensions.indexOf(extWithoutDot) !== -1;
 
-        if (!isAllowed) {
-          const displayExts = allowedExtensions.map(function(ext) {
-            return ext.charAt(0) === '.' ? ext.substring(1) : ext;
-          });
-          return {
-            isValid: false,
-            error: `File "${file.name}" has an unsupported file type. Allowed types: ${displayExts.join(', ')}`,
-          };
-        }
+      if (!isAllowed) {
+        const displayExts = allowedExtensions.map(function(ext) {
+          return ext.charAt(0) === '.' ? ext.substring(1) : ext;
+        });
+        return {
+          isValid: false,
+          error: `File "${file.name}" has an unsupported file type. Allowed types: ${displayExts.join(', ')}`,
+        };
       }
 
       // Check file count
@@ -313,7 +306,7 @@ export function useDocumentUploadState(props: IUseDocumentUploadStateProps): IUs
 
       return { isValid: true };
     },
-    [maxFileSize, maxFiles, allowedExtensions, fileUploadConfig, stagedFiles.length, documents]
+    [maxFileSize, maxFiles, allowedExtensions, stagedFiles.length, documents]
   );
 
   /**

@@ -1,8 +1,8 @@
 /**
  * Configuration Service
  *
- * Loads and caches system configuration from SharePoint Configuration list.
- * Provides typed access to configuration values with caching support.
+ * Provides typed access to configuration values via the configStore.
+ * The configStore handles loading, caching, and SharePoint queries.
  *
  * @module services/configurationService
  */
@@ -12,226 +12,7 @@ import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
 import { IWorkingHoursConfig, parseWorkingHoursConfig, DEFAULT_WORKING_HOURS } from '@utils/businessHoursCalculator';
 import { Lists } from '@sp/Lists';
 import { ConfigurationFields } from '@sp/listFields/ConfigurationFields';
-
-/**
- * Configuration cache entry
- */
-interface IConfigCacheEntry {
-  value: string;
-  timestamp: number;
-}
-
-/**
- * Configuration cache
- * Map of configuration key to cache entry
- */
-const configCache: Map<string, IConfigCacheEntry> = new Map();
-
-/**
- * Cache TTL in milliseconds (5 minutes)
- */
-const CACHE_TTL = 5 * 60 * 1000;
-
-/**
- * Working hours configuration cache
- */
-let workingHoursCache: { config: IWorkingHoursConfig; timestamp: number } | undefined;
-
-/**
- * Updates the working hours cache with a new entry
- * This helper function exists to satisfy ESLint's require-atomic-updates rule
- */
-function updateWorkingHoursCache(config: IWorkingHoursConfig): void {
-  workingHoursCache = { config, timestamp: Date.now() };
-}
-
-/**
- * Loads all configuration items from SharePoint
- *
- * @returns Map of configuration key to value
- *
- * @example
- * ```typescript
- * const config = await loadSystemConfiguration();
- * console.log(config.get('WorkingHoursStart')); // "8"
- * console.log(config.get('WorkingHoursEnd')); // "17"
- * ```
- */
-export async function loadSystemConfiguration(): Promise<Map<string, string>> {
-  try {
-    SPContext.logger.info('Loading system configuration', { listName: 'Configuration' });
-
-    const items = await SPContext.sp.web.lists
-      .getByTitle(Lists.Configuration.Title)
-      .items.select(ConfigurationFields.Title, ConfigurationFields.ConfigValue, ConfigurationFields.IsActive)
-      .filter(`${ConfigurationFields.IsActive} eq true`)();
-
-    const configMap = new Map<string, string>();
-    const now = Date.now();
-
-    for (const item of items) {
-      const key = item.Title as string;
-      const value = item.ConfigValue as string;
-
-      if (key && value !== null && value !== undefined) {
-        configMap.set(key, value);
-
-        // Update cache
-        configCache.set(key, { value, timestamp: now });
-      }
-    }
-
-    SPContext.logger.info('System configuration loaded', { count: configMap.size });
-
-    return configMap;
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    SPContext.logger.error('Failed to load system configuration', error, { error: message });
-    throw new Error(`Failed to load system configuration: ${message}`);
-  }
-}
-
-/**
- * Gets a single configuration value by key
- *
- * @param key - Configuration key
- * @param defaultValue - Default value if key not found
- * @returns Configuration value or default value
- *
- * @remarks
- * This function uses a cache with 5-minute TTL. If the cached value is expired,
- * it will reload from SharePoint. If the key is not found and no default is provided,
- * it will throw an error.
- *
- * @example
- * ```typescript
- * // Get with default value
- * const startHour = await getConfigValue('WorkingHoursStart', '9');
- * console.log(startHour); // "8" (from SharePoint) or "9" (default)
- *
- * // Get without default (throws if not found)
- * try {
- *   const value = await getConfigValue('RequiredKey');
- * } catch (error) {
- *   console.error('Configuration key not found');
- * }
- * ```
- */
-export async function getConfigValue(key: string, defaultValue?: string): Promise<string> {
-  // Check cache first
-  const cached = configCache.get(key);
-  const now = Date.now();
-
-  if (cached && now - cached.timestamp < CACHE_TTL) {
-    SPContext.logger.info('Configuration value retrieved from cache', { key, value: cached.value });
-    return cached.value;
-  }
-
-  // Cache miss or expired - reload from SharePoint
-  try {
-    SPContext.logger.info('Loading configuration value from SharePoint', { key });
-
-    const items = await SPContext.sp.web.lists
-      .getByTitle(Lists.Configuration.Title)
-      .items.select(ConfigurationFields.Title, ConfigurationFields.ConfigValue, ConfigurationFields.IsActive)
-      .filter(`${ConfigurationFields.Title} eq '${key}' and ${ConfigurationFields.IsActive} eq true`)
-      .top(1)();
-
-    if (items.length > 0) {
-      const value = items[0].ConfigValue as string;
-
-      // Update cache
-      configCache.set(key, { value, timestamp: now });
-
-      SPContext.logger.info('Configuration value loaded', { key, value });
-      return value;
-    }
-
-    // Not found - return default or throw
-    if (defaultValue !== undefined) {
-      SPContext.logger.warn('Configuration key not found, using default', { key, defaultValue });
-      return defaultValue;
-    }
-
-    throw new Error(`Configuration key not found: ${key}`);
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    SPContext.logger.error('Failed to load configuration value', error, { key, error: message });
-
-    // If default provided, return it on error
-    if (defaultValue !== undefined) {
-      SPContext.logger.warn('Error loading configuration, using default', { key, defaultValue });
-      return defaultValue;
-    }
-
-    throw new Error(`Failed to load configuration value for key '${key}': ${message}`);
-  }
-}
-
-/**
- * Gets the working hours configuration for time tracking
- *
- * @returns Working hours configuration
- *
- * @remarks
- * This function loads the time tracking configuration from SharePoint:
- * - WorkingHoursStart (default: 8)
- * - WorkingHoursEnd (default: 17)
- * - WorkingDays (default: "1,2,3,4,5" = Mon-Fri)
- *
- * The configuration is cached for 5 minutes to reduce SharePoint calls.
- *
- * @example
- * ```typescript
- * const config = await getWorkingHoursConfig();
- * console.log(config);
- * // { startHour: 8, endHour: 17, workingDays: [1, 2, 3, 4, 5] }
- *
- * // Use with business hours calculator
- * import { calculateBusinessHours } from '../utils/businessHoursCalculator';
- * const hours = calculateBusinessHours(startDate, endDate, config);
- * ```
- */
-export async function getWorkingHoursConfig(): Promise<IWorkingHoursConfig> {
-  const checkTime = Date.now();
-
-  // Check cache first
-  if (workingHoursCache && checkTime - workingHoursCache.timestamp < CACHE_TTL) {
-    SPContext.logger.info('Working hours configuration retrieved from cache', {
-      config: workingHoursCache.config,
-    });
-    return workingHoursCache.config;
-  }
-
-  // Load from SharePoint
-  try {
-    SPContext.logger.info('Loading working hours configuration from SharePoint');
-
-    const [startHourStr, endHourStr, workingDaysStr] = await Promise.all([
-      getConfigValue('WorkingHoursStart', String(DEFAULT_WORKING_HOURS.startHour)),
-      getConfigValue('WorkingHoursEnd', String(DEFAULT_WORKING_HOURS.endHour)),
-      getConfigValue('WorkingDays', DEFAULT_WORKING_HOURS.workingDays.join(',')),
-    ]);
-
-    const config = parseWorkingHoursConfig(startHourStr, endHourStr, workingDaysStr);
-
-    // Update cache with fresh timestamp after async operation completes
-    updateWorkingHoursCache(config);
-
-    SPContext.logger.info('Working hours configuration loaded', { config });
-
-    return config;
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    SPContext.logger.error('Failed to load working hours configuration, using defaults', error, {
-      error: message,
-      default: DEFAULT_WORKING_HOURS,
-    });
-
-    // Return defaults on error
-    return DEFAULT_WORKING_HOURS;
-  }
-}
+import { useConfigStore } from '@stores/configStore';
 
 /**
  * Default allowed file extensions for document uploads
@@ -250,139 +31,87 @@ export const DEFAULT_ALLOWED_EXTENSIONS = [
   '.png',
   '.gif',
   '.zip',
+  '.msg',
+  '.eml',
 ];
 
 /**
- * File upload configuration interface
- */
-export interface IFileUploadConfig {
-  allowedExtensions: string[];
-  maxFileSizeMB: number;
-}
-
-/**
- * File upload configuration cache
- */
-let fileUploadConfigCache: { config: IFileUploadConfig; timestamp: number } | undefined;
-
-/**
- * Updates the file upload config cache with a new entry
- * This helper function exists to satisfy ESLint's require-atomic-updates rule
- */
-function updateFileUploadConfigCache(config: IFileUploadConfig): void {
-  fileUploadConfigCache = { config, timestamp: Date.now() };
-}
-
-/**
- * Gets the file upload configuration from SharePoint
+ * Gets a configuration value from the configStore
  *
- * @returns File upload configuration with allowed extensions and max file size
+ * @param key - Configuration key (case-insensitive)
+ * @param defaultValue - Default value if key not found
+ * @returns Configuration value or default value
+ * @throws Error if key not found and no default provided
  *
  * @remarks
- * This function loads the file upload configuration from SharePoint:
- * - allowedFileExtensions: comma-separated list of allowed extensions (e.g., ".pdf,.docx,.xlsx")
- * - maxFileSizeMB: maximum file size in megabytes (default: 250)
+ * This function reads from the configStore which loads all configuration
+ * items at app startup. No additional SharePoint queries are made.
+ */
+export function getConfigValue(key: string, defaultValue?: string): string {
+  const store = useConfigStore.getState();
+
+  if (!store.isLoaded) {
+    SPContext.logger.warn('ConfigStore not yet loaded, using default', { key, defaultValue });
+    if (defaultValue !== undefined) {
+      return defaultValue;
+    }
+    throw new Error(`Configuration not loaded and no default provided for key: ${key}`);
+  }
+
+  const value = store.getConfig(key);
+
+  if (value !== undefined) {
+    return value;
+  }
+
+  if (defaultValue !== undefined) {
+    return defaultValue;
+  }
+
+  throw new Error(`Configuration key not found: ${key}`);
+}
+
+/**
+ * Gets the working hours configuration for time tracking
  *
- * The configuration is cached for 5 minutes to reduce SharePoint calls.
+ * @returns Working hours configuration
+ *
+ * @remarks
+ * Reads from the configStore (loaded at app startup):
+ * - WorkingHoursStart (default: 8)
+ * - WorkingHoursEnd (default: 17)
+ * - WorkingDays (default: "1,2,3,4,5" = Mon-Fri)
  *
  * @example
  * ```typescript
- * const config = await getFileUploadConfig();
- * console.log(config.allowedExtensions); // [".pdf", ".docx", ".xlsx", ...]
- * console.log(config.maxFileSizeMB); // 250
+ * const config = getWorkingHoursConfig();
+ * // { startHour: 8, endHour: 17, workingDays: [1, 2, 3, 4, 5] }
  * ```
  */
-export async function getFileUploadConfig(): Promise<IFileUploadConfig> {
-  const checkTime = Date.now();
-
-  // Check cache first
-  if (fileUploadConfigCache && checkTime - fileUploadConfigCache.timestamp < CACHE_TTL) {
-    SPContext.logger.info('File upload configuration retrieved from cache', {
-      config: fileUploadConfigCache.config,
-    });
-    return fileUploadConfigCache.config;
-  }
-
-  // Load from SharePoint
+export function getWorkingHoursConfig(): IWorkingHoursConfig {
   try {
-    SPContext.logger.info('Loading file upload configuration from SharePoint');
+    const startHourStr = getConfigValue('WorkingHoursStart', String(DEFAULT_WORKING_HOURS.startHour));
+    const endHourStr = getConfigValue('WorkingHoursEnd', String(DEFAULT_WORKING_HOURS.endHour));
+    const workingDaysStr = getConfigValue('WorkingDays', DEFAULT_WORKING_HOURS.workingDays.join(','));
 
-    const [extensionsStr, maxFileSizeStr] = await Promise.all([
-      getConfigValue('allowedFileExtensions', DEFAULT_ALLOWED_EXTENSIONS.join(',')),
-      getConfigValue('maxFileSizeMB', '250'),
-    ]);
-
-    // Parse extensions (comma-separated, trim whitespace)
-    const rawExtensions = extensionsStr
-      .split(',')
-      .map(ext => ext.trim().toLowerCase())
-      .filter(ext => ext.length > 0);
-
-    // Sanitize extensions (ignore invalid values like URLs)
-    const allowedExtensions = rawExtensions
-      .filter(ext => {
-        const normalized = ext.charAt(0) === '.' ? ext.substring(1) : ext;
-        return /^[a-z0-9]+$/.test(normalized);
-      })
-      .map(ext => (ext.charAt(0) === '.' ? ext : `.${ext}`));
-
-    if (allowedExtensions.length === 0 && rawExtensions.length > 0) {
-      SPContext.logger.warn('File upload configuration contains invalid extensions, using defaults', {
-        rawExtensions,
-        defaultExtensions: DEFAULT_ALLOWED_EXTENSIONS,
-      });
-    }
-
-    // Parse max file size
-    const maxFileSizeMB = parseInt(maxFileSizeStr, 10) || 250;
-
-    const config: IFileUploadConfig = {
-      allowedExtensions: allowedExtensions.length > 0 ? allowedExtensions : DEFAULT_ALLOWED_EXTENSIONS,
-      maxFileSizeMB,
-    };
-
-    // Update cache with fresh timestamp after async operation completes
-    updateFileUploadConfigCache(config);
-
-    SPContext.logger.info('File upload configuration loaded', { config });
-
-    return config;
+    return parseWorkingHoursConfig(startHourStr, endHourStr, workingDaysStr);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    SPContext.logger.error('Failed to load file upload configuration, using defaults', error, {
+    SPContext.logger.error('Failed to get working hours configuration, using defaults', error, {
       error: message,
-      defaultExtensions: DEFAULT_ALLOWED_EXTENSIONS,
+      default: DEFAULT_WORKING_HOURS,
     });
 
-    // Return defaults on error
-    return {
-      allowedExtensions: DEFAULT_ALLOWED_EXTENSIONS,
-      maxFileSizeMB: 250,
-    };
+    return DEFAULT_WORKING_HOURS;
   }
 }
 
 /**
- * Clears the configuration cache
- *
- * @remarks
- * Use this function when you know configuration has been updated and you want
- * to force a reload from SharePoint on the next access.
- *
- * @example
- * ```typescript
- * // After updating configuration in SharePoint
- * await updateConfiguration('WorkingHoursStart', '9');
- * clearConfigurationCache();
- *
- * // Next access will reload from SharePoint
- * const config = await getWorkingHoursConfig();
- * ```
+ * Clears the configuration cache by refreshing the configStore
  */
 export function clearConfigurationCache(): void {
-  configCache.clear();
-  workingHoursCache = undefined;
-  fileUploadConfigCache = undefined;
+  const store = useConfigStore.getState();
+  store.reset();
   SPContext.logger.info('Configuration cache cleared');
 }
 
@@ -393,21 +122,8 @@ export function clearConfigurationCache(): void {
  * @param value - New configuration value
  *
  * @remarks
- * This function updates the configuration in SharePoint and clears the cache
- * to ensure the next access retrieves the updated value.
- *
- * **Note**: This requires appropriate permissions. Most users will not have
- * permission to update configuration. This is typically for admins only.
- *
- * @example
- * ```typescript
- * // Update working hours start time
- * await updateConfiguration('WorkingHoursStart', '9');
- *
- * // Cache is automatically cleared, next access will get new value
- * const config = await getWorkingHoursConfig();
- * console.log(config.startHour); // 9
- * ```
+ * Updates the configuration in SharePoint and refreshes the configStore.
+ * Requires appropriate permissions (admin only).
  */
 export async function updateConfiguration(key: string, value: string): Promise<void> {
   try {
@@ -431,8 +147,8 @@ export async function updateConfiguration(key: string, value: string): Promise<v
       [ConfigurationFields.ConfigValue]: value,
     });
 
-    // Clear cache to force reload
-    clearConfigurationCache();
+    // Refresh configStore to pick up the change
+    await useConfigStore.getState().refresh();
 
     SPContext.logger.info('Configuration updated successfully', { key, value });
   } catch (error: unknown) {
