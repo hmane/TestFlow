@@ -278,22 +278,24 @@ export function useDocumentUploadState(props: IUseDocumentUploadStateProps): IUs
         };
       }
 
-      // Check extension
-      const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
-      const extWithDot = `.${fileExt}`;
-      const extWithoutDot = fileExt;
+      // Only validate extensions if config has loaded (skip check while loading to avoid rejecting valid files)
+      if (fileUploadConfig) {
+        const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
+        const extWithDot = `.${fileExt}`;
+        const extWithoutDot = fileExt;
 
-      const isAllowed = allowedExtensions.indexOf(extWithDot) !== -1 ||
-                        allowedExtensions.indexOf(extWithoutDot) !== -1;
+        const isAllowed = allowedExtensions.indexOf(extWithDot) !== -1 ||
+                          allowedExtensions.indexOf(extWithoutDot) !== -1;
 
-      if (!isAllowed) {
-        const displayExts = allowedExtensions.map(function(ext) {
-          return ext.charAt(0) === '.' ? ext.substring(1) : ext;
-        });
-        return {
-          isValid: false,
-          error: `File "${file.name}" has an unsupported file type. Allowed types: ${displayExts.join(', ')}`,
-        };
+        if (!isAllowed) {
+          const displayExts = allowedExtensions.map(function(ext) {
+            return ext.charAt(0) === '.' ? ext.substring(1) : ext;
+          });
+          return {
+            isValid: false,
+            error: `File "${file.name}" has an unsupported file type. Allowed types: ${displayExts.join(', ')}`,
+          };
+        }
       }
 
       // Check file count
@@ -311,7 +313,7 @@ export function useDocumentUploadState(props: IUseDocumentUploadStateProps): IUs
 
       return { isValid: true };
     },
-    [maxFileSize, maxFiles, allowedExtensions, stagedFiles.length, documents]
+    [maxFileSize, maxFiles, allowedExtensions, fileUploadConfig, stagedFiles.length, documents]
   );
 
   /**
