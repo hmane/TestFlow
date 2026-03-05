@@ -20,8 +20,7 @@
 
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import type { RequestStatus } from '@appTypes/workflowTypes';
-import { Lists } from '@sp/Lists';
-import { ConfigurationFields } from '@sp/listFields';
+import { useConfigStore } from '@stores/configStore';
 
 /**
  * Request payload for Azure Function permission management
@@ -120,29 +119,20 @@ interface IApimConfig {
 }
 
 /**
- * Cached APIM configuration promise
- * Using a promise prevents race conditions when multiple concurrent calls are made
+ * Gets APIM configuration from the configStore
+ *
+ * @returns APIM configuration
+ * @throws Error if configuration not found or store not loaded
  */
-let apimConfigPromise: Promise<IApimConfig> | undefined;
+function getApimConfig(): IApimConfig {
+  const store = useConfigStore.getState();
 
-/**
- * Loads APIM configuration from SharePoint Configuration list
- * This is the actual fetch logic, separated from caching
- */
-async function loadApimConfig(): Promise<IApimConfig> {
-  // Load from SharePoint Configuration list
-  const items = await SPContext.sp.web.lists
-    .getByTitle(Lists.Configuration.Title)
-    .items.select(ConfigurationFields.Title, ConfigurationFields.ConfigValue)
-    .filter(`(${ConfigurationFields.Title} eq 'ApimBaseUrl' or ${ConfigurationFields.Title} eq 'ApimApiClientId') and ${ConfigurationFields.IsActive} eq true`)();
-
-  const configMap = new Map<string, string>();
-  for (const item of items) {
-    configMap.set(item[ConfigurationFields.Title], item[ConfigurationFields.ConfigValue]);
+  if (!store.isLoaded) {
+    throw new Error('ConfigStore not yet loaded - cannot retrieve APIM configuration');
   }
 
-  const baseUrl = configMap.get('ApimBaseUrl');
-  const apiClientId = configMap.get('ApimApiClientId');
+  const baseUrl = store.getConfig('ApimBaseUrl');
+  const apiClientId = store.getConfig('ApimApiClientId');
 
   if (!baseUrl) {
     throw new Error('ApimBaseUrl not configured in Configuration list');
@@ -153,43 +143,6 @@ async function loadApimConfig(): Promise<IApimConfig> {
   }
 
   return { baseUrl, apiClientId };
-}
-
-/**
- * Gets APIM configuration from SharePoint Configuration list
- *
- * Uses promise-based caching to prevent race conditions when multiple
- * concurrent calls are made. All callers will await the same promise.
- *
- * @returns APIM configuration
- * @throws Error if configuration not found
- */
-async function getApimConfig(): Promise<IApimConfig> {
-  // If we already have a pending or resolved promise, return it
-  if (apimConfigPromise) {
-    return apimConfigPromise;
-  }
-
-  // Create the promise and cache it immediately (before awaiting)
-  // This ensures concurrent calls all get the same promise
-  apimConfigPromise = loadApimConfig().catch((error: unknown) => {
-    // On error, clear the cache so next call can retry
-    apimConfigPromise = undefined;
-    const message = error instanceof Error ? error.message : String(error);
-    SPContext.logger.error('Failed to load APIM configuration', error, { error: message });
-    throw new Error(`Failed to load APIM configuration: ${message}`);
-  });
-
-  return apimConfigPromise;
-}
-
-/**
- * Clears the APIM configuration cache
- * Call this if configuration is updated
- */
-export function clearApimConfigCache(): void {
-  apimConfigPromise = undefined;
-  SPContext.logger.info('APIM configuration cache cleared');
 }
 
 /**
@@ -244,7 +197,7 @@ export async function initializePermissions(
       requestTitle,
     });
 
-    const config = await getApimConfig();
+    const config = getApimConfig();
 
     const payload: IInitializePermissionsRequest = {
       requestId: itemId,
@@ -343,7 +296,7 @@ export async function manageRequestPermissions(
   }
 
   try {
-    const config = await getApimConfig();
+    const config = getApimConfig();
 
     const payload: IPermissionManagementRequest = {
       itemId,
@@ -441,7 +394,7 @@ export async function addUserPermission(
       userName: principal.displayName,
     });
 
-    const config = await getApimConfig();
+    const config = getApimConfig();
 
     const payload: IUserPermissionRequest = {
       requestId: itemId,
@@ -540,7 +493,7 @@ export async function removeUserPermission(
       userName: principal.displayName,
     });
 
-    const config = await getApimConfig();
+    const config = getApimConfig();
 
     const payload: IUserPermissionRequest = {
       requestId: itemId,
