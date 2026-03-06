@@ -87,21 +87,28 @@
 
   <pnp:DataRows KeyColumn="Title">
     <pnp:DataRow>
-      <pnp:DataValue FieldName="Title">azureFunctionUrl</pnp:DataValue>
-      <pnp:DataValue FieldName="ConfigValue">https://your-function.azurewebsites.net/api</pnp:DataValue>
-      <pnp:DataValue FieldName="Description">Azure Function endpoint for permission management</pnp:DataValue>
+      <pnp:DataValue FieldName="Title">ApimBaseUrl</pnp:DataValue>
+      <pnp:DataValue FieldName="ConfigValue">https://your-apim-instance.azure-api.net</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">APIM base URL for Azure Function calls</pnp:DataValue>
       <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
       <pnp:DataValue FieldName="Category">Integration</pnp:DataValue>
     </pnp:DataRow>
     <pnp:DataRow>
-      <pnp:DataValue FieldName="Title">maxFileSizeMB</pnp:DataValue>
+      <pnp:DataValue FieldName="Title">ApimApiClientId</pnp:DataValue>
+      <pnp:DataValue FieldName="ConfigValue">00000000-0000-0000-0000-000000000000</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Azure AD App Registration Client ID for APIM API token acquisition</pnp:DataValue>
+      <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Category">Integration</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">MaxFileSizeMB</pnp:DataValue>
       <pnp:DataValue FieldName="ConfigValue">250</pnp:DataValue>
       <pnp:DataValue FieldName="Description">Maximum file upload size in megabytes</pnp:DataValue>
       <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
       <pnp:DataValue FieldName="Category">Limits</pnp:DataValue>
     </pnp:DataRow>
     <pnp:DataRow>
-      <pnp:DataValue FieldName="Title">enablePhase2RequestTypes</pnp:DataValue>
+      <pnp:DataValue FieldName="Title">EnablePhase2RequestTypes</pnp:DataValue>
       <pnp:DataValue FieldName="ConfigValue">false</pnp:DataValue>
       <pnp:DataValue FieldName="Description">Enable Phase 2 request types (General Review, IMA Review)</pnp:DataValue>
       <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
@@ -143,8 +150,15 @@
       <pnp:DataValue FieldName="Category">Search</pnp:DataValue>
     </pnp:DataRow>
     <pnp:DataRow>
-      <pnp:DataValue FieldName="Title">allowedFileExtensions</pnp:DataValue>
-      <pnp:DataValue FieldName="ConfigValue">.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif,.zip</pnp:DataValue>
+      <pnp:DataValue FieldName="Title">EnableAzureFunctions</pnp:DataValue>
+      <pnp:DataValue FieldName="ConfigValue">false</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Enable Azure Function calls via APIM for permission management. Set to 'true' when APIM and Azure Functions are configured.</pnp:DataValue>
+      <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Category">Features</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">AllowedFileExtensions</pnp:DataValue>
+      <pnp:DataValue FieldName="ConfigValue">.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif,.zip,.msg,.eml</pnp:DataValue>
       <pnp:DataValue FieldName="Description">Comma-separated list of allowed file extensions for document uploads (include the dot). Example: .pdf,.docx,.xlsx</pnp:DataValue>
       <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
       <pnp:DataValue FieldName="Category">FileUpload</pnp:DataValue>

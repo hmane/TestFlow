@@ -308,8 +308,13 @@ Configuration stored in SharePoint **Configuration** list:
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `azureFunctionUrl` | string | - | Azure Function endpoint for permissions |
+| `ApimBaseUrl` | string | - | APIM base URL for Azure Function calls |
+| `ApimApiClientId` | string | - | Azure AD App Registration Client ID for APIM API |
 | `maxFileSizeMB` | number | 250 | Max file upload size |
+| `allowedFileExtensions` | string | .pdf,.doc,... | Comma-separated allowed file extensions |
+| `WorkingHoursStart` | number | 8 | Business day start hour (0-23) |
+| `WorkingHoursEnd` | number | 17 | Business day end hour (0-23) |
+| `WorkingDays` | string | 1,2,3,4,5 | Working days (1=Mon through 5=Fri) |
 | `enablePhase2RequestTypes` | boolean | false | Enable Phase 2 features |
 
 ### Submission Types

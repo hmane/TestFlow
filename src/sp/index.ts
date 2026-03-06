@@ -1,6 +1,7 @@
 // Auto-generated index file
 export { Lists } from './Lists';
 export { Groups } from './Groups';
+export { ConfigKeys } from './ConfigKeys';
 
 export { ConfigurationFields } from './listFields/ConfigurationFields';
 export { RequestDocumentsFields } from './listFields/RequestDocumentsFields';

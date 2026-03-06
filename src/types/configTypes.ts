@@ -27,15 +27,6 @@ export interface IConfigurationListItem {
 }
 
 /**
- * SharePoint group mapping for roles
- */
-export interface IGroupMapping {
-  roleKey: string;
-  groupName: string;
-  description: string;
-}
-
-/**
  * Application groups/roles
  *
  * NOTE: These values MUST match the group titles in @sp/Groups (auto-generated from SharePoint)
@@ -73,73 +64,3 @@ export interface IUserRoleInfo {
   isAdmin: boolean;
 }
 
-/**
- * List configuration
- */
-export interface IListConfig {
-  requestsListTitle: string;
-  submissionItemsListTitle: string;
-  configurationListTitle: string;
-  requestDocumentsLibraryTitle: string;
-}
-
-/**
- * Environment configuration
- */
-export interface IEnvironmentConfig {
-  environment: 'dev' | 'uat' | 'prod';
-  siteUrl: string;
-  tenantUrl: string;
-  debugMode: boolean;
-  enableCaching: boolean;
-  cacheTimeout: number;
-  azureFunctionUrl?: string;
-  powerAutomateFlowUrl?: string;
-}
-
-/**
- * Feature flags
- */
-export interface IFeatureFlags {
-  enablePhase2RequestTypes: boolean;
-  enableSeismicIntegration: boolean;
-  enableAdvancedReporting: boolean;
-  enableMobileNotifications: boolean;
-  enableHolidayCalendar: boolean;
-  enableAttorneyWorkloadBalancing: boolean;
-}
-
-/**
- * Dashboard configuration
- */
-export interface IDashboardConfig {
-  defaultView: 'grid' | 'list';
-  itemsPerPage: number;
-  showFilters: boolean;
-  showSearch: boolean;
-  refreshInterval?: number;
-  enableAutoRefresh: boolean;
-}
-
-/**
- * Email template configuration
- */
-export interface IEmailTemplate {
-  templateKey: string;
-  subject: string;
-  body: string;
-  placeholders: string[];
-  isActive: boolean;
-}
-
-/**
- * Holiday calendar entry
- */
-export interface IHoliday {
-  id?: number;
-  holidayDate: Date;
-  holidayName: string;
-  isCompanyHoliday: boolean;
-  isObserved: boolean;
-  year: number;
-}

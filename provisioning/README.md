@@ -116,8 +116,11 @@ Get-PnPField -List "Requests" | Select-Object Title, InternalName, Id | Format-T
 - Category (Text) - Grouping category
 
 **Sample Data:**
-- azureFunctionUrl (Integration)
+- ApimBaseUrl (Integration)
+- ApimApiClientId (Integration)
 - maxFileSizeMB (Limits)
+- allowedFileExtensions (FileUpload)
+- WorkingHoursStart, WorkingHoursEnd, WorkingDays (TimeTracking)
 - enablePhase2RequestTypes (Features)
 
 **Views:**

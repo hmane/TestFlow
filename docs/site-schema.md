@@ -360,7 +360,8 @@ This document provides a comprehensive reference for the SharePoint site schema 
 
 | Title | Config Value | Description | Is Active | Category |
 |-------|--------------|-------------|-----------|----------|
-| azureFunctionUrl | https://your-function.azurewebsites.net/api | Azure Function endpoint for permission management | Yes | Integration |
+| ApimBaseUrl | https://your-apim-instance.azure-api.net | APIM base URL for Azure Function calls | Yes | Integration |
+| ApimApiClientId | 00000000-0000-0000-0000-000000000000 | Azure AD App Registration Client ID for APIM API token acquisition | Yes | Integration |
 | maxFileSizeMB | 250 | Maximum file upload size in megabytes | Yes | Limits |
 | enablePhase2RequestTypes | false | Enable Phase 2 request types (General Review, IMA Review) | Yes | Features |
 | WorkingHoursStart | 8 | Business day start hour (0-23, PST/PDT timezone). Default: 8 AM | Yes | TimeTracking |
@@ -368,7 +369,7 @@ This document provides a comprehensive reference for the SharePoint site schema 
 | WorkingDays | 1,2,3,4,5 | Working days of week (1=Monday through 5=Friday). Weekends excluded. | Yes | TimeTracking |
 | SearchResultLimit | 10 | Maximum number of search results to display in spotlight search | Yes | Search |
 | RecentSearchesLimit | 5 | Maximum number of recent searches to store and display | Yes | Search |
-| allowedFileExtensions | .pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif,.zip | Comma-separated list of allowed file extensions for document uploads | Yes | FileUpload |
+| allowedFileExtensions | .pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif,.zip,.msg,.eml | Comma-separated list of allowed file extensions for document uploads | Yes | FileUpload |
 
 ### Views
 

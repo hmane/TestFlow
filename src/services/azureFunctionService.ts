@@ -21,6 +21,7 @@
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import type { RequestStatus } from '@appTypes/workflowTypes';
 import { useConfigStore } from '@stores/configStore';
+import { ConfigKeys } from '@sp/ConfigKeys';
 
 /**
  * Request payload for Azure Function permission management
@@ -81,15 +82,11 @@ export interface IPermissionManagementResponse {
   error?: string;
 }
 
-// ============================================
-// FEATURE FLAG
-// ============================================
-
 /**
- * Feature flag to enable/disable Azure Function calls via APIM.
+ * Checks if Azure Function calls via APIM are enabled.
  *
- * Set to `false` while Azure Functions are not yet deployed.
- * Set to `true` once Azure Functions and APIM are deployed and configured.
+ * Reads from the SharePoint Configuration list (key: 'EnableAzureFunctions').
+ * Defaults to `false` if configStore is not yet loaded or key is not found.
  *
  * When disabled:
  * - All permission management functions return success immediately
@@ -97,10 +94,15 @@ export interface IPermissionManagementResponse {
  * - Logs indicate that calls are skipped
  *
  * Configuration items required in SharePoint Configuration list when enabled:
+ * - EnableAzureFunctions: "true"
  * - ApimBaseUrl: e.g., "https://legalworkflow-apim.azure-api.net"
  * - ApimApiClientId: Azure AD App Registration Client ID for the API
  */
-export const AZURE_FUNCTIONS_ENABLED = false;
+function isAzureFunctionsEnabled(): boolean {
+  const store = useConfigStore.getState();
+  if (!store.isLoaded) return false;
+  return store.getConfigBoolean(ConfigKeys.EnableAzureFunctions, false);
+}
 
 /**
  * Default timeout for Azure Function calls (30 seconds)
@@ -131,8 +133,8 @@ function getApimConfig(): IApimConfig {
     throw new Error('ConfigStore not yet loaded - cannot retrieve APIM configuration');
   }
 
-  const baseUrl = store.getConfig('ApimBaseUrl');
-  const apiClientId = store.getConfig('ApimApiClientId');
+  const baseUrl = store.getConfig(ConfigKeys.ApimBaseUrl);
+  const apiClientId = store.getConfig(ConfigKeys.ApimApiClientId);
 
   if (!baseUrl) {
     throw new Error('ApimBaseUrl not configured in Configuration list');
@@ -182,11 +184,10 @@ export async function initializePermissions(
   requestTitle: string
 ): Promise<void> {
   // Check feature flag
-  if (!AZURE_FUNCTIONS_ENABLED) {
+  if (!isAzureFunctionsEnabled()) {
     SPContext.logger.info('AzureFunctionService: initializePermissions SKIPPED (Azure Functions disabled)', {
       itemId,
       requestTitle,
-      featureFlag: 'AZURE_FUNCTIONS_ENABLED = false',
     });
     return;
   }
@@ -286,11 +287,10 @@ export async function manageRequestPermissions(
   status: RequestStatus
 ): Promise<void> {
   // Check feature flag
-  if (!AZURE_FUNCTIONS_ENABLED) {
+  if (!isAzureFunctionsEnabled()) {
     SPContext.logger.info('AzureFunctionService: manageRequestPermissions SKIPPED (Azure Functions disabled)', {
       itemId,
       status,
-      featureFlag: 'AZURE_FUNCTIONS_ENABLED = false',
     });
     return;
   }
@@ -376,12 +376,11 @@ export async function addUserPermission(
   principal: IPermissionPrincipal
 ): Promise<boolean> {
   // Check feature flag
-  if (!AZURE_FUNCTIONS_ENABLED) {
+  if (!isAzureFunctionsEnabled()) {
     SPContext.logger.info('AzureFunctionService: addUserPermission SKIPPED (Azure Functions disabled)', {
       itemId,
       requestTitle,
       userEmail: principal.email,
-      featureFlag: 'AZURE_FUNCTIONS_ENABLED = false',
     });
     return true; // Return success when disabled
   }
@@ -475,12 +474,11 @@ export async function removeUserPermission(
   principal: IPermissionPrincipal
 ): Promise<boolean> {
   // Check feature flag
-  if (!AZURE_FUNCTIONS_ENABLED) {
+  if (!isAzureFunctionsEnabled()) {
     SPContext.logger.info('AzureFunctionService: removeUserPermission SKIPPED (Azure Functions disabled)', {
       itemId,
       requestTitle,
       userEmail: principal.email,
-      featureFlag: 'AZURE_FUNCTIONS_ENABLED = false',
     });
     return true; // Return success when disabled
   }

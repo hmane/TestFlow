@@ -9,6 +9,7 @@ import * as React from 'react';
 
 import { DEFAULT_ALLOWED_EXTENSIONS } from '@services/configurationService';
 import { useConfigStore } from '@stores/configStore';
+import { ConfigKeys } from '@sp/ConfigKeys';
 
 import { useDocumentsStore, type IStagedDocument } from '@stores/documentsStore';
 import { DocumentType } from '@appTypes/documentTypes';
@@ -149,7 +150,7 @@ export function useDocumentUploadState(props: IUseDocumentUploadStateProps): IUs
     if (allowedExtensionsProp) return allowedExtensionsProp;
     if (!isConfigLoaded) return DEFAULT_ALLOWED_EXTENSIONS;
 
-    const extensionsStr = getConfig('allowedFileExtensions');
+    const extensionsStr = getConfig(ConfigKeys.AllowedFileExtensions);
     if (!extensionsStr) return DEFAULT_ALLOWED_EXTENSIONS;
 
     const parsed = extensionsStr
@@ -169,7 +170,7 @@ export function useDocumentUploadState(props: IUseDocumentUploadStateProps): IUs
     if (maxFileSizeProp !== undefined) return maxFileSizeProp;
     if (!isConfigLoaded) return DEFAULT_MAX_FILE_SIZE;
 
-    const maxFileSizeStr = getConfig('maxFileSizeMB');
+    const maxFileSizeStr = getConfig(ConfigKeys.MaxFileSizeMB);
     if (!maxFileSizeStr) return DEFAULT_MAX_FILE_SIZE;
 
     const parsed = parseInt(maxFileSizeStr, 10);

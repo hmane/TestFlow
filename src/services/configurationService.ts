@@ -13,6 +13,7 @@ import { IWorkingHoursConfig, parseWorkingHoursConfig, DEFAULT_WORKING_HOURS } f
 import { Lists } from '@sp/Lists';
 import { ConfigurationFields } from '@sp/listFields/ConfigurationFields';
 import { useConfigStore } from '@stores/configStore';
+import { ConfigKeys } from '@sp/ConfigKeys';
 
 /**
  * Default allowed file extensions for document uploads
@@ -90,9 +91,9 @@ export function getConfigValue(key: string, defaultValue?: string): string {
  */
 export function getWorkingHoursConfig(): IWorkingHoursConfig {
   try {
-    const startHourStr = getConfigValue('WorkingHoursStart', String(DEFAULT_WORKING_HOURS.startHour));
-    const endHourStr = getConfigValue('WorkingHoursEnd', String(DEFAULT_WORKING_HOURS.endHour));
-    const workingDaysStr = getConfigValue('WorkingDays', DEFAULT_WORKING_HOURS.workingDays.join(','));
+    const startHourStr = getConfigValue(ConfigKeys.WorkingHoursStart, String(DEFAULT_WORKING_HOURS.startHour));
+    const endHourStr = getConfigValue(ConfigKeys.WorkingHoursEnd, String(DEFAULT_WORKING_HOURS.endHour));
+    const workingDaysStr = getConfigValue(ConfigKeys.WorkingDays, DEFAULT_WORKING_HOURS.workingDays.join(','));
 
     return parseWorkingHoursConfig(startHourStr, endHourStr, workingDaysStr);
   } catch (error: unknown) {

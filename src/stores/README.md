@@ -81,7 +81,7 @@ const { configs, getConfig, getConfigBoolean } = useConfig();
 // Get specific config value
 const apiUrl = useConfigValue('apiUrl', 'https://default.com');
 const enableFeature = useConfigBoolean('enablePhase2', false);
-const maxFileSize = useConfigNumber('maxFileSizeMB', 250);
+const maxFileSize = useConfigNumber('MaxFileSizeMB', 250);
 ```
 
 ---
@@ -186,15 +186,15 @@ import { useConfig, useConfigBoolean } from '@/stores';
 
 const FeatureComponent: React.FC = () => {
   const { getConfig } = useConfig();
-  const enablePhase2 = useConfigBoolean('enablePhase2RequestTypes', false);
+  const enablePhase2 = useConfigBoolean('EnablePhase2RequestTypes', false);
 
-  const apiUrl = getConfig('azureFunctionUrl', 'https://default.azure.com');
+  const maxFileSize = getConfig('MaxFileSizeMB', '250');
 
   if (!enablePhase2) {
     return null; // Feature not enabled
   }
 
-  return <Phase2Features apiUrl={apiUrl} />;
+  return <Phase2Features maxFileSize={maxFileSize} />;
 };
 ```
 
@@ -307,7 +307,7 @@ const RequestFormWithConfig: React.FC<{ itemId?: number }> = ({ itemId }) => {
   const { items: submissionItems } = useSubmissionItems();
   const { getConfigNumber } = useConfig();
 
-  const maxFileSize = getConfigNumber('maxFileSizeMB', 250);
+  const maxFileSize = getConfigNumber('MaxFileSizeMB', 250);
 
   return (
     <div>

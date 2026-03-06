@@ -25,6 +25,12 @@
       "videoUrl": "",
       "categories": []
     },
+    "webApiPermissionRequests": [
+      {
+        "resource": "LegalWorkflow-APIM-API",
+        "scope": "user_impersonation"
+      }
+    ],
     "features": [
       {
         "title": "legal-workflow Feature",
