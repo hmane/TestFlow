@@ -476,13 +476,17 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
    * Check if current user can perform legal intake actions
    */
   const canPerformLegalIntakeActions = React.useMemo(() => {
-    // Only show action buttons in Legal Intake status
-    if (currentRequest?.status !== RequestStatus.LegalIntake) {
-      return false;
+    const status = currentRequest?.status;
+    // Legal Admin or Admin can perform actions during Legal Intake
+    if (status === RequestStatus.LegalIntake) {
+      return permissions.isLegalAdmin || permissions.isAdmin;
     }
-    // Legal Admin or Admin can perform actions
-    return permissions.isLegalAdmin || permissions.isAdmin;
-  }, [currentRequest?.status, permissions.isLegalAdmin, permissions.isAdmin]);
+    // Attorney Assigner, Legal Admin, or Admin can assign during Assign Attorney
+    if (status === RequestStatus.AssignAttorney) {
+      return permissions.isAttorneyAssigner || permissions.isLegalAdmin || permissions.isAdmin;
+    }
+    return false;
+  }, [currentRequest?.status, permissions.isAttorneyAssigner, permissions.isLegalAdmin, permissions.isAdmin]);
 
   if (!currentRequest) {
     return null;
@@ -996,15 +1000,19 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
 
               <Stack horizontal horizontalAlign='space-between' verticalAlign='center' styles={{ root: { width: '100%' } }}>
               <Text variant='small' styles={{ root: { color: '#605e5c', fontStyle: 'italic' } }}>
-                {showAttorneyField
+                {currentRequest?.status === RequestStatus.AssignAttorney
                   ? (selectedAttorneys && selectedAttorneys.length > 0
                       ? 'Attorney(s) selected. Click "Assign Attorney" to proceed.'
-                      : 'Select attorney(s), or click "Submit to Assign Attorney" to send to committee.')
-                  : 'Compliance Only selected. Click "Send to Compliance" to proceed.'}
+                      : 'Select attorney(s) to assign to this request.')
+                  : showAttorneyField
+                    ? (selectedAttorneys && selectedAttorneys.length > 0
+                        ? 'Attorney(s) selected. Click "Assign Attorney" to proceed.'
+                        : 'Select attorney(s), or click "Submit to Assign Attorney" to send to committee.')
+                    : 'Compliance Only selected. Click "Send to Compliance" to proceed.'}
               </Text>
               <Stack horizontal tokens={{ childrenGap: 8 }}>
-                {/* Submit to Assign Attorney - only shown when attorney field is visible */}
-                {showAttorneyField && (
+                {/* Submit to Assign Attorney - only during Legal Intake (not when already at Assign Attorney) */}
+                {showAttorneyField && currentRequest?.status !== RequestStatus.AssignAttorney && (
                   <DefaultButton
                     text={isSendingToCommittee ? 'Sending...' : 'Submit to Assign Attorney'}
                     onClick={handleSendToCommittee}
