@@ -15,17 +15,9 @@ import { useRequestFormContext } from '@contexts/RequestFormContext';
 import { usePermissions } from '@hooks/usePermissions';
 import { useWorkflowPermissions } from '@hooks/useWorkflowPermissions';
 import { useRequestStore } from '@stores/requestStore';
-import { useShallow } from 'zustand/react/shallow';
-import { useLegalIntakeStore } from '@stores/legalIntakeStore';
-import { useCloseoutStore } from '@stores/closeoutStore';
 import { useDocumentsStore } from '@stores/documentsStore';
-import { RequestStatus, ReviewAudience, ReviewOutcome } from '@appTypes/workflowTypes';
+import { RequestStatus } from '@appTypes/workflowTypes';
 import { DocumentType } from '@appTypes/documentTypes';
-import {
-  assignAttorneySchema,
-  committeeAssignAttorneySchema,
-  sendToCommitteeSchema,
-} from '@schemas/workflowSchema';
 import type { IValidationError } from '@contexts/RequestFormContext';
 
 import { FIELD_LABELS, FIELD_ORDER, CUSTOM_SECTION_MAP, SECTION_HANDLED_FIELDS, type ActiveAction } from '../constants';
@@ -60,8 +52,6 @@ export interface IUseRequestActionsStateReturn {
   sortedValidationErrors: IValidationError[];
   isAnyActionInProgress: boolean;
   loadingMessage: string;
-  hasApprovedWithComments: boolean;
-  isTrackingIdRequired: boolean;
   hasFINRADocuments: boolean;
 
   // Button visibility
@@ -71,9 +61,6 @@ export interface IUseRequestActionsStateReturn {
   showCancel: boolean;
   showOnHold: boolean;
   showResume: boolean;
-  showAssignAttorney: boolean;
-  showSendToCommittee: boolean;
-  showCloseoutSubmit: boolean;
   showCompleteFINRADocuments: boolean;
 
   // Handlers
@@ -87,9 +74,6 @@ export interface IUseRequestActionsStateReturn {
   handleCancelRequestClick: () => void;
   handlePutOnHoldClick: () => void;
   handleResumeClick: () => Promise<void>;
-  handleSendToCommitteeClick: () => Promise<void>;
-  handleAssignAttorneyClick: () => Promise<void>;
-  handleCloseoutClick: () => Promise<void>;
   handleCompleteFINRADocumentsClick: () => Promise<void>;
   handleReasonConfirm: (reason: string) => Promise<void>;
   handleReasonCancel: () => void;
@@ -122,8 +106,6 @@ export function useRequestActionsState(props: {
   const {
     availableActions,
     isLoading: permissionsLoading,
-    sendToCommittee: workflowSendToCommittee,
-    closeoutRequest: workflowCloseout,
     completeFINRADocuments: workflowCompleteFINRADocuments,
   } = useWorkflowPermissions();
 
@@ -131,18 +113,7 @@ export function useRequestActionsState(props: {
   const permissions = usePermissions();
 
   // Get current request for owner check
-  const { currentRequest, assignAttorney: storeAssignAttorney } = useRequestStore(
-    useShallow((s) => ({
-      currentRequest: s.currentRequest,
-      assignAttorney: s.assignAttorney,
-    }))
-  );
-
-  // Get legal intake form data
-  const legalIntakeStore = useLegalIntakeStore();
-
-  // Get closeout form data
-  const closeoutStore = useCloseoutStore();
+  const currentRequest = useRequestStore((s) => s.currentRequest);
 
   // Get documents store for FINRA document validation
   const { documents, stagedFiles } = useDocumentsStore();
@@ -510,252 +481,6 @@ export function useRequestActionsState(props: {
   }, []);
 
   /**
-   * Handle Send to Committee
-   */
-  const handleSendToCommitteeClick = React.useCallback(async (): Promise<void> => {
-    try {
-      const { notes } = legalIntakeStore.getFormData();
-
-      const validationData = {
-        notes: notes,
-        currentStatus: status,
-      };
-
-      const result = sendToCommitteeSchema.safeParse(validationData);
-
-      if (!result.success) {
-        const errors = result.error.issues.map(issue => ({
-          field: issue.path.join('.') || 'notes',
-          message: issue.message,
-        }));
-
-        SPContext.logger.warn('RequestActions: Send to committee validation failed', { errors });
-        setValidationErrors(errors);
-        return;
-      }
-
-      setActiveAction('sendToCommittee');
-
-      SPContext.logger.info('RequestActions: Sending to committee for attorney assignment', {
-        notes: notes ? 'provided' : 'none',
-      });
-
-      const sendResult = await workflowSendToCommittee(notes);
-      if (sendResult.allowed) {
-        SPContext.logger.success('RequestActions: Sent to committee successfully');
-        legalIntakeStore.reset();
-      } else {
-        SPContext.logger.warn('RequestActions: Send to committee denied', { reason: sendResult.reason });
-      }
-    } catch (error: unknown) {
-      SPContext.logger.error('RequestActions: Send to committee failed', error);
-    } finally {
-      setActiveAction(undefined);
-    }
-  }, [workflowSendToCommittee, legalIntakeStore, status, setValidationErrors]);
-
-  /**
-   * Handle Assign Attorney button click
-   */
-  const handleAssignAttorneyClick = React.useCallback(async (): Promise<void> => {
-    try {
-      setValidationErrors([]);
-
-      const formData = legalIntakeStore.getFormData();
-      const { attorney: rawAttorneys, notes, reviewAudience } = formData;
-      const effectiveReviewAudience = reviewAudience || currentRequest?.reviewAudience;
-      const isComplianceOnly = effectiveReviewAudience === ReviewAudience.Compliance;
-      const attorneys = isComplianceOnly ? undefined : rawAttorneys;
-      const primaryAttorney = attorneys?.[0];
-
-      SPContext.logger.info('RequestActions: handleAssignAttorneyClick - form data from store', {
-        formData,
-        attorneys,
-        attorneyCount: attorneys?.length ?? 0,
-        primaryAttorneyId: primaryAttorney?.id,
-        primaryAttorneyTitle: primaryAttorney?.title,
-        reviewAudience: effectiveReviewAudience,
-        notes,
-      });
-
-      const isCommitteeAssignment = status === RequestStatus.AssignAttorney;
-      const schema = isCommitteeAssignment ? committeeAssignAttorneySchema : assignAttorneySchema;
-
-      const validationData = {
-        attorney: primaryAttorney ? {
-          id: primaryAttorney.id,
-          email: primaryAttorney.email,
-          title: primaryAttorney.title,
-          loginName: primaryAttorney.loginName,
-        } : { id: '' },
-        assignmentNotes: notes,
-        currentStatus: status,
-        reviewAudience: effectiveReviewAudience,
-      };
-
-      const result = schema.safeParse(validationData);
-
-      if (!result.success) {
-        const errors = result.error.issues.map(issue => {
-          const path = issue.path.join('.');
-          let fieldName = path;
-
-          if (path === 'attorney' || path.indexOf('attorney.') === 0) {
-            fieldName = 'attorney';
-          }
-
-          return {
-            field: fieldName,
-            message: issue.message,
-          };
-        });
-
-        SPContext.logger.warn('RequestActions: Assign attorney validation failed', { errors });
-        setValidationErrors(errors);
-        return;
-      }
-
-      setActiveAction('assignAttorney');
-
-      SPContext.logger.info('RequestActions: Assigning attorney(s)', {
-        attorneyCount: attorneys?.length ?? 0,
-        attorneyNames: attorneys?.map(a => a.title).join(', '),
-        reviewAudience: effectiveReviewAudience,
-        notes: notes ? 'provided' : 'none',
-      });
-
-      await storeAssignAttorney(attorneys, notes, effectiveReviewAudience);
-
-      SPContext.logger.success('RequestActions: Attorney assigned successfully');
-      legalIntakeStore.reset();
-    } catch (error: unknown) {
-      SPContext.logger.error('RequestActions: Assign attorney failed', error);
-    } finally {
-      setActiveAction(undefined);
-    }
-  }, [legalIntakeStore, storeAssignAttorney, status, setValidationErrors, currentRequest]);
-
-  /**
-   * Check if review has "Approved with Comments" outcome
-   */
-  const hasApprovedWithComments = React.useMemo((): boolean => {
-    if (!currentRequest) return false;
-    return (
-      currentRequest.legalReviewOutcome === ReviewOutcome.ApprovedWithComments ||
-      currentRequest.complianceReviewOutcome === ReviewOutcome.ApprovedWithComments
-    );
-  }, [currentRequest]);
-
-  /**
-   * Check if tracking ID is required
-   */
-  const isTrackingIdRequired = React.useMemo((): boolean => {
-    if (!currentRequest) return false;
-    if (currentRequest.reviewAudience === 'Legal') return false;
-    return (
-      currentRequest.complianceReview?.isForesideReviewRequired === true ||
-      currentRequest.complianceReview?.isRetailUse === true
-    );
-  }, [currentRequest]);
-
-  /**
-   * Handle Closeout Submit
-   */
-  const handleCloseoutClick = React.useCallback(async (): Promise<void> => {
-    try {
-      setActiveAction('closeout');
-
-      const { trackingId, closeoutNotes, commentsAcknowledged } = closeoutStore.getFormData();
-
-      const errors: IValidationError[] = [];
-
-      if (isTrackingIdRequired && (!trackingId || trackingId.trim() === '')) {
-        errors.push({
-          field: 'trackingId',
-          message: 'Tracking ID is required because Foreside Review Required or Retail Use was indicated during compliance review.',
-        });
-      }
-
-      if (hasApprovedWithComments && !commentsAcknowledged) {
-        errors.push({
-          field: 'commentsAcknowledged',
-          message: 'You must acknowledge the review comments before completing closeout.',
-        });
-      }
-
-      // Validate ReviewFinal documents when there are Approved With Comments outcomes
-      // RFP submissions are exempt from final document upload requirement
-      const isRFPSubmission = typeof currentRequest?.submissionItem === 'string' &&
-        currentRequest.submissionItem.indexOf('RFP Related Review') === 0;
-
-      if (hasApprovedWithComments && !isRFPSubmission) {
-        const { documents: docs, stagedFiles: staged } = useDocumentsStore.getState();
-        const existingCount = docs.get(DocumentType.ReviewFinal)?.length || 0;
-        const stagedCount = staged.filter(f => f.documentType === DocumentType.ReviewFinal).length;
-        if (existingCount + stagedCount === 0) {
-          errors.push({
-            field: 'reviewFinalDocuments',
-            message: 'At least one final document with implemented comments is required.',
-          });
-        }
-      }
-
-      if (errors.length > 0) {
-        setValidationErrors(errors);
-        SPContext.logger.warn('RequestActions: Closeout validation failed', {
-          errors: errors.map(e => e.field),
-          trackingIdRequired: isTrackingIdRequired,
-          trackingIdProvided: !!trackingId,
-          commentsRequired: hasApprovedWithComments,
-          commentsAcknowledged,
-        });
-        setActiveAction(undefined);
-        return;
-      }
-
-      setValidationErrors([]);
-
-      SPContext.logger.info('RequestActions: Submitting closeout', {
-        trackingId: trackingId || 'none',
-        commentsAcknowledged: commentsAcknowledged || false,
-      });
-
-      // Upload any staged files (ReviewFinal docs, etc.) before completing closeout
-      const { stagedFiles: closeoutStaged } = useDocumentsStore.getState();
-      if (closeoutStaged.length > 0 && itemId) {
-        SPContext.logger.info('RequestActions: Uploading staged documents before closeout', {
-          stagedCount: closeoutStaged.length,
-          itemId,
-        });
-
-        const { uploadPendingFiles, loadAllDocuments } = useDocumentsStore.getState();
-        await uploadPendingFiles(itemId, (fileId, progress, status) => {
-          SPContext.logger.info('RequestActions: Closeout upload progress', { fileId, progress, status });
-        });
-
-        await loadAllDocuments(itemId, true);
-        SPContext.logger.success('RequestActions: Staged documents uploaded successfully');
-      }
-
-      const result = await workflowCloseout({
-        trackingId,
-        closeoutNotes,
-        commentsAcknowledged: hasApprovedWithComments ? commentsAcknowledged : undefined,
-      });
-      if (result.allowed) {
-        SPContext.logger.success('RequestActions: Closeout submitted successfully');
-        closeoutStore.reset();
-      } else {
-        SPContext.logger.warn('RequestActions: Closeout denied', { reason: result.reason });
-      }
-    } catch (error: unknown) {
-      SPContext.logger.error('RequestActions: Closeout failed', error);
-    } finally {
-      setActiveAction(undefined);
-    }
-  }, [workflowCloseout, closeoutStore, hasApprovedWithComments, isTrackingIdRequired, setValidationErrors]);
-
-  /**
    * Check if FINRA documents exist
    */
   const hasFINRADocuments = React.useMemo((): boolean => {
@@ -964,29 +689,6 @@ export function useRequestActionsState(props: {
     return availableActions.canResume;
   }, [permissionsLoading, status, availableActions.canResume]);
 
-  const showAssignAttorney = React.useMemo(() => {
-    if (permissionsLoading) return false;
-    if (status === RequestStatus.LegalIntake) {
-      return permissions.isAdmin || permissions.isLegalAdmin;
-    }
-    if (status === RequestStatus.AssignAttorney) {
-      return permissions.isAdmin || permissions.isAttorneyAssigner;
-    }
-    return false;
-  }, [permissionsLoading, status, permissions.isAdmin, permissions.isLegalAdmin, permissions.isAttorneyAssigner]);
-
-  const showSendToCommittee = React.useMemo(() => {
-    if (permissionsLoading) return false;
-    if (status !== RequestStatus.LegalIntake) return false;
-    return permissions.isAdmin || permissions.isLegalAdmin;
-  }, [permissionsLoading, status, permissions.isAdmin, permissions.isLegalAdmin]);
-
-  const showCloseoutSubmit = React.useMemo(() => {
-    if (permissionsLoading) return false;
-    if (status !== RequestStatus.Closeout) return false;
-    return permissions.isAdmin || isOwner;
-  }, [permissionsLoading, status, permissions.isAdmin, isOwner]);
-
   const showCompleteFINRADocuments = React.useMemo(() => {
     if (permissionsLoading) return false;
     if (status !== RequestStatus.AwaitingFINRADocuments) return false;
@@ -1006,12 +708,6 @@ export function useRequestActionsState(props: {
         return 'Putting request on hold...';
       case 'resume':
         return 'Resuming request...';
-      case 'assignAttorney':
-        return 'Assigning attorney...';
-      case 'sendToCommittee':
-        return 'Sending to committee...';
-      case 'closeout':
-        return 'Completing closeout...';
       case 'completeFINRADocuments':
         return 'Completing request...';
       default:
@@ -1046,8 +742,6 @@ export function useRequestActionsState(props: {
     sortedValidationErrors,
     isAnyActionInProgress,
     loadingMessage,
-    hasApprovedWithComments,
-    isTrackingIdRequired,
     hasFINRADocuments,
 
     // Button visibility
@@ -1057,9 +751,6 @@ export function useRequestActionsState(props: {
     showCancel,
     showOnHold,
     showResume,
-    showAssignAttorney,
-    showSendToCommittee,
-    showCloseoutSubmit,
     showCompleteFINRADocuments,
 
     // Handlers
@@ -1073,9 +764,6 @@ export function useRequestActionsState(props: {
     handleCancelRequestClick,
     handlePutOnHoldClick,
     handleResumeClick,
-    handleSendToCommitteeClick,
-    handleAssignAttorneyClick,
-    handleCloseoutClick,
     handleCompleteFINRADocumentsClick,
     handleReasonConfirm,
     handleReasonCancel,

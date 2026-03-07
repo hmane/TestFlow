@@ -43,6 +43,7 @@ import { DocumentUpload } from '@components/DocumentUpload';
 import { ValidationErrorContainer } from '@components/ValidationErrorContainer';
 import { WorkflowCardHeader } from '@components/WorkflowCardHeader';
 import { CLOSEOUT_NOTES_MAX_LENGTH, TRACKING_ID_MAX_LENGTH } from '@constants/fieldLimits';
+import { useNotification } from '@contexts/NotificationContext';
 import { useRequestFormContext } from '@contexts/RequestFormContext';
 import { Lists } from '@sp/Lists';
 import { useCloseoutStore } from '@stores/closeoutStore';
@@ -98,6 +99,7 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
     }))
   );
   const { setCloseoutValues, commentsAcknowledged, setCommentsAcknowledged } = useCloseoutStore();
+  const { showSuccess } = useNotification();
   const { validationErrors, setValidationErrors } = useRequestFormContext();
 
   // Get documents from store for ReviewFinal document count
@@ -318,6 +320,22 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
         });
       }
 
+      // Validate ReviewFinal documents when Approved With Comments (RFP submissions are exempt)
+      const isRFP = typeof currentRequest?.submissionItem === 'string' &&
+        currentRequest.submissionItem.indexOf('RFP Related Review') === 0;
+
+      if (hasApprovedWithComments && !isRFP) {
+        const { documents: docs, stagedFiles: staged } = useDocumentsStore.getState();
+        const existingCount = docs.get(DocumentType.ReviewFinal)?.length || 0;
+        const stagedCount = staged.filter(f => f.documentType === DocumentType.ReviewFinal).length;
+        if (existingCount + stagedCount === 0) {
+          errors.push({
+            field: 'reviewFinalDocuments',
+            message: 'At least one final document with implemented comments is required.',
+          });
+        }
+      }
+
       if (errors.length > 0) {
         setValidationErrors(errors);
         SPContext.logger.warn('CloseoutForm: Validation failed', {
@@ -326,12 +344,36 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
         return;
       }
 
+      // Upload any staged files (ReviewFinal docs) before completing closeout
+      const { stagedFiles: pendingFiles } = useDocumentsStore.getState();
+      if (pendingFiles.length > 0 && itemId) {
+        SPContext.logger.info('CloseoutForm: Uploading staged documents before closeout', {
+          stagedCount: pendingFiles.length,
+          itemId,
+        });
+
+        const { uploadPendingFiles, loadAllDocuments } = useDocumentsStore.getState();
+        await uploadPendingFiles(itemId, (fileId, progress, uploadStatus) => {
+          SPContext.logger.info('CloseoutForm: Upload progress', { fileId, progress, status: uploadStatus });
+        });
+
+        await loadAllDocuments(itemId, true);
+        SPContext.logger.success('CloseoutForm: Staged documents uploaded successfully');
+      }
+
       await closeoutRequest({
         trackingId: trackingIdValue,
         commentsAcknowledged,
         closeoutNotes: closeoutNotesValue,
       });
 
+      // Show toast based on new status (AwaitingFINRADocuments or Completed)
+      const updatedStatus = useRequestStore.getState().currentRequest?.status;
+      if (updatedStatus === 'Awaiting FINRA Documents') {
+        showSuccess('Closeout complete — request moved to Awaiting FINRA Documents.');
+      } else {
+        showSuccess('Request completed successfully!');
+      }
       SPContext.logger.success('CloseoutForm: Request completed successfully');
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to complete request';

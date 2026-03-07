@@ -223,6 +223,30 @@ export async function assignAttorney(
     userEmail: currentUser.email,
   });
 
+  // Calculate LegalIntake time tracking before transitioning to InReview
+  // This finalizes hours spent in the LegalIntake/AssignAttorney stage
+  let timeTrackingUpdates: Partial<ILegalRequest> = {};
+  try {
+    const currentRequest = await loadRequestById(itemId);
+    timeTrackingUpdates = await calculateAndUpdateStageTime(
+      currentRequest,
+      'LegalIntake',
+      'Reviewer' // Handing off from Legal Admin/Committee to review stage
+    );
+    SPContext.logger.info('WorkflowActionService: LegalIntake time tracking calculated', {
+      correlationId,
+      itemId,
+      legalIntakeLegalAdminHours: timeTrackingUpdates.legalIntakeLegalAdminHours,
+      totalReviewerHours: timeTrackingUpdates.totalReviewerHours,
+    });
+  } catch (timeError) {
+    SPContext.logger.warn('WorkflowActionService: LegalIntake time tracking failed (non-blocking)', {
+      correlationId,
+      itemId,
+      error: timeError instanceof Error ? timeError.message : String(timeError),
+    });
+  }
+
   // Build update payload - ONLY attorney assignment fields
   // Use typed setters for proper SharePoint field formatting
   const updater = createSPUpdater();
@@ -247,6 +271,20 @@ export async function assignAttorney(
   // Set review audience override if provided (Legal Admin can change from submitter's selection)
   if (payload.reviewAudience) {
     updater.setChoice(RequestsFields.ReviewAudience, payload.reviewAudience);
+  }
+
+  // Add LegalIntake time tracking fields to update
+  if (timeTrackingUpdates.legalIntakeLegalAdminHours !== undefined) {
+    updater.set(RequestsFields.LegalIntakeLegalAdminHours, timeTrackingUpdates.legalIntakeLegalAdminHours);
+  }
+  if (timeTrackingUpdates.legalIntakeSubmitterHours !== undefined) {
+    updater.set(RequestsFields.LegalIntakeSubmitterHours, timeTrackingUpdates.legalIntakeSubmitterHours);
+  }
+  if (timeTrackingUpdates.totalReviewerHours !== undefined) {
+    updater.set(RequestsFields.TotalReviewerHours, timeTrackingUpdates.totalReviewerHours);
+  }
+  if (timeTrackingUpdates.totalSubmitterHours !== undefined) {
+    updater.set(RequestsFields.TotalSubmitterHours, timeTrackingUpdates.totalSubmitterHours);
   }
 
   const updatePayload = updater.getUpdates();

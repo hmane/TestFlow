@@ -13,9 +13,6 @@ export type ActiveAction =
   | 'cancel'
   | 'hold'
   | 'resume'
-  | 'assignAttorney'
-  | 'sendToCommittee'
-  | 'closeout'
   | 'completeFINRADocuments'
   | undefined;
 

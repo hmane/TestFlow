@@ -627,7 +627,7 @@ export const useRequestStore = create<IRequestState>()(
        * Uses dedicated workflow action - only updates closeout fields
        * @param options - Closeout options including tracking ID and comments acknowledgment
        */
-      closeoutRequest: async (options?: { trackingId?: string; commentsAcknowledged?: boolean }): Promise<void> => {
+      closeoutRequest: async (options?: { trackingId?: string; commentsAcknowledged?: boolean; closeoutNotes?: string }): Promise<void> => {
         const state = get();
 
         if (!state.itemId) {
