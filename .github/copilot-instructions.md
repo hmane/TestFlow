@@ -8,6 +8,9 @@
 - Add **types/interfaces and imports first** so Copilot can anchor suggestions to real APIs.
 - Write a **one-line goal comment** that states inputs, outputs, edge cases, and error handling.
 - Prefer **existing patterns** in the repo: reference a similar function/component in comments.
+- For **services/stores/context providers** that may run before `onInit()` completes, prefer
+  `SPContext.tryGetContext()`, `tryGetSP()`, and `tryGetFreshSP()` over assuming `SPContext.sp`
+  or `SPContext.spPessimistic` already exist.
 - Keep the **Problems** panel clean (`tsc --noEmit`) so Copilot isn’t distracted by cascading errors.
 - Decide **security & accessibility** requirements up front (sanitization, permissions, ARIA/keyboard support).
 
@@ -175,7 +178,7 @@ const filterDocumentsByType = (documents: IDocumentItem[], fileType: string): ID
 // Create an SPFx web part class that:
 // - Extends BaseClientSideWebPart
 // - Initializes SPContext using smart() in onInit()
-// - Imports required PnP modules from spfx-toolkit/lib/utilities/context/pnpImports/
+// - Imports required PnP modules from spfx-toolkit/utilities/context/pnpImports/
 // - Renders React component with SPContext available
 // - Includes property pane configuration with text field and toggle controls
 ```
@@ -231,9 +234,9 @@ const filterDocumentsByType = (documents: IDocumentItem[], fileType: string): ID
 **Include Relevant Imports**
 ```typescript
 // Copilot uses imports to understand available libraries
-import { SPContext } from 'spfx-toolkit';
-import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
-import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
+import { SPContext } from 'spfx-toolkit/utilities/context';
+import 'spfx-toolkit/utilities/context/pnpImports/lists';
+import { Card, Header, Content } from 'spfx-toolkit/components/Card';
 
 // Now prompts can reference these directly
 // Create a method to fetch tasks and display in Card component
@@ -460,8 +463,8 @@ type RequiredConfig = Required<Pick<IWebPartProps, 'listName'>>;
 
 ✅ **DO:**
 ```typescript
-import { SPContext } from 'spfx-toolkit';
-import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
+import { SPContext } from 'spfx-toolkit/utilities/context';
+import 'spfx-toolkit/utilities/context/pnpImports/lists';
 
 export default class MyWebPart extends BaseClientSideWebPart<IProps> {
   protected async onInit(): Promise<void> {
@@ -475,6 +478,33 @@ export default class MyWebPart extends BaseClientSideWebPart<IProps> {
     SPContext.logger.info('Data loaded', { count: items.length });
   }
 }
+```
+
+**Use Safe SPContext Accessors in Boundary Code**
+
+✅ **DO:**
+```typescript
+// In services, stores, and context providers that can run before initialization
+const sp = SPContext.tryGetSP();
+const freshSp = SPContext.tryGetFreshSP();
+
+if (!sp?.web) {
+  throw new Error('SPContext is not ready. Ensure SPContext.smart() completed first.');
+}
+
+const items = await sp.web.lists.getByTitle('Tasks').items();
+```
+
+```typescript
+// In guaranteed post-onInit flows, direct access is fine
+await SPContext.smart(this.context, 'MyWebPart');
+const items = await SPContext.sp.web.lists.getByTitle('Tasks').items();
+```
+
+❌ **DON'T:**
+```typescript
+// Don't assume optional infrastructure code always runs after initialization
+const items = await SPContext.sp.web.lists.getByTitle('Tasks').items();
 ```
 
 ❌ **DON'T:**
@@ -495,9 +525,9 @@ import { Button } from 'office-ui-fabric-react';
 
 ✅ **DO:**
 ```typescript
-import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
-import { FormContainer, FormItem, DevExtremeTextBox } from 'spfx-toolkit/lib/components/spForm';
-import { createPermissionHelper } from 'spfx-toolkit/lib/utilities/permissionHelper';
+import { Card, Header, Content } from 'spfx-toolkit/components/Card';
+import { FormContainer, FormItem, DevExtremeTextBox } from 'spfx-toolkit/components/spForm';
+import { createPermissionHelper } from 'spfx-toolkit/utilities/permissionHelper';
 
 // Use pre-built, tested components
 <Card id="data-card" variant="info">
@@ -539,10 +569,17 @@ SPContext.isTeamsContext          // true if in Microsoft Teams
 SPContext.currentUICultureName    // 'en-US', 'ar-SA', etc.
 SPContext.isRightToLeft          // true for RTL languages
 
-// SharePoint operations (always available)
-SPContext.sp                      // Fresh data, no caching
-SPContext.spCached               // With caching (if enabled)
-SPContext.spPessimistic          // Long-term cache (if enabled)
+// SharePoint operations (after initialization)
+SPContext.sp                      // Default SPFI instance
+SPContext.spCached               // Cached SPFI instance (if enabled)
+SPContext.spPessimistic          // Always-fresh SPFI instance
+
+// Safe accessors for optional/boundary code
+SPContext.tryGetSP()             // SPFI | undefined
+SPContext.tryGetCachedSP()       // SPFI | undefined
+SPContext.tryGetFreshSP()        // SPFI | undefined
+SPContext.tryGetContext()        // SPFxContext | undefined
+SPContext.isReady()              // boolean
 
 // Built-in services
 SPContext.logger                 // Structured logging
@@ -556,23 +593,23 @@ Import only the PnP functionality you need:
 
 ```typescript
 // Lists and items
-import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
+import 'spfx-toolkit/utilities/context/pnpImports/lists';
 
 // Files and folders
-import 'spfx-toolkit/lib/utilities/context/pnpImports/files';
+import 'spfx-toolkit/utilities/context/pnpImports/files';
 
 // Search
-import 'spfx-toolkit/lib/utilities/context/pnpImports/search';
+import 'spfx-toolkit/utilities/context/pnpImports/search';
 
 // Managed metadata
-import 'spfx-toolkit/lib/utilities/context/pnpImports/taxonomy';
+import 'spfx-toolkit/utilities/context/pnpImports/taxonomy';
 
 // Permissions and security
-import 'spfx-toolkit/lib/utilities/context/pnpImports/security';
+import 'spfx-toolkit/utilities/context/pnpImports/security';
 
 // Multiple imports
-import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
-import 'spfx-toolkit/lib/utilities/context/pnpImports/files';
+import 'spfx-toolkit/utilities/context/pnpImports/lists';
+import 'spfx-toolkit/utilities/context/pnpImports/files';
 ```
 
 **Property Pane imports (add to your web part file):**
@@ -591,8 +628,8 @@ import * as React from 'react';
 import * as ReactDom from 'react-dom';
 import { Version } from '@microsoft/sp-core-library';
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
-import { SPContext } from 'spfx-toolkit';
-import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
+import { SPContext } from 'spfx-toolkit/utilities/context';
+import 'spfx-toolkit/utilities/context/pnpImports/lists';
 
 export default class MyWebPart extends BaseClientSideWebPart<IMyWebPartProps> {
 
@@ -757,7 +794,7 @@ These guardrails make AI suggestions more **consistent, testable, accessible, an
 
 **Performance Patterns**
 - For SharePoint calls: always use **`select`, `expand`, `top`, `orderBy`** where relevant.
-- Avoid N+1 patterns; batch where possible (see `createBatchBuilder`).
+- Avoid N+1 patterns; batch where possible (see `BatchBuilder`).
 - Memoize derived data; avoid recomputation on every render.
 
 **Error Handling & Logging**
@@ -884,7 +921,7 @@ const apiKey = process.env.API_KEY;
 **Permission Checks**
 
 ```typescript
-import { createPermissionHelper, SPPermissionLevel } from 'spfx-toolkit/lib/utilities/permissionHelper';
+import { createPermissionHelper, SPPermissionLevel } from 'spfx-toolkit/utilities/permissionHelper';
 
 // Always check permissions before operations
 const permissionHelper = createPermissionHelper(SPContext.sp);
@@ -1021,9 +1058,9 @@ const styles: IStyleSet = {
 import * as React from 'react';
 import * as ReactDom from 'react-dom';
 import { BaseClientSideWebPart } from '@microsoft/sp-webpart-base';
-import { SPContext } from 'spfx-toolkit';
-import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
-import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
+import { SPContext } from 'spfx-toolkit/utilities/context';
+import 'spfx-toolkit/utilities/context/pnpImports/lists';
+import { Card, Header, Content } from 'spfx-toolkit/components/Card';
 
 interface IListItem {
   id: number;
@@ -1168,8 +1205,8 @@ import {
   DevExtremeTextBox,
   DevExtremeDateBox,
   DevExtremeSelectBox
-} from 'spfx-toolkit/lib/components/spForm';
-import { SPContext } from 'spfx-toolkit';
+} from 'spfx-toolkit/components/spForm';
+import { SPContext } from 'spfx-toolkit/utilities/context';
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required').min(3, 'Minimum 3 characters'),
@@ -1282,9 +1319,9 @@ import {
   createSPExtractor,
   createSPUpdater,
   shouldPerformUpdate
-} from 'spfx-toolkit/lib/utilities/listItemHelper';
-import { SPContext } from 'spfx-toolkit';
-import type { IPrincipal, SPLookup, SPTaxonomy } from 'spfx-toolkit/lib/types';
+} from 'spfx-toolkit/utilities/listItemHelper';
+import { SPContext } from 'spfx-toolkit/utilities/context';
+import type { IPrincipal, SPLookup, SPTaxonomy } from 'spfx-toolkit/types';
 
 interface ITaskData {
   title: string;
@@ -1382,8 +1419,8 @@ import {
   createPermissionHelper,
   SPPermissionLevel,
   BatchPermissionChecker
-} from 'spfx-toolkit/lib/utilities/permissionHelper';
-import { SPContext } from 'spfx-toolkit';
+} from 'spfx-toolkit/utilities/permissionHelper';
+import { SPContext } from 'spfx-toolkit/utilities/context';
 
 interface ITaskActionsProps {
   taskId: number;
@@ -1491,8 +1528,8 @@ export const TaskActions: React.FC<ITaskActionsProps> = ({
 **Implementation:**
 ```typescript
 import * as React from 'react';
-import { useViewport, useLocalStorage } from 'spfx-toolkit/lib/hooks';
-import { Card, Header, Content, Accordion } from 'spfx-toolkit/lib/components/Card';
+import { useViewport, useLocalStorage } from 'spfx-toolkit/hooks';
+import { Card, Header, Content, Accordion } from 'spfx-toolkit/components/Card';
 
 interface IDashboardPreferences {
   showAdvanced: boolean;
@@ -1605,7 +1642,7 @@ export const ResponsiveDashboard: React.FC = () => {
 **Prompt:**
 ```typescript
 // Batch update multiple items using spfx-toolkit
-// - Use createBatchBuilder for efficient operations
+// - Use BatchBuilder for efficient operations
 // - Update items across multiple lists
 // - Handle errors per operation
 // - Log results with SPContext.logger
@@ -1613,8 +1650,8 @@ export const ResponsiveDashboard: React.FC = () => {
 
 **Implementation:**
 ```typescript
-import { createBatchBuilder } from 'spfx-toolkit/lib/utilities/batchBuilder';
-import { SPContext } from 'spfx-toolkit';
+import { BatchBuilder } from 'spfx-toolkit/utilities/batchBuilder';
+import { SPContext } from 'spfx-toolkit/utilities/context';
 
 interface ITaskUpdate {
   id: number;
@@ -1628,7 +1665,7 @@ async function batchUpdateTasks(updates: ITaskUpdate[]): Promise<void> {
       count: updates.length
     });
 
-    const batchBuilder = createBatchBuilder(SPContext.sp, {
+    const batchBuilder = new BatchBuilder(SPContext.sp, {
       batchSize: 50,
       enableConcurrency: false
     });
@@ -1678,7 +1715,7 @@ async function createProjectWithTasks(
   projectData: any,
   taskData: any[]
 ): Promise<void> {
-  const result = await createBatchBuilder(SPContext.sp)
+  const result = await new BatchBuilder(SPContext.sp)
     .list('Projects')
     .add(projectData)
     .list('Tasks')
@@ -1716,6 +1753,8 @@ async function createProjectWithTasks(
 // Audit this PR for bundle size pitfalls:
 // - Are large dependencies tree-shaken?
 // - Any accidental default imports of Fluent UI icons or lodash?
+// - Any duplicate dependency trees introduced by linked/local packages like spfx-toolkit?
+// - Does the change preserve gulpfile webpack alias dedupe for shared UI/runtime deps?
 // - Dynamic import opportunities for heavy components?
 // - Web part prefetch/lazy strategies ok for SPFx 1.21.1 + React 17?
 ```
@@ -1808,7 +1847,7 @@ shows an icon.
 manual field extraction. This handles null checks and type conversions automatically:
 
 ```typescript
-import { createSPExtractor } from 'spfx-toolkit/lib/utilities/listItemHelper';
+import { createSPExtractor } from 'spfx-toolkit/utilities/listItemHelper';
 
 const extractor = createSPExtractor(item);
 const assignedUser = extractor.user('AssignedTo');
@@ -1964,7 +2003,7 @@ React.useEffect(() => {
 
 **Recommended approach:**
 ```typescript
-import { createPermissionHelper, SPPermissionLevel } from 'spfx-toolkit/lib/utilities/permissionHelper';
+import { createPermissionHelper, SPPermissionLevel } from 'spfx-toolkit/utilities/permissionHelper';
 
 const permissionHelper = createPermissionHelper(SPContext.sp, {
   enableCaching: true,
@@ -2036,12 +2075,12 @@ proposed architecture diagram before we meet.
 // Review spfx-toolkit usage:
 // - SPContext initialized in onInit() using smart() method
 // - Toolkit components used instead of custom implementations (Card, Form, etc.)
-// - Correct import paths (spfx-toolkit/lib/...)
+// - Correct import paths (spfx-toolkit/components/..., hooks, utilities/..., types)
 // - PnP modules imported from toolkit's pnpImports folder
 // - SPContext.logger used for all logging (not console.log)
 // - Permission checks use createPermissionHelper from toolkit
 // - Data extraction uses createSPExtractor when appropriate
-// - Batch operations use createBatchBuilder
+// - Batch operations use BatchBuilder
 ```
 
 **TypeScript Quality Review Prompt:**
@@ -2127,8 +2166,8 @@ const items = await sp.web.lists.getByTitle('Tasks').items();
 **✅ Correct: Use SPContext**
 ```typescript
 // Correct toolkit pattern:
-import { SPContext } from 'spfx-toolkit';
-import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
+import { SPContext } from 'spfx-toolkit/utilities/context';
+import 'spfx-toolkit/utilities/context/pnpImports/lists';
 
 await SPContext.smart(this.context, 'MyWebPart');
 const items = await SPContext.sp.web.lists.getByTitle('Tasks').items();
@@ -2243,7 +2282,7 @@ return (
 **✅ Correct: Use Toolkit Component**
 ```typescript
 // Use pre-built, tested Card component:
-import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
+import { Card, Header, Content } from 'spfx-toolkit/components/Card';
 
 return (
   <Card id="my-card" allowMaximize={true}>
@@ -2267,9 +2306,13 @@ return (
 ```typescript
 // CONTEXT: This project uses spfx-toolkit npm package
 // - Use SPContext for all SharePoint operations
+// - In services/stores/context providers, prefer SPContext.tryGetSP()/tryGetFreshSP()
+//   before touching SharePoint APIs
 // - Use Card component from spfx-toolkit for UI
 // - Use createPermissionHelper for permission checks
-// - Import PnP modules from spfx-toolkit/lib/utilities/context/pnpImports/
+// - Import PnP modules from spfx-toolkit/utilities/context/pnpImports/
+// - Prefer current toolkit subpaths; only mirror nearby legacy `lib/...` imports when
+//   editing an existing file that has not been migrated yet
 // - Use SPContext.logger instead of console.log
 
 // Now create the component following these patterns:
@@ -2279,7 +2322,7 @@ return (
 - Ask: "How do I initialize SPContext from spfx-toolkit in onInit()?"
 - Request: "Show me the correct way to import Card component from spfx-toolkit"
 - Query: "What's the difference between SPContext.sp and manual PnP setup?"
-- Verify: "Is this import path correct for spfx-toolkit: 'spfx-toolkit/lib/components/Card'?"
+- Verify: "Is this import path correct for spfx-toolkit: 'spfx-toolkit/components/Card'?"
 
 **Incremental Acceptance:**
 - Accept Copilot suggestions line by line for complex code
