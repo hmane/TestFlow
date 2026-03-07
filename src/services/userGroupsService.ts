@@ -89,28 +89,37 @@ export async function getCurrentUserGroupTitles(): Promise<string[]> {
   pendingGroupsPromise = (async (): Promise<string[]> => {
     try {
       SPContext.logger.info('UserGroupsService: Loading current user groups...');
+      const sp = SPContext.tryGetSP();
+      const freshSp = SPContext.tryGetFreshSP();
 
-      // Check if SPContext is properly initialized
-      if (!SPContext.sp || !SPContext.sp.web) {
+      // Use safe accessors so this service fails gracefully if called before app initialization.
+      if (!sp?.web) {
         SPContext.logger.error('UserGroupsService: SPContext not initialized', null, {
           message: 'Ensure SPContext.smart() was called in webpart onInit()',
         });
         return [];
       }
 
-      // Try spPessimistic first, fall back to sp if not available
+      // Try the always-fresh instance first, fall back to the default instance.
       let groups: { Title: string }[];
       try {
-        SPContext.logger.debug('UserGroupsService: Trying spPessimistic...');
-        if (!SPContext.spPessimistic || !SPContext.spPessimistic.web) {
-          throw new Error('spPessimistic not available');
+        SPContext.logger.debug('UserGroupsService: Trying fresh SP instance...');
+        if (!freshSp?.web) {
+          throw new Error('Fresh SP instance not available');
         }
-        groups = await SPContext.spPessimistic.web.currentUser.groups();
-        SPContext.logger.debug('UserGroupsService: spPessimistic succeeded', { groupCount: groups.length });
+        groups = await freshSp.web.currentUser.groups();
+        SPContext.logger.debug('UserGroupsService: Fresh SP instance succeeded', {
+          groupCount: groups.length,
+        });
       } catch (pessimisticError) {
-        SPContext.logger.warn('UserGroupsService: spPessimistic failed, trying sp...', pessimisticError);
-        groups = await SPContext.sp.web.currentUser.groups();
-        SPContext.logger.debug('UserGroupsService: sp succeeded', { groupCount: groups.length });
+        SPContext.logger.warn(
+          'UserGroupsService: Fresh SP instance failed, trying default SP instance...',
+          pessimisticError
+        );
+        groups = await sp.web.currentUser.groups();
+        SPContext.logger.debug('UserGroupsService: Default SP instance succeeded', {
+          groupCount: groups.length,
+        });
       }
 
       const titles = groups.map((g: { Title: string }) => g.Title);
@@ -163,6 +172,8 @@ export async function getUserGroupMembership(): Promise<IUserGroupMembership> {
 export async function checkDashboardAccess(): Promise<IUserAccess> {
   try {
     const groupTitles = await getCurrentUserGroupTitles();
+    const sp = SPContext.tryGetSP();
+    const freshSp = SPContext.tryGetFreshSP();
 
     SPContext.logger.info('UserGroupsService: Checking dashboard access', {
       userGroups: groupTitles,
@@ -181,12 +192,19 @@ export async function checkDashboardAccess(): Promise<IUserAccess> {
     // Also check if user is a Site Collection Admin (has full control)
     let isSiteAdmin = false;
     try {
-      // Try spPessimistic first, fall back to sp
+      if (!sp?.web) {
+        throw new Error('SPContext not initialized');
+      }
+
+      // Try the always-fresh instance first, fall back to the default instance.
       let currentUser: { IsSiteAdmin?: boolean };
       try {
-        currentUser = await SPContext.spPessimistic.web.currentUser();
+        if (!freshSp?.web) {
+          throw new Error('Fresh SP instance not available');
+        }
+        currentUser = await freshSp.web.currentUser();
       } catch {
-        currentUser = await SPContext.sp.web.currentUser();
+        currentUser = await sp.web.currentUser();
       }
       isSiteAdmin = currentUser.IsSiteAdmin === true;
       SPContext.logger.debug('UserGroupsService: Site admin check', { isSiteAdmin });

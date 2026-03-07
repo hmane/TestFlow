@@ -90,6 +90,11 @@ export interface IDashboardData {
 export async function fetchRequests(dateRange?: IDateRange): Promise<ILegalRequest[]> {
   try {
     SPContext.logger.info('ReportDataService: Fetching requests', { dateRange });
+    const sp = SPContext.tryGetSP();
+
+    if (!sp?.web) {
+      throw new Error('SPContext is not ready. Ensure the web part awaited SPContext.smart() before fetching report data.');
+    }
 
     // Build filter
     let filter = '';
@@ -106,7 +111,7 @@ export async function fetchRequests(dateRange?: IDateRange): Promise<ILegalReque
     }
 
     // Fetch data using SPContext
-    const items = await SPContext.sp.web.lists
+    const items = await sp.web.lists
       .getByTitle('Requests')
       .items
       .select(

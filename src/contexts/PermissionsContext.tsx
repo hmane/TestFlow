@@ -120,7 +120,15 @@ export const PermissionsProvider: React.FC<IPermissionsProviderProps> = ({ child
       // Use spPessimistic which has browser-level caching to prevent duplicate API calls
       // to siteUsers/getById/groups endpoint
       if (!permissionHelperRef.current) {
-        permissionHelperRef.current = createPermissionHelper(SPContext.spPessimistic, {
+        const freshSp = SPContext.tryGetFreshSP();
+
+        if (!freshSp) {
+          throw new Error(
+            'PermissionsContext: SPContext is not ready. Ensure SPContext.smart() completed before loading permissions.'
+          );
+        }
+
+        permissionHelperRef.current = createPermissionHelper(freshSp, {
           enableCaching: true,
           cacheTimeout: 300000, // 5 minutes
           cacheSize: 100,

@@ -37,7 +37,7 @@ import { usePermissions } from '@hooks/usePermissions';
 import { useRequestStore } from '@stores/requestStore';
 import { RequestHoverCard } from '@components/RequestHoverCard/RequestHoverCard';
 
-import { UserPersona } from 'spfx-toolkit';
+import { UserPersona } from 'spfx-toolkit/lib/components/UserPersona';
 import './RequestSummary.scss';
 
 /**

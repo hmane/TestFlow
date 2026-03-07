@@ -27,12 +27,31 @@ build.addSuppression(/Warning - lint.*/g);
 build.configureWebpack.mergeConfig({
   additionalConfiguration: generatedConfiguration => {
     const isProduction = build.getConfig().production;
+    const projectNodeModules = path.resolve(__dirname, 'node_modules');
+    const sharedDependencyAliases = {
+      react: path.resolve(projectNodeModules, 'react'),
+      'react-dom': path.resolve(projectNodeModules, 'react-dom'),
+      'react-hook-form': path.resolve(projectNodeModules, 'react-hook-form'),
+      '@fluentui/react': path.resolve(projectNodeModules, '@fluentui/react'),
+      '@fluentui/utilities': path.resolve(projectNodeModules, '@fluentui/utilities'),
+      '@fluentui/merge-styles': path.resolve(projectNodeModules, '@fluentui/merge-styles'),
+      '@fluentui/react-focus': path.resolve(projectNodeModules, '@fluentui/react-focus'),
+      devextreme: path.resolve(projectNodeModules, 'devextreme'),
+      'devextreme-react': path.resolve(projectNodeModules, 'devextreme-react'),
+      inferno: path.resolve(projectNodeModules, 'inferno'),
+      lodash: path.resolve(projectNodeModules, 'lodash'),
+      quill: path.resolve(projectNodeModules, 'quill'),
+      tslib: path.resolve(projectNodeModules, 'tslib'),
+      zustand: path.resolve(projectNodeModules, 'zustand'),
+    };
 
     // Configure path aliases to match tsconfig.json
     // These resolve at both TypeScript compilation and webpack bundling
     generatedConfiguration.resolve = generatedConfiguration.resolve || {};
     generatedConfiguration.resolve.alias = {
       ...generatedConfiguration.resolve.alias,
+      // Force linked packages like spfx-toolkit to share the app's dependency tree.
+      ...sharedDependencyAliases,
       '@src': path.resolve(__dirname, 'lib'),
       '@components': path.resolve(__dirname, 'lib/components'),
       '@hooks': path.resolve(__dirname, 'lib/hooks'),

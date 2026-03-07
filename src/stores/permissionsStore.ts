@@ -106,7 +106,15 @@ let pendingLoadPromise: Promise<void> | null = null;
  */
 function getPermissionHelper(): PermissionHelper {
   if (!permissionHelper) {
-    permissionHelper = createPermissionHelper(SPContext.spPessimistic, {
+    const freshSp = SPContext.tryGetFreshSP();
+
+    if (!freshSp) {
+      throw new Error(
+        'PermissionsStore: SPContext is not ready. Ensure SPContext.smart() completed before loading permissions.'
+      );
+    }
+
+    permissionHelper = createPermissionHelper(freshSp, {
       enableCaching: true,
       cacheTimeout: 300000, // 5 minutes
       cacheSize: 100,
