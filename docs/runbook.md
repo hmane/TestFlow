@@ -695,6 +695,13 @@ Azure Functions handle permission management when item-level permissions need to
 | `/api/permissions/complete` | POST | Set final read-only permissions | Power Automate |
 | `/api/notifications/send` | POST | Process and send notification | Power Automate |
 | `/api/notifications/health` | GET | Health check | Monitoring |
+| `/api/health` | GET | Health check | Monitoring |
+| `/api/admin/certificate-cache/flush` | POST | Reload certificate from Key Vault without restart | Operations |
+
+Notes:
+- `/api/health` is the generic public Functions health endpoint.
+- `/api/notifications/health` remains available for backward compatibility.
+- There is no separate `/api/permissions/health` endpoint today.
 
 ### 8.3 Configuration Required
 
@@ -722,12 +729,15 @@ In the Configuration list, set:
 | `initialize` | Any LW group | User must be in at least one group |
 | `add-user` | Admin, Legal Admin, or Submitter | Submitter can only modify own request |
 | `remove-user` | Admin, Legal Admin, or Submitter | Submitter can only modify own request |
-| `complete` | Admin only | Or Power Automate via function key |
-| `notifications/send` | Any authorized group | Or Power Automate via function key |
+| `complete` | Configured service account or authorized user with effective item edit permission | Bearer token required |
+| `notifications/send` | Configured service account or authorized user with effective item edit permission | Bearer token required |
+| `admin/certificate-cache/flush` | Configured service account only | Bearer token required |
 
 ### 8.6 Monitoring
 
-- **Health Check:** `GET /api/notifications/health` - returns 200 if healthy
+- **Health Check:** `GET /api/health` - returns 200 if healthy
+- **Legacy Health Check:** `GET /api/notifications/health` - also returns 200 if healthy
+- **Certificate Rotation:** after replacing the Key Vault certificate used by the Functions app, either call `POST /api/admin/certificate-cache/flush` as the configured service account to refresh the serving instance, or restart the Function App to refresh all instances
 - **Timeout:** Default 30 seconds per call
 - **Errors:** Logged via `SPContext.logger.error()` with correlation IDs
 
@@ -928,7 +938,7 @@ If an item was accidentally deleted by a Site Collection Admin:
 **Resolution Steps:**
 1. Check the Notifications list - verify template **IsActive** = Yes
 2. Check Power Automate flow run history for errors
-3. Verify Azure Function health: `GET /api/notifications/health`
+3. Verify Azure Function health: `GET /api/health`
 4. Check APIM configuration in Configuration list
 5. Review Azure Function logs for send errors
 
@@ -1164,7 +1174,7 @@ To deploy a new version:
 | LRS Site | `https://{tenant}.sharepoint.com/sites/LegalWorkflow` |
 | Requests List | `https://{tenant}.sharepoint.com/sites/LegalWorkflow/Lists/Requests` |
 | App Catalog | `https://{tenant}.sharepoint.com/sites/appcatalog` |
-| Azure Function Health | `https://{apim-url}/api/notifications/health` |
+| Azure Function Health | `https://{apim-url}/api/health` |
 
 ### Key Configuration Items
 

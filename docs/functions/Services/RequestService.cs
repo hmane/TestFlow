@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using PnP.Core.Model.SharePoint;
+using PnP.Core.QueryModel;
 using PnP.Core.Services;
 using LegalWorkflow.Functions.Constants;
 using LegalWorkflow.Functions.Constants.SharePointFields;
@@ -89,9 +90,9 @@ namespace LegalWorkflow.Functions.Services
         /// </summary>
         /// <param name="requestId">SharePoint list item ID</param>
         /// <returns>Previous version info or null if no previous version exists</returns>
-        public async Task<RequestVersionInfo?> GetPreviousVersionAsync(int requestId)
+        public async Task<RequestVersionInfo?> GetPreviousVersionAsync(int requestId, string? versionLabel = null)
         {
-            using var tracker = _logger.StartOperation($"GetPreviousVersion({requestId})");
+            using var tracker = _logger.StartOperation($"GetPreviousVersion({requestId}, {versionLabel ?? "auto"})");
 
             try
             {
@@ -110,13 +111,22 @@ namespace LegalWorkflow.Functions.Services
                     return null;
                 }
 
-                // Get the second-to-last version (index 1 is the previous version)
-                // Note: Versions are ordered newest first
-                var previousVersion = item.Versions.AsRequested().Skip(1).FirstOrDefault();
+                IListItemVersion? previousVersion;
+                if (!string.IsNullOrWhiteSpace(versionLabel))
+                {
+                    previousVersion = item.Versions.AsRequested()
+                        .FirstOrDefault(version => string.Equals(version.VersionLabel, versionLabel, StringComparison.OrdinalIgnoreCase));
+                }
+                else
+                {
+                    // Get the second-to-last version (index 1 is the previous version)
+                    // Note: Versions are ordered newest first
+                    previousVersion = item.Versions.AsRequested().Skip(1).FirstOrDefault();
+                }
 
                 if (previousVersion == null)
                 {
-                    _logger.Info("Could not retrieve previous version data");
+                    _logger.Info("Could not retrieve previous version data", new { RequestedVersionLabel = versionLabel ?? "auto" });
                     tracker.Complete(true, "Previous version data unavailable");
                     return null;
                 }

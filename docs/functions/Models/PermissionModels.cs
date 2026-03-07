@@ -11,7 +11,7 @@ namespace LegalWorkflow.Functions.Models
     /// Request payload for InitializePermissions Azure Function.
     /// Called from SPFx app when a request is created (Draft or Legal Intake).
     /// Breaks inheritance and sets initial permissions on both the request item
-    /// and the RequestDocuments/{Request_ID} folder.
+    /// and the RequestDocuments/{RequestId} folder.
     /// </summary>
     public class InitializePermissionsRequest
     {
@@ -21,8 +21,8 @@ namespace LegalWorkflow.Functions.Models
         public int RequestId { get; set; }
 
         /// <summary>
-        /// Request ID (Title) used to identify the documents folder.
-        /// Example: "LRQ-2024-001234"
+        /// Optional request title / business request identifier.
+        /// Used for logging only. The documents folder is resolved by RequestId.
         /// </summary>
         public string RequestTitle { get; set; } = string.Empty;
     }
@@ -40,8 +40,8 @@ namespace LegalWorkflow.Functions.Models
         public int RequestId { get; set; }
 
         /// <summary>
-        /// Request ID (Title) used to identify the documents folder.
-        /// Example: "LRQ-2024-001234"
+        /// Optional request title / business request identifier.
+        /// Used for logging only. The documents folder is resolved by RequestId.
         /// </summary>
         public string RequestTitle { get; set; } = string.Empty;
 
@@ -70,8 +70,8 @@ namespace LegalWorkflow.Functions.Models
         public int RequestId { get; set; }
 
         /// <summary>
-        /// Request ID (Title) used to identify the documents folder.
-        /// Example: "LRQ-2024-001234"
+        /// Optional request title / business request identifier.
+        /// Used for logging only. The documents folder is resolved by RequestId.
         /// </summary>
         public string RequestTitle { get; set; } = string.Empty;
 
@@ -100,8 +100,8 @@ namespace LegalWorkflow.Functions.Models
         public int RequestId { get; set; }
 
         /// <summary>
-        /// Request ID (Title) used to identify the documents folder.
-        /// Example: "LRQ-2024-001234"
+        /// Optional request title / business request identifier.
+        /// Used for logging only. The documents folder is resolved by RequestId.
         /// </summary>
         public string RequestTitle { get; set; } = string.Empty;
     }
@@ -140,7 +140,7 @@ namespace LegalWorkflow.Functions.Models
     {
         /// <summary>
         /// Target of the permission change.
-        /// Example: "Requests list item 123", "RequestDocuments/LRQ-2024-001234"
+        /// Example: "Requests list item 123", "RequestDocuments/123"
         /// </summary>
         public string Target { get; set; } = string.Empty;
 

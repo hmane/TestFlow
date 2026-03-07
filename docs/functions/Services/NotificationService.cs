@@ -9,6 +9,8 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Memory;
+using PnP.Core.Model.Security;
+using PnP.Core.QueryModel;
 using PnP.Core.Services;
 using LegalWorkflow.Functions.Constants;
 using LegalWorkflow.Functions.Helpers;
@@ -55,6 +57,25 @@ namespace LegalWorkflow.Functions.Services
         /// Cache expiration time for group member emails (5 minutes).
         /// </summary>
         private static readonly TimeSpan GroupMembersCacheExpiration = TimeSpan.FromMinutes(5);
+
+        /// <summary>
+        /// Known group recipient aliases mapped to configuration values.
+        /// </summary>
+        private IEnumerable<KeyValuePair<string, string>> GroupRecipientMappings => new[]
+        {
+            new KeyValuePair<string, string>("SubmittersGroup", _groupConfig.SubmittersGroup),
+            new KeyValuePair<string, string>("Submitters", _groupConfig.SubmittersGroup),
+            new KeyValuePair<string, string>("LegalAdminGroup", _groupConfig.LegalAdminGroup),
+            new KeyValuePair<string, string>("LegalAdmin", _groupConfig.LegalAdminGroup),
+            new KeyValuePair<string, string>("AttorneyAssignerGroup", _groupConfig.AttorneyAssignerGroup),
+            new KeyValuePair<string, string>("AttorneyAssigner", _groupConfig.AttorneyAssignerGroup),
+            new KeyValuePair<string, string>("ComplianceGroup", _groupConfig.ComplianceGroup),
+            new KeyValuePair<string, string>("Compliance", _groupConfig.ComplianceGroup),
+            new KeyValuePair<string, string>("AdminGroup", _groupConfig.AdminGroup),
+            new KeyValuePair<string, string>("Admin", _groupConfig.AdminGroup),
+            new KeyValuePair<string, string>("AttorneysGroup", _groupConfig.AttorneysGroup),
+            new KeyValuePair<string, string>("Attorneys", _groupConfig.AttorneysGroup)
+        };
 
         /// <summary>
         /// Creates a new NotificationService instance.
@@ -109,7 +130,7 @@ namespace LegalWorkflow.Functions.Services
                 _logger.SetRequestContext(currentRequest.Id, currentRequest.Title);
 
                 // Load the previous version for comparison
-                var previousVersion = await _requestService.GetPreviousVersionAsync(request.RequestId);
+                var previousVersion = await _requestService.GetPreviousVersionAsync(request.RequestId, request.PreviousVersion);
 
                 // Determine which notification (if any) should be sent
                 var notificationId = DetermineNotification(currentRequest, previousVersion);
@@ -147,6 +168,17 @@ namespace LegalWorkflow.Functions.Services
                 // Generate the email
                 var email = await GenerateEmailAsync(currentRequest, template, notificationId);
 
+                if (email.To.Count == 0 && email.Cc.Count == 0 && email.Bcc.Count == 0)
+                {
+                    _logger.Warning($"Notification '{notificationId}' resolved with no recipients");
+                    tracker.Complete(true, "No recipients resolved");
+                    return new SendNotificationResponse
+                    {
+                        ShouldSendNotification = false,
+                        Reason = $"Notification '{notificationId}' has no resolved recipients"
+                    };
+                }
+
                 _logger.LogNotification(
                     notificationId,
                     GetTriggerDescription(notificationId, currentRequest, previousVersion),
@@ -168,12 +200,7 @@ namespace LegalWorkflow.Functions.Services
             {
                 _logger.Error("Failed to process notification", ex);
                 tracker.Complete(false, $"Error: {ex.Message}");
-
-                return new SendNotificationResponse
-                {
-                    ShouldSendNotification = false,
-                    Reason = $"Error processing notification: {ex.Message}"
-                };
+                throw;
             }
         }
 
@@ -687,11 +714,7 @@ namespace LegalWorkflow.Functions.Services
             foreach (var recipient in recipients.Select(r => r.Trim()))
             {
                 // Handle template token format: {{TokenName}}
-                var resolvedRecipient = recipient;
-                if (recipient.StartsWith("{{") && recipient.EndsWith("}}"))
-                {
-                    resolvedRecipient = recipient.Substring(2, recipient.Length - 4); // Remove {{ and }}
-                }
+                var resolvedRecipient = NormalizeRecipientToken(recipient);
 
                 switch (resolvedRecipient)
                 {
@@ -712,37 +735,6 @@ namespace LegalWorkflow.Functions.Services
                             .Select(a => a.Email));
                         break;
 
-                    // Group-based tokens (resolve by querying SharePoint group members)
-                    case "LegalAdminGroup":
-                    case "LegalAdmin":
-                        var legalAdminEmails = await GetGroupMemberEmailsAsync(_groupConfig.LegalAdminGroup);
-                        emails.AddRange(legalAdminEmails);
-                        break;
-
-                    case "AttorneyAssignerGroup":
-                    case "AttorneyAssigner":
-                        var assignerEmails = await GetGroupMemberEmailsAsync(_groupConfig.AttorneyAssignerGroup);
-                        emails.AddRange(assignerEmails);
-                        break;
-
-                    case "ComplianceGroup":
-                    case "Compliance":
-                        var complianceEmails = await GetGroupMemberEmailsAsync(_groupConfig.ComplianceGroup);
-                        emails.AddRange(complianceEmails);
-                        break;
-
-                    case "AdminGroup":
-                    case "Admin":
-                        var adminEmails = await GetGroupMemberEmailsAsync(_groupConfig.AdminGroup);
-                        emails.AddRange(adminEmails);
-                        break;
-
-                    case "AttorneysGroup":
-                    case "Attorneys":
-                        var attorneyEmails = await GetGroupMemberEmailsAsync(_groupConfig.AttorneysGroup);
-                        emails.AddRange(attorneyEmails);
-                        break;
-
                     // Multi-value tokens
                     case "AdditionalPartyEmails":
                     case "AdditionalParties":
@@ -752,11 +744,20 @@ namespace LegalWorkflow.Functions.Services
                         break;
 
                     default:
+                        if (TryResolveConfiguredGroupName(resolvedRecipient, out var configuredGroupName))
+                        {
+                            emails.AddRange(await GetGroupMemberEmailsAsync(configuredGroupName));
+                            break;
+                        }
+
                         // Assume it's a direct email address if it contains @
                         if (recipient.Contains("@"))
                         {
                             emails.Add(recipient);
+                            break;
                         }
+
+                        _logger.Warning($"Unrecognized notification recipient token '{recipient}'");
                         break;
                 }
             }
@@ -777,12 +778,13 @@ namespace LegalWorkflow.Functions.Services
                 return new List<string>();
             }
 
-            var cacheKey = $"group-emails:{groupName}";
+            var normalizedGroupName = groupName.Trim();
+            var cacheKey = $"group-emails:{normalizedGroupName.ToLowerInvariant()}";
 
             // Check cache first
             if (_groupMembersCache.TryGetValue(cacheKey, out List<string>? cachedEmails) && cachedEmails != null)
             {
-                _logger.Debug($"Using cached group member emails for '{groupName}' ({cachedEmails.Count} members)");
+                _logger.Debug($"Using cached group member emails for '{normalizedGroupName}' ({cachedEmails.Count} members)");
                 return cachedEmails;
             }
 
@@ -790,12 +792,12 @@ namespace LegalWorkflow.Functions.Services
             {
                 using var context = await _contextFactory.CreateAsync("Default");
 
-                var siteGroups = context.Web.SiteGroups;
-                var group = await siteGroups.FirstOrDefaultAsync(g => g.Title == groupName);
+                var siteGroups = await context.Web.SiteGroups.ToListAsync();
+                var group = FindSiteGroup(siteGroups, normalizedGroupName);
 
                 if (group == null)
                 {
-                    _logger.Warning($"SharePoint group '{groupName}' not found");
+                    _logger.Warning($"SharePoint group '{normalizedGroupName}' not found");
                     return new List<string>();
                 }
 
@@ -808,7 +810,7 @@ namespace LegalWorkflow.Functions.Services
                     .Distinct()
                     .ToList();
 
-                _logger.Info($"Resolved {memberEmails.Count} email(s) from SharePoint group '{groupName}'");
+                _logger.Info($"Resolved {memberEmails.Count} email(s) from SharePoint group '{group.Title}'");
 
                 // Cache the result
                 var cacheEntryOptions = new MemoryCacheEntryOptions()
@@ -820,9 +822,72 @@ namespace LegalWorkflow.Functions.Services
             }
             catch (Exception ex)
             {
-                _logger.Error($"Failed to resolve members for SharePoint group '{groupName}'", ex);
+                _logger.Error($"Failed to resolve members for SharePoint group '{normalizedGroupName}'", ex);
                 return new List<string>();
             }
+        }
+
+        /// <summary>
+        /// Resolves a recipient token to a configured SharePoint group name.
+        /// </summary>
+        private bool TryResolveConfiguredGroupName(string token, out string groupName)
+        {
+            var normalizedToken = NormalizeKey(token);
+
+            foreach (var mapping in GroupRecipientMappings)
+            {
+                if (NormalizeKey(mapping.Key) == normalizedToken)
+                {
+                    groupName = mapping.Value;
+                    return !string.IsNullOrWhiteSpace(groupName);
+                }
+
+                if (!string.IsNullOrWhiteSpace(mapping.Value) && NormalizeKey(mapping.Value) == normalizedToken)
+                {
+                    groupName = mapping.Value;
+                    return true;
+                }
+            }
+
+            groupName = string.Empty;
+            return false;
+        }
+
+        /// <summary>
+        /// Finds a SharePoint site group using normalized title matching.
+        /// </summary>
+        private static ISharePointGroup? FindSiteGroup(IEnumerable<ISharePointGroup> siteGroups, string groupName)
+        {
+            var normalizedGroupName = NormalizeKey(groupName);
+
+            return siteGroups.FirstOrDefault(group =>
+                NormalizeKey(group.Title) == normalizedGroupName);
+        }
+
+        /// <summary>
+        /// Removes token wrappers and extra whitespace from recipient identifiers.
+        /// </summary>
+        private static string NormalizeRecipientToken(string recipient)
+        {
+            var trimmed = recipient.Trim();
+            if (trimmed.StartsWith("{{", StringComparison.Ordinal) && trimmed.EndsWith("}}", StringComparison.Ordinal))
+            {
+                trimmed = trimmed.Substring(2, trimmed.Length - 4);
+            }
+
+            return trimmed.Trim();
+        }
+
+        /// <summary>
+        /// Produces a normalization key that ignores case, spaces, punctuation, and separators.
+        /// </summary>
+        private static string NormalizeKey(string value)
+        {
+            return new string(value
+                .Trim()
+                .Where(char.IsLetterOrDigit)
+                .Select(char.ToLowerInvariant)
+                .ToArray());
         }
 
         #endregion

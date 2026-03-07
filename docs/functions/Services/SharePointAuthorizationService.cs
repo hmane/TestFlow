@@ -5,15 +5,14 @@
 //
 // This service performs authorization checks:
 // 1. Checks if the caller is the Power Automate service account
-// 2. If not, verifies the user has Contribute or Contribute Without Delete
-//    permissions on the specific request item
+// 2. If not, verifies the user has effective edit permissions on the specific
+//    request item
 //
 // APIM handles authentication (token validation). This service only handles
 // authorization (permission checks).
 // =============================================================================
 
 using System;
-using System.Linq;
 using System.Threading.Tasks;
 using PnP.Core.Model.SharePoint;
 using PnP.Core.Services;
@@ -27,7 +26,7 @@ namespace LegalWorkflow.Functions.Services
     /// Service for authorizing requests to the Azure Functions.
     /// Uses a two-tier approach:
     /// 1. Service account check: matches caller against the configured Power Automate service account
-    /// 2. Item-level permission check: verifies the user has Contribute or Contribute Without Delete
+    /// 2. Item-level permission check: verifies the user has effective edit
     ///    permissions on the specific request item in SharePoint
     /// </summary>
     public class SharePointAuthorizationService
@@ -35,18 +34,6 @@ namespace LegalWorkflow.Functions.Services
         private readonly IPnPContextFactory _contextFactory;
         private readonly Logger _logger;
         private readonly PermissionGroupConfig _groupConfig;
-
-        /// <summary>
-        /// Permission levels that grant write access to a request.
-        /// Users with any of these permission levels are authorized to perform actions.
-        /// </summary>
-        private static readonly string[] WritePermissionLevels = new[]
-        {
-            RoleDefinitions.FullControl,
-            RoleDefinitions.Contribute,
-            RoleDefinitions.ContributeWithoutDelete,
-            RoleDefinitions.Edit
-        };
 
         /// <summary>
         /// Creates a new SharePointAuthorizationService instance.
@@ -69,7 +56,7 @@ namespace LegalWorkflow.Functions.Services
         ///
         /// Authorization logic:
         /// 1. If the caller matches the configured Power Automate service account → Authorized
-        /// 2. If a requestId is provided, check if the user has Contribute or Contribute Without Delete
+        /// 2. If a requestId is provided, check if the user has effective edit
         ///    permissions on the request item → Authorized
         /// 3. Otherwise → Denied
         /// </summary>
@@ -140,7 +127,7 @@ namespace LegalWorkflow.Functions.Services
         }
 
         /// <summary>
-        /// Checks if the user has Contribute or Contribute Without Delete permissions
+        /// Checks if the user has effective edit permissions
         /// on the specific request item. This leverages the item-level permissions that
         /// are set when a request is submitted (inheritance is broken).
         ///
@@ -171,66 +158,16 @@ namespace LegalWorkflow.Functions.Services
                 var list = await context.Web.Lists.GetByTitleAsync(SharePointLists.Requests);
                 var item = await list.Items.GetByIdAsync(requestId);
 
-                // Load role assignments on the item
-                await item.LoadAsync(i => i.RoleAssignments.QueryProperties(
-                    ra => ra.PrincipalId,
-                    ra => ra.RoleDefinitions.QueryProperties(rd => rd.Name)));
+                var hasWritePermission = await item.CheckIfUserHasPermissionsAsync(
+                    userInfo.SharePointLoginName,
+                    PermissionKind.EditListItems);
 
-                // Check direct user permission
-                foreach (var roleAssignment in item.RoleAssignments.AsRequested())
+                if (hasWritePermission)
                 {
-                    if (roleAssignment.PrincipalId == user.Id)
-                    {
-                        var roleNames = roleAssignment.RoleDefinitions.AsRequested()
-                            .Select(rd => rd.Name)
-                            .ToList();
-
-                        if (roleNames.Any(rn => WritePermissionLevels.Contains(rn)))
-                        {
-                            _logger.Info($"User {userInfo.Email} has direct write permission on request {requestId}",
-                                new { Roles = string.Join(", ", roleNames) });
-                            tracker.Complete(true, "Direct permission");
-                            return true;
-                        }
-                    }
-                }
-
-                // Check group-based permissions (user may have access through a SharePoint group)
-                var userGroups = await context.Web.GetUserEffectivePermissionsAsync(userInfo.SharePointLoginName);
-
-                // Alternative: check each role assignment's principal to see if user is a member
-                var siteGroups = await context.Web.SiteGroups.ToListAsync();
-
-                foreach (var roleAssignment in item.RoleAssignments.AsRequested())
-                {
-                    // Check if this principal is a group the user belongs to
-                    var group = siteGroups.AsRequested()
-                        .FirstOrDefault(g => g.Id == roleAssignment.PrincipalId);
-
-                    if (group != null)
-                    {
-                        // Load group members
-                        await group.LoadAsync(g => g.Users);
-
-                        var isMember = group.Users.AsRequested()
-                            .Any(u => u.LoginName.Equals(userInfo.SharePointLoginName, StringComparison.OrdinalIgnoreCase) ||
-                                      u.Mail?.Equals(userInfo.Email, StringComparison.OrdinalIgnoreCase) == true);
-
-                        if (isMember)
-                        {
-                            var roleNames = roleAssignment.RoleDefinitions.AsRequested()
-                                .Select(rd => rd.Name)
-                                .ToList();
-
-                            if (roleNames.Any(rn => WritePermissionLevels.Contains(rn)))
-                            {
-                                _logger.Info($"User {userInfo.Email} has write permission through group '{group.Title}' on request {requestId}",
-                                    new { Group = group.Title, Roles = string.Join(", ", roleNames) });
-                                tracker.Complete(true, $"Group permission via {group.Title}");
-                                return true;
-                            }
-                        }
-                    }
+                    _logger.Info($"User {userInfo.Email} has write permission on request {requestId}",
+                        new { PermissionKind = PermissionKind.EditListItems.ToString() });
+                    tracker.Complete(true, "Effective permission");
+                    return true;
                 }
 
                 _logger.Info($"User {userInfo.Email} does not have write permission on request {requestId}");

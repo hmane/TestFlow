@@ -8,8 +8,9 @@
 // to determine if a notification should be sent.
 //
 // Authorization:
-// - Power Automate service account (matched via config) bypasses permission checks
-// - Users must have Contribute or Contribute Without Delete on the request item
+// - APIM validates and forwards Azure AD bearer tokens
+// - Power Automate service account (matched via config) bypasses item-level permission checks
+// - Users must have effective edit permission on the request item
 // - Health: Anonymous (for monitoring)
 // =============================================================================
 
@@ -91,7 +92,7 @@ namespace LegalWorkflow.Functions
         /// Processes a notification request and returns the email to send (if any).
         ///
         /// This function:
-        /// 1. Validates authentication (function key or user token)
+        /// 1. Validates the forwarded Azure AD bearer token
         /// 2. Loads the current request data from SharePoint
         /// 3. Loads the previous version from version history
         /// 4. Compares versions to detect notification triggers
@@ -100,8 +101,8 @@ namespace LegalWorkflow.Functions
         /// Called from Power Automate flow when a request is modified.
         ///
         /// Authorization:
-        /// - Power Automate: Uses function key
-        /// - User: Requires valid Azure AD token and SharePoint group membership
+        /// - Power Automate: Uses the configured service account bearer token
+        /// - User: Requires valid Azure AD token and SharePoint item access
         ///
         /// POST /api/notifications/send
         /// Body: { "requestId": 123, "previousVersion": "1.0" }
@@ -199,7 +200,7 @@ namespace LegalWorkflow.Functions
                 return new ObjectResult(new SendNotificationResponse
                 {
                     ShouldSendNotification = false,
-                    Reason = $"Error processing notification: {ex.Message}"
+                    Reason = "Internal server error"
                 })
                 { StatusCode = 500 };
             }

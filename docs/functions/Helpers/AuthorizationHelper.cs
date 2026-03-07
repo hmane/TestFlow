@@ -244,7 +244,9 @@ namespace LegalWorkflow.Functions.Helpers
         /// Format: i:0#.f|membership|user@domain.com
         /// </summary>
         public string SharePointLoginName => string.IsNullOrEmpty(Email)
-            ? string.Empty
+            ? (string.IsNullOrEmpty(UserPrincipalName)
+                ? string.Empty
+                : $"i:0#.f|membership|{UserPrincipalName.ToLowerInvariant()}")
             : $"i:0#.f|membership|{Email.ToLowerInvariant()}";
     }
 }

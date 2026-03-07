@@ -10,7 +10,7 @@
 // 2. AuthorizationHelper extracts user identity from the token
 // 3. SharePointAuthorizationService checks:
 //    a. Is this the Power Automate service account? → Authorized
-//    b. Does the user have Contribute/Contribute Without Delete on the item? → Authorized
+//    b. Does the user have effective edit permission on the item? → Authorized
 // =============================================================================
 
 using System;
@@ -40,7 +40,7 @@ namespace LegalWorkflow.Functions
     ///
     /// Authorization:
     /// - Power Automate service account (matched via config) bypasses permission checks
-    /// - Users must have Contribute or Contribute Without Delete on the request item
+    /// - Users must have effective edit permission on the request item
     /// </summary>
     public class PermissionFunctions
     {
@@ -78,7 +78,7 @@ namespace LegalWorkflow.Functions
         /// Called from SPFx app when request is saved (Draft or Legal Intake).
         ///
         /// POST /api/permissions/initialize
-        /// Body: { "requestId": 123, "requestTitle": "LRQ-2024-001234" }
+        /// Body: { "requestId": 123 }
         /// </summary>
         [Function("InitializePermissions")]
         public async Task<IActionResult> InitializePermissions(
@@ -106,17 +106,17 @@ namespace LegalWorkflow.Functions
                 string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
                 var request = JsonSerializer.Deserialize<InitializePermissionsRequest>(requestBody, _jsonOptions);
 
-                if (request == null || request.RequestId <= 0 || string.IsNullOrEmpty(request.RequestTitle))
+                if (request == null || request.RequestId <= 0)
                 {
                     logger.Warning("Invalid request - missing required fields");
                     return new BadRequestObjectResult(new PermissionResponse
                     {
                         Success = false,
-                        Message = "Invalid request. RequestId and RequestTitle are required."
+                        Message = "Invalid request. RequestId is required."
                     });
                 }
 
-                logger.SetRequestContext(request.RequestId, request.RequestTitle);
+                logger.SetRequestContext(request.RequestId, GetRequestContextTitle(request.RequestId, request.RequestTitle));
 
                 // Step 3: Authorize - Service account check or item-level permission check
                 var authzResult = await AuthorizeAsync(authResult.User!, request.RequestId, logger);
@@ -153,19 +153,13 @@ namespace LegalWorkflow.Functions
                 else
                 {
                     logger.Error("Permission initialization failed", null, new { Error = result.Error });
-                    return new ObjectResult(result) { StatusCode = 500 };
+                    return new ObjectResult(CreateInternalErrorResponse("Permission initialization failed")) { StatusCode = 500 };
                 }
             }
             catch (Exception ex)
             {
                 logger.Error("Unhandled exception in InitializePermissions", ex);
-                return new ObjectResult(new PermissionResponse
-                {
-                    Success = false,
-                    Message = "Internal server error",
-                    Error = ex.Message
-                })
-                { StatusCode = 500 };
+                return new ObjectResult(CreateInternalErrorResponse()) { StatusCode = 500 };
             }
         }
 
@@ -174,7 +168,7 @@ namespace LegalWorkflow.Functions
         /// Called from SPFx app when user is added via Manage Access component.
         ///
         /// POST /api/permissions/add-user
-        /// Body: { "requestId": 123, "requestTitle": "LRQ-2024-001234",
+        /// Body: { "requestId": 123,
         ///         "userLoginName": "i:0#.f|membership|user@domain.com",
         ///         "userEmail": "user@domain.com" }
         /// </summary>
@@ -205,18 +199,17 @@ namespace LegalWorkflow.Functions
                 var request = JsonSerializer.Deserialize<AddUserPermissionRequest>(requestBody, _jsonOptions);
 
                 if (request == null || request.RequestId <= 0 ||
-                    string.IsNullOrEmpty(request.RequestTitle) ||
                     string.IsNullOrEmpty(request.UserLoginName))
                 {
                     logger.Warning("Invalid request - missing required fields");
                     return new BadRequestObjectResult(new PermissionResponse
                     {
                         Success = false,
-                        Message = "Invalid request. RequestId, RequestTitle, and UserLoginName are required."
+                        Message = "Invalid request. RequestId and UserLoginName are required."
                     });
                 }
 
-                logger.SetRequestContext(request.RequestId, request.RequestTitle);
+                logger.SetRequestContext(request.RequestId, GetRequestContextTitle(request.RequestId, request.RequestTitle));
 
                 // Step 3: Authorize
                 var authzResult = await AuthorizeAsync(authResult.User!, request.RequestId, logger);
@@ -250,19 +243,13 @@ namespace LegalWorkflow.Functions
                 else
                 {
                     logger.Error("Failed to add user permission", null, new { Error = result.Error });
-                    return new ObjectResult(result) { StatusCode = 500 };
+                    return new ObjectResult(CreateInternalErrorResponse("Failed to add user permission")) { StatusCode = 500 };
                 }
             }
             catch (Exception ex)
             {
                 logger.Error("Unhandled exception in AddUserPermission", ex);
-                return new ObjectResult(new PermissionResponse
-                {
-                    Success = false,
-                    Message = "Internal server error",
-                    Error = ex.Message
-                })
-                { StatusCode = 500 };
+                return new ObjectResult(CreateInternalErrorResponse()) { StatusCode = 500 };
             }
         }
 
@@ -271,7 +258,7 @@ namespace LegalWorkflow.Functions
         /// Called from SPFx app when user is removed via Manage Access component.
         ///
         /// POST /api/permissions/remove-user
-        /// Body: { "requestId": 123, "requestTitle": "LRQ-2024-001234",
+        /// Body: { "requestId": 123,
         ///         "userLoginName": "i:0#.f|membership|user@domain.com",
         ///         "userEmail": "user@domain.com" }
         /// </summary>
@@ -302,18 +289,17 @@ namespace LegalWorkflow.Functions
                 var request = JsonSerializer.Deserialize<RemoveUserPermissionRequest>(requestBody, _jsonOptions);
 
                 if (request == null || request.RequestId <= 0 ||
-                    string.IsNullOrEmpty(request.RequestTitle) ||
                     string.IsNullOrEmpty(request.UserLoginName))
                 {
                     logger.Warning("Invalid request - missing required fields");
                     return new BadRequestObjectResult(new PermissionResponse
                     {
                         Success = false,
-                        Message = "Invalid request. RequestId, RequestTitle, and UserLoginName are required."
+                        Message = "Invalid request. RequestId and UserLoginName are required."
                     });
                 }
 
-                logger.SetRequestContext(request.RequestId, request.RequestTitle);
+                logger.SetRequestContext(request.RequestId, GetRequestContextTitle(request.RequestId, request.RequestTitle));
 
                 // Step 3: Authorize
                 var authzResult = await AuthorizeAsync(authResult.User!, request.RequestId, logger);
@@ -347,19 +333,13 @@ namespace LegalWorkflow.Functions
                 else
                 {
                     logger.Error("Failed to remove user permission", null, new { Error = result.Error });
-                    return new ObjectResult(result) { StatusCode = 500 };
+                    return new ObjectResult(CreateInternalErrorResponse("Failed to remove user permission")) { StatusCode = 500 };
                 }
             }
             catch (Exception ex)
             {
                 logger.Error("Unhandled exception in RemoveUserPermission", ex);
-                return new ObjectResult(new PermissionResponse
-                {
-                    Success = false,
-                    Message = "Internal server error",
-                    Error = ex.Message
-                })
-                { StatusCode = 500 };
+                return new ObjectResult(CreateInternalErrorResponse()) { StatusCode = 500 };
             }
         }
 
@@ -369,7 +349,7 @@ namespace LegalWorkflow.Functions
         /// Called from Power Automate when status changes to Completed.
         ///
         /// POST /api/permissions/complete
-        /// Body: { "requestId": 123, "requestTitle": "LRQ-2024-001234" }
+        /// Body: { "requestId": 123 }
         /// </summary>
         [Function("CompletePermissions")]
         public async Task<IActionResult> CompletePermissions(
@@ -397,17 +377,17 @@ namespace LegalWorkflow.Functions
                 string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
                 var request = JsonSerializer.Deserialize<CompletePermissionsRequest>(requestBody, _jsonOptions);
 
-                if (request == null || request.RequestId <= 0 || string.IsNullOrEmpty(request.RequestTitle))
+                if (request == null || request.RequestId <= 0)
                 {
                     logger.Warning("Invalid request - missing required fields");
                     return new BadRequestObjectResult(new PermissionResponse
                     {
                         Success = false,
-                        Message = "Invalid request. RequestId and RequestTitle are required."
+                        Message = "Invalid request. RequestId is required."
                     });
                 }
 
-                logger.SetRequestContext(request.RequestId, request.RequestTitle);
+                logger.SetRequestContext(request.RequestId, GetRequestContextTitle(request.RequestId, request.RequestTitle));
 
                 // Step 3: Authorize - service account or item-level permission
                 var authzResult = await AuthorizeAsync(authResult.User!, request.RequestId, logger);
@@ -443,19 +423,13 @@ namespace LegalWorkflow.Functions
                 else
                 {
                     logger.Error("Failed to set completion permissions", null, new { Error = result.Error });
-                    return new ObjectResult(result) { StatusCode = 500 };
+                    return new ObjectResult(CreateInternalErrorResponse("Failed to finalize permissions")) { StatusCode = 500 };
                 }
             }
             catch (Exception ex)
             {
                 logger.Error("Unhandled exception in CompletePermissions", ex);
-                return new ObjectResult(new PermissionResponse
-                {
-                    Success = false,
-                    Message = "Internal server error",
-                    Error = ex.Message
-                })
-                { StatusCode = 500 };
+                return new ObjectResult(CreateInternalErrorResponse()) { StatusCode = 500 };
             }
         }
 
@@ -481,6 +455,23 @@ namespace LegalWorkflow.Functions
         {
             var authzService = new SharePointAuthorizationService(_contextFactory, logger, _groupConfig);
             return await authzService.AuthorizeAsync(userInfo, requestId);
+        }
+
+        /// <summary>
+        /// Creates a generic 500 response without leaking backend details.
+        /// </summary>
+        private static PermissionResponse CreateInternalErrorResponse(string message = "Internal server error")
+        {
+            return new PermissionResponse
+            {
+                Success = false,
+                Message = message
+            };
+        }
+
+        private static string GetRequestContextTitle(int requestId, string? requestTitle)
+        {
+            return string.IsNullOrWhiteSpace(requestTitle) ? requestId.ToString() : requestTitle;
         }
 
         #endregion

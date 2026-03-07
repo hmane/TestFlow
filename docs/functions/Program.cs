@@ -3,16 +3,13 @@
 // Program.cs - Application entry point with dependency injection configuration
 // =============================================================================
 
-using System.Security.Cryptography.X509Certificates;
-using Azure.Identity;
-using Azure.Security.KeyVault.Certificates;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using PnP.Core.Auth.Services.Builder.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using PnP.Core.Services.Builder.Configuration;
 using LegalWorkflow.Functions.Helpers;
 using LegalWorkflow.Functions.Models;
@@ -112,17 +109,19 @@ namespace LegalWorkflow.Functions
             var certificateName = configuration["AzureAd:CertificateName"];
             var siteUrl = configuration["SharePoint:SiteUrl"];
 
-            // Load certificate from Azure Key Vault
-            var certificate = LoadCertificateFromKeyVault(keyVaultUrl!, certificateName!);
+            var authenticationProvider = new ReloadableX509AuthenticationProvider(
+                clientId!,
+                tenantId!,
+                keyVaultUrl!,
+                certificateName!,
+                NullLogger<ReloadableX509AuthenticationProvider>.Instance);
+
+            services.AddSingleton(authenticationProvider);
 
             // Configure PnP Core with retry/resilience settings
             services.AddPnPCore(options =>
             {
-                options.DefaultAuthenticationProvider = new PnPCoreAuthenticationCredentialConfigurationOptions
-                {
-                    ClientId = clientId,
-                    TenantId = tenantId
-                };
+                options.DefaultAuthenticationProvider = authenticationProvider;
 
                 options.Sites.Add("Default", new PnPCoreSiteOptions
                 {
@@ -160,7 +159,7 @@ namespace LegalWorkflow.Functions
                         UseIncrementalDelay = true
                     },
                     // Microsoft Graph retry settings
-                    MicrosoftGraph = new PnPCoreHttpRequestsMicrosoftGraphOptions
+                    MicrosoftGraph = new PnPCoreHttpRequestsGraphOptions
                     {
                         // Use retry-after header when throttled
                         UseRetryAfterHeader = true,
@@ -173,42 +172,6 @@ namespace LegalWorkflow.Functions
                     }
                 };
             });
-
-            // Add PnP Core authentication with certificate from Key Vault
-            services.AddPnPCoreAuthentication(options =>
-            {
-                var credentialConfig = new PnPCoreAuthenticationCredentialConfigurationOptions
-                {
-                    ClientId = clientId,
-                    TenantId = tenantId,
-                    X509Certificate = new PnPCoreAuthenticationX509CertificateOptions
-                    {
-                        Certificate = certificate
-                    }
-                };
-
-                options.Credentials.Configurations.Add("Default", credentialConfig);
-                options.Credentials.DefaultConfiguration = "Default";
-            });
-        }
-
-        /// <summary>
-        /// Loads an X.509 certificate from Azure Key Vault.
-        /// Uses DefaultAzureCredential for authentication, which supports:
-        /// - Managed Identity (production in Azure)
-        /// - Azure CLI / Visual Studio credentials (local development)
-        /// </summary>
-        /// <param name="keyVaultUrl">The Key Vault URL (e.g., "https://my-keyvault.vault.azure.net/")</param>
-        /// <param name="certificateName">The name of the certificate in Key Vault</param>
-        /// <returns>The X.509 certificate with private key</returns>
-        private static X509Certificate2 LoadCertificateFromKeyVault(string keyVaultUrl, string certificateName)
-        {
-            var credential = new DefaultAzureCredential();
-            var certClient = new CertificateClient(new Uri(keyVaultUrl), credential);
-
-            // Download the certificate with its private key
-            var certResponse = certClient.DownloadCertificate(certificateName);
-            return certResponse.Value;
         }
     }
 }

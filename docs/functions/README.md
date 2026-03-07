@@ -19,11 +19,14 @@ LegalWorkflow.Functions/
 │       └── deploy-functions.yml  # Deployment template
 ├── Functions/                    # Azure Function endpoints
 │   ├── PermissionFunctions.cs    # Permission management endpoints
-│   └── NotificationFunctions.cs  # Notification processing endpoint
+│   ├── NotificationFunctions.cs  # Notification processing endpoint
+│   └── ManagementFunctions.cs    # Health and operational endpoints
 ├── Services/                     # Business logic services
 │   ├── RequestService.cs         # SharePoint data access
 │   ├── PermissionService.cs      # Permission management logic
-│   └── NotificationService.cs    # Notification generation logic
+│   ├── NotificationService.cs    # Notification generation logic
+│   ├── SharePointAuthorizationService.cs  # SharePoint authorization checks
+│   └── ReloadableX509AuthenticationProvider.cs # Reloadable Key Vault certificate auth
 ├── Models/                       # Data models
 │   ├── Enums.cs                  # Enumeration types
 │   ├── RequestModel.cs           # Request data model
@@ -32,8 +35,6 @@ LegalWorkflow.Functions/
 ├── Helpers/                      # Utility classes
 │   ├── Logger.cs                 # Centralized logging utility
 │   └── AuthorizationHelper.cs    # JWT token validation
-├── Services/                     # Business logic services (continued)
-│   └── SharePointAuthorizationService.cs  # SharePoint group & ownership checks
 ├── .apim/                        # Azure API Management configuration
 │   ├── api-policy.xml            # APIM policy for token validation
 │   └── README.md                 # APIM setup documentation
@@ -52,7 +53,7 @@ LegalWorkflow.Functions/
 
 | Endpoint | Method | Description | Caller |
 |----------|--------|-------------|--------|
-| `/api/permissions/initialize` | POST | Break inheritance and set initial permissions | SPFx App |
+| `/api/permissions/initialize` | POST | Break inheritance and set initial permissions | Power Automate / Operations |
 | `/api/permissions/add-user` | POST | Add Read permission for a user | SPFx App |
 | `/api/permissions/remove-user` | POST | Remove a user's permissions | SPFx App |
 | `/api/permissions/complete` | POST | Set final permissions (Read for all except Admin) | Power Automate |
@@ -63,6 +64,14 @@ LegalWorkflow.Functions/
 |----------|--------|-------------|--------|
 | `/api/notifications/send` | POST | Process notification request | Power Automate |
 | `/api/notifications/health` | GET | Health check endpoint | Monitoring |
+| `/api/health` | GET | Application health check endpoint | Monitoring |
+| `/api/admin/certificate-cache/flush` | POST | Reload certificate from Key Vault without restart | Operations |
+
+Note:
+
+- `/api/health` is the generic public Functions health endpoint
+- `/api/notifications/health` is kept for backward compatibility
+- There is not a separate `/api/permissions/health` endpoint at this time
 
 ## Authentication & Authorization
 
@@ -80,18 +89,21 @@ LegalWorkflow.Functions/
 3. **APIM Validation**: APIM validates JWT token (issuer, audience, expiry)
 4. **Token Forwarding**: Valid token is forwarded to Azure Function
 5. **User Extraction**: Function extracts user identity from token
-6. **SharePoint Group Check**: Function verifies user membership in SharePoint groups
-7. **Ownership Check**: For certain actions, verifies user owns the request
+6. **Authorization Check**: Function authorizes either:
+   - the configured service account, or
+   - a caller who has effective edit permission on the request item in SharePoint
+7. **Operation Execution**: Function performs the requested SharePoint operation
 
 ### Authorization Rules
 
 | Endpoint | Required Groups | Additional Rules |
 |----------|-----------------|------------------|
-| `initialize` | Any authorized group | User must be in at least one LW group |
-| `add-user` | Admin, Legal Admin, or Submitter | Submitter can only modify their own request |
-| `remove-user` | Admin, Legal Admin, or Submitter | Submitter can only modify their own request |
-| `complete` | Admin only | Or Power Automate via function key |
-| `notifications/send` | Any authorized group | Or Power Automate via function key |
+| `initialize` | Configured service account or authorized user with effective item edit permission | Bearer token required |
+| `add-user` | Configured service account or authorized user with effective item edit permission | Bearer token required |
+| `remove-user` | Configured service account or authorized user with effective item edit permission | Bearer token required |
+| `complete` | Configured service account or authorized user with effective item edit permission | Bearer token required |
+| `notifications/send` | Configured service account or authorized user with effective item edit permission | Bearer token required |
+| `admin/certificate-cache/flush` | Configured service account only | Bearer token required |
 
 ### SharePoint Groups
 
@@ -124,16 +136,22 @@ Required API Permissions:
 {
   "AzureAd:TenantId": "<tenant-id>",
   "AzureAd:ClientId": "<client-id>",
-  "AzureAd:ClientSecret": "<client-secret>",
+  "AzureAd:Audience": "api://<client-id>",
+  "AzureAd:KeyVaultUrl": "https://<your-keyvault>.vault.azure.net/",
+  "AzureAd:CertificateName": "<certificate-name>",
 
   "SharePoint:SiteUrl": "https://<tenant>.sharepoint.com/sites/LegalWorkflow",
   "SharePoint:RequestsListName": "Requests",
 
-  "Notifications:LegalAdminEmail": "lw-legaladmin@company.com",
-  "Notifications:AttorneyAssignerEmail": "lw-attorneyassigner@company.com",
-  "Notifications:ComplianceEmail": "lw-compliance@company.com",
+  "Notifications:EnableDebugLogging": "false",
 
-  "Permissions:AdminGroup": "LW - Admin"
+  "Permissions:SubmittersGroup": "LW - Submitters",
+  "Permissions:LegalAdminGroup": "LW - Legal Admin",
+  "Permissions:AttorneyAssignerGroup": "LW - Attorney Assigner",
+  "Permissions:AttorneysGroup": "LW - Attorneys",
+  "Permissions:ComplianceGroup": "LW - Compliance Users",
+  "Permissions:AdminGroup": "LW - Admin",
+  "Permissions:ServiceAccountUpn": "svc-powerautomate@company.com"
 }
 ```
 
@@ -226,6 +244,61 @@ az functionapp deployment source config-zip \
 - Application Insights (recommended)
 - Azure Key Vault (for secrets management)
 
+## Certificate Rotation
+
+The Functions app loads the SharePoint authentication certificate from Azure Key Vault during application startup in [`Program.cs`](/Users/hemantmane/Development/legal-workflow/docs/functions/Program.cs).
+
+Operational impact:
+
+- the certificate is not downloaded on every request
+- the loaded certificate stays in memory for the lifetime of that Functions host instance
+- replacing the certificate in Key Vault does not force an already-running instance to reload it
+
+Recommended rotation procedure:
+
+1. Upload the new certificate version to Azure Key Vault using the same certificate name.
+2. Keep the old certificate valid during the overlap window.
+3. Option A: call `POST /api/admin/certificate-cache/flush` as the configured service account to reload the in-memory certificate on the worker instance that handles that request.
+4. Option B: restart the Azure Function App so all running instances reload the certificate from Key Vault.
+5. Verify the health endpoint and one authenticated SharePoint operation.
+6. Retire the old certificate after verification.
+
+Flush endpoint notes:
+
+- route: `/api/admin/certificate-cache/flush`
+- method: `POST`
+- authentication: bearer token required
+- authorization: only the configured service account is allowed
+- scope: refreshes only the in-memory certificate for the instance that serves the request
+
+Sample success response:
+
+```json
+{
+  "success": true,
+  "message": "Certificate cache flushed successfully.",
+  "refreshedAtUtc": "2026-03-06T21:15:00Z",
+  "previousCertificate": {
+    "subject": "CN=LegalWorkflow",
+    "thumbprintSuffix": "12AB34CD",
+    "loadedAtUtc": "2026-03-06T19:00:00Z",
+    "expiresOnUtc": "2027-03-01T00:00:00Z"
+  },
+  "currentCertificate": {
+    "subject": "CN=LegalWorkflow",
+    "thumbprintSuffix": "98EF76GH",
+    "loadedAtUtc": "2026-03-06T21:15:00Z",
+    "expiresOnUtc": "2028-03-01T00:00:00Z"
+  }
+}
+```
+
+Important:
+
+- do not rely on background recycle timing after certificate replacement
+- the flush endpoint is useful for targeted operational recovery, but it is not a whole-app refresh in a scaled-out environment
+- a deliberate Function App restart is still the most deterministic whole-app reset
+
 ## Notification Triggers
 
 Notifications are triggered based on specific field value transitions:
@@ -266,6 +339,12 @@ Notifications are triggered based on specific field value transitions:
 | LW - Compliance Users | Contribute Without Delete | Contribute |
 | Additional Parties | Read | Read |
 | Approvers | Read | Read |
+
+Documents folder note:
+
+- the documents folder is resolved by SharePoint item ID
+- example: `RequestDocuments/123`
+- it is not resolved by request title or business request ID
 
 ### Completed Permissions
 
