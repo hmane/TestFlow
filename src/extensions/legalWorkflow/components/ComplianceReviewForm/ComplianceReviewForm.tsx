@@ -45,9 +45,9 @@ import {
   type ReviewOutcome as HeaderReviewOutcome,
 } from '@components/WorkflowCardHeader';
 import { useRequestFormContextSafe } from '@contexts/RequestFormContext';
+import { useUIVisibility } from '@hooks/useUIVisibility';
 import { useRequestStore, useRequestActions } from '@stores/requestStore';
 import { useShallow } from 'zustand/react/shallow';
-import { usePermissions } from '@hooks/usePermissions';
 import {
   saveComplianceReviewProgress,
   resubmitForComplianceReview,
@@ -197,10 +197,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
     }))
   );
   const { submitComplianceReview: submitComplianceReviewAction, loadRequest } = useRequestActions();
-  const { isComplianceUser, isAdmin, isLegalAdmin } = usePermissions();
 
-  // Determine if current user is a reviewer (can submit reviews)
-  const isReviewer = isComplianceUser || isAdmin || isLegalAdmin;
   const [showSuccess, setShowSuccess] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | undefined>(undefined);
   const [isSaving, setIsSaving] = React.useState<boolean>(false);
@@ -272,6 +269,10 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
   const isForesideReviewRequired = watch('isForesideReviewRequired');
   const recordRetentionOnly = watch('recordRetentionOnly');
   const isRetailUse = watch('isRetailUse');
+  const { buttons, fields } = useUIVisibility();
+  const canReview = fields.complianceReview.canEdit;
+  const canResubmit = reviewStatus === ComplianceReviewStatus.WaitingOnSubmitter && buttons.resubmitForReview.visible;
+  const canEditSubmitterNotes = canReview || canResubmit;
 
   /**
    * Handle Foreside checkbox change with cascading behavior.
@@ -689,14 +690,14 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                 {/* Review Outcome Selection - disabled for submitter, enabled for reviewer */}
                 <FormContainer labelWidth='200px'>
                   <FormItem fieldName='complianceReviewOutcome'>
-                    <FormLabel isRequired={isReviewer} infoText='Select your review decision'>
+                    <FormLabel isRequired={canReview} infoText='Select your review decision'>
                       Review Outcome
                     </FormLabel>
                     <SPChoiceField
                       name='complianceReviewOutcome'
                       choices={REVIEW_OUTCOME_CHOICES}
                       placeholder='Select an outcome...'
-                      disabled={!isReviewer}
+                      disabled={!canReview}
                     />
                   </FormItem>
                 </FormContainer>
@@ -717,6 +718,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                       showCharacterCount
                       stylingMode='outlined'
                       spellCheck
+                      disabled={!canEditSubmitterNotes}
                       appendOnly
                       itemId={itemId}
                       listNameOrId='Requests'
@@ -732,7 +734,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                     label='Foreside Review Required'
                     helpText='Indicate if Foreside review is required for this request.'
                     checked={isForesideReviewRequired}
-                    disabled={!isReviewer}
+                    disabled={!canReview}
                     onChange={handleForesideChange}
                   />
                   {isForesideReviewRequired && (
@@ -741,14 +743,14 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                         label='For Record Retention Purpose Only'
                         helpText='Indicate if this is for record retention purposes only.'
                         checked={recordRetentionOnly}
-                        disabled={!isReviewer}
+                        disabled={!canReview}
                         onChange={(val) => setValue('recordRetentionOnly', val, { shouldDirty: true })}
                       />
                       <StyledBooleanCallout
                         label='Retail Use'
                         helpText='Indicate if this will be used for retail purposes.'
                         checked={isRetailUse}
-                        disabled={!isReviewer}
+                        disabled={!canReview}
                         onChange={(val) => setValue('isRetailUse', val, { shouldDirty: true })}
                       />
                     </>
@@ -785,6 +787,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                         name='complianceReviewOutcome'
                         choices={REVIEW_OUTCOME_CHOICES}
                         placeholder='Select an outcome...'
+                        disabled={!canReview}
                       />
                     </FormItem>
                   </FormContainer>
@@ -805,6 +808,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                         showCharacterCount
                         stylingMode='outlined'
                         spellCheck
+                        disabled={!canReview}
                         appendOnly
                         itemId={itemId}
                         listNameOrId='Requests'
@@ -821,6 +825,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                       label='Foreside Review Required'
                       helpText='Indicate if Foreside review is required for this request.'
                       checked={isForesideReviewRequired}
+                      disabled={!canReview}
                       onChange={handleForesideChange}
                     />
                     {isForesideReviewRequired && (
@@ -829,12 +834,14 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                           label='For Record Retention Purpose Only'
                           helpText='Indicate if this is for record retention purposes only.'
                           checked={recordRetentionOnly}
+                          disabled={!canReview}
                           onChange={(val) => setValue('recordRetentionOnly', val, { shouldDirty: true })}
                         />
                         <StyledBooleanCallout
                           label='Retail Use'
                           helpText='Indicate if this will be used for retail purposes.'
                           checked={isRetailUse}
+                          disabled={!canReview}
                           onChange={(val) => setValue('isRetailUse', val, { shouldDirty: true })}
                         />
                       </>
@@ -857,6 +864,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                       name='complianceReviewOutcome'
                       choices={REVIEW_OUTCOME_CHOICES}
                       placeholder='Select an outcome...'
+                      disabled={!canReview}
                     />
                   </FormItem>
                 </FormContainer>
@@ -877,6 +885,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                       showCharacterCount
                       stylingMode='outlined'
                       spellCheck
+                      disabled={!canReview}
                       appendOnly
                       itemId={itemId}
                       listNameOrId='Requests'
@@ -893,6 +902,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                     label='Foreside Review Required'
                     helpText='Indicate if Foreside review is required for this request.'
                     checked={isForesideReviewRequired}
+                    disabled={!canReview}
                     onChange={handleForesideChange}
                   />
                   {isForesideReviewRequired && (
@@ -901,12 +911,14 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                         label='For Record Retention Purpose Only'
                         helpText='Indicate if this is for record retention purposes only.'
                         checked={recordRetentionOnly}
+                        disabled={!canReview}
                         onChange={(val) => setValue('recordRetentionOnly', val, { shouldDirty: true })}
                       />
                       <StyledBooleanCallout
                         label='Retail Use'
                         helpText='Indicate if this will be used for retail purposes.'
                         checked={isRetailUse}
+                        disabled={!canReview}
                         onChange={(val) => setValue('isRetailUse', val, { shouldDirty: true })}
                       />
                     </>
@@ -933,8 +945,8 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
             verticalAlign='center'
             wrap
           >
-          {/* Submitter actions - only for WaitingOnSubmitter state */}
-          {reviewStatus === ComplianceReviewStatus.WaitingOnSubmitter && (
+          {/* Submitter actions - only for WaitingOnSubmitter state AND only for the request owner/admin */}
+          {canResubmit && (
             <Stack horizontal tokens={{ childrenGap: 12 }}>
               <PrimaryButton
                 text={isResubmitting ? 'Resubmitting...' : 'Resubmit for Review'}
@@ -953,7 +965,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
           )}
 
           {/* Reviewer actions - visible to reviewers in all in-progress states */}
-          {isReviewer && (
+          {canReview && (
             <Stack horizontal tokens={{ childrenGap: 12 }}>
               <DefaultButton
                 text={isSaving ? 'Saving...' : 'Save Progress'}
@@ -972,7 +984,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                 text='Submit Review'
                 iconProps={{ iconName: 'CheckMark' }}
                 onClick={handleSubmit(onSubmit)}
-                disabled={isLoading || isSaving || !selectedOutcome}
+                disabled={isLoading || isSaving || !selectedOutcome || !canReview}
                 styles={{
                   root: { minWidth: '140px', height: '40px', borderRadius: '4px' },
                 }}

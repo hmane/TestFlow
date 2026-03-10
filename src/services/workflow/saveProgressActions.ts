@@ -14,9 +14,16 @@ import { RequestsFields } from '@sp/listFields/RequestsFields';
 import { loadRequestById } from '../requestLoadService';
 import { generateCorrelationId } from '../../utils/correlationId';
 
-import { LegalReviewStatus, ComplianceReviewStatus } from '@appTypes/workflowTypes';
+import { LegalReviewStatus, ComplianceReviewStatus, RequestStatus } from '@appTypes/workflowTypes';
 
 import { getCurrentUserPrincipal, updateItem } from './workflowHelpers';
+
+// Lazy getter to avoid top-level import of permissionsStore (breaks Jest due to ESM deps)
+function getPermissionsState(): { isAdmin: boolean; isLegalAdmin: boolean; isComplianceUser: boolean } {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { usePermissionsStore } = require('@stores/permissionsStore');
+  return usePermissionsStore.getState();
+}
 import type { IWorkflowActionResult, ILegalReviewSavePayload, IComplianceReviewSavePayload } from './workflowTypes';
 
 /**
@@ -51,6 +58,21 @@ export async function saveLegalReviewProgress(
 
   // Load current request to check if status is changing
   const currentRequest = await loadRequestById(itemId);
+
+  // Status guard: legal review progress can only be saved when request is In Review
+  if (currentRequest.status !== RequestStatus.InReview) {
+    throw new Error(`Cannot save legal review progress: request status is "${currentRequest.status}", expected "In Review"`);
+  }
+
+  // Assigned-attorney guard: only the assigned attorney, admin, or legal admin can save progress
+  const currentUserId = String(SPContext.currentUser?.id ?? '');
+  const { isAdmin, isLegalAdmin } = getPermissionsState();
+  const assignedAttorneys = currentRequest.legalReview?.assignedAttorney || currentRequest.attorney;
+  const isAssigned = assignedAttorneys?.some(a => String(a.id) === currentUserId) ?? false;
+  if (!isAssigned && !isAdmin && !isLegalAdmin) {
+    throw new Error('Cannot save legal review progress: you are not an assigned attorney on this request');
+  }
+
   const currentUser = getCurrentUserPrincipal();
   const now = new Date();
 
@@ -142,6 +164,18 @@ export async function saveComplianceReviewProgress(
 
   // Load current request to check if status is changing
   const currentRequest = await loadRequestById(itemId);
+
+  // Status guard: compliance review progress can only be saved when request is In Review
+  if (currentRequest.status !== RequestStatus.InReview) {
+    throw new Error(`Cannot save compliance review progress: request status is "${currentRequest.status}", expected "In Review"`);
+  }
+
+  // Role guard: only compliance users or admin can save compliance review progress
+  const { isComplianceUser, isAdmin: isAdminUser } = getPermissionsState();
+  if (!isComplianceUser && !isAdminUser) {
+    throw new Error('Cannot save compliance review progress: requires Compliance User or Admin role');
+  }
+
   const currentUser = getCurrentUserPrincipal();
   const now = new Date();
 

@@ -40,9 +40,9 @@ import {
   type ReviewOutcome as HeaderReviewOutcome,
 } from '@components/WorkflowCardHeader';
 import { useRequestFormContextSafe } from '@contexts/RequestFormContext';
+import { useUIVisibility } from '@hooks/useUIVisibility';
 import { useRequestStore, useRequestActions } from '@stores/requestStore';
 import { useShallow } from 'zustand/react/shallow';
-import { usePermissions } from '@hooks/usePermissions';
 import {
   saveLegalReviewProgress,
   resubmitForLegalReview,
@@ -141,10 +141,7 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
     }))
   );
   const { submitLegalReview: submitLegalReviewAction, loadRequest } = useRequestActions();
-  const { isAttorney, isAdmin, isLegalAdmin } = usePermissions();
 
-  // Determine if current user is a reviewer (can submit reviews)
-  const isReviewer = isAttorney || isAdmin || isLegalAdmin;
   const [showSuccess, setShowSuccess] = React.useState<boolean>(false);
   const [error, setError] = React.useState<string | undefined>(undefined);
   const [isSaving, setIsSaving] = React.useState<boolean>(false);
@@ -203,6 +200,10 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
 
   const reviewStatus = watch('legalReviewStatus');
   const selectedOutcome = watch('legalReviewOutcome');
+  const { buttons, fields } = useUIVisibility();
+  const canReview = fields.legalReview.canEdit;
+  const canResubmit = reviewStatus === LegalReviewStatus.WaitingOnSubmitter && buttons.resubmitForReview.visible;
+  const canEditSubmitterNotes = canReview || canResubmit;
 
   // Sync form with store when currentRequest changes
   React.useEffect(() => {
@@ -573,14 +574,14 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
                 {/* Review Outcome Selection - disabled for submitter, enabled for reviewer */}
                 <FormContainer labelWidth='150px'>
                   <FormItem fieldName='legalReviewOutcome'>
-                    <FormLabel isRequired={isReviewer} infoText='Select your review decision'>
+                    <FormLabel isRequired={canReview} infoText='Select your review decision'>
                       Review Outcome
                     </FormLabel>
                     <SPChoiceField
                       name='legalReviewOutcome'
                       choices={REVIEW_OUTCOME_CHOICES}
                       placeholder='Select an outcome...'
-                      disabled={!isReviewer}
+                      disabled={!canReview}
                     />
                   </FormItem>
                 </FormContainer>
@@ -601,6 +602,7 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
                       showCharacterCount
                       stylingMode='outlined'
                       spellCheck
+                      disabled={!canEditSubmitterNotes}
                       appendOnly
                       itemId={itemId}
                       listNameOrId='Requests'
@@ -639,6 +641,7 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
                         name='legalReviewOutcome'
                         choices={REVIEW_OUTCOME_CHOICES}
                         placeholder='Select an outcome...'
+                        disabled={!canReview}
                       />
                     </FormItem>
                   </FormContainer>
@@ -659,6 +662,7 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
                         showCharacterCount
                         stylingMode='outlined'
                         spellCheck
+                        disabled={!canReview}
                         appendOnly
                         itemId={itemId}
                         listNameOrId='Requests'
@@ -683,6 +687,7 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
                       name='legalReviewOutcome'
                       choices={REVIEW_OUTCOME_CHOICES}
                       placeholder='Select an outcome...'
+                      disabled={!canReview}
                     />
                   </FormItem>
                 </FormContainer>
@@ -703,6 +708,7 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
                       showCharacterCount
                       stylingMode='outlined'
                       spellCheck
+                      disabled={!canReview}
                       appendOnly
                       itemId={itemId}
                       listNameOrId='Requests'
@@ -731,8 +737,8 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
             verticalAlign='center'
             wrap
           >
-          {/* Submitter actions - only for WaitingOnSubmitter state */}
-          {reviewStatus === LegalReviewStatus.WaitingOnSubmitter && (
+          {/* Submitter actions - only for WaitingOnSubmitter state AND only for the request owner/admin */}
+          {canResubmit && (
             <Stack horizontal tokens={{ childrenGap: 12 }}>
               <PrimaryButton
                 text={isResubmitting ? 'Resubmitting...' : 'Resubmit for Review'}
@@ -751,7 +757,7 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
           )}
 
           {/* Reviewer actions - visible to reviewers in all in-progress states */}
-          {isReviewer && (
+          {canReview && (
             <Stack horizontal tokens={{ childrenGap: 12 }}>
               <DefaultButton
                 text={isSaving ? 'Saving...' : 'Save Progress'}
@@ -770,7 +776,7 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
                 text='Submit Review'
                 iconProps={{ iconName: 'CheckMark' }}
                 onClick={handleSubmit(onSubmit)}
-                disabled={isLoading || isSaving || !selectedOutcome}
+                disabled={isLoading || isSaving || !selectedOutcome || !canReview}
                 styles={{
                   root: { minWidth: '140px', height: '40px', borderRadius: '4px' },
                 }}

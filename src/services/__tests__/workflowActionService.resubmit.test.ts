@@ -102,6 +102,22 @@ jest.mock('../../utils/correlationId', () => ({
   generateCorrelationId: jest.fn().mockReturnValue('test-correlation-id'),
 }));
 
+// Mock permissionsStore (used by permission guards in resubmit/requestChanges functions)
+// Default permissions — tests can override via mockPermissionsState
+const mockPermissionsState = {
+  isAdmin: false,
+  isLegalAdmin: false,
+  isComplianceUser: true,
+  isSubmitter: true,
+  isAttorney: true,
+  isAttorneyAssigner: false,
+};
+jest.mock('@stores/permissionsStore', () => ({
+  usePermissionsStore: {
+    getState: () => mockPermissionsState,
+  },
+}));
+
 // Import after mocks are set up
 import {
   resubmitForLegalReview,
@@ -126,6 +142,7 @@ describe('Workflow Action Service - Resubmit Workflow', () => {
     beforeEach(() => {
       // Set up request in WaitingOnSubmitter state
       // The mock returns updated data after reload
+      // submittedBy.id matches SPContext.currentUser.id (1) for owner guard
       mockLoadRequestById.mockResolvedValue({
         id: 1,
         requestId: 'CRR-2025-001',
@@ -137,6 +154,7 @@ describe('Workflow Action Service - Resubmit Workflow', () => {
         legalReviewNotes: 'Please update the disclosures',
         legalStatusUpdatedOn: new Date('2025-12-29T10:00:00Z'),
         attorney: [{ id: 2, title: 'Test Attorney', email: 'attorney@example.com' }],
+        submittedBy: { id: '1', title: 'Test Submitter', email: 'submitter@example.com' },
       } as Partial<ILegalRequest>);
     });
 
@@ -193,6 +211,7 @@ describe('Workflow Action Service - Resubmit Workflow', () => {
         status: 'In Review',
         legalReviewStatus: LegalReviewStatus.InProgress, // Wrong state
         legalReviewOutcome: undefined,
+        submittedBy: { id: '1', title: 'Test Submitter', email: 'submitter@example.com' },
       });
 
       await expect(resubmitForLegalReview(1, {})).rejects.toThrow();
@@ -205,6 +224,7 @@ describe('Workflow Action Service - Resubmit Workflow', () => {
         status: 'In Review',
         legalReviewStatus: LegalReviewStatus.WaitingOnSubmitter,
         legalReviewOutcome: ReviewOutcome.Approved, // Wrong outcome
+        submittedBy: { id: '1', title: 'Test Submitter', email: 'submitter@example.com' },
       });
 
       await expect(resubmitForLegalReview(1, {})).rejects.toThrow();
@@ -221,6 +241,7 @@ describe('Workflow Action Service - Resubmit Workflow', () => {
   describe('resubmitForComplianceReview', () => {
     beforeEach(() => {
       // Set up request in WaitingOnSubmitter state for compliance
+      // submittedBy.id matches SPContext.currentUser.id (1) for owner guard
       mockLoadRequestById.mockResolvedValue({
         id: 1,
         requestId: 'CRR-2025-001',
@@ -231,6 +252,7 @@ describe('Workflow Action Service - Resubmit Workflow', () => {
         complianceReviewOutcome: ReviewOutcome.RespondToCommentsAndResubmit,
         complianceReviewNotes: 'Please provide additional disclaimers',
         complianceStatusUpdatedOn: new Date('2025-12-29T10:00:00Z'),
+        submittedBy: { id: '1', title: 'Test Submitter', email: 'submitter@example.com' },
       } as Partial<ILegalRequest>);
 
       mockCalculateAndUpdateStageTime.mockResolvedValue({
@@ -267,6 +289,7 @@ describe('Workflow Action Service - Resubmit Workflow', () => {
         id: 1,
         status: 'In Review',
         complianceReviewStatus: ComplianceReviewStatus.InProgress, // Wrong state
+        submittedBy: { id: '1', title: 'Test Submitter', email: 'submitter@example.com' },
       });
 
       await expect(resubmitForComplianceReview(1, {})).rejects.toThrow();
@@ -276,6 +299,7 @@ describe('Workflow Action Service - Resubmit Workflow', () => {
   describe('requestLegalReviewChanges', () => {
     beforeEach(() => {
       // Set up request in InProgress state
+      // attorney.id matches SPContext.currentUser.id (1) for assigned-attorney guard
       mockLoadRequestById.mockResolvedValue({
         id: 1,
         requestId: 'CRR-2025-001',
@@ -283,7 +307,7 @@ describe('Workflow Action Service - Resubmit Workflow', () => {
         reviewAudience: 'Legal',
         legalReviewStatus: LegalReviewStatus.InProgress,
         legalStatusUpdatedOn: new Date('2025-12-28T10:00:00Z'),
-        attorney: [{ id: 2, title: 'Test Attorney', email: 'attorney@example.com' }],
+        attorney: [{ id: '1', title: 'Test Attorney', email: 'attorney@example.com' }],
       } as Partial<ILegalRequest>);
 
       mockCalculateAndUpdateStageTime.mockResolvedValue({
@@ -337,6 +361,7 @@ describe('Workflow Action Service - Resubmit Workflow', () => {
         id: 1,
         status: 'In Review',
         legalReviewStatus: LegalReviewStatus.Completed, // Unexpected state
+        attorney: [{ id: '1', title: 'Test Attorney', email: 'attorney@example.com' }],
       });
 
       const result = await requestLegalReviewChanges(1, 'Notes');
@@ -414,6 +439,7 @@ describe('Workflow Action Service - Resubmit Workflow', () => {
         id: 1,
         status: 'In Review',
         legalReviewStatus: LegalReviewStatus.InProgress,
+        attorney: [{ id: '1', title: 'Test Attorney', email: 'attorney@example.com' }],
       });
 
       const requestResult = await requestLegalReviewChanges(1, 'First round of changes');
@@ -427,6 +453,7 @@ describe('Workflow Action Service - Resubmit Workflow', () => {
         status: 'In Review',
         legalReviewStatus: LegalReviewStatus.WaitingOnSubmitter,
         legalReviewOutcome: ReviewOutcome.RespondToCommentsAndResubmit,
+        submittedBy: { id: '1', title: 'Test Submitter', email: 'submitter@example.com' },
       });
 
       const resubmitResult = await resubmitForLegalReview(1, { notes: 'Made changes' });
@@ -444,6 +471,7 @@ describe('Workflow Action Service - Resubmit Workflow', () => {
         legalReviewOutcome: ReviewOutcome.RespondToCommentsAndResubmit,
         legalStatusUpdatedOn: new Date('2025-12-29T08:00:00Z'),
         legalReviewSubmitterHours: 1.0, // Already has 1 hour logged
+        submittedBy: { id: '1', title: 'Test Submitter', email: 'submitter@example.com' },
       });
 
       mockCalculateAndUpdateStageTime.mockResolvedValue({
@@ -465,6 +493,7 @@ describe('Workflow Action Service - Resubmit Workflow', () => {
         status: 'In Review',
         legalReviewStatus: LegalReviewStatus.InProgress,
         legalReviewAttorneyHours: 2.0, // Already has 2 hours
+        attorney: [{ id: '1', title: 'Test Attorney', email: 'attorney@example.com' }],
       });
 
       mockCalculateAndUpdateStageTime.mockResolvedValue({
@@ -488,6 +517,7 @@ describe('Workflow Action Service - Resubmit Workflow', () => {
         status: 'In Review',
         legalReviewStatus: LegalReviewStatus.WaitingOnSubmitter,
         legalReviewOutcome: ReviewOutcome.RespondToCommentsAndResubmit,
+        submittedBy: { id: '1', title: 'Test Submitter', email: 'submitter@example.com' },
       });
 
       mockCalculateAndUpdateStageTime.mockRejectedValue(new Error('Time tracking failed'));
@@ -504,6 +534,7 @@ describe('Workflow Action Service - Resubmit Workflow', () => {
         id: 1,
         status: 'In Review',
         legalReviewStatus: LegalReviewStatus.InProgress,
+        attorney: [{ id: '1', title: 'Test Attorney', email: 'attorney@example.com' }],
       });
 
       mockCalculateAndUpdateStageTime.mockRejectedValue(new Error('Time tracking failed'));

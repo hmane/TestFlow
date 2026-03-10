@@ -25,9 +25,9 @@ import { UserPersona } from 'spfx-toolkit/lib/components/UserPersona';
 
 // App imports using path aliases
 import { WorkflowCardHeader } from '@components/WorkflowCardHeader';
-import { usePermissions } from '@hooks/usePermissions';
+import { useUIVisibility } from '@hooks/useUIVisibility';
 import { useRequestStore } from '@stores/requestStore';
-import { RequestStatus, ReviewAudience } from '@appTypes/workflowTypes';
+import { ReviewAudience } from '@appTypes/workflowTypes';
 import { calculateBusinessHours } from '@utils/businessHoursCalculator';
 
 import './LegalIntakeForm.scss';
@@ -50,16 +50,8 @@ export const LegalIntakeSummary: React.FC<ILegalIntakeSummaryProps> = ({
   onEditClick,
 }) => {
   const currentRequest = useRequestStore((s) => s.currentRequest);
-  const permissions = usePermissions();
-
-  // Check if user can edit review audience (Legal Admin or Admin only)
-  // Disable editing after reviews are completed (Closeout, Completed, or AwaitingFINRADocuments)
-  const isAfterReviewsCompleted =
-    currentRequest?.status === RequestStatus.Closeout ||
-    currentRequest?.status === RequestStatus.Completed ||
-    currentRequest?.status === RequestStatus.AwaitingFINRADocuments;
-  const canEditReviewAudience =
-    (permissions.isLegalAdmin || permissions.isAdmin) && !isAfterReviewsCompleted;
+  const { fields } = useUIVisibility();
+  const canEditReviewAudience = fields.legalIntake.canEditReviewAudience;
 
   if (!currentRequest) {
     return null;

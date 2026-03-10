@@ -416,11 +416,11 @@ export function canCancelRequest(context: IActionContext): IPermissionCheckResul
     return { allowed: true };
   }
 
-  // Owner can cancel only if in Draft
+  // Owner can cancel in any non-terminal status
   const isOwner = String(request.submittedBy?.id ?? '') === currentUserId ||
                   String(request.author?.id ?? '') === currentUserId;
 
-  if (isOwner && request.status === RequestStatus.Draft) {
+  if (isOwner) {
     return { allowed: true };
   }
 
@@ -436,7 +436,7 @@ export function canCancelRequest(context: IActionContext): IPermissionCheckResul
  * Valid from status: Any except Draft, Completed, Cancelled, On Hold
  */
 export function canHoldRequest(context: IActionContext): IPermissionCheckResult {
-  const { request, permissions } = context;
+  const { request, permissions, currentUserId } = context;
 
   // Check invalid statuses
   const invalidStatuses = [
@@ -453,15 +453,23 @@ export function canHoldRequest(context: IActionContext): IPermissionCheckResult 
     };
   }
 
-  // Check permissions
-  if (!permissions.isLegalAdmin && !permissions.isAdmin) {
-    return {
-      allowed: false,
-      reason: 'Only Legal Admin or Admin can put requests on hold',
-    };
+  // Admin or Legal Admin can always hold
+  if (permissions.isAdmin || permissions.isLegalAdmin) {
+    return { allowed: true };
   }
 
-  return { allowed: true };
+  // Owner can also put on hold
+  const isOwner = String(request.submittedBy?.id ?? '') === currentUserId ||
+                  String(request.author?.id ?? '') === currentUserId;
+
+  if (isOwner) {
+    return { allowed: true };
+  }
+
+  return {
+    allowed: false,
+    reason: 'Only the request owner, Legal Admin, or Admin can put requests on hold',
+  };
 }
 
 /**
@@ -562,11 +570,18 @@ export function canEditRequest(context: IActionContext): IPermissionCheckResult 
     return { allowed: true };
   }
 
-  // Owner can edit in Draft
+  // Owner can edit until Closeout (Draft, Legal Intake, Assign Attorney, In Review, On Hold)
   const isOwner = String(request.submittedBy?.id ?? '') === currentUserId ||
                   String(request.author?.id ?? '') === currentUserId;
 
-  if (isOwner && request.status === RequestStatus.Draft) {
+  const ownerBlockedStatuses = [
+    RequestStatus.Closeout,
+    RequestStatus.AwaitingFINRADocuments,
+    RequestStatus.Completed,
+    RequestStatus.Cancelled,
+  ];
+
+  if (isOwner && ownerBlockedStatuses.indexOf(request.status as RequestStatus) === -1) {
     return { allowed: true };
   }
 

@@ -18,9 +18,16 @@ import { generateCorrelationId } from '../../utils/correlationId';
 import { calculateAndUpdateStageTime } from '../timeTrackingService';
 
 import type { ILegalRequest } from '@appTypes/requestTypes';
-import { ReviewOutcome, LegalReviewStatus, ComplianceReviewStatus } from '@appTypes/workflowTypes';
+import { ReviewOutcome, LegalReviewStatus, ComplianceReviewStatus, RequestStatus } from '@appTypes/workflowTypes';
 
 import { getCurrentUserPrincipal, updateItem } from './workflowHelpers';
+
+// Lazy getter to avoid top-level import of permissionsStore (breaks Jest due to ESM deps)
+function getPermissionsState(): { isAdmin: boolean; isLegalAdmin: boolean; isComplianceUser: boolean } {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { usePermissionsStore } = require('@stores/permissionsStore');
+  return usePermissionsStore.getState();
+}
 import type { IWorkflowActionResult, IResubmitLegalReviewPayload, IResubmitComplianceReviewPayload } from './workflowTypes';
 
 /**
@@ -66,6 +73,20 @@ export async function resubmitForLegalReview(
 
   // Load current request for time tracking calculation
   const currentRequest = await loadRequestById(itemId);
+
+  // Status guard: request must be In Review
+  if (currentRequest.status !== RequestStatus.InReview) {
+    throw new Error(`Cannot resubmit for legal review: request status is "${currentRequest.status}", expected "In Review"`);
+  }
+
+  // Owner/admin guard: only the request submitter/owner or admin can resubmit
+  const currentUserId = String(SPContext.currentUser?.id ?? '');
+  const { isAdmin: isAdminForResubmit } = getPermissionsState();
+  const isOwner = String(currentRequest.submittedBy?.id ?? '') === currentUserId ||
+                  String(currentRequest.author?.id ?? '') === currentUserId;
+  if (!isOwner && !isAdminForResubmit) {
+    throw new Error('Cannot resubmit for legal review: only the request submitter or admin can resubmit');
+  }
 
   // Validate current state - should be Waiting On Submitter with RespondToCommentsAndResubmit outcome
   if (currentRequest.legalReviewStatus !== LegalReviewStatus.WaitingOnSubmitter) {
@@ -208,6 +229,20 @@ export async function resubmitForComplianceReview(
   // Load current request for time tracking calculation
   const currentRequest = await loadRequestById(itemId);
 
+  // Status guard: request must be In Review
+  if (currentRequest.status !== RequestStatus.InReview) {
+    throw new Error(`Cannot resubmit for compliance review: request status is "${currentRequest.status}", expected "In Review"`);
+  }
+
+  // Owner/admin guard: only the request submitter/owner or admin can resubmit
+  const currentUserId = String(SPContext.currentUser?.id ?? '');
+  const { isAdmin: isAdminForResubmit } = getPermissionsState();
+  const isOwner = String(currentRequest.submittedBy?.id ?? '') === currentUserId ||
+                  String(currentRequest.author?.id ?? '') === currentUserId;
+  if (!isOwner && !isAdminForResubmit) {
+    throw new Error('Cannot resubmit for compliance review: only the request submitter or admin can resubmit');
+  }
+
   // Validate current state - should be Waiting On Submitter with RespondToCommentsAndResubmit outcome
   if (currentRequest.complianceReviewStatus !== ComplianceReviewStatus.WaitingOnSubmitter) {
     const errorMessage = `Cannot resubmit: Compliance review status is "${currentRequest.complianceReviewStatus}", expected "Waiting On Submitter"`;
@@ -346,6 +381,20 @@ export async function requestLegalReviewChanges(
   // Load current request for time tracking
   const currentRequest = await loadRequestById(itemId);
 
+  // Status guard: can only request changes when request is In Review
+  if (currentRequest.status !== RequestStatus.InReview) {
+    throw new Error(`Cannot request legal review changes: request status is "${currentRequest.status}", expected "In Review"`);
+  }
+
+  // Assigned-attorney guard: only the assigned attorney, admin, or legal admin can request changes
+  const currentUserId = String(SPContext.currentUser?.id ?? '');
+  const { isAdmin: isAdminUser, isLegalAdmin: isLegalAdminUser } = getPermissionsState();
+  const assignedAttorneys = currentRequest.legalReview?.assignedAttorney || currentRequest.attorney;
+  const isAssignedAtty = assignedAttorneys?.some(a => String(a.id) === currentUserId) ?? false;
+  if (!isAssignedAtty && !isAdminUser && !isLegalAdminUser) {
+    throw new Error('Cannot request legal review changes: you are not an assigned attorney on this request');
+  }
+
   const currentUser = getCurrentUserPrincipal();
   const now = new Date();
 
@@ -456,6 +505,17 @@ export async function requestComplianceReviewChanges(
 
   // Load current request for time tracking
   const currentRequest = await loadRequestById(itemId);
+
+  // Status guard: can only request changes when request is In Review
+  if (currentRequest.status !== RequestStatus.InReview) {
+    throw new Error(`Cannot request compliance review changes: request status is "${currentRequest.status}", expected "In Review"`);
+  }
+
+  // Role guard: only compliance users or admin can request compliance review changes
+  const { isComplianceUser: isCompUser, isAdmin: isAdminUser } = getPermissionsState();
+  if (!isCompUser && !isAdminUser) {
+    throw new Error('Cannot request compliance review changes: requires Compliance User or Admin role');
+  }
 
   const currentUser = getCurrentUserPrincipal();
   const now = new Date();

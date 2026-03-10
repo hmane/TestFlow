@@ -24,6 +24,10 @@ export {
 } from './usePermissions';
 export type { IUserPermissions, IItemPermissionsResult } from './usePermissions';
 
+// UI visibility
+export { useUIVisibility } from './useUIVisibility';
+export type { IUseUIVisibilityOptions, IUseUIVisibilityResult } from './useUIVisibility';
+
 // Re-export IItemPermissions from the store for compatibility
 export type { IItemPermissions } from '@stores/permissionsStore';
 

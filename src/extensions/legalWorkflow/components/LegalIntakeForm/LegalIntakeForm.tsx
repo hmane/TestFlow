@@ -50,12 +50,13 @@ import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 // App imports using path aliases
 import { ValidationErrorContainer } from '@components/ValidationErrorContainer';
 import { WorkflowCardHeader } from '@components/WorkflowCardHeader';
-import { usePermissions } from '@hooks/usePermissions';
-import { saveRequest } from '@services/requestSaveService';
+import { useUIVisibility } from '@hooks/useUIVisibility';
+// Note: saveRequest import removed — edit-mode saves now go through the store's
+// updateRequest method which enforces canEditRequest permission guards.
 import { useLegalIntakeStore } from '@stores/legalIntakeStore';
 import { useRequestStore } from '@stores/requestStore';
 import { useShallow } from 'zustand/react/shallow';
-import type { IPrincipal } from '@appTypes/index';
+import type { ILegalRequest, IPrincipal } from '@appTypes/index';
 import { RequestStatus, ReviewAudience } from '@appTypes/workflowTypes';
 import { calculateBusinessHours } from '@utils/businessHoursCalculator';
 import { NOTES_MAX_LENGTH } from '@constants/fieldLimits';
@@ -123,8 +124,6 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
     }))
   );
 
-  const permissions = usePermissions();
-
   const [showSuccess, setShowSuccess] = React.useState<boolean>(false);
   const [messageBarError, setMessageBarError] = React.useState<string | undefined>(undefined);
 
@@ -146,15 +145,6 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
       }
     };
   }, []);
-
-  // Check if user can edit review audience (Legal Admin or Admin only)
-  // Disable editing after reviews are completed (Closeout, Completed, or AwaitingFINRADocuments)
-  const isAfterReviewsCompleted =
-    currentRequest?.status === RequestStatus.Closeout ||
-    currentRequest?.status === RequestStatus.Completed ||
-    currentRequest?.status === RequestStatus.AwaitingFINRADocuments;
-  const canEditReviewAudience =
-    (permissions.isLegalAdmin || permissions.isAdmin) && !isAfterReviewsCompleted;
 
   /**
    * Convert attorney IPrincipal[] to have numeric IDs for GroupUsersPicker compatibility
@@ -304,6 +294,24 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
   // Hide attorney field when ReviewAudience = Compliance Only (no attorney needed)
   const showAttorneyField = localReviewAudience !== ReviewAudience.Compliance;
 
+  const visibilityRequest = React.useMemo(
+    (): Partial<ILegalRequest> | undefined =>
+      currentRequest
+        ? {
+            ...currentRequest,
+            reviewAudience: localReviewAudience,
+            attorney: showAttorneyField ? (selectedAttorneys ?? []) : [],
+          }
+        : undefined,
+    [currentRequest, localReviewAudience, selectedAttorneys, showAttorneyField]
+  );
+
+  const { buttons, fields } = useUIVisibility({
+    status: currentRequest?.status,
+    request: visibilityRequest,
+  });
+  const canEditReviewAudience = fields.legalIntake.canEditReviewAudience;
+
   // Get legal intake store setters - use a single batch update function
   const { setLegalIntakeValues } = useLegalIntakeStore();
 
@@ -335,8 +343,8 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
     };
   }, [selectedAttorneys, notesValue, localReviewAudience, setLegalIntakeValues, readOnly, showAttorneyField]);
 
-  // Get the loadRequest function from the store to refresh data after save
-  const loadRequest = useRequestStore((s) => s.loadRequest);
+  // Get store action for save (includes permission guard and reload)
+  const updateRequest = useRequestStore((s) => s.updateRequest);
 
   /**
    * Handle saving Legal Intake changes in edit mode
@@ -377,10 +385,8 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
 
       // Only save if there are changes
       if (Object.keys(updatePayload).length > 0) {
-        await saveRequest(currentRequest.id, updatePayload);
-
-        // Reload the request to get fresh data
-        await loadRequest(currentRequest.id);
+        // Route through store's updateRequest which enforces canEditRequest permission
+        await updateRequest(updatePayload as Partial<ILegalRequest>);
 
         setShowSuccess(true);
         successTimerRef.current = setTimeout(() => {
@@ -472,21 +478,8 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
     }
   }, [localReviewAudience, storeSendToCommittee, getValues]);
 
-  /**
-   * Check if current user can perform legal intake actions
-   */
-  const canPerformLegalIntakeActions = React.useMemo(() => {
-    const status = currentRequest?.status;
-    // Legal Admin or Admin can perform actions during Legal Intake
-    if (status === RequestStatus.LegalIntake) {
-      return permissions.isLegalAdmin || permissions.isAdmin;
-    }
-    // Attorney Assigner, Legal Admin, or Admin can assign during Assign Attorney
-    if (status === RequestStatus.AssignAttorney) {
-      return permissions.isAttorneyAssigner || permissions.isLegalAdmin || permissions.isAdmin;
-    }
-    return false;
-  }, [currentRequest?.status, permissions.isAttorneyAssigner, permissions.isLegalAdmin, permissions.isAdmin]);
+  const canPerformLegalIntakeActions =
+    buttons.assignAttorney.visible || (showAttorneyField && buttons.sendToCommittee.visible);
 
   if (!currentRequest) {
     return null;
@@ -1012,7 +1005,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
               </Text>
               <Stack horizontal tokens={{ childrenGap: 8 }}>
                 {/* Submit to Assign Attorney - only during Legal Intake (not when already at Assign Attorney) */}
-                {showAttorneyField && currentRequest?.status !== RequestStatus.AssignAttorney && (
+                {showAttorneyField && buttons.sendToCommittee.visible && (
                   <DefaultButton
                     text={isSendingToCommittee ? 'Sending...' : 'Submit to Assign Attorney'}
                     onClick={handleSendToCommittee}
@@ -1020,18 +1013,20 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
                     iconProps={{ iconName: 'Group' }}
                   />
                 )}
-                <PrimaryButton
-                  onClick={handleAssignAttorney}
-                  disabled={(showAttorneyField && (!selectedAttorneys || selectedAttorneys.length === 0)) || isAssigning || isSendingToCommittee || isLoading}
-                  iconProps={{ iconName: showAttorneyField ? 'AddFriend' : 'ComplianceAudit' }}
-                >
-                  {isAssigning && (
-                    <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />
-                  )}
-                  {isAssigning
-                    ? (showAttorneyField ? 'Assigning...' : 'Sending...')
-                    : (showAttorneyField ? 'Assign Attorney' : 'Send to Compliance')}
-                </PrimaryButton>
+                {buttons.assignAttorney.visible && (
+                  <PrimaryButton
+                    onClick={handleAssignAttorney}
+                    disabled={!buttons.assignAttorney.enabled || isAssigning || isSendingToCommittee || isLoading}
+                    iconProps={{ iconName: showAttorneyField ? 'AddFriend' : 'ComplianceAudit' }}
+                  >
+                    {isAssigning && (
+                      <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />
+                    )}
+                    {isAssigning
+                      ? (showAttorneyField ? 'Assigning...' : 'Sending...')
+                      : (showAttorneyField ? 'Assign Attorney' : 'Send to Compliance')}
+                  </PrimaryButton>
+                )}
               </Stack>
               </Stack>
             </Stack>

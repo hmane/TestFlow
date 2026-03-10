@@ -28,12 +28,11 @@ import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import {
   ApprovalType,
   DistributionMethod,
-  RequestStatus,
   RequestType,
   ReviewAudience,
   SubmissionType,
 } from '@appTypes/index';
-import { usePermissions } from '@hooks/usePermissions';
+import { useUIVisibility } from '@hooks/useUIVisibility';
 import { useRequestStore } from '@stores/requestStore';
 import { RequestHoverCard } from '@components/RequestHoverCard/RequestHoverCard';
 
@@ -121,36 +120,8 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
   defaultExpanded = true,
 }) => {
   const currentRequest = useRequestStore((s) => s.currentRequest);
-  const permissions = usePermissions();
-
-  /**
-   * Check if user can edit request information
-   * Only submitter (author) or admin can edit request info
-   * Editing is disabled after Closeout, Completed, or AwaitingFINRADocuments status
-   */
-  const canEditRequestInfo = React.useMemo((): boolean => {
-    if (!currentRequest) return false;
-
-    // No editing allowed after Closeout, Completed, or AwaitingFINRADocuments
-    if (
-      currentRequest.status === RequestStatus.Closeout ||
-      currentRequest.status === RequestStatus.Completed ||
-      currentRequest.status === RequestStatus.AwaitingFINRADocuments
-    ) {
-      return false;
-    }
-
-    // Admin can edit (if not closed out)
-    if (permissions.isAdmin) return true;
-
-    // Check if current user is the submitter/author
-    const currentUserId = SPContext.currentUser?.id?.toString() ?? '';
-    const isOwner =
-      String(currentRequest.submittedBy?.id ?? '') === currentUserId ||
-      String(currentRequest.author?.id ?? '') === currentUserId;
-
-    return isOwner;
-  }, [currentRequest, permissions.isAdmin]);
+  const { fields } = useUIVisibility();
+  const canEditRequestInfo = fields.requestInfo.canEdit;
 
   /**
    * Format date for display (short form)

@@ -10,14 +10,12 @@
 
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
 
 // spfx-toolkit - tree-shaken imports
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 
 // App imports using path aliases
 import { RequestFormProvider, type IValidationError } from '@contexts/RequestFormContext';
-import { fullRequestSchema } from '@schemas/requestSchema';
 import { useRequestStore } from '@stores/requestStore';
 import { useShallow } from 'zustand/react/shallow';
 import type { ILegalRequest } from '@appTypes/index';
@@ -69,13 +67,16 @@ export const WorkflowFormWrapper: React.FC<IWorkflowFormWrapperProps> = ({
   const [validationErrors, setValidationErrors] = React.useState<IValidationError[]>([]);
 
   // Set up form for the current request data
+  // Note: No zodResolver here — this wrapper only provides form context for
+  // RequestActions and child components. Validation is handled by individual
+  // stage forms. Using a resolver here causes data normalization (e.g. null→undefined,
+  // date strings→Date) that triggers false isDirty positives on load.
   const {
     control,
     handleSubmit,
     formState: { isDirty, isSubmitting },
     reset,
   } = useForm<ILegalRequest>({
-    resolver: zodResolver(fullRequestSchema) as any, // Type assertion: schema validates subset of ILegalRequest fields
     mode: 'onBlur',
     reValidateMode: 'onChange',
     defaultValues: currentRequest || {},
@@ -115,7 +116,10 @@ export const WorkflowFormWrapper: React.FC<IWorkflowFormWrapperProps> = ({
     if (customOnSaveDraft) {
       await customOnSaveDraft();
     } else {
-      SPContext.logger.warn('WorkflowFormWrapper: No save draft handler provided');
+      // Default: use store's updateRequest for non-Draft submitted requests
+      const { updateRequest } = useRequestStore.getState();
+      await updateRequest({});
+      SPContext.logger.success('WorkflowFormWrapper: Request saved');
     }
   }, [customOnSaveDraft]);
 

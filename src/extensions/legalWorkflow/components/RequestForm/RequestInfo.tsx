@@ -16,6 +16,7 @@
 import {
   ILegalRequest,
 } from '@appTypes/index';
+import { RequestStatus } from '@appTypes/workflowTypes';
 import { ValidationErrorContainer } from '@components/ValidationErrorContainer';
 import { useNotification } from '@contexts/NotificationContext';
 import { RequestFormProvider } from '@contexts/RequestFormContext';
@@ -68,6 +69,7 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({
   const {
     currentRequest,
     saveAsDraft,
+    updateRequest,
     updateMultipleFields,
     isLoading,
     error,
@@ -75,6 +77,7 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({
     useShallow((s) => ({
       currentRequest: s.currentRequest,
       saveAsDraft: s.saveAsDraft,
+      updateRequest: s.updateRequest,
       updateMultipleFields: s.updateMultipleFields,
       isLoading: s.isLoading,
       error: s.error,
@@ -175,6 +178,19 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({
 
   const readFormValues = React.useCallback(() => watch(), [watch]);
 
+  // Smart save function: uses saveAsDraft for Draft/new requests, updateRequest for non-Draft
+  // This prevents the edit-mode save from forcing status back to Draft
+  const saveRequestInfo = React.useCallback(async (): Promise<number> => {
+    const status = currentRequest?.status;
+    if (!status || status === RequestStatus.Draft || !itemId) {
+      // New request or Draft — use saveAsDraft (handles create + update with Draft status)
+      return saveAsDraft();
+    }
+    // Non-Draft request — use updateRequest (generic save without status forcing)
+    await updateRequest({});
+    return itemId;
+  }, [currentRequest?.status, itemId, saveAsDraft, updateRequest]);
+
   const {
     onSubmit,
     handleSubmitDirect,
@@ -189,7 +205,7 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({
     itemId,
     watch: readFormValues,
     updateMultipleFields,
-    saveAsDraft,
+    saveAsDraft: saveRequestInfo,
     setError,
     clearErrors,
     showSuccessNotification,

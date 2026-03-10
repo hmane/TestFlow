@@ -43,7 +43,21 @@ import { ReviewOutcome, LegalReviewStatus, ComplianceReviewStatus } from '@appTy
 
 import type { IRequestState } from './types';
 import { initialState } from './types';
-import { processDocumentOperationsAfterSave, formatAdminAuditEntry } from './helpers';
+import { processDocumentOperationsAfterSave, formatAdminAuditEntry, buildActionContext, enforcePermission } from './helpers';
+import {
+  canSaveDraft as checkCanSaveDraft,
+  canSubmitRequest as checkCanSubmitRequest,
+  canCancelRequest as checkCanCancelRequest,
+  canHoldRequest as checkCanHoldRequest,
+  canResumeRequest as checkCanResumeRequest,
+  canAssignAttorney as checkCanAssignAttorney,
+  canSendToCommittee as checkCanSendToCommittee,
+  canSubmitLegalReview as checkCanSubmitLegalReview,
+  canSubmitComplianceReview as checkCanSubmitComplianceReview,
+  canCloseoutRequest as checkCanCloseoutRequest,
+  canCompleteFINRADocuments as checkCanCompleteFINRADocuments,
+  canEditRequest as checkCanEditRequest,
+} from '@services/workflowPermissionService';
 
 /**
  * Request store
@@ -311,6 +325,12 @@ export const useRequestStore = create<IRequestState>()(
           throw new Error('No request to save');
         }
 
+        // Permission guard: only owner/admin can save drafts
+        if (state.itemId) {
+          const context = buildActionContext(state.currentRequest);
+          enforcePermission('Save Draft', checkCanSaveDraft(context));
+        }
+
         set({ isSaving: true, error: undefined });
 
         try {
@@ -373,6 +393,10 @@ export const useRequestStore = create<IRequestState>()(
         if (!initialState.currentRequest) {
           throw new Error('No request to submit');
         }
+
+        // Permission guard: only owner/admin can submit from Draft
+        const context = buildActionContext(initialState.currentRequest);
+        enforcePermission('Submit Request', checkCanSubmitRequest(context));
 
         // Get the itemId from state - for existing drafts, this is already set
         // For new requests, saveAsDraft will create the item and return the new ID
@@ -438,6 +462,12 @@ export const useRequestStore = create<IRequestState>()(
 
         if (!state.itemId) {
           throw new Error('Cannot update - no item ID');
+        }
+
+        // Permission guard: enforce canEditRequest
+        if (state.currentRequest) {
+          const context = buildActionContext(state.currentRequest);
+          enforcePermission('Edit Request', checkCanEditRequest(context));
         }
 
         set({ isSaving: true, error: undefined });
@@ -506,9 +536,13 @@ export const useRequestStore = create<IRequestState>()(
       assignAttorney: async (attorney: IPrincipal[] | undefined, notes?: string, reviewAudience?: ReviewAudience): Promise<void> => {
         const state = get();
 
-        if (!state.itemId) {
+        if (!state.itemId || !state.currentRequest) {
           throw new Error('Cannot assign attorney - no item ID');
         }
+
+        // Permission guard
+        const context = buildActionContext(state.currentRequest);
+        enforcePermission('Assign Attorney', checkCanAssignAttorney(context));
 
         const result = await assignAttorneyAction(state.itemId, {
           attorney,
@@ -539,9 +573,13 @@ export const useRequestStore = create<IRequestState>()(
       sendToCommittee: async (notes?: string, reviewAudience?: ReviewAudience): Promise<void> => {
         const state = get();
 
-        if (!state.itemId) {
+        if (!state.itemId || !state.currentRequest) {
           throw new Error('Cannot send to committee - no item ID');
         }
+
+        // Permission guard
+        const context = buildActionContext(state.currentRequest);
+        enforcePermission('Send to Committee', checkCanSendToCommittee(context));
 
         const result = await sendToCommitteeAction(state.itemId, { notes, reviewAudience });
 
@@ -564,9 +602,13 @@ export const useRequestStore = create<IRequestState>()(
       submitLegalReview: async (outcome: string, notes: string): Promise<void> => {
         const state = get();
 
-        if (!state.itemId) {
+        if (!state.itemId || !state.currentRequest) {
           throw new Error('Cannot submit legal review - no item ID');
         }
+
+        // Permission guard
+        const context = buildActionContext(state.currentRequest);
+        enforcePermission('Submit Legal Review', checkCanSubmitLegalReview(context));
 
         const result = await submitLegalReviewAction(state.itemId, {
           outcome: outcome as ReviewOutcome,
@@ -597,9 +639,13 @@ export const useRequestStore = create<IRequestState>()(
       ): Promise<void> => {
         const state = get();
 
-        if (!state.itemId) {
+        if (!state.itemId || !state.currentRequest) {
           throw new Error('Cannot submit compliance review - no item ID');
         }
+
+        // Permission guard
+        const context = buildActionContext(state.currentRequest);
+        enforcePermission('Submit Compliance Review', checkCanSubmitComplianceReview(context));
 
         const result = await submitComplianceReviewAction(state.itemId, {
           outcome: outcome as ReviewOutcome,
@@ -630,9 +676,13 @@ export const useRequestStore = create<IRequestState>()(
       closeoutRequest: async (options?: { trackingId?: string; commentsAcknowledged?: boolean; closeoutNotes?: string }): Promise<void> => {
         const state = get();
 
-        if (!state.itemId) {
+        if (!state.itemId || !state.currentRequest) {
           throw new Error('Cannot close out - no item ID');
         }
+
+        // Permission guard
+        const context = buildActionContext(state.currentRequest);
+        enforcePermission('Closeout Request', checkCanCloseoutRequest(context));
 
         const result = await closeoutRequestAction(state.itemId, options);
 
@@ -658,9 +708,13 @@ export const useRequestStore = create<IRequestState>()(
       completeFINRADocuments: async (notes?: string): Promise<void> => {
         const state = get();
 
-        if (!state.itemId) {
+        if (!state.itemId || !state.currentRequest) {
           throw new Error('Cannot complete FINRA documents - no item ID');
         }
+
+        // Permission guard
+        const context = buildActionContext(state.currentRequest);
+        enforcePermission('Complete FINRA Documents', checkCanCompleteFINRADocuments(context));
 
         const payload: { notes?: string; finraCommentsReceived?: boolean; finraComment?: string } = {};
         if (notes) payload.notes = notes;
@@ -698,6 +752,10 @@ export const useRequestStore = create<IRequestState>()(
           throw new Error('Cannot cancel - no request loaded');
         }
 
+        // Permission guard
+        const context = buildActionContext(state.currentRequest);
+        enforcePermission('Cancel Request', checkCanCancelRequest(context));
+
         const result = await cancelRequestAction(
           state.itemId,
           { reason },
@@ -728,6 +786,10 @@ export const useRequestStore = create<IRequestState>()(
           throw new Error('Cannot hold - no request loaded');
         }
 
+        // Permission guard
+        const context = buildActionContext(state.currentRequest);
+        enforcePermission('Put On Hold', checkCanHoldRequest(context));
+
         const result = await holdRequestAction(
           state.itemId,
           { reason },
@@ -757,6 +819,10 @@ export const useRequestStore = create<IRequestState>()(
         if (!state.itemId || !state.currentRequest) {
           throw new Error('Cannot resume - no request loaded');
         }
+
+        // Permission guard
+        const context = buildActionContext(state.currentRequest);
+        enforcePermission('Resume Request', checkCanResumeRequest(context));
 
         if (!state.currentRequest.previousStatus) {
           throw new Error('Cannot resume - no previous status');

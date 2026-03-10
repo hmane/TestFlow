@@ -78,6 +78,7 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
     sortedValidationErrors,
     isAnyActionInProgress,
     loadingMessage,
+    buttonVisibility,
 
     // Button visibility
     showSubmitRequest,
@@ -139,7 +140,7 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
                 text='Cancel Request'
                 iconProps={{ iconName: 'StatusErrorFull' }}
                 onClick={handleCancelRequestClick}
-                disabled={isAnyActionInProgress}
+                disabled={isAnyActionInProgress || !buttonVisibility.cancelRequest.enabled}
                 ariaLabel='Cancel this request'
                 styles={{
                   root: {
@@ -156,7 +157,7 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
                 text='Put On Hold'
                 iconProps={{ iconName: 'Pause' }}
                 onClick={handlePutOnHoldClick}
-                disabled={isAnyActionInProgress}
+                disabled={isAnyActionInProgress || !buttonVisibility.onHold.enabled}
                 ariaLabel='Put request on hold'
                 styles={{
                   root: {
@@ -172,7 +173,7 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
                 text='Resume'
                 iconProps={{ iconName: 'Play' }}
                 onClick={handleResumeClick}
-                disabled={isAnyActionInProgress}
+                disabled={isAnyActionInProgress || !buttonVisibility.resume.enabled}
                 ariaLabel='Resume request from hold'
                 styles={{
                   root: {
@@ -194,7 +195,7 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
                 text='Save'
                 iconProps={{ iconName: 'Save' }}
                 onClick={handleSaveDraft}
-                disabled={isAnyActionInProgress}
+                disabled={isAnyActionInProgress || !buttonVisibility.save.enabled}
                 ariaLabel='Save changes'
                 styles={{
                   root: {
@@ -212,7 +213,7 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
                 text='Complete Request'
                 iconProps={{ iconName: 'Completed' }}
                 onClick={handleCompleteFINRADocumentsClick}
-                disabled={isAnyActionInProgress}
+                disabled={isAnyActionInProgress || !buttonVisibility.completeFINRADocuments.enabled}
                 ariaLabel='Complete the request after FINRA documents are uploaded'
                 styles={{
                   root: {
@@ -230,7 +231,7 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
                 text={submitButtonText}
                 iconProps={{ iconName: submitButtonIcon }}
                 onClick={handleSubmitClick}
-                disabled={isAnyActionInProgress}
+                disabled={isAnyActionInProgress || !buttonVisibility.submitRequest.enabled}
                 ariaLabel={submitButtonText}
                 styles={{
                   root: {
@@ -248,7 +249,7 @@ export const RequestActions: React.FC<IRequestActionsProps> = ({
                 text='Save as Draft'
                 iconProps={{ iconName: 'Save' }}
                 onClick={handleSaveDraft}
-                disabled={isAnyActionInProgress}
+                disabled={isAnyActionInProgress || !buttonVisibility.saveAsDraft.enabled}
                 ariaLabel='Save request as draft'
                 styles={{
                   root: {

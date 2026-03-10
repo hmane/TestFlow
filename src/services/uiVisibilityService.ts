@@ -11,6 +11,7 @@
  */
 
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
+import type { ILegalRequest } from '@appTypes/index';
 import { RequestStatus } from '@appTypes/workflowTypes';
 import type { IUserPermissions } from '@hooks/usePermissions';
 
@@ -49,6 +50,10 @@ export interface IButtonVisibility {
 
   // Closeout actions
   submitCloseout: IUIElementState;
+  completeFINRADocuments: IUIElementState;
+
+  // Review resubmission actions
+  resubmitForReview: IUIElementState;
 }
 
 /**
@@ -181,6 +186,8 @@ export function getButtonVisibility(ctx: IVisibilityContext): IButtonVisibility 
       assignAttorney: hidden(),
       sendToCommittee: hidden(),
       submitCloseout: hidden(),
+      completeFINRADocuments: hidden(),
+      resubmitForReview: hidden(),
     };
   }
 
@@ -197,6 +204,8 @@ export function getButtonVisibility(ctx: IVisibilityContext): IButtonVisibility 
       assignAttorney: hidden(),
       sendToCommittee: hidden(),
       submitCloseout: hidden(),
+      completeFINRADocuments: hidden(),
+      resubmitForReview: hidden(),
     };
   }
 
@@ -216,6 +225,8 @@ export function getButtonVisibility(ctx: IVisibilityContext): IButtonVisibility 
       assignAttorney: hidden(),
       sendToCommittee: hidden(),
       submitCloseout: hidden(),
+      completeFINRADocuments: hidden(),
+      resubmitForReview: hidden(),
     };
   }
 
@@ -235,55 +246,17 @@ export function getButtonVisibility(ctx: IVisibilityContext): IButtonVisibility 
       assignAttorney: hidden(),
       sendToCommittee: hidden(),
       submitCloseout: hidden(),
+      completeFINRADocuments: hidden(),
+      resubmitForReview: hidden(),
     };
   }
 
   // Legal Intake status
+  // Per docs: Save = Admin, Owner; OnHold/Cancel = Admin, LegalAdmin, Owner
   if (status === RequestStatus.LegalIntake) {
     const canEditIntake = isAdmin || isLegalAdmin;
-    return {
-      saveAsDraft: hidden(),
-      submitRequest: hidden(),
-      save: canEditIntake
-        ? (isDirty ? enabled() : disabled('No changes to save'))
-        : hidden(),
-      close: enabled(),
-      onHold: canEditIntake ? enabled() : hidden(),
-      resume: hidden(),
-      cancelRequest: isOwner || isAdmin || isLegalAdmin ? enabled() : hidden(),
-      assignAttorney: canEditIntake && hasAssignedAttorney
-        ? enabled()
-        : (canEditIntake ? disabled('Select an attorney first') : hidden()),
-      sendToCommittee: canEditIntake ? enabled() : hidden(),
-      submitCloseout: hidden(),
-    };
-  }
-
-  // Assign Attorney status (committee stage)
-  if (status === RequestStatus.AssignAttorney) {
-    const canAssign = isAdmin || isAttorneyAssigner;
-    return {
-      saveAsDraft: hidden(),
-      submitRequest: hidden(),
-      save: canAssign
-        ? (isDirty ? enabled() : disabled('No changes to save'))
-        : hidden(),
-      close: enabled(),
-      onHold: isAdmin || isLegalAdmin ? enabled() : hidden(),
-      resume: hidden(),
-      cancelRequest: isAdmin || isLegalAdmin ? enabled() : hidden(),
-      assignAttorney: canAssign && hasAssignedAttorney
-        ? enabled()
-        : (canAssign ? disabled('Select an attorney first') : hidden()),
-      sendToCommittee: hidden(),
-      submitCloseout: hidden(),
-    };
-  }
-
-  // In Review status
-  if (status === RequestStatus.InReview) {
-    // Save button visible for anyone who can edit (Admin, LegalAdmin, assigned attorney, compliance)
-    const canSave = isAdmin || isLegalAdmin || ctx.isAssignedAttorney || permissions.isComplianceUser;
+    const canSave = isAdmin || isLegalAdmin || isOwner;
+    const canProceedToReview = !ctx.legalReviewRequired || hasAssignedAttorney;
     return {
       saveAsDraft: hidden(),
       submitRequest: hidden(),
@@ -291,12 +264,64 @@ export function getButtonVisibility(ctx: IVisibilityContext): IButtonVisibility 
         ? (isDirty ? enabled() : disabled('No changes to save'))
         : hidden(),
       close: enabled(),
-      onHold: isAdmin || isLegalAdmin ? enabled() : hidden(),
+      onHold: isAdmin || isLegalAdmin || isOwner ? enabled() : hidden(),
       resume: hidden(),
-      cancelRequest: isAdmin || isLegalAdmin ? enabled() : hidden(),
+      cancelRequest: isOwner || isAdmin || isLegalAdmin ? enabled() : hidden(),
+      assignAttorney: canEditIntake && canProceedToReview
+        ? enabled()
+        : (canEditIntake ? disabled('Select an attorney first') : hidden()),
+      sendToCommittee: canEditIntake ? enabled() : hidden(),
+      submitCloseout: hidden(),
+      completeFINRADocuments: hidden(),
+      resubmitForReview: hidden(),
+    };
+  }
+
+  // Assign Attorney status (committee stage)
+  // Per docs: No Save listed for Owner; OnHold/Cancel = Admin, LegalAdmin, Owner
+  if (status === RequestStatus.AssignAttorney) {
+    const canAssign = isAdmin || isAttorneyAssigner;
+    const canProceedToReview = !ctx.legalReviewRequired || hasAssignedAttorney;
+    return {
+      saveAsDraft: hidden(),
+      submitRequest: hidden(),
+      save: canAssign
+        ? (isDirty ? enabled() : disabled('No changes to save'))
+        : hidden(),
+      close: enabled(),
+      onHold: isAdmin || isLegalAdmin || isOwner ? enabled() : hidden(),
+      resume: hidden(),
+      cancelRequest: isAdmin || isLegalAdmin || isOwner ? enabled() : hidden(),
+      assignAttorney: canAssign && canProceedToReview
+        ? enabled()
+        : (canAssign ? disabled('Select an attorney first') : hidden()),
+      sendToCommittee: hidden(),
+      submitCloseout: hidden(),
+      completeFINRADocuments: hidden(),
+      resubmitForReview: hidden(),
+    };
+  }
+
+  // In Review status
+  // Per docs: Save = Admin, Owner (general); review-specific Save in card footers
+  // OnHold/Cancel = Admin, LegalAdmin, Owner
+  if (status === RequestStatus.InReview) {
+    const canSave = isAdmin || isLegalAdmin || isOwner;
+    return {
+      saveAsDraft: hidden(),
+      submitRequest: hidden(),
+      save: canSave
+        ? (isDirty ? enabled() : disabled('No changes to save'))
+        : hidden(),
+      close: enabled(),
+      onHold: isAdmin || isLegalAdmin || isOwner ? enabled() : hidden(),
+      resume: hidden(),
+      cancelRequest: isAdmin || isLegalAdmin || isOwner ? enabled() : hidden(),
       assignAttorney: hidden(),
       sendToCommittee: hidden(),
       submitCloseout: hidden(),
+      completeFINRADocuments: hidden(),
+      resubmitForReview: isAdmin || isOwner ? enabled() : hidden(),
     };
   }
 
@@ -316,6 +341,26 @@ export function getButtonVisibility(ctx: IVisibilityContext): IButtonVisibility 
       assignAttorney: hidden(),
       sendToCommittee: hidden(),
       submitCloseout: canCloseout ? enabled() : hidden(),
+      completeFINRADocuments: hidden(),
+      resubmitForReview: hidden(),
+    };
+  }
+
+  // Awaiting FINRA Documents status
+  if (status === RequestStatus.AwaitingFINRADocuments) {
+    return {
+      saveAsDraft: hidden(),
+      submitRequest: hidden(),
+      save: hidden(),
+      close: enabled(),
+      onHold: hidden(),
+      resume: hidden(),
+      cancelRequest: hidden(),
+      assignAttorney: hidden(),
+      sendToCommittee: hidden(),
+      submitCloseout: hidden(),
+      completeFINRADocuments: isAdmin || isOwner ? enabled() : hidden(),
+      resubmitForReview: hidden(),
     };
   }
 
@@ -331,6 +376,8 @@ export function getButtonVisibility(ctx: IVisibilityContext): IButtonVisibility 
     assignAttorney: hidden(),
     sendToCommittee: hidden(),
     submitCloseout: hidden(),
+    completeFINRADocuments: hidden(),
+    resubmitForReview: hidden(),
   };
 }
 
@@ -354,11 +401,15 @@ export function getFieldVisibility(ctx: IVisibilityContext): IFieldVisibility {
 
   return {
     // Request Summary fields
+    // Per docs: Owner can edit request info until Closeout; Admin can always edit
     requestInfo: {
-      canEdit: !isTerminal && (isNewRequest || status === RequestStatus.Draft) && (isOwner || isAdmin),
+      canEdit: !isTerminal &&
+               status !== RequestStatus.Closeout &&
+               status !== RequestStatus.AwaitingFINRADocuments &&
+               (isNewRequest || isOwner || isAdmin || isLegalAdmin),
       reason: isTerminal ? 'Request is closed' :
-              status !== RequestStatus.Draft ? 'Can only edit in Draft status' :
-              !isOwner && !isAdmin ? 'Only owner or admin can edit' : undefined,
+              status === RequestStatus.Closeout || status === RequestStatus.AwaitingFINRADocuments ? 'Cannot edit after Closeout' :
+              !isOwner && !isAdmin && !isLegalAdmin ? 'Only owner, Legal Admin, or admin can edit' : undefined,
     },
 
     // Legal Intake fields
@@ -476,17 +527,10 @@ export function createVisibilityContext(
   status: RequestStatus | undefined,
   permissions: IUserPermissions,
   currentUserId: string,
-  request?: {
-    submittedBy?: { id: string };
-    author?: { id: string };
-    legalReview?: {
-      assignedAttorney?: Array<{ id: string }>;
-      status?: string;
-    };
-    complianceReview?: {
-      status?: string;
-    };
-    reviewAudience?: string;
+  request?: Partial<ILegalRequest>,
+  options?: {
+    isDirty?: boolean;
+    isNewRequest?: boolean;
   }
 ): IVisibilityContext {
   const isOwner = request ? (
@@ -494,24 +538,29 @@ export function createVisibilityContext(
     String(request.author?.id ?? '') === currentUserId
   ) : false;
 
-  const isAssignedAttorney = request?.legalReview?.assignedAttorney?.some(
+  const assignedAttorneys = request?.legalReview?.assignedAttorney || request?.attorney;
+  const isAssignedAttorney = assignedAttorneys?.some(
     a => String(a.id) === currentUserId
   ) ?? false;
-  const hasAssignedAttorney = (request?.legalReview?.assignedAttorney?.length ?? 0) > 0;
+  const hasAssignedAttorney = (assignedAttorneys?.length ?? 0) > 0;
 
   const reviewAudience = request?.reviewAudience || '';
   const legalReviewRequired = reviewAudience === 'Legal' || reviewAudience === 'Both';
   const complianceReviewRequired = reviewAudience === 'Compliance' || reviewAudience === 'Both';
 
-  const legalReviewCompleted = request?.legalReview?.status === 'Completed';
-  const complianceReviewCompleted = request?.complianceReview?.status === 'Completed';
+  const legalReviewCompleted =
+    request?.legalReview?.status === 'Completed' ||
+    request?.legalReviewStatus === 'Completed';
+  const complianceReviewCompleted =
+    request?.complianceReview?.status === 'Completed' ||
+    request?.complianceReviewStatus === 'Completed';
 
   return {
     status: status || RequestStatus.Draft,
     permissions,
     isOwner,
-    isNewRequest: !request,
-    isDirty: false, // Caller should set this
+    isNewRequest: options?.isNewRequest ?? !request,
+    isDirty: options?.isDirty ?? false,
     isAssignedAttorney,
     hasAssignedAttorney,
     legalReviewRequired,

@@ -13,9 +13,11 @@ import { confirm } from 'spfx-toolkit/lib/utilities/dialogService';
 import type { ReasonDialogAction } from '@components/ReasonDialog/ReasonDialog';
 import { useRequestFormContext } from '@contexts/RequestFormContext';
 import { usePermissions } from '@hooks/usePermissions';
+import { useUIVisibility } from '@hooks/useUIVisibility';
 import { useWorkflowPermissions } from '@hooks/useWorkflowPermissions';
 import { useRequestStore } from '@stores/requestStore';
 import { useDocumentsStore } from '@stores/documentsStore';
+import type { IButtonVisibility } from '@services/uiVisibilityService';
 import { RequestStatus } from '@appTypes/workflowTypes';
 import { DocumentType } from '@appTypes/documentTypes';
 import type { IValidationError } from '@contexts/RequestFormContext';
@@ -53,6 +55,7 @@ export interface IUseRequestActionsStateReturn {
   isAnyActionInProgress: boolean;
   loadingMessage: string;
   hasFINRADocuments: boolean;
+  buttonVisibility: IButtonVisibility;
 
   // Button visibility
   showSubmitRequest: boolean;
@@ -104,16 +107,12 @@ export function useRequestActionsState(props: {
 
   // Get permission-based available actions and handlers
   const {
-    availableActions,
     isLoading: permissionsLoading,
     completeFINRADocuments: workflowCompleteFINRADocuments,
   } = useWorkflowPermissions();
 
   // Get user permissions for role checks
   const permissions = usePermissions();
-
-  // Get current request for owner check
-  const currentRequest = useRequestStore((s) => s.currentRequest);
 
   // Get documents store for FINRA document validation
   const { documents, stagedFiles } = useDocumentsStore();
@@ -127,17 +126,12 @@ export function useRequestActionsState(props: {
   // Determine if this is a new request
   const isNewRequest = !itemId;
 
-  // Check if current user is the owner
-  const isOwner = React.useMemo((): boolean => {
-    if (!currentRequest) return false;
-    const currentUserId = SPContext.currentUser?.id;
-    if (!currentUserId) return false;
-    const currentUserIdStr = String(currentUserId);
-    return (
-      String(currentRequest.submittedBy?.id ?? '') === currentUserIdStr ||
-      String(currentRequest.author?.id ?? '') === currentUserIdStr
-    );
-  }, [currentRequest]);
+  const { buttons: buttonVisibility, context: visibilityContext } = useUIVisibility({
+    status,
+    isDirty,
+    itemId,
+  });
+  const isOwner = visibilityContext.isOwner;
 
   // Action state management
   const [activeAction, setActiveAction] = React.useState<ActiveAction>(undefined);
@@ -630,70 +624,39 @@ export function useRequestActionsState(props: {
   const showSubmitRequest = React.useMemo(() => {
     if (hideSubmit) return false;
     if (permissionsLoading) return false;
-    if (isNewRequest || status === RequestStatus.Draft) {
-      return availableActions.canSubmit;
-    }
-    return false;
-  }, [hideSubmit, permissionsLoading, isNewRequest, status, availableActions.canSubmit]);
+    return buttonVisibility.submitRequest.visible;
+  }, [hideSubmit, permissionsLoading, buttonVisibility.submitRequest.visible]);
 
   const showSaveAsDraft = React.useMemo(() => {
     if (hideSaveDraft) return false;
     if (permissionsLoading) return false;
-    if (isNewRequest || status === RequestStatus.Draft) {
-      return availableActions.canSaveDraft;
-    }
-    return false;
-  }, [hideSaveDraft, permissionsLoading, isNewRequest, status, availableActions.canSaveDraft]);
+    return buttonVisibility.saveAsDraft.visible;
+  }, [hideSaveDraft, permissionsLoading, buttonVisibility.saveAsDraft.visible]);
 
   const showSave = React.useMemo(() => {
     if (permissionsLoading) return false;
-    if (isNewRequest || status === RequestStatus.Draft) return false;
-    if (
-      status === RequestStatus.Completed ||
-      status === RequestStatus.Cancelled ||
-      status === RequestStatus.Closeout ||
-      status === RequestStatus.AwaitingFINRADocuments
-    ) return false;
-    if (!isDirty) return false;
-    return permissions.isAdmin || isOwner;
-  }, [permissionsLoading, isNewRequest, status, isDirty, permissions.isAdmin, isOwner]);
+    return buttonVisibility.save.visible;
+  }, [permissionsLoading, buttonVisibility.save.visible]);
 
   const showCancel = React.useMemo(() => {
     if (permissionsLoading) return false;
-    if (isNewRequest) return false;
-    if (
-      status === RequestStatus.Completed ||
-      status === RequestStatus.Cancelled ||
-      status === RequestStatus.Closeout ||
-      status === RequestStatus.AwaitingFINRADocuments
-    ) return false;
-    return permissions.isAdmin || permissions.isLegalAdmin || isOwner;
-  }, [permissionsLoading, isNewRequest, status, permissions.isAdmin, permissions.isLegalAdmin, isOwner]);
+    return buttonVisibility.cancelRequest.visible;
+  }, [permissionsLoading, buttonVisibility.cancelRequest.visible]);
 
   const showOnHold = React.useMemo(() => {
     if (permissionsLoading) return false;
-    if (isNewRequest) return false;
-    if (
-      status === RequestStatus.Completed ||
-      status === RequestStatus.Cancelled ||
-      status === RequestStatus.Closeout ||
-      status === RequestStatus.OnHold ||
-      status === RequestStatus.AwaitingFINRADocuments
-    ) return false;
-    return permissions.isAdmin || permissions.isLegalAdmin || isOwner;
-  }, [permissionsLoading, isNewRequest, status, permissions.isAdmin, permissions.isLegalAdmin, isOwner]);
+    return buttonVisibility.onHold.visible;
+  }, [permissionsLoading, buttonVisibility.onHold.visible]);
 
   const showResume = React.useMemo(() => {
     if (permissionsLoading) return false;
-    if (status !== RequestStatus.OnHold) return false;
-    return availableActions.canResume;
-  }, [permissionsLoading, status, availableActions.canResume]);
+    return buttonVisibility.resume.visible;
+  }, [permissionsLoading, buttonVisibility.resume.visible]);
 
   const showCompleteFINRADocuments = React.useMemo(() => {
     if (permissionsLoading) return false;
-    if (status !== RequestStatus.AwaitingFINRADocuments) return false;
-    return permissions.isAdmin || isOwner;
-  }, [permissionsLoading, status, permissions.isAdmin, isOwner]);
+    return buttonVisibility.completeFINRADocuments.visible;
+  }, [permissionsLoading, buttonVisibility.completeFINRADocuments.visible]);
 
   // Get loading message based on active action
   const loadingMessage = React.useMemo(() => {
@@ -743,6 +706,7 @@ export function useRequestActionsState(props: {
     isAnyActionInProgress,
     loadingMessage,
     hasFINRADocuments,
+    buttonVisibility,
 
     // Button visibility
     showSubmitRequest,

@@ -8,7 +8,50 @@ import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
 
 import { useDocumentsStore } from '@stores/documentsStore';
+import { usePermissionsStore } from '@stores/permissionsStore';
 import { processPendingDocuments } from '@services/requestSaveService';
+import type { IActionContext, IPermissionCheckResult } from '@services/workflowPermissionService';
+import type { ILegalRequest } from '@appTypes/index';
+import type { IUserPermissions } from '@hooks/usePermissions';
+
+/**
+ * Build an IActionContext from current store and permissions state.
+ * Used by store methods to validate permissions before executing actions.
+ */
+export function buildActionContext(request: ILegalRequest): IActionContext {
+  const permState = usePermissionsStore.getState();
+  const currentUserId = String(SPContext.currentUser?.id ?? '');
+
+  const permissions: IUserPermissions = {
+    isSubmitter: permState.isSubmitter,
+    isLegalAdmin: permState.isLegalAdmin,
+    isAttorneyAssigner: permState.isAttorneyAssigner,
+    isAttorney: permState.isAttorney,
+    isComplianceUser: permState.isComplianceUser,
+    isAdmin: permState.isAdmin,
+    roles: permState.roles,
+    canCreateRequest: permState.canCreateRequest,
+    canViewAllRequests: permState.canViewAllRequests,
+    canAssignAttorney: permState.canAssignAttorney,
+    canReviewLegal: permState.canReviewLegal,
+    canReviewCompliance: permState.canReviewCompliance,
+  };
+
+  return { request, permissions, currentUserId };
+}
+
+/**
+ * Enforce a permission check. Throws if not allowed.
+ * @param actionName - Human-readable action name for error messages
+ * @param check - Permission check result from workflowPermissionService
+ */
+export function enforcePermission(actionName: string, check: IPermissionCheckResult): void {
+  if (!check.allowed) {
+    const reason = check.reason || 'Permission denied';
+    SPContext.logger.warn(`Permission denied: ${actionName}`, { reason });
+    throw new Error(`${actionName}: ${reason}`);
+  }
+}
 
 /**
  * Process pending document operations after a successful save
