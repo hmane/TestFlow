@@ -12,21 +12,21 @@
 
 ## Table of Contents
 
-- [Roles Overview](#roles-overview)
-- [Workflow Statuses](#workflow-statuses)
-- [Permission Matrix by Status](#permission-matrix-by-status)
-  - [Draft](#draft)
-  - [Legal Intake](#legal-intake)
-  - [Assign Attorney (Committee)](#assign-attorney-committee)
-  - [In Review](#in-review)
-  - [Closeout](#closeout)
-  - [Awaiting FINRA Documents](#awaiting-finra-documents)
-  - [On Hold](#on-hold)
-  - [Completed / Cancelled (Terminal)](#completed--cancelled-terminal)
-- [Field Editability by Role](#field-editability-by-role)
-- [Card Visibility by Status](#card-visibility-by-status)
-- [Enforcement Layers](#enforcement-layers)
-- [Key Design Decisions](#key-design-decisions)
+- Roles Overview
+- Workflow Statuses
+- Permission Matrix by Status
+  - Draft
+  - Legal Intake
+  - Assign Attorney (Committee)
+  - In Review
+  - Closeout
+  - Awaiting FINRA Documents
+  - On Hold
+  - Completed / Cancelled (Terminal)
+- Field Editability by Role
+- Card Visibility by Status
+- Enforcement Layers
+- Key Design Decisions
 
 ---
 
@@ -393,27 +393,12 @@ Summary across all statuses — when and where each role can edit.
 
 The permission system is enforced at three independent layers. A user must pass **all three** to perform an action.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  Layer 1: UI Visibility (uiVisibilityService.ts)        │
-│  Controls: Button show/hide/disable, field editability, │
-│            card visibility                              │
-│  Effect: Buttons are hidden or disabled in the UI       │
-├─────────────────────────────────────────────────────────┤
-│  Layer 2: Store Guards (workflowPermissionService.ts)   │
-│  Controls: canEditRequest, canSubmitRequest,            │
-│            canAssignAttorney, etc.                      │
-│  Effect: Store methods throw before any SP call         │
-├─────────────────────────────────────────────────────────┤
-│  Layer 3: Service Guards (saveProgressActions.ts, etc.) │
-│  Controls: Status + role checks inside each service fn  │
-│  Effect: Service functions throw at runtime             │
-├─────────────────────────────────────────────────────────┤
-│  Layer 4: SharePoint (item-level permissions)           │
-│  Controls: Read/Write access on the SP list item        │
-│  Effect: SP API rejects unauthorized calls              │
-└─────────────────────────────────────────────────────────┘
-```
+| Layer | Component | What It Controls | Effect When Blocked |
+|-------|-----------|-----------------|---------------------|
+| **1 — UI Visibility** | `uiVisibilityService.ts` | Button show/hide/disable, field editability, card visibility | Buttons are hidden or disabled in the UI |
+| **2 — Store Guards** | `workflowPermissionService.ts` | `canEditRequest`, `canSubmitRequest`, `canAssignAttorney`, etc. | Store methods throw before any SharePoint call is made |
+| **3 — Service Guards** | `saveProgressActions.ts`, `resubmitActions.ts` | Status + role checks inside each service function | Service functions throw at runtime |
+| **4 — SharePoint** | Item-level permissions on SP list | Read/Write access on the list item | SharePoint API rejects unauthorized calls |
 
 Even if a UI bug shows a button that shouldn't be visible, the store guard will block the action. Even if a store guard is bypassed, the service-layer guard will block it. Even if the service layer is bypassed, SharePoint item-level permissions provide the final backstop.
 
