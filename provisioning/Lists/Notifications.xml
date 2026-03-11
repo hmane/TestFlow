@@ -2314,35 +2314,6 @@
                 </tr>
               </table>
 
-              <!-- Time Tracking Summary -->
-              {{#if TotalProcessingTime}}
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 16px;">
-                <tr>
-                  <td style="padding:16px;">
-                    <p style="margin:0 0 8px;font-weight:600;color:#323130;">Processing Time</p>
-                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                      <tr>
-                        <td style="padding:4px 0;width:35%;"><strong>Total Time:</strong></td>
-                        <td style="padding:4px 0;">{{TotalProcessingTime}}</td>
-                      </tr>
-                      {{#if LegalReviewTime}}
-                      <tr>
-                        <td style="padding:4px 0;"><strong>Legal Review:</strong></td>
-                        <td style="padding:4px 0;">{{LegalReviewTime}}</td>
-                      </tr>
-                      {{/if}}
-                      {{#if ComplianceReviewTime}}
-                      <tr>
-                        <td style="padding:4px 0;"><strong>Compliance Review:</strong></td>
-                        <td style="padding:4px 0;">{{ComplianceReviewTime}}</td>
-                      </tr>
-                      {{/if}}
-                    </table>
-                  </td>
-                </tr>
-              </table>
-              {{/if}}
-
               <p style="margin:0 0 24px;">Thank you for using the Legal Review System. You can access the completed request and all associated documents at any time.</p>
 
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">

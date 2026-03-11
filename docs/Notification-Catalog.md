@@ -892,13 +892,6 @@ Your {Request Type} request has been completed successfully.
 | Reviewed By | {Attorney Name} *(if applicable)* |
 | Compliance Review | {Compliance Review Outcome} *(if applicable)* |
 
-**Processing Time** *(if available)*
-| Field | Value |
-|-------|-------|
-| Total Time | {Total Processing Time} |
-| Legal Review | {Legal Review Time} *(if applicable)* |
-| Compliance Review | {Compliance Review Time} *(if applicable)* |
-
 Thank you for using the Legal Review System. You can access the completed request and all associated documents at any time.
 
 **→ View Completed Request**
