@@ -140,6 +140,22 @@
            RichText="FALSE"
            NumLines="4"
            Group="Notifications" />
+
+    <!-- Request type scope - "All" means applies to all request types (generic fallback) -->
+    <Field Type="Choice"
+           DisplayName="Request Type"
+           Name="RequestType"
+           ID="{F7A8B9C0-7890-ABCD-EF01-234567890ABC}"
+           Required="TRUE"
+           Group="Notifications">
+      <CHOICES>
+        <CHOICE>All</CHOICE>
+        <CHOICE>Communication</CHOICE>
+        <CHOICE>General Review</CHOICE>
+        <CHOICE>IMA Review</CHOICE>
+      </CHOICES>
+      <Default>All</Default>
+    </Field>
   </pnp:Fields>
 
   <pnp:Views>
@@ -154,6 +170,7 @@
         <FieldRef Name="LinkTitle" />
         <FieldRef Name="Category" />
         <FieldRef Name="TriggerEvent" />
+        <FieldRef Name="RequestType" />
         <FieldRef Name="Subject" />
         <FieldRef Name="ToRecipients" />
         <FieldRef Name="IsActive" />
@@ -212,9 +229,10 @@
       <pnp:DataValue FieldName="Title">RequestSubmitted</pnp:DataValue>
       <pnp:DataValue FieldName="Category">Submission</pnp:DataValue>
       <pnp:DataValue FieldName="TriggerEvent">StatusChange</pnp:DataValue>
+      <pnp:DataValue FieldName="RequestType">All</pnp:DataValue>
       <pnp:DataValue FieldName="ToRecipients">{{LegalAdminGroup}}</pnp:DataValue>
-      <pnp:DataValue FieldName="CcRecipients"></pnp:DataValue>
-      <pnp:DataValue FieldName="Subject">[Action Required] New Legal Review Request: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
+      <pnp:DataValue FieldName="CcRecipients">{{SubmitterEmail}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Subject">[Action Required] New {{RequestType}} Request: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
       <pnp:DataValue FieldName="Body"><![CDATA[<!DOCTYPE html>
 <html>
 <head>
@@ -235,7 +253,7 @@
           <!-- Content -->
           <tr>
             <td style="padding:32px;">
-              <p style="margin:0 0 16px;">A new legal review request has been submitted and requires your attention.</p>
+              <p style="margin:0 0 16px;">A new {{RequestType}} request has been submitted and requires your attention.</p>
 
               <!-- Basic Information -->
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 16px;">
@@ -399,9 +417,10 @@
       <pnp:DataValue FieldName="Title">RushRequestAlert</pnp:DataValue>
       <pnp:DataValue FieldName="Category">Submission</pnp:DataValue>
       <pnp:DataValue FieldName="TriggerEvent">StatusChange</pnp:DataValue>
+      <pnp:DataValue FieldName="RequestType">All</pnp:DataValue>
       <pnp:DataValue FieldName="ToRecipients">{{LegalAdminGroup}}</pnp:DataValue>
-      <pnp:DataValue FieldName="CcRecipients"></pnp:DataValue>
-      <pnp:DataValue FieldName="Subject">[RUSH] Urgent Legal Review Request: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
+      <pnp:DataValue FieldName="CcRecipients">{{SubmitterEmail}}</pnp:DataValue>
+      <pnp:DataValue FieldName="Subject">[RUSH] Urgent {{RequestType}} Request: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
       <pnp:DataValue FieldName="Body"><![CDATA[<!DOCTYPE html>
 <html>
 <head>
@@ -553,6 +572,7 @@
       <pnp:DataValue FieldName="Title">ReadyForAttorneyAssignment</pnp:DataValue>
       <pnp:DataValue FieldName="Category">Assignment</pnp:DataValue>
       <pnp:DataValue FieldName="TriggerEvent">StatusChange</pnp:DataValue>
+      <pnp:DataValue FieldName="RequestType">All</pnp:DataValue>
       <pnp:DataValue FieldName="ToRecipients">{{AttorneyAssignerGroup}}</pnp:DataValue>
       <pnp:DataValue FieldName="CcRecipients"></pnp:DataValue>
       <pnp:DataValue FieldName="Subject">[Action Required] Attorney Assignment Needed: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
@@ -576,7 +596,7 @@
           <!-- Content -->
           <tr>
             <td style="padding:32px;">
-              <p style="margin:0 0 16px;">A legal review request is awaiting attorney assignment by the committee.</p>
+              <p style="margin:0 0 16px;">A {{RequestType}} request is awaiting attorney assignment by the committee.</p>
 
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
                 <tr>
@@ -643,6 +663,7 @@
       <pnp:DataValue FieldName="Title">AttorneyAssigned</pnp:DataValue>
       <pnp:DataValue FieldName="Category">Assignment</pnp:DataValue>
       <pnp:DataValue FieldName="TriggerEvent">AttorneyAssigned</pnp:DataValue>
+      <pnp:DataValue FieldName="RequestType">All</pnp:DataValue>
       <pnp:DataValue FieldName="ToRecipients">{{AssignedAttorneyEmail}}</pnp:DataValue>
       <pnp:DataValue FieldName="CcRecipients">{{SubmitterEmail}}</pnp:DataValue>
       <pnp:DataValue FieldName="Subject">[Action Required] Legal Review Assigned: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
@@ -837,6 +858,7 @@
       <pnp:DataValue FieldName="Title">AttorneyReassigned</pnp:DataValue>
       <pnp:DataValue FieldName="Category">Assignment</pnp:DataValue>
       <pnp:DataValue FieldName="TriggerEvent">AttorneyAssigned</pnp:DataValue>
+      <pnp:DataValue FieldName="RequestType">All</pnp:DataValue>
       <pnp:DataValue FieldName="ToRecipients">{{AssignedAttorneyEmail}}</pnp:DataValue>
       <pnp:DataValue FieldName="CcRecipients">{{SubmitterEmail}},{{LegalAdminGroup}}</pnp:DataValue>
       <pnp:DataValue FieldName="Subject">[Legal Review] Attorney Reassigned: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
@@ -948,6 +970,7 @@
       <pnp:DataValue FieldName="Title">ComplianceReviewRequired</pnp:DataValue>
       <pnp:DataValue FieldName="Category">Assignment</pnp:DataValue>
       <pnp:DataValue FieldName="TriggerEvent">StatusChange</pnp:DataValue>
+      <pnp:DataValue FieldName="RequestType">All</pnp:DataValue>
       <pnp:DataValue FieldName="ToRecipients">{{ComplianceGroup}}</pnp:DataValue>
       <pnp:DataValue FieldName="CcRecipients">{{SubmitterEmail}}</pnp:DataValue>
       <pnp:DataValue FieldName="Subject">[Compliance Review] Review Required: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
@@ -1087,6 +1110,7 @@
       <pnp:DataValue FieldName="Title">LegalReviewApproved</pnp:DataValue>
       <pnp:DataValue FieldName="Category">Review</pnp:DataValue>
       <pnp:DataValue FieldName="TriggerEvent">ReviewComplete</pnp:DataValue>
+      <pnp:DataValue FieldName="RequestType">All</pnp:DataValue>
       <pnp:DataValue FieldName="ToRecipients">{{SubmitterEmail}}</pnp:DataValue>
       <pnp:DataValue FieldName="CcRecipients">{{AdditionalPartyEmails}}</pnp:DataValue>
       <pnp:DataValue FieldName="Subject">Legal Review Approved: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
@@ -1110,7 +1134,7 @@
           <!-- Content -->
           <tr>
             <td style="padding:32px;">
-              <p style="margin:0 0 16px;">Your legal review request has been <strong style="color:#107c10;">approved</strong>.</p>
+              <p style="margin:0 0 16px;">Your {{RequestType}} request has been <strong style="color:#107c10;">approved</strong>.</p>
 
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
                 <tr>
@@ -1176,6 +1200,7 @@
       <pnp:DataValue FieldName="Title">LegalChangesRequested</pnp:DataValue>
       <pnp:DataValue FieldName="Category">Review</pnp:DataValue>
       <pnp:DataValue FieldName="TriggerEvent">ReviewChangesRequested</pnp:DataValue>
+      <pnp:DataValue FieldName="RequestType">All</pnp:DataValue>
       <pnp:DataValue FieldName="ToRecipients">{{SubmitterEmail}}</pnp:DataValue>
       <pnp:DataValue FieldName="CcRecipients">{{AdditionalPartyEmails}}</pnp:DataValue>
       <pnp:DataValue FieldName="Subject">[Action Required] Changes Requested: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
@@ -1261,6 +1286,7 @@
       <pnp:DataValue FieldName="Title">LegalReviewNotApproved</pnp:DataValue>
       <pnp:DataValue FieldName="Category">Review</pnp:DataValue>
       <pnp:DataValue FieldName="TriggerEvent">ReviewComplete</pnp:DataValue>
+      <pnp:DataValue FieldName="RequestType">All</pnp:DataValue>
       <pnp:DataValue FieldName="ToRecipients">{{SubmitterEmail}}</pnp:DataValue>
       <pnp:DataValue FieldName="CcRecipients">{{AdditionalPartyEmails}}</pnp:DataValue>
       <pnp:DataValue FieldName="Subject">Legal Review Not Approved: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
@@ -1284,7 +1310,7 @@
           <!-- Content -->
           <tr>
             <td style="padding:32px;">
-              <p style="margin:0 0 16px;">Your legal review request has <strong>not been approved</strong>. The request has been moved to Completed status.</p>
+              <p style="margin:0 0 16px;">Your {{RequestType}} request has <strong>not been approved</strong>. The request has been moved to Completed status.</p>
 
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
                 <tr>
@@ -1348,6 +1374,7 @@
       <pnp:DataValue FieldName="Title">ComplianceReviewApproved</pnp:DataValue>
       <pnp:DataValue FieldName="Category">Review</pnp:DataValue>
       <pnp:DataValue FieldName="TriggerEvent">ReviewComplete</pnp:DataValue>
+      <pnp:DataValue FieldName="RequestType">All</pnp:DataValue>
       <pnp:DataValue FieldName="ToRecipients">{{SubmitterEmail}}</pnp:DataValue>
       <pnp:DataValue FieldName="CcRecipients">{{AdditionalPartyEmails}}</pnp:DataValue>
       <pnp:DataValue FieldName="Subject">Compliance Review Approved: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
@@ -1433,6 +1460,7 @@
       <pnp:DataValue FieldName="Title">ComplianceChangesRequested</pnp:DataValue>
       <pnp:DataValue FieldName="Category">Review</pnp:DataValue>
       <pnp:DataValue FieldName="TriggerEvent">ReviewChangesRequested</pnp:DataValue>
+      <pnp:DataValue FieldName="RequestType">All</pnp:DataValue>
       <pnp:DataValue FieldName="ToRecipients">{{SubmitterEmail}}</pnp:DataValue>
       <pnp:DataValue FieldName="CcRecipients">{{AdditionalPartyEmails}}</pnp:DataValue>
       <pnp:DataValue FieldName="Subject">[Action Required] Compliance Changes Requested: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
@@ -1514,6 +1542,7 @@
       <pnp:DataValue FieldName="Title">ComplianceReviewNotApproved</pnp:DataValue>
       <pnp:DataValue FieldName="Category">Review</pnp:DataValue>
       <pnp:DataValue FieldName="TriggerEvent">ReviewComplete</pnp:DataValue>
+      <pnp:DataValue FieldName="RequestType">All</pnp:DataValue>
       <pnp:DataValue FieldName="ToRecipients">{{SubmitterEmail}}</pnp:DataValue>
       <pnp:DataValue FieldName="CcRecipients">{{AdditionalPartyEmails}}</pnp:DataValue>
       <pnp:DataValue FieldName="Subject">Compliance Review Not Approved: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
@@ -1611,6 +1640,7 @@
       <pnp:DataValue FieldName="Title">ResubmissionReceivedLegal</pnp:DataValue>
       <pnp:DataValue FieldName="Category">Review</pnp:DataValue>
       <pnp:DataValue FieldName="TriggerEvent">Resubmission</pnp:DataValue>
+      <pnp:DataValue FieldName="RequestType">All</pnp:DataValue>
       <pnp:DataValue FieldName="ToRecipients">{{AssignedAttorneyEmail}}</pnp:DataValue>
       <pnp:DataValue FieldName="CcRecipients"></pnp:DataValue>
       <pnp:DataValue FieldName="Subject">[Action Required] Resubmission Received: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
@@ -1700,6 +1730,7 @@
       <pnp:DataValue FieldName="Title">ResubmissionReceivedCompliance</pnp:DataValue>
       <pnp:DataValue FieldName="Category">Review</pnp:DataValue>
       <pnp:DataValue FieldName="TriggerEvent">Resubmission</pnp:DataValue>
+      <pnp:DataValue FieldName="RequestType">All</pnp:DataValue>
       <pnp:DataValue FieldName="ToRecipients">{{ComplianceGroup}}</pnp:DataValue>
       <pnp:DataValue FieldName="CcRecipients"></pnp:DataValue>
       <pnp:DataValue FieldName="Subject">[Action Required] Compliance Resubmission: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
@@ -1793,6 +1824,7 @@
       <pnp:DataValue FieldName="Title">RequestOnHold</pnp:DataValue>
       <pnp:DataValue FieldName="Category">Status Change</pnp:DataValue>
       <pnp:DataValue FieldName="TriggerEvent">HoldResume</pnp:DataValue>
+      <pnp:DataValue FieldName="RequestType">All</pnp:DataValue>
       <pnp:DataValue FieldName="ToRecipients">{{SubmitterEmail}}</pnp:DataValue>
       <pnp:DataValue FieldName="CcRecipients">{{AdditionalPartyEmails}}</pnp:DataValue>
       <pnp:DataValue FieldName="Subject">Request Placed On Hold: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
@@ -1880,6 +1912,7 @@
       <pnp:DataValue FieldName="Title">RequestResumed</pnp:DataValue>
       <pnp:DataValue FieldName="Category">Status Change</pnp:DataValue>
       <pnp:DataValue FieldName="TriggerEvent">HoldResume</pnp:DataValue>
+      <pnp:DataValue FieldName="RequestType">All</pnp:DataValue>
       <pnp:DataValue FieldName="ToRecipients">{{SubmitterEmail}}</pnp:DataValue>
       <pnp:DataValue FieldName="CcRecipients">{{AdditionalPartyEmails}}</pnp:DataValue>
       <pnp:DataValue FieldName="Subject">Request Resumed: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
@@ -1958,6 +1991,7 @@
       <pnp:DataValue FieldName="Title">RequestCancelled</pnp:DataValue>
       <pnp:DataValue FieldName="Category">Status Change</pnp:DataValue>
       <pnp:DataValue FieldName="TriggerEvent">Cancellation</pnp:DataValue>
+      <pnp:DataValue FieldName="RequestType">All</pnp:DataValue>
       <pnp:DataValue FieldName="ToRecipients">{{SubmitterEmail}}</pnp:DataValue>
       <pnp:DataValue FieldName="CcRecipients">{{AssignedAttorneyEmail}},{{AdditionalPartyEmails}}</pnp:DataValue>
       <pnp:DataValue FieldName="Subject">Request Cancelled: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
@@ -2049,6 +2083,7 @@
       <pnp:DataValue FieldName="Title">ReadyForCloseout</pnp:DataValue>
       <pnp:DataValue FieldName="Category">Closeout</pnp:DataValue>
       <pnp:DataValue FieldName="TriggerEvent">StatusChange</pnp:DataValue>
+      <pnp:DataValue FieldName="RequestType">All</pnp:DataValue>
       <pnp:DataValue FieldName="ToRecipients">{{SubmitterEmail}}</pnp:DataValue>
       <pnp:DataValue FieldName="CcRecipients">{{AdditionalPartyEmails}}</pnp:DataValue>
       <pnp:DataValue FieldName="Subject">[Action Required] Ready for Closeout: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
@@ -2187,6 +2222,7 @@
       <pnp:DataValue FieldName="Title">RequestCompleted</pnp:DataValue>
       <pnp:DataValue FieldName="Category">Closeout</pnp:DataValue>
       <pnp:DataValue FieldName="TriggerEvent">StatusChange</pnp:DataValue>
+      <pnp:DataValue FieldName="RequestType">All</pnp:DataValue>
       <pnp:DataValue FieldName="ToRecipients">{{SubmitterEmail}}</pnp:DataValue>
       <pnp:DataValue FieldName="CcRecipients">{{AdditionalPartyEmails}}</pnp:DataValue>
       <pnp:DataValue FieldName="Subject">Request Completed: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
@@ -2210,7 +2246,7 @@
           <!-- Content -->
           <tr>
             <td style="padding:32px;">
-              <p style="margin:0 0 16px;">Your legal review request has been completed successfully.</p>
+              <p style="margin:0 0 16px;">Your {{RequestType}} request has been completed successfully.</p>
 
               <!-- Request Summary -->
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 16px;">

@@ -64,6 +64,9 @@ namespace LegalWorkflow.Functions.Constants.SharePointFields
         /// <summary>Event that triggers this notification</summary>
         public const string TriggerEvent = "TriggerEvent";
 
+        /// <summary>Request type scope - null/blank means applies to all types (generic fallback)</summary>
+        public const string RequestType = "RequestType";
+
         /// <summary>Whether this notification template is active</summary>
         public const string IsActive = "IsActive";
 

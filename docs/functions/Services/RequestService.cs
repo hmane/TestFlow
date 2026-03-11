@@ -153,13 +153,17 @@ namespace LegalWorkflow.Functions.Services
         }
 
         /// <summary>
-        /// Gets notification template by its Title (notification ID).
+        /// Gets notification template by its Title (notification ID), with optional request type scoping.
+        /// Lookup cascade:
+        ///   1. Find template matching notificationId + requestType (type-specific)
+        ///   2. Fall back to template matching notificationId with no RequestType (generic)
         /// </summary>
         /// <param name="notificationId">The notification template Title</param>
+        /// <param name="requestType">Optional request type for type-specific templates</param>
         /// <returns>Notification template data or null if not found</returns>
-        public async Task<NotificationTemplate?> GetNotificationTemplateAsync(string notificationId)
+        public async Task<NotificationTemplate?> GetNotificationTemplateAsync(string notificationId, string? requestType = null)
         {
-            using var tracker = _logger.StartOperation($"GetNotificationTemplate({notificationId})");
+            using var tracker = _logger.StartOperation($"GetNotificationTemplate({notificationId}, {requestType ?? "generic"})");
 
             try
             {
@@ -167,35 +171,50 @@ namespace LegalWorkflow.Functions.Services
 
                 var list = await context.Web.Lists.GetByTitleAsync(SharePointLists.Notifications);
 
-                // Query for the notification by Title
-                var items = await list.Items.Where(i => i.Title == notificationId).ToListAsync();
-                var item = items.FirstOrDefault();
-
-                if (item == null)
+                // Step 1: Try type-specific template when a requestType is provided
+                if (!string.IsNullOrEmpty(requestType))
                 {
-                    _logger.Warning($"Notification template '{notificationId}' not found");
+                    var specificItems = await list.Items
+                        .Where(i => i.Title == notificationId)
+                        .ToListAsync();
+
+                    var specificItem = specificItems.FirstOrDefault(i =>
+                        string.Equals(
+                            GetFieldValue<string>(i, NotificationsFields.RequestType),
+                            requestType,
+                            StringComparison.OrdinalIgnoreCase));
+
+                    if (specificItem != null)
+                    {
+                        _logger.Info($"Type-specific template found: {notificationId} / {requestType}");
+                        tracker.Complete(true, "Type-specific template");
+                        return MapToNotificationTemplate(notificationId, specificItem);
+                    }
+
+                    _logger.Debug($"No type-specific template for '{notificationId}' / '{requestType}', falling back to generic");
+                }
+
+                // Step 2: Fall back to generic template (RequestType = "All")
+                var allItems = await list.Items
+                    .Where(i => i.Title == notificationId)
+                    .ToListAsync();
+
+                var genericItem = allItems.FirstOrDefault(i =>
+                    string.Equals(
+                        GetFieldValue<string>(i, NotificationsFields.RequestType),
+                        "All",
+                        StringComparison.OrdinalIgnoreCase));
+
+                if (genericItem == null)
+                {
+                    _logger.Warning($"Notification template '{notificationId}' not found (checked type-specific and generic)");
                     tracker.Complete(false, "Template not found");
                     return null;
                 }
 
-                var template = new NotificationTemplate
-                {
-                    Id = notificationId,
-                    Subject = GetFieldValue<string>(item, NotificationsFields.Subject) ?? string.Empty,
-                    Body = GetFieldValue<string>(item, NotificationsFields.Body) ?? string.Empty,
-                    ToRecipients = GetFieldValue<string>(item, NotificationsFields.ToRecipients) ?? string.Empty,
-                    CcRecipients = GetFieldValue<string>(item, NotificationsFields.CcRecipients) ?? string.Empty,
-                    BccRecipients = GetFieldValue<string>(item, NotificationsFields.BccRecipients) ?? string.Empty,
-                    IncludeDocuments = GetFieldValue<bool>(item, NotificationsFields.IncludeDocuments),
-                    Importance = ParseEnum<EmailImportance>(GetFieldValue<string>(item, NotificationsFields.Importance), EmailImportance.Normal),
-                    Category = ParseEnum<NotificationCategory>(GetFieldValue<string>(item, NotificationsFields.Category), NotificationCategory.System),
-                    TriggerEvent = GetFieldValue<string>(item, NotificationsFields.TriggerEvent) ?? string.Empty,
-                    IsActive = GetFieldValue<bool>(item, NotificationsFields.IsActive)
-                };
-
-                _logger.Info($"Notification template loaded: {notificationId}", new { IsActive = template.IsActive });
-                tracker.Complete(true);
-                return template;
+                _logger.Info($"Generic template loaded: {notificationId}", new { RequestType = requestType ?? "N/A" });
+                tracker.Complete(true, "Generic template");
+                return MapToNotificationTemplate(notificationId, genericItem);
             }
             catch (Exception ex)
             {
@@ -203,6 +222,28 @@ namespace LegalWorkflow.Functions.Services
                 tracker.Complete(false, $"Error: {ex.Message}");
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Maps a SharePoint list item to a NotificationTemplate.
+        /// </summary>
+        private NotificationTemplate MapToNotificationTemplate(string notificationId, IListItem item)
+        {
+            return new NotificationTemplate
+            {
+                Id = notificationId,
+                Subject = GetFieldValue<string>(item, NotificationsFields.Subject) ?? string.Empty,
+                Body = GetFieldValue<string>(item, NotificationsFields.Body) ?? string.Empty,
+                ToRecipients = GetFieldValue<string>(item, NotificationsFields.ToRecipients) ?? string.Empty,
+                CcRecipients = GetFieldValue<string>(item, NotificationsFields.CcRecipients) ?? string.Empty,
+                BccRecipients = GetFieldValue<string>(item, NotificationsFields.BccRecipients) ?? string.Empty,
+                IncludeDocuments = GetFieldValue<bool>(item, NotificationsFields.IncludeDocuments),
+                Importance = ParseEnum<EmailImportance>(GetFieldValue<string>(item, NotificationsFields.Importance), EmailImportance.Normal),
+                Category = ParseEnum<NotificationCategory>(GetFieldValue<string>(item, NotificationsFields.Category), NotificationCategory.System),
+                TriggerEvent = GetFieldValue<string>(item, NotificationsFields.TriggerEvent) ?? string.Empty,
+                RequestType = GetFieldValue<string>(item, NotificationsFields.RequestType),
+                IsActive = GetFieldValue<bool>(item, NotificationsFields.IsActive)
+            };
         }
 
         #region Private Helper Methods
@@ -760,5 +801,8 @@ namespace LegalWorkflow.Functions.Services
 
         /// <summary>Whether this notification is active</summary>
         public bool IsActive { get; set; }
+
+        /// <summary>Request type scope - null means applies to all types (generic fallback)</summary>
+        public string? RequestType { get; set; }
     }
 }

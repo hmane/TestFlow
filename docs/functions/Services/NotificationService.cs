@@ -153,8 +153,9 @@ namespace LegalWorkflow.Functions.Services
 
                 _logger.Info($"Notification trigger detected: {notificationId}");
 
-                // Load the notification template
-                var template = await _requestService.GetNotificationTemplateAsync(notificationId);
+                // Load the notification template - try type-specific first, fall back to generic
+                var requestTypeName = currentRequest.RequestType.ToString();
+                var template = await _requestService.GetNotificationTemplateAsync(notificationId, requestTypeName);
                 if (template == null || !template.IsActive)
                 {
                     _logger.Warning($"Notification template '{notificationId}' not found or inactive");
@@ -928,7 +929,7 @@ namespace LegalWorkflow.Functions.Services
         {
             return type switch
             {
-                RequestType.Communication => "Communication",
+                RequestType.Communication => "Communication Review",
                 RequestType.GeneralReview => "General Review",
                 RequestType.IMAReview => "IMA Review",
                 _ => type.ToString()

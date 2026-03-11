@@ -292,12 +292,19 @@ export function useDocumentUploadState(props: IUseDocumentUploadStateProps): IUs
         };
       }
 
-      // Check file count
+      // Check file count — scope to the current documentType if one is set
       let docsCount = 0;
-      documents.forEach((docs) => {
-        docsCount += docs.length;
-      });
-      const currentCount = stagedFiles.length + docsCount;
+      if (documentType) {
+        docsCount = documents.get(documentType as DocumentType)?.length ?? 0;
+      } else {
+        documents.forEach((docs) => {
+          docsCount += docs.length;
+        });
+      }
+      const scopedStagedCount = documentType
+        ? stagedFiles.filter(f => f.documentType === documentType).length
+        : stagedFiles.length;
+      const currentCount = scopedStagedCount + docsCount;
       if (currentCount >= maxFiles) {
         return {
           isValid: false,

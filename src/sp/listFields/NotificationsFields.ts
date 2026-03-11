@@ -20,6 +20,7 @@ export const NotificationsFields = {
   Importance: 'Importance',
   Category: 'Category',
   TriggerEvent: 'TriggerEvent',
+  RequestType: 'RequestType',
   IsActive: 'IsActive',
 
   // Metadata
