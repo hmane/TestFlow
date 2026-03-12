@@ -252,18 +252,17 @@ export function getButtonVisibility(ctx: IVisibilityContext): IButtonVisibility 
   }
 
   // Legal Intake status
-  // Per docs: Save = Admin, LegalAdmin only (owner has no editable fields at this stage)
+  // Save is hidden: Legal Admin's changes (attorney, review audience, notes) are stored in
+  // legalIntakeStore local state and saved via dedicated card footer buttons (Assign Attorney,
+  // Send to Committee, edit-mode Save Changes). The global Save button is not connected to those.
   // OnHold/Cancel = Admin, LegalAdmin, Owner
   if (status === RequestStatus.LegalIntake) {
     const canEditIntake = isAdmin || isLegalAdmin;
-    const canSave = isAdmin || isLegalAdmin;
     const canProceedToReview = !ctx.legalReviewRequired || hasAssignedAttorney;
     return {
       saveAsDraft: hidden(),
       submitRequest: hidden(),
-      save: canSave
-        ? (isDirty ? enabled() : disabled('No changes to save'))
-        : hidden(),
+      save: hidden(),
       close: enabled(),
       onHold: isAdmin || isLegalAdmin || isOwner ? enabled() : hidden(),
       resume: hidden(),
@@ -286,9 +285,7 @@ export function getButtonVisibility(ctx: IVisibilityContext): IButtonVisibility 
     return {
       saveAsDraft: hidden(),
       submitRequest: hidden(),
-      save: canAssign
-        ? (isDirty ? enabled() : disabled('No changes to save'))
-        : hidden(),
+      save: canAssign && isDirty ? enabled() : hidden(),
       close: enabled(),
       onHold: isAdmin || isLegalAdmin || isOwner ? enabled() : hidden(),
       resume: hidden(),
@@ -304,16 +301,15 @@ export function getButtonVisibility(ctx: IVisibilityContext): IButtonVisibility 
   }
 
   // In Review status
-  // Per docs: Save = Admin, Owner (general); review-specific Save in card footers
+  // Per docs: Save = Admin, LegalAdmin, Owner (general); review-specific Submit in card footers
   // OnHold/Cancel = Admin, LegalAdmin, Owner
+  // resubmitForReview: handled inside LegalReviewForm/ComplianceReviewForm card footers, not here
   if (status === RequestStatus.InReview) {
     const canSave = isAdmin || isLegalAdmin || isOwner;
     return {
       saveAsDraft: hidden(),
       submitRequest: hidden(),
-      save: canSave
-        ? (isDirty ? enabled() : disabled('No changes to save'))
-        : hidden(),
+      save: canSave && isDirty ? enabled() : hidden(),
       close: enabled(),
       onHold: isAdmin || isLegalAdmin || isOwner ? enabled() : hidden(),
       resume: hidden(),
@@ -322,7 +318,7 @@ export function getButtonVisibility(ctx: IVisibilityContext): IButtonVisibility 
       sendToCommittee: hidden(),
       submitCloseout: hidden(),
       completeFINRADocuments: hidden(),
-      resubmitForReview: isAdmin || isOwner ? enabled() : hidden(),
+      resubmitForReview: hidden(),
     };
   }
 
@@ -332,9 +328,7 @@ export function getButtonVisibility(ctx: IVisibilityContext): IButtonVisibility 
     return {
       saveAsDraft: hidden(),
       submitRequest: hidden(),
-      save: canCloseout
-        ? (isDirty ? enabled() : disabled('No changes to save'))
-        : hidden(),
+      save: canCloseout && isDirty ? enabled() : hidden(),
       close: enabled(),
       onHold: canCloseout ? enabled() : hidden(),
       resume: hidden(),
