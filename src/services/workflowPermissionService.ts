@@ -114,6 +114,11 @@ export function canSubmitRequest(context: IActionContext): IPermissionCheckResul
   const isOwner = String(request.submittedBy?.id ?? '') === currentUserId ||
                   String(request.author?.id ?? '') === currentUserId;
 
+  // For new requests (no submittedBy yet), any submitter can submit
+  if (!request.submittedBy && permissions.isSubmitter) {
+    return { allowed: true };
+  }
+
   if (!isOwner && !permissions.isAdmin) {
     return {
       allowed: false,
