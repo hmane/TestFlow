@@ -26,6 +26,7 @@ import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
 import { ApprovalSection } from '../ApprovalSection';
 import { useRequestFormContext } from '@contexts/RequestFormContext';
 import { useRequestStore } from '@stores/requestStore';
+import { useUIVisibility } from '@hooks/useUIVisibility';
 import { RequestStatus } from '@appTypes/workflowTypes';
 import { ApprovalType } from '@appTypes/approvalTypes';
 
@@ -100,6 +101,7 @@ export const RequestApprovals: React.FC<IRequestApprovalsProps> = ({
 }) => {
   const { control, isLoading, itemId, status } = useRequestFormContext();
   const currentRequest = useRequestStore((s) => s.currentRequest);
+  const { fields } = useUIVisibility({ status });
 
   const isNewRequest = !itemId;
 
@@ -194,7 +196,7 @@ export const RequestApprovals: React.FC<IRequestApprovalsProps> = ({
       <Content padding='comfortable'>
         <ApprovalSection
           control={control}
-          disabled={isLoading}
+          disabled={isLoading || !fields.requestInfo.canEdit}
           isNewRequest={isNewRequest}
           requestId={requestId}
         />

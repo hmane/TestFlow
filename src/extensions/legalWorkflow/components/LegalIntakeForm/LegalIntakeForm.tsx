@@ -311,6 +311,8 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
     request: visibilityRequest,
   });
   const canEditReviewAudience = fields.legalIntake.canEditReviewAudience;
+  const canEditAttorney = fields.legalIntake.canEditAttorney;
+  const canEditNotes = fields.legalIntake.canEditNotes;
 
   // Get legal intake store setters - use a single batch update function
   const { setLegalIntakeValues } = useLegalIntakeStore();
@@ -905,7 +907,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
                       groupName='LW - Attorneys'
                       maxUserCount={10}
                       placeholder='Search for attorney to assign...'
-                      disabled={isLoading}
+                      disabled={isLoading || !canEditAttorney}
                       showClearButton
                       ensureUser
                     />
@@ -933,7 +935,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
                   showCharacterCount
                   stylingMode='outlined'
                   spellCheck
-                  disabled={isLoading}
+                  disabled={isLoading || !canEditNotes}
                   appendOnly
                   itemId={currentRequest.id}
                   listNameOrId='Requests'
