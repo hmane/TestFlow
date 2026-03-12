@@ -252,10 +252,11 @@ export function getButtonVisibility(ctx: IVisibilityContext): IButtonVisibility 
   }
 
   // Legal Intake status
-  // Per docs: Save = Admin, Owner; OnHold/Cancel = Admin, LegalAdmin, Owner
+  // Per docs: Save = Admin, LegalAdmin only (owner has no editable fields at this stage)
+  // OnHold/Cancel = Admin, LegalAdmin, Owner
   if (status === RequestStatus.LegalIntake) {
     const canEditIntake = isAdmin || isLegalAdmin;
-    const canSave = isAdmin || isLegalAdmin || isOwner;
+    const canSave = isAdmin || isLegalAdmin;
     const canProceedToReview = !ctx.legalReviewRequired || hasAssignedAttorney;
     return {
       saveAsDraft: hidden(),
@@ -538,7 +539,9 @@ export function createVisibilityContext(
     String(request.author?.id ?? '') === currentUserId
   ) : false;
 
-  const assignedAttorneys = request?.legalReview?.assignedAttorney || request?.attorney;
+  const assignedAttorneys = request?.legalReview?.assignedAttorney?.length
+    ? request.legalReview.assignedAttorney
+    : request?.attorney;
   const isAssignedAttorney = assignedAttorneys?.some(
     a => String(a.id) === currentUserId
   ) ?? false;

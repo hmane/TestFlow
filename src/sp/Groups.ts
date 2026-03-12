@@ -2,24 +2,24 @@
 // Generated on: 2025-10-31 22:59:05
 
 export const Groups = {
-  LwAdmin: {
-    Title: 'LW - Admin',
+  LwAdmins: {
+    Title: 'LW - Admins',
     Description: 'System administrators with full access',
   },
-  LwAttorneyAssigner: {
-    Title: 'LW - Attorney Assigner',
+  LwAttorneyAssigners: {
+    Title: 'LW - Attorney Assigners',
     Description: 'Users who can assign attorneys to requests',
   },
   LwAttorneys: {
     Title: 'LW - Attorneys',
     Description: 'Attorneys who can review and approve legal requests',
   },
-  LwComplianceUsers: {
-    Title: 'LW - Compliance Users',
-    Description: 'Compliance users who can review compliance aspects',
+  LwComplianceReviewers: {
+    Title: 'LW - Compliance Reviewers',
+    Description: 'Compliance reviewers who can review compliance aspects',
   },
-  LwLegalAdmin: {
-    Title: 'LW - Legal Admin',
+  LwLegalAdmins: {
+    Title: 'LW - Legal Admins',
     Description: 'Legal administrators who can manage all requests',
   },
   LwSubmitters: {

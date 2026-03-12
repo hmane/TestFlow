@@ -8,8 +8,8 @@
  * to ensure consistent caching behavior across the application.
  */
 
-import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import { Groups } from '@sp/Groups';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 
 /**
  * SharePoint group names used in the Legal Workflow application
@@ -17,11 +17,11 @@ import { Groups } from '@sp/Groups';
  */
 export const LW_GROUPS = {
   SUBMITTERS: Groups.LwSubmitters.Title,
-  LEGAL_ADMIN: Groups.LwLegalAdmin.Title,
-  ATTORNEY_ASSIGNER: Groups.LwAttorneyAssigner.Title,
+  LEGAL_ADMINS: Groups.LwLegalAdmins.Title,
+  ATTORNEY_ASSIGNERS: Groups.LwAttorneyAssigners.Title,
   ATTORNEYS: Groups.LwAttorneys.Title,
-  COMPLIANCE: Groups.LwComplianceUsers.Title,
-  ADMIN: Groups.LwAdmin.Title,
+  REGULATORY_REVIEWERS: Groups.LwComplianceReviewers.Title,
+  ADMINS: Groups.LwAdmins.Title,
 } as const;
 
 /**
@@ -151,14 +151,14 @@ export async function getCurrentUserGroupTitles(): Promise<string[]> {
 export async function getUserGroupMembership(): Promise<IUserGroupMembership> {
   const groupTitles = await getCurrentUserGroupTitles();
 
-  const isAdmin = groupTitles.includes(LW_GROUPS.ADMIN);
+  const isAdmin = groupTitles.includes(LW_GROUPS.ADMINS);
 
   return {
     isSubmitter: groupTitles.includes(LW_GROUPS.SUBMITTERS) || isAdmin,
-    isLegalAdmin: groupTitles.includes(LW_GROUPS.LEGAL_ADMIN) || isAdmin,
-    isAttorneyAssigner: groupTitles.includes(LW_GROUPS.ATTORNEY_ASSIGNER) || isAdmin,
+    isLegalAdmin: groupTitles.includes(LW_GROUPS.LEGAL_ADMINS) || isAdmin,
+    isAttorneyAssigner: groupTitles.includes(LW_GROUPS.ATTORNEY_ASSIGNERS) || isAdmin,
     isAttorney: groupTitles.includes(LW_GROUPS.ATTORNEYS) || isAdmin,
-    isComplianceUser: groupTitles.includes(LW_GROUPS.COMPLIANCE) || isAdmin,
+    isComplianceUser: groupTitles.includes(LW_GROUPS.REGULATORY_REVIEWERS) || isAdmin,
     isAdmin,
     groupTitles,
   };
@@ -177,12 +177,12 @@ export async function checkDashboardAccess(): Promise<IUserAccess> {
 
     SPContext.logger.info('UserGroupsService: Checking dashboard access', {
       userGroups: groupTitles,
-      expectedAdmin: LW_GROUPS.ADMIN,
-      expectedLegalAdmin: LW_GROUPS.LEGAL_ADMIN,
+      expectedAdmin: LW_GROUPS.ADMINS,
+      expectedLegalAdmin: LW_GROUPS.LEGAL_ADMINS,
     });
 
-    const isAdmin = groupTitles.includes(LW_GROUPS.ADMIN);
-    const isLegalAdmin = groupTitles.includes(LW_GROUPS.LEGAL_ADMIN);
+    const isAdmin = groupTitles.includes(LW_GROUPS.ADMINS);
+    const isLegalAdmin = groupTitles.includes(LW_GROUPS.LEGAL_ADMINS);
 
     SPContext.logger.debug('UserGroupsService: Group membership check', {
       isAdmin,
@@ -249,7 +249,7 @@ export async function isUserInGroup(groupName: string): Promise<boolean> {
  */
 export async function isUserInAnyGroup(groupNames: string[]): Promise<boolean> {
   const groupTitles = await getCurrentUserGroupTitles();
-  return groupNames.some((name) => groupTitles.includes(name));
+  return groupNames.some(name => groupTitles.includes(name));
 }
 
 /**
