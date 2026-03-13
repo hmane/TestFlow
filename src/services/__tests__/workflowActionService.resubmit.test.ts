@@ -50,6 +50,17 @@ jest.mock('spfx-toolkit/lib/utilities/context', () => ({
 }));
 
 jest.mock('spfx-toolkit/lib/utilities/context/pnpImports/lists', () => ({}));
+jest.mock('spfx-toolkit/lib/utilities/context/pnpImports/files', () => ({}));
+
+jest.mock('@services/documentCheckoutService', () => ({
+  isCheckoutRequiredForTransition: jest.fn().mockReturnValue(false),
+  getRequestCheckoutStatus: jest.fn().mockReturnValue({
+    hasActiveCheckouts: false,
+    checkedOutByCurrentUser: [],
+    checkedOutByOthers: [],
+    currentUserHasCheckouts: false,
+  }),
+}));
 
 jest.mock('spfx-toolkit/lib/utilities/listItemHelper', () => ({
   createSPUpdater: () => {

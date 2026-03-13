@@ -16,6 +16,7 @@ import * as React from 'react';
 // Fluent UI - tree-shaken imports
 import { DefaultButton, PrimaryButton } from '@fluentui/react/lib/Button';
 import { Icon } from '@fluentui/react/lib/Icon';
+import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
 import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
@@ -33,12 +34,22 @@ import { DocumentUpload } from '@components/DocumentUpload';
 import { useRequestFormContext } from '@contexts/RequestFormContext';
 import { usePermissions } from '@hooks/usePermissions';
 import { useDocumentsStore } from '@stores/documentsStore';
+import type { IDocument } from '@stores/documentsStore';
+import { useConfigStore } from '@stores/configStore';
 import { useRequestStore } from '@stores/requestStore';
 import {
   ComplianceReviewStatus,
   LegalReviewStatus,
   RequestStatus,
 } from '@appTypes/workflowTypes';
+import {
+  isDocumentCheckoutEnabled,
+  getRequestCheckoutStatus,
+  doneReviewing,
+  doneReviewingAll,
+  formatCheckoutDuration,
+  type IDocumentCheckoutStatus,
+} from '@services/documentCheckoutService';
 
 import './RequestDocuments.scss';
 
@@ -96,6 +107,62 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
 
   // State for saving
   const [isSaving, setIsSaving] = React.useState(false);
+
+  // Review tracking: get all documents as flat array for checkout status
+  const allDocumentsFlat = React.useMemo((): IDocument[] => {
+    const result: IDocument[] = [];
+    documents.forEach((docs) => {
+      for (let i = 0; i < docs.length; i++) {
+        result.push(docs[i]);
+      }
+    });
+    return result;
+  }, [documents]);
+
+  // Review tracking: subscribe to configStore.isLoaded so we recompute after async config load
+  const configLoaded = useConfigStore((s) => s.isLoaded);
+  const checkoutEnabled = React.useMemo(() => isDocumentCheckoutEnabled(), [configLoaded]);
+  const requestCheckoutStatus = React.useMemo(() => {
+    if (!checkoutEnabled || allDocumentsFlat.length === 0) return undefined;
+    return getRequestCheckoutStatus(allDocumentsFlat);
+  }, [checkoutEnabled, allDocumentsFlat]);
+
+  /**
+   * Handle "Mark All as Done" — checkin all files checked out by current user
+   */
+  const handleDoneReviewingAll = React.useCallback(async (): Promise<void> => {
+    if (!itemId || !requestCheckoutStatus?.currentUserHasCheckouts) return;
+
+    try {
+      const results = await doneReviewingAll(allDocumentsFlat);
+      const failCount = results.filter(function(r) { return !r.success; }).length;
+
+      if (failCount > 0) {
+        showError?.(`${failCount} file(s) could not be checked in. Please try again.`);
+      } else {
+        showSuccess?.('All files marked as done reviewing.');
+      }
+
+      // Reload documents to refresh checkout state
+      await loadDocuments(itemId, true);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to complete reviews';
+      showError?.(message);
+    }
+  }, [itemId, requestCheckoutStatus, allDocumentsFlat, loadDocuments, showSuccess, showError]);
+
+  /**
+   * Handle individual review actions (called from "Currently Being Reviewed" section)
+   */
+  const handleDoneReviewing = React.useCallback(async (doc: IDocument): Promise<void> => {
+    const result = await doneReviewing(doc);
+    if (result.success) {
+      showSuccess?.(`Done reviewing ${result.fileName}`);
+      if (itemId) await loadDocuments(itemId, true);
+    } else {
+      showError?.(result.error || 'Failed to complete review');
+    }
+  }, [itemId, loadDocuments, showSuccess, showError]);
 
   // Check if there's an attachments validation error
   // The error is set on 'attachments' path via Zod superRefine in requestSchema.ts
@@ -342,6 +409,84 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
       </Header>
 
       <Content padding='comfortable'>
+        {/* Reminder Banner: current user has files being reviewed */}
+        {checkoutEnabled && requestCheckoutStatus?.currentUserHasCheckouts && (
+          <MessageBar
+            messageBarType={MessageBarType.info}
+            styles={{ root: { marginBottom: 12 } }}
+            actions={
+              <PrimaryButton
+                text="Mark All as Done"
+                onClick={handleDoneReviewingAll}
+                styles={{ root: { minWidth: 0, height: 28, fontSize: 12 } }}
+                ariaLabel="Mark all your files as done reviewing"
+              />
+            }
+          >
+            <Icon iconName="Lock" styles={{ root: { marginRight: 4 } }} />
+            You&apos;re reviewing {requestCheckoutStatus.checkedOutByCurrentUser.length} file{requestCheckoutStatus.checkedOutByCurrentUser.length !== 1 ? 's' : ''}.
+          </MessageBar>
+        )}
+
+        {/* Currently Being Reviewed Section */}
+        {checkoutEnabled && requestCheckoutStatus?.hasActiveCheckouts && (
+          <div className="currently-reviewing-section" role="region" aria-label="Currently being reviewed">
+            <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }} className="reviewing-section-header">
+              <Icon iconName="Lock" styles={{ root: { fontSize: 16, color: '#0078d4' } }} />
+              <Text variant="mediumPlus" styles={{ root: { fontWeight: 600 } }}>
+                Currently Being Reviewed ({requestCheckoutStatus.checkedOutByCurrentUser.length + requestCheckoutStatus.checkedOutByOthers.length})
+              </Text>
+            </Stack>
+
+            {/* My files first */}
+            {requestCheckoutStatus.checkedOutByCurrentUser.map((cs: IDocumentCheckoutStatus) => (
+              <div key={cs.document.uniqueId} className="reviewing-item reviewing-item--mine">
+                <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }} styles={{ root: { flex: 1, minWidth: 0 } }}>
+                  <Icon iconName="Lock" styles={{ root: { color: '#0078d4', fontSize: 14 } }} />
+                  <Text variant="small" styles={{ root: { fontWeight: 600 } }} className="reviewing-item-name">
+                    {cs.document.name}
+                  </Text>
+                  <Text variant="small" styles={{ root: { color: '#605e5c', fontStyle: 'italic' } }}>
+                    — You&apos;re reviewing
+                  </Text>
+                </Stack>
+                <PrimaryButton
+                  text="Done Reviewing"
+                  iconProps={{ iconName: 'CheckMark' }}
+                  onClick={() => { void handleDoneReviewing(cs.document); }}
+                  styles={{ root: { minWidth: 0, padding: '0 8px', height: 26, fontSize: 11 } }}
+                  ariaLabel={`Done reviewing ${cs.document.name}`}
+                />
+              </div>
+            ))}
+
+            {/* Others' files */}
+            {requestCheckoutStatus.checkedOutByOthers.map((cs: IDocumentCheckoutStatus) => {
+              const duration = formatCheckoutDuration(cs.checkedOutDate);
+              const staleLevelClass = cs.staleLevel !== 'normal' ? `reviewing-item--${cs.staleLevel}` : '';
+
+              return (
+                <div key={cs.document.uniqueId} className={`reviewing-item reviewing-item--other ${staleLevelClass}`}>
+                  <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }} styles={{ root: { flex: 1, minWidth: 0 } }}>
+                    <Icon iconName="Lock" styles={{ root: { color: '#b8860b', fontSize: 14 } }} />
+                    <Text variant="small" styles={{ root: { fontWeight: 600 } }} className="reviewing-item-name">
+                      {cs.document.name}
+                    </Text>
+                    <Text variant="small" styles={{ root: { color: '#605e5c' } }}>
+                      — {cs.checkedOutByName ?? 'Someone'}
+                    </Text>
+                  </Stack>
+                  {duration && (
+                    <Text variant="xSmall" styles={{ root: { color: '#a19f9d', whiteSpace: 'nowrap' } }}>
+                      {duration}
+                    </Text>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         <DocumentUpload
           itemId={itemId}
           isReadOnly={isReadOnly}

@@ -119,7 +119,10 @@ describe('uiVisibilityService', () => {
       expect(buttons.completeFINRADocuments.enabled).toBe(true);
     });
 
-    it('should expose resubmit-for-review to owner/admin during In Review', () => {
+    it('should hide resubmit-for-review at In Review (handled in review card footers, not global actions)', () => {
+      // resubmitForReview was deliberately set to hidden() at InReview because
+      // the global RequestActions component never rendered this button — it is handled
+      // inside the LegalReviewForm / ComplianceReviewForm card footers instead.
       const ownerCtx = createVisibilityContext(
         RequestStatus.InReview,
         basePermissions,
@@ -141,8 +144,8 @@ describe('uiVisibilityService', () => {
         { isNewRequest: false }
       );
 
-      expect(getButtonVisibility(ownerCtx).resubmitForReview.visible).toBe(true);
-      expect(getButtonVisibility(adminCtx).resubmitForReview.visible).toBe(true);
+      expect(getButtonVisibility(ownerCtx).resubmitForReview.visible).toBe(false);
+      expect(getButtonVisibility(adminCtx).resubmitForReview.visible).toBe(false);
     });
   });
 });

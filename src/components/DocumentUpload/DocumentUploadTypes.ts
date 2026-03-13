@@ -7,6 +7,7 @@
 import type { DocumentType } from '@appTypes/documentTypes';
 import type { IDocument } from '@stores/documentsStore';
 import type { FileOperationStatus } from '@services/approvalFileService';
+import type { IDocumentCheckoutStatus } from '@services/documentCheckoutService';
 
 /**
  * Props for DocumentUpload component
@@ -65,6 +66,13 @@ export interface IDocumentCardProps {
   // Data for validation
   allDocuments?: IDocument[];           // All documents (for duplicate checking)
   stagedFiles?: Array<{ name: string; documentType: DocumentType; uniqueId?: string }>; // Staged files
+
+  // Review tracking
+  checkoutStatus?: IDocumentCheckoutStatus;  // Review status from documentCheckoutService
+  onStartReviewing?: () => void;             // Start reviewing (checkout + open)
+  onDoneReviewing?: () => void;              // Done reviewing (checkin)
+  onStopReviewing?: () => void;              // Stop reviewing (undo checkout)
+  onOpenViewOnly?: () => void;               // Open without marking as reviewing
 
   // Config
   showTypeChange?: boolean;            // Show "Change Type" in menu (Attachment mode only)

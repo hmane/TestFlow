@@ -11,7 +11,7 @@
  */
 
 import * as React from 'react';
-import { IconButton } from '@fluentui/react/lib/Button';
+import { IconButton, DefaultButton, PrimaryButton } from '@fluentui/react/lib/Button';
 import { Text } from '@fluentui/react/lib/Text';
 import { TooltipHost } from '@fluentui/react/lib/Tooltip';
 import { DirectionalHint } from 'spfx-toolkit/lib/types/fluentui-types';
@@ -19,13 +19,16 @@ import { Stack } from '@fluentui/react/lib/Stack';
 import { HoverCard, HoverCardType } from '@fluentui/react/lib/HoverCard';
 import { Separator } from '@fluentui/react/lib/Separator';
 import { Link } from '@fluentui/react/lib/Link';
+import { Icon } from '@fluentui/react/lib/Icon';
 import { useTheme } from '@fluentui/react/lib/Theme';
+// ContextualMenu removed — review actions now show all buttons inline
 // Import FileTypeIcon directly - lazy loading causes chunk load errors in SPFx
 import { FileTypeIcon, IconType, ImageSize } from '@pnp/spfx-controls-react/lib/FileTypeIcon';
 import { UserPersona } from 'spfx-toolkit/lib/components/UserPersona';
 import { DocumentLink } from 'spfx-toolkit/lib/components/DocumentLink';
 import { LazyVersionHistory } from 'spfx-toolkit/lib/components/lazy';
 import { formatRelativeTime } from '@services/documentService';
+import { formatCheckoutDuration, supportsReviewTracking } from '@services/documentCheckoutService';
 import { DocumentType } from '@appTypes/documentTypes';
 import { useDocumentLibraryId } from '@stores/documentsStore';
 import type { IDocumentCardProps } from './DocumentUploadTypes';
@@ -71,6 +74,11 @@ export const DocumentCard: React.FC<IDocumentCardProps> = React.memo(({
   onUndoDelete,
   onDragStart,
   onDragEnd,
+  checkoutStatus,
+  onStartReviewing,
+  onDoneReviewing,
+  onStopReviewing,
+  onOpenViewOnly,
   allDocuments = [],
   stagedFiles = [],
   showTypeChange = false,
@@ -87,6 +95,7 @@ export const DocumentCard: React.FC<IDocumentCardProps> = React.memo(({
   // Dialog states
   const [showVersionHistory, setShowVersionHistory] = React.useState(false);
   const [showRenameDialog, setShowRenameDialog] = React.useState(false);
+  const [showStopConfirm, setShowStopConfirm] = React.useState(false);
 
   // Calculate relative time
   const { text: relativeTime, tooltip: fullDatetime } = React.useMemo(() => {
@@ -303,6 +312,12 @@ export const DocumentCard: React.FC<IDocumentCardProps> = React.memo(({
     setShowRenameDialog(false);
   }, []);
 
+  // Review tracking state
+  const isCheckedOut = checkoutStatus?.isCheckedOut ?? false;
+  const isCheckedOutByMe = checkoutStatus?.isCheckedOutByMe ?? false;
+  const staleLevel = checkoutStatus?.staleLevel ?? 'normal';
+  const hasReviewTracking = !!checkoutStatus && !isNew && !isDeleted;
+
   // Card class names
   const cardClasses = React.useMemo(() => {
     const classes = ['document-card'];
@@ -311,9 +326,12 @@ export const DocumentCard: React.FC<IDocumentCardProps> = React.memo(({
     if (isPending) classes.push('card--modified');
     if (isDeleted) classes.push('card--deleted');
     if (isDragging) classes.push('card--dragging');
+    if (hasReviewTracking && isCheckedOut) {
+      classes.push(isCheckedOutByMe ? 'card--reviewing-mine' : 'card--reviewing-other');
+    }
 
     return classes.join(' ');
-  }, [isNew, isPending, isDeleted, isDragging]);
+  }, [isNew, isPending, isDeleted, isDragging, hasReviewTracking, isCheckedOut, isCheckedOutByMe]);
 
   // Badge components (rendered inline in footer)
   const badges = React.useMemo(() => {
@@ -364,6 +382,132 @@ export const DocumentCard: React.FC<IDocumentCardProps> = React.memo(({
     );
   }, [isDeleted, isReadOnly, isNew, showTypeChange, displayType, onChangeType]);
 
+  /**
+   * Render review status badge (shown in card-center for existing files with review tracking)
+   */
+  const reviewBadge = React.useMemo((): React.ReactNode => {
+    if (!hasReviewTracking || !isCheckedOut) return null;
+
+    const staleLevelClass = staleLevel !== 'normal' ? `review-badge--${staleLevel}` : '';
+
+    if (isCheckedOutByMe) {
+      return (
+        <div
+          className={`review-badge review-badge--mine ${staleLevelClass}`}
+          role="status"
+          aria-label={`You're reviewing ${document.name}`}
+        >
+          <Icon iconName="Lock" className="review-badge-icon" />
+          <span className="review-badge-text">You&apos;re reviewing</span>
+        </div>
+      );
+    }
+
+    const reviewerName = checkoutStatus?.checkedOutByName ?? 'Someone';
+    const duration = formatCheckoutDuration(checkoutStatus?.checkedOutDate);
+    const ariaLabel = `Being reviewed by ${reviewerName}${duration ? ` since ${duration}` : ''}`;
+
+    return (
+      <div
+        className={`review-badge review-badge--other ${staleLevelClass}`}
+        role="status"
+        aria-label={ariaLabel}
+      >
+        <Icon iconName="Lock" className="review-badge-icon" />
+        <div className="review-badge-details">
+          <span className="review-badge-text">Being reviewed by {reviewerName}</span>
+          {duration && <span className="review-badge-time">{duration}</span>}
+        </div>
+      </div>
+    );
+  }, [hasReviewTracking, isCheckedOut, isCheckedOutByMe, staleLevel, checkoutStatus, document.name]);
+
+  /**
+   * Render review action icon buttons (compact, tooltip on hover)
+   */
+  const reviewActions = React.useMemo((): React.ReactNode => {
+    if (!hasReviewTracking || isDeleted || isReadOnly) return null;
+
+    const iconBtnStyles = { root: { width: 28, height: 28, minWidth: 28 } };
+
+    // Being reviewed by me: Done Reviewing + Open + Stop Reviewing
+    if (isCheckedOutByMe) {
+      return (
+        <div className="review-actions">
+          <TooltipHost content="Done Reviewing" directionalHint={DirectionalHint.topCenter}>
+            <IconButton
+              iconProps={{ iconName: 'CheckMark' }}
+              onClick={() => onDoneReviewing?.()}
+              className="review-icon-btn review-icon-btn--done"
+              ariaLabel={`Done reviewing ${document.name}`}
+              styles={iconBtnStyles}
+            />
+          </TooltipHost>
+          <TooltipHost content="Open" directionalHint={DirectionalHint.topCenter}>
+            <IconButton
+              iconProps={{ iconName: 'OpenFile' }}
+              onClick={() => onOpenViewOnly?.()}
+              className="review-icon-btn"
+              ariaLabel={`Open ${document.name}`}
+              styles={iconBtnStyles}
+            />
+          </TooltipHost>
+          <TooltipHost content="Stop Reviewing" directionalHint={DirectionalHint.topCenter}>
+            <IconButton
+              iconProps={{ iconName: 'Cancel' }}
+              onClick={() => { setShowStopConfirm(true); }}
+              className="review-icon-btn review-icon-btn--stop"
+              ariaLabel={`Stop reviewing ${document.name}`}
+              styles={iconBtnStyles}
+            />
+          </TooltipHost>
+        </div>
+      );
+    }
+
+    // Being reviewed by someone else: only Open View Only
+    if (isCheckedOut) {
+      return (
+        <div className="review-actions">
+          <TooltipHost content="Open View Only" directionalHint={DirectionalHint.topCenter}>
+            <IconButton
+              iconProps={{ iconName: 'View' }}
+              onClick={() => onOpenViewOnly?.()}
+              className="review-icon-btn"
+              ariaLabel={`Open ${document.name} in view-only mode`}
+              styles={iconBtnStyles}
+            />
+          </TooltipHost>
+        </div>
+      );
+    }
+
+    // Available: Start Reviewing & Open + Open View Only
+    return (
+      <div className="review-actions">
+        <TooltipHost content="Start Reviewing & Open" directionalHint={DirectionalHint.topCenter}>
+          <IconButton
+            iconProps={{ iconName: 'LockSolid' }}
+            onClick={() => onStartReviewing?.()}
+            className="review-icon-btn review-icon-btn--start"
+            ariaLabel={`Start reviewing ${document.name}`}
+            styles={iconBtnStyles}
+          />
+        </TooltipHost>
+        <TooltipHost content="Open View Only" directionalHint={DirectionalHint.topCenter}>
+          <IconButton
+            iconProps={{ iconName: 'View' }}
+            onClick={() => onOpenViewOnly?.()}
+            className="review-icon-btn"
+            ariaLabel={`Open ${document.name} without marking as reviewing`}
+            styles={iconBtnStyles}
+          />
+        </TooltipHost>
+      </div>
+    );
+  }, [hasReviewTracking, isDeleted, isReadOnly, isCheckedOut, isCheckedOutByMe,
+      onStartReviewing, onDoneReviewing, onStopReviewing, onOpenViewOnly, document.name]);
+
   return (
     <div
       className={cardClasses}
@@ -406,8 +550,18 @@ export const DocumentCard: React.FC<IDocumentCardProps> = React.memo(({
                 >
                   {displayName}
                 </Text>
+              ) : hasReviewTracking && supportsReviewTracking(document.name) ? (
+                // Non-Office file with review tracking: render as plain text
+                // Users must use review action buttons to open, preventing bypass
+                <Text
+                  className="file-name"
+                  title={displayName}
+                  styles={{ root: { fontWeight: 600 } }}
+                >
+                  {displayName}
+                </Text>
               ) : (
-                // Show as clickable DocumentLink
+                // Office file or no review tracking: show as clickable DocumentLink
                 // Prefer uniqueId over URL to avoid URL encoding issues
                 <DocumentLink
                   {...(document.url
@@ -423,6 +577,7 @@ export const DocumentCard: React.FC<IDocumentCardProps> = React.memo(({
                   enableCache={false}
                 />
               )}
+              <Text className="file-size-inline">{formatFileSize(document.size)}</Text>
             </div>
           </HoverCard>
         ) : (
@@ -434,6 +589,7 @@ export const DocumentCard: React.FC<IDocumentCardProps> = React.memo(({
             >
               {displayName}
             </Text>
+            <Text className="file-size-inline">{formatFileSize(document.size)}</Text>
           </div>
         )}
       </div>
@@ -477,10 +633,13 @@ export const DocumentCard: React.FC<IDocumentCardProps> = React.memo(({
         <div className="card-center-spacer" />
       )}
 
-      {/* FOOTER: File Size + Badges + Quick Actions */}
-      <div className="card-footer" role="group" aria-label="Document metadata and actions">
+      {/* REVIEW STATUS BADGE (shown for non-Office files with review tracking) */}
+      {reviewBadge}
+
+      {/* FOOTER: Review Actions (left) + Badges + Quick Actions (right) */}
+      <div className="card-footer" role="group" aria-label="Document actions">
         <div className="footer-left">
-          <Text className="file-size">{formatFileSize(document.size)}</Text>
+          {reviewActions}
           {badges.length > 0 && badges}
         </div>
 
@@ -578,6 +737,30 @@ export const DocumentCard: React.FC<IDocumentCardProps> = React.memo(({
           )}
         </div>
       </div>
+
+      {/* Stop Reviewing Confirmation */}
+      {showStopConfirm && (
+        <div className="stop-review-confirm" role="alertdialog" aria-describedby="stop-review-desc">
+          <Text id="stop-review-desc" variant="small" styles={{ root: { color: '#605e5c' } }}>
+            This will release the file without saving. Others will be able to start reviewing.
+          </Text>
+          <Stack horizontal tokens={{ childrenGap: 8 }} styles={{ root: { marginTop: 8 } }}>
+            <PrimaryButton
+              text="Stop Reviewing"
+              onClick={() => {
+                setShowStopConfirm(false);
+                onStopReviewing?.();
+              }}
+              styles={{ root: { minWidth: 0, padding: '0 8px', height: 28, fontSize: 11 } }}
+            />
+            <DefaultButton
+              text="Cancel"
+              onClick={() => setShowStopConfirm(false)}
+              styles={{ root: { minWidth: 0, padding: '0 8px', height: 28, fontSize: 11 } }}
+            />
+          </Stack>
+        </div>
+      )}
 
       {/* Version History Modal */}
       {showVersionHistory && document.listItemId && documentLibraryId && (

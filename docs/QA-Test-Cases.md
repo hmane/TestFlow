@@ -33,6 +33,7 @@
 18. [Performance & Load](#18-performance--load)
 19. [Browser Compatibility](#19-browser-compatibility)
 20. [Error Handling](#20-error-handling)
+21. [Document Review Tracking](#21-document-review-tracking)
 
 ---
 
@@ -2235,8 +2236,239 @@
 
 ---
 
+---
+
+## 21. Document Review Tracking
+
+> **Precondition for all TC-DRT tests:** `EnableDocumentCheckout = true` in the Configuration list (unless the test explicitly covers the disabled state). All test files should be non-Office PDFs unless noted.
+
+---
+
+### TC-DRT-001: Feature Disabled — No Checkout UI Visible
+| Field | Value |
+|-------|-------|
+| **Priority** | High |
+| **Preconditions** | `EnableDocumentCheckout = false`; request In Review with uploaded PDF |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open request in In Review status | Request form loads |
+| 2 | Scroll to Documents section | Document cards visible |
+| 3 | Inspect document card for PDF file | No "Start Reviewing" button visible; no checkout badge |
+| 4 | Inspect document card for .docx file | No checkout controls visible (Office files are always excluded) |
+
+---
+
+### TC-DRT-002: Start Reviewing (Checkout)
+| Field | Value |
+|-------|-------|
+| **Priority** | High |
+| **Preconditions** | `EnableDocumentCheckout = true`; request In Review; PDF not checked out |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open request as attorney | Documents section visible |
+| 2 | Locate PDF document card | "Start Reviewing" button visible |
+| 3 | Click "Start Reviewing" | Loading state shown briefly |
+| 4 | Verify document card | Badge shows "Reviewing (you)"; "Done Reviewing" and "Stop Reviewing" buttons replace "Start Reviewing" |
+| 5 | Verify SharePoint library | File is checked out to current user in RequestDocuments library |
+
+---
+
+### TC-DRT-003: Done Reviewing (Checkin)
+| Field | Value |
+|-------|-------|
+| **Priority** | High |
+| **Preconditions** | `EnableDocumentCheckout = true`; current user has file checked out |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open request with document in "Reviewing (you)" state | Document card shows Done/Stop buttons |
+| 2 | Click "Done Reviewing" | Loading state shown |
+| 3 | Verify document card | Checkout badge disappears; "Start Reviewing" button returns |
+| 4 | Verify SharePoint library | File is checked in with a new major version |
+
+---
+
+### TC-DRT-004: Stop Reviewing (Undo Checkout)
+| Field | Value |
+|-------|-------|
+| **Priority** | High |
+| **Preconditions** | `EnableDocumentCheckout = true`; current user has file checked out |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open request with document in "Reviewing (you)" state | Document card shows Done/Stop buttons |
+| 2 | Click "Stop Reviewing" | Loading state shown |
+| 3 | Verify document card | Checkout badge disappears; "Start Reviewing" button returns |
+| 4 | Verify SharePoint library | File checkout discarded; no new version created |
+
+---
+
+### TC-DRT-005: Office Files Excluded from Review Tracking
+| Field | Value |
+|-------|-------|
+| **Priority** | High |
+| **Preconditions** | `EnableDocumentCheckout = true`; request has both PDF and .docx uploaded |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Open request | Documents visible |
+| 2 | Inspect .docx document card | No "Start Reviewing" button; no checkout badge |
+| 3 | Inspect PDF document card | "Start Reviewing" button visible |
+
+---
+
+### TC-DRT-006: Another User's Checkout — Visible Badge, No Controls
+| Field | Value |
+|-------|-------|
+| **Priority** | High |
+| **Preconditions** | User A has a PDF checked out; logged in as User B |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | User B opens same request | Documents section visible |
+| 2 | Inspect the checked-out PDF | Badge shows "Being reviewed by [User A name]"; no Done/Stop buttons visible for User B |
+| 3 | "Start Reviewing" button | Not shown — file is already checked out |
+
+---
+
+### TC-DRT-007: Checkout Blocks Mid-Workflow Submission (Own Files)
+| Field | Value |
+|-------|-------|
+| **Priority** | High |
+| **Preconditions** | `CheckoutRequiredForTransition = true`; attorney has file checked out; compliance review still pending |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Attorney attempts to submit legal review outcome | Submit button is disabled |
+| 2 | Verify warning message | Message states files are still being reviewed and must be checked in first |
+| 3 | Attorney clicks "Done Reviewing" on their file | Checkout released |
+| 4 | Attorney submits again | Submission succeeds |
+
+---
+
+### TC-DRT-008: Final Transition Blocked by Any Checkout
+| Field | Value |
+|-------|-------|
+| **Priority** | High |
+| **Preconditions** | `CheckoutRequiredForTransition = true`; this is the final review (both legal and compliance completing); User B has a file checked out |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Attorney (User A) completes their review, attempts to submit | CheckoutValidationDialog appears |
+| 2 | Dialog lists User B's checked-out file | File name and user visible in dialog |
+| 3 | Attorney cannot proceed without resolution | Submit blocked; dialog options are "Go Back" and "Proceed anyway" (admin only) |
+| 4 | User B releases their checkout | Checkout cleared |
+| 5 | Attorney re-submits | Submission succeeds, request moves to Closeout |
+
+---
+
+### TC-DRT-009: CheckoutRequiredForTransition = false — Transition Allowed Despite Checkouts
+| Field | Value |
+|-------|-------|
+| **Priority** | Medium |
+| **Preconditions** | `CheckoutRequiredForTransition = false`; file is checked out |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Attorney submits review with files still checked out | No blocking dialog |
+| 2 | Submission proceeds | Review submitted successfully |
+
+---
+
+### TC-DRT-010: Graceful Recovery — Done/Stop Available When Feature Disabled
+| Field | Value |
+|-------|-------|
+| **Priority** | High |
+| **Preconditions** | File was checked out while `EnableDocumentCheckout = true`; then admin sets `EnableDocumentCheckout = false` |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | User opens request after feature is disabled | Documents section visible |
+| 2 | Inspect previously checked-out file | "Done Reviewing" and "Stop Reviewing" still visible (file is still checked out in SP) |
+| 3 | No other PDFs show "Start Reviewing" | Feature disabled; new checkouts blocked |
+| 4 | User clicks "Done Reviewing" on their file | Checkout released successfully |
+| 5 | Verify file card | Checkout badge disappears; no "Start Reviewing" appears (feature still disabled) |
+
+---
+
+### TC-DRT-011: AutoCheckoutOnReplace — Replace Blocked When File Is Checked Out
+| Field | Value |
+|-------|-------|
+| **Priority** | Medium |
+| **Preconditions** | `EnableDocumentCheckout = true`, `AutoCheckoutOnReplace = true`; User B has a PDF checked out |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | User A attempts to replace the checked-out PDF | Error or block message shown |
+| 2 | Verify message | States the file is being reviewed by another user and cannot be replaced |
+| 3 | User B releases checkout | File available |
+| 4 | User A retries replace | Replace succeeds |
+
+---
+
+### TC-DRT-012: AutoCheckoutOnReplace = false — Replace Allowed Despite Checkout
+| Field | Value |
+|-------|-------|
+| **Priority** | Low |
+| **Preconditions** | `EnableDocumentCheckout = true`, `AutoCheckoutOnReplace = false`; file is checked out by another user |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | User A attempts to replace the checked-out PDF | Replace allowed |
+| 2 | Verify upload completes | File replaced successfully |
+
+---
+
+### TC-DRT-013: Stale Checkout Badge Escalation
+| Field | Value |
+|-------|-------|
+| **Priority** | Medium |
+| **Preconditions** | File has been checked out; test uses manipulated `checkedOutDate` values to simulate age |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | File checked out less than 4 hours ago | Badge shown with normal styling |
+| 2 | File checked out 5 hours ago | Badge shown in amber |
+| 3 | File checked out 2 days ago | Badge shown in warning color; contact link visible |
+| 4 | File checked out 4 days ago | Badge shown in critical color; "Force Done" button visible to admins |
+
+---
+
+### TC-DRT-014: Admin Force Done on Stale Checkout
+| Field | Value |
+|-------|-------|
+| **Priority** | Medium |
+| **Preconditions** | File checked out 3+ days ago by another user; logged in as Admin |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | Admin opens request | Document card shows critical badge with "Force Done" button |
+| 2 | Admin clicks "Force Done" | Checkout released via undo-checkout |
+| 3 | Verify card | Badge disappears; "Start Reviewing" button returns |
+| 4 | Verify SharePoint library | File no longer checked out |
+
+---
+
+### TC-DRT-015: Done Reviewing All (Bulk Checkin)
+| Field | Value |
+|-------|-------|
+| **Priority** | Medium |
+| **Preconditions** | Current user has 3 PDFs checked out |
+
+| Step | Action | Expected Result |
+|------|--------|-----------------|
+| 1 | User attempts to submit final review | CheckoutValidationDialog appears listing 3 own files |
+| 2 | User clicks "Done Reviewing All" | All 3 files checked in sequentially |
+| 3 | Dialog closes automatically | Submit proceeds |
+| 4 | Verify SharePoint | All 3 files checked in with new major versions |
+
+---
+
 ## Version History
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | January 2026 | QA Team | Initial test cases |
+| 1.1 | March 2026 | Dev Team | Added Section 21: Document Review Tracking (TC-DRT-001 through TC-DRT-015) |

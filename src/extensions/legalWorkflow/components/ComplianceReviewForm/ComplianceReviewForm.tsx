@@ -46,13 +46,26 @@ import {
 } from '@components/WorkflowCardHeader';
 import { useRequestFormContextSafe } from '@contexts/RequestFormContext';
 import { useUIVisibility } from '@hooks/useUIVisibility';
+import { usePermissions } from '@hooks/usePermissions';
 import { useRequestStore, useRequestActions } from '@stores/requestStore';
+import { useDocumentsStore } from '@stores/documentsStore';
+import type { IDocument } from '@stores/documentsStore';
+import { useConfigStore } from '@stores/configStore';
 import { useShallow } from 'zustand/react/shallow';
 import {
   saveComplianceReviewProgress,
   resubmitForComplianceReview,
 } from '@services/workflowActionService';
-import { ComplianceReviewStatus, ReviewOutcome } from '@appTypes/index';
+import { CheckoutValidationDialog } from '@components/CheckoutValidationDialog';
+import {
+  isDocumentCheckoutEnabled,
+  getRequestCheckoutStatus,
+  doneReviewingAll,
+  forceDoneReviewingAll,
+  validateCheckoutForTransition,
+  type ICheckoutValidationResult,
+} from '@services/documentCheckoutService';
+import { LegalReviewStatus, ComplianceReviewStatus, ReviewOutcome } from '@appTypes/index';
 import { calculateBusinessHours } from '@utils/businessHoursCalculator';
 import { RESUBMIT_NOTES_MAX_LENGTH } from '@constants/fieldLimits';
 
@@ -208,6 +221,70 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
   // Refs for tracking setTimeout IDs to prevent memory leaks
   const timeoutRefs = React.useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
+  // Document checkout status for review form warnings
+  const documents = useDocumentsStore((s) => s.documents);
+  const loadDocuments = useDocumentsStore((s) => s.loadDocuments);
+  const allDocumentsFlat = React.useMemo((): IDocument[] => {
+    const result: IDocument[] = [];
+    documents.forEach((docs) => {
+      for (let i = 0; i < docs.length; i++) {
+        result.push(docs[i]);
+      }
+    });
+    return result;
+  }, [documents]);
+
+  const configLoaded = useConfigStore((s) => s.isLoaded);
+  const checkoutEnabled = React.useMemo(() => isDocumentCheckoutEnabled(), [configLoaded]);
+  const requestCheckoutStatus = React.useMemo(() => {
+    if (!checkoutEnabled || allDocumentsFlat.length === 0) return undefined;
+    return getRequestCheckoutStatus(allDocumentsFlat);
+  }, [checkoutEnabled, allDocumentsFlat]);
+
+  const currentUserHasCheckouts = requestCheckoutStatus?.currentUserHasCheckouts ?? false;
+  const othersHaveCheckouts = (requestCheckoutStatus?.checkedOutByOthers?.length ?? 0) > 0;
+
+  const [isDoneReviewingAll, setIsDoneReviewingAll] = React.useState(false);
+
+  const handleDoneReviewingAll = React.useCallback(async (): Promise<void> => {
+    if (!itemId || !requestCheckoutStatus?.currentUserHasCheckouts) return;
+    try {
+      setIsDoneReviewingAll(true);
+      const results = await doneReviewingAll(allDocumentsFlat);
+      const failCount = results.filter(function(r) { return !r.success; }).length;
+
+      if (failCount > 0) {
+        setError(failCount + ' file(s) could not be checked in. Please try again.');
+      } else {
+        SPContext.logger.success('ComplianceReviewForm: All reviews marked as done');
+      }
+
+      await loadDocuments(itemId, true);
+    } catch (doneError: unknown) {
+      const msg = doneError instanceof Error ? doneError.message : 'Failed to complete reviews';
+      setError(msg);
+      SPContext.logger.error('ComplianceReviewForm: Done reviewing all failed', doneError);
+    }
+    setIsDoneReviewingAll(false);
+  }, [itemId, requestCheckoutStatus, allDocumentsFlat, loadDocuments]);
+
+  // Checkout validation dialog state
+  const [checkoutValidation, setCheckoutValidation] = React.useState<ICheckoutValidationResult | undefined>(undefined);
+  const [pendingFormData, setPendingFormData] = React.useState<IComplianceReviewFormData | undefined>(undefined);
+  const [isDialogProcessing, setIsDialogProcessing] = React.useState(false);
+
+  // Determine if completing this review would trigger a final transition (all reviews done → Closeout)
+  const isFinalTransition = React.useMemo((): boolean => {
+    if (!currentRequest) return false;
+    const audience = currentRequest.reviewAudience;
+    if (audience === 'Compliance') return true; // Only compliance needed, completing it is final
+    if (audience === 'Both') {
+      // Final if legal is already completed
+      return currentRequest.legalReview?.status === LegalReviewStatus.Completed;
+    }
+    return false;
+  }, [currentRequest]);
+
   // Get validation errors from RequestFormContext
   const formContext = useRequestFormContextSafe();
   const contextValidationErrors = formContext?.validationErrors ?? [];
@@ -270,6 +347,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
   const recordRetentionOnly = watch('recordRetentionOnly');
   const isRetailUse = watch('isRetailUse');
   const { buttons, fields } = useUIVisibility();
+  const { isAdmin } = usePermissions();
   const canReview = fields.complianceReview.canEdit;
   const canResubmit = reviewStatus === ComplianceReviewStatus.WaitingOnSubmitter && buttons.resubmitForReview.visible;
   const canEditSubmitterNotes = canReview || canResubmit;
@@ -372,6 +450,113 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
       setIsSaving(false);
     }
   }, [itemId, scrollToFirstError, reset, loadRequest]);
+
+  /**
+   * Pre-submit checkout validation.
+   * For resubmit outcomes, skip checkout validation (no transition).
+   */
+  const handlePreSubmit = React.useCallback(
+    (data: IComplianceReviewFormData): void => {
+      const isResubmit = data.complianceReviewOutcome === ReviewOutcome.RespondToCommentsAndResubmit;
+      if (!isResubmit && checkoutEnabled) {
+        const validation = validateCheckoutForTransition(allDocumentsFlat, isFinalTransition);
+        if (!validation.canProceed || validation.othersHaveCheckouts) {
+          setPendingFormData(data);
+          setCheckoutValidation(validation);
+          return;
+        }
+      }
+      onSubmit(data);
+    },
+    [checkoutEnabled, allDocumentsFlat, isFinalTransition, onSubmit]
+  );
+
+  const handleDoneReviewingAndSubmit = React.useCallback(async (): Promise<void> => {
+    if (!itemId || !pendingFormData) return;
+    try {
+      setIsDialogProcessing(true);
+      const results = await doneReviewingAll(allDocumentsFlat);
+      const failCount = results.filter(function(r) { return !r.success; }).length;
+
+      if (failCount > 0) {
+        setError(failCount + ' file(s) could not be checked in. Please try again.');
+        setCheckoutValidation(undefined);
+        setPendingFormData(undefined);
+        setIsDialogProcessing(false);
+        return;
+      }
+
+      await loadDocuments(itemId, true);
+      setIsDialogProcessing(false);
+
+      const freshDocs = useDocumentsStore.getState().documents;
+      const freshFlat: IDocument[] = [];
+      freshDocs.forEach(function(docs) {
+        for (let i = 0; i < docs.length; i++) { freshFlat.push(docs[i]); }
+      });
+      const recheck = validateCheckoutForTransition(freshFlat, isFinalTransition);
+
+      if (!recheck.canProceed) {
+        setCheckoutValidation(recheck);
+        return;
+      }
+
+      const formData = pendingFormData;
+      setCheckoutValidation(undefined);
+      setPendingFormData(undefined);
+      await onSubmit(formData);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to complete reviews';
+      setError(msg);
+      setCheckoutValidation(undefined);
+      setPendingFormData(undefined);
+      setIsDialogProcessing(false);
+    }
+  }, [itemId, pendingFormData, allDocumentsFlat, loadDocuments, onSubmit, isFinalTransition]);
+
+  const handleForceResolveAndSubmit = React.useCallback(async (): Promise<void> => {
+    if (!itemId || !pendingFormData) return;
+    try {
+      setIsDialogProcessing(true);
+      const results = await forceDoneReviewingAll(allDocumentsFlat);
+      const failCount = results.filter(function(r) { return !r.success; }).length;
+
+      if (failCount > 0) {
+        setError(failCount + ' file(s) could not be force-checked in.');
+        setCheckoutValidation(undefined);
+        setPendingFormData(undefined);
+        setIsDialogProcessing(false);
+        return;
+      }
+
+      await loadDocuments(itemId, true);
+      const formData = pendingFormData;
+      setCheckoutValidation(undefined);
+      setPendingFormData(undefined);
+      setIsDialogProcessing(false);
+      await onSubmit(formData);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to force-complete reviews';
+      setError(msg);
+      setCheckoutValidation(undefined);
+      setPendingFormData(undefined);
+      setIsDialogProcessing(false);
+    }
+  }, [itemId, pendingFormData, allDocumentsFlat, loadDocuments, onSubmit]);
+
+  const handleProceedWithOthers = React.useCallback(async (): Promise<void> => {
+    if (!pendingFormData) return;
+    const formData = pendingFormData;
+    setCheckoutValidation(undefined);
+    setPendingFormData(undefined);
+    await onSubmit(formData);
+  }, [pendingFormData, onSubmit]);
+
+  const handleDialogGoBack = React.useCallback((): void => {
+    setCheckoutValidation(undefined);
+    setPendingFormData(undefined);
+    setIsDialogProcessing(false);
+  }, []);
 
   /**
    * Handle save progress (save without submitting)
@@ -685,7 +870,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
               Review Outcome is disabled for submitter but enabled for reviewer
               Action buttons shown in Card Footer based on user permissions */}
           {reviewStatus === ComplianceReviewStatus.WaitingOnSubmitter ? (
-            <form onSubmit={handleSubmit(onSubmit)}>
+            <form onSubmit={handleSubmit(handlePreSubmit)}>
               <Stack tokens={{ childrenGap: 20 }}>
                 {/* Review Outcome Selection - disabled for submitter, enabled for reviewer */}
                 <FormContainer labelWidth='200px'>
@@ -775,7 +960,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
               </MessageBar>
 
               {/* Standard review form for compliance reviewer - actions in Footer */}
-              <form onSubmit={handleSubmit(onSubmit)}>
+              <form onSubmit={handleSubmit(handlePreSubmit)}>
                 <Stack tokens={{ childrenGap: 20 }}>
                   {/* Review Outcome Selection */}
                   <FormContainer labelWidth='200px'>
@@ -852,7 +1037,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
             </Stack>
           ) : (
             // Normal review form - actions in Footer
-            <form onSubmit={handleSubmit(onSubmit)}>
+            <form onSubmit={handleSubmit(handlePreSubmit)}>
               <Stack tokens={{ childrenGap: 20 }}>
                 {/* Review Outcome Selection */}
                 <FormContainer labelWidth='200px'>
@@ -938,61 +1123,113 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
 
       {/* Card Footer with action buttons for all in-progress states */}
       <Footer borderTop padding='comfortable'>
-          <Stack
-            horizontal
-            tokens={{ childrenGap: 12 }}
-            horizontalAlign={reviewStatus === ComplianceReviewStatus.WaitingOnSubmitter ? 'space-between' : 'end'}
-            verticalAlign='center'
-            wrap
-          >
-          {/* Submitter actions - only for WaitingOnSubmitter state AND only for the request owner/admin */}
-          {canResubmit && (
-            <Stack horizontal tokens={{ childrenGap: 12 }}>
-              <PrimaryButton
-                text={isResubmitting ? 'Resubmitting...' : 'Resubmit for Review'}
-                iconProps={{ iconName: isResubmitting ? undefined : 'Send' }}
-                onClick={handleResubmitForReview}
-                disabled={isLoading || isSaving || isResubmitting}
-                styles={{
-                  root: { minWidth: '180px', height: '40px', borderRadius: '4px' },
-                }}
+          <Stack tokens={{ childrenGap: 12 }}>
+            {/* Checkout warnings */}
+            {checkoutEnabled && currentUserHasCheckouts && (
+              <MessageBar
+                messageBarType={MessageBarType.warning}
+                isMultiline={false}
+                styles={{ root: { borderRadius: '4px' } }}
+                actions={
+                  <DefaultButton
+                    text={isDoneReviewingAll ? 'Completing...' : 'Mark All as Done'}
+                    onClick={handleDoneReviewingAll}
+                    disabled={isDoneReviewingAll}
+                    styles={{ root: { minHeight: '32px' } }}
+                  />
+                }
               >
-                {isResubmitting && (
-                  <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />
-                )}
-              </PrimaryButton>
-            </Stack>
-          )}
+                <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 6 }}>
+                  <Icon iconName='Lock' />
+                  <Text>
+                    You&apos;re reviewing {requestCheckoutStatus!.checkedOutByCurrentUser.length} file{requestCheckoutStatus!.checkedOutByCurrentUser.length !== 1 ? 's' : ''}. Finish reviewing before submitting.
+                  </Text>
+                </Stack>
+              </MessageBar>
+            )}
 
-          {/* Reviewer actions - visible to reviewers in all in-progress states */}
-          {canReview && (
-            <Stack horizontal tokens={{ childrenGap: 12 }}>
-              <DefaultButton
-                text={isSaving ? 'Saving...' : 'Save Progress'}
-                iconProps={{ iconName: isSaving ? undefined : 'Save' }}
-                onClick={handleSaveProgress}
-                disabled={isLoading || isSaving}
-                styles={{
-                  root: { minWidth: '120px', height: '40px', borderRadius: '4px' },
-                }}
+            {checkoutEnabled && othersHaveCheckouts && (
+              <MessageBar
+                messageBarType={MessageBarType.info}
+                isMultiline={false}
+                styles={{ root: { borderRadius: '4px' } }}
               >
-                {isSaving && (
-                  <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />
-                )}
-              </DefaultButton>
-              <PrimaryButton
-                text='Submit Review'
-                iconProps={{ iconName: 'CheckMark' }}
-                onClick={handleSubmit(onSubmit)}
-                disabled={isLoading || isSaving || !selectedOutcome || !canReview}
-                styles={{
-                  root: { minWidth: '140px', height: '40px', borderRadius: '4px' },
-                }}
-              />
+                <Text>
+                  {requestCheckoutStatus!.checkedOutByOthers.length} file{requestCheckoutStatus!.checkedOutByOthers.length !== 1 ? 's are' : ' is'} being reviewed by {requestCheckoutStatus!.checkedOutByOthers.map((c) => c.checkedOutByName || 'another user').filter((v, i, a) => a.indexOf(v) === i).join(', ')}.
+                </Text>
+              </MessageBar>
+            )}
+
+            <Stack
+              horizontal
+              tokens={{ childrenGap: 12 }}
+              horizontalAlign={reviewStatus === ComplianceReviewStatus.WaitingOnSubmitter ? 'space-between' : 'end'}
+              verticalAlign='center'
+              wrap
+            >
+            {/* Submitter actions - only for WaitingOnSubmitter state AND only for the request owner/admin */}
+            {canResubmit && (
+              <Stack horizontal tokens={{ childrenGap: 12 }}>
+                <PrimaryButton
+                  text={isResubmitting ? 'Resubmitting...' : 'Resubmit for Review'}
+                  iconProps={{ iconName: isResubmitting ? undefined : 'Send' }}
+                  onClick={handleResubmitForReview}
+                  disabled={isLoading || isSaving || isResubmitting}
+                  styles={{
+                    root: { minWidth: '180px', height: '40px', borderRadius: '4px' },
+                  }}
+                >
+                  {isResubmitting && (
+                    <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />
+                  )}
+                </PrimaryButton>
+              </Stack>
+            )}
+
+            {/* Reviewer actions - visible to reviewers in all in-progress states */}
+            {canReview && (
+              <Stack horizontal tokens={{ childrenGap: 12 }}>
+                <DefaultButton
+                  text={isSaving ? 'Saving...' : 'Save Progress'}
+                  iconProps={{ iconName: isSaving ? undefined : 'Save' }}
+                  onClick={handleSaveProgress}
+                  disabled={isLoading || isSaving}
+                  styles={{
+                    root: { minWidth: '120px', height: '40px', borderRadius: '4px' },
+                  }}
+                >
+                  {isSaving && (
+                    <Spinner size={SpinnerSize.xSmall} styles={{ root: { marginRight: 8 } }} />
+                  )}
+                </DefaultButton>
+                <PrimaryButton
+                  text='Submit Review'
+                  iconProps={{ iconName: 'CheckMark' }}
+                  onClick={handleSubmit(handlePreSubmit)}
+                  disabled={isLoading || isSaving || !selectedOutcome || !canReview || currentUserHasCheckouts}
+                  styles={{
+                    root: { minWidth: '140px', height: '40px', borderRadius: '4px' },
+                  }}
+                />
+              </Stack>
+            )}
             </Stack>
-          )}
           </Stack>
       </Footer>
+
+      {/* Checkout validation dialog (safety net for transition blocking) */}
+      {checkoutValidation && (
+        <CheckoutValidationDialog
+          isOpen={!!checkoutValidation}
+          validation={checkoutValidation}
+          isAdmin={isAdmin}
+          onDoneReviewingAndSubmit={handleDoneReviewingAndSubmit}
+          onForceResolveAndSubmit={isAdmin ? handleForceResolveAndSubmit : undefined}
+          onProceed={handleProceedWithOthers}
+          onGoBack={handleDialogGoBack}
+          isProcessing={isDialogProcessing}
+        />
+      )}
     </Card>
   );
 };

@@ -24,6 +24,12 @@ import { RequestStatus, ReviewOutcome, LegalReviewStatus, ComplianceReviewStatus
 import { getCurrentUserPrincipal, areAllReviewsComplete, updateItem } from './workflowHelpers';
 import type { IWorkflowActionResult, ILegalReviewPayload, IComplianceReviewPayload } from './workflowTypes';
 
+import { loadDocuments } from '../documentService';
+import {
+  isCheckoutRequiredForTransition,
+  getRequestCheckoutStatus,
+} from '../documentCheckoutService';
+
 /**
  * Submit legal review
  *
@@ -131,6 +137,32 @@ export async function submitLegalReview(
   );
 
   if (shouldProgressToCloseout) {
+    // Validate no documents are still checked out before transitioning to Closeout
+    if (isCheckoutRequiredForTransition()) {
+      // Load documents — wrap SP failure as an infrastructure error (fail-closed)
+      let documents: Awaited<ReturnType<typeof loadDocuments>>;
+      try {
+        documents = await loadDocuments(itemId);
+      } catch (loadError) {
+        const msg = loadError instanceof Error ? loadError.message : String(loadError);
+        SPContext.logger.error('WorkflowActionService: Failed to load documents for checkout validation', loadError, {
+          correlationId,
+          itemId,
+        });
+        throw new Error(`Cannot transition to Closeout — unable to verify document review status: ${msg}`);
+      }
+
+      // Business check — re-thrown directly so the caller sees the real message
+      const checkoutStatus = getRequestCheckoutStatus(documents);
+      if (checkoutStatus.hasActiveCheckouts) {
+        const totalCheckedOut = checkoutStatus.checkedOutByCurrentUser.length + checkoutStatus.checkedOutByOthers.length;
+        throw new Error(
+          `Cannot transition to Closeout — ${totalCheckedOut} document${totalCheckedOut !== 1 ? 's are' : ' is'} still being reviewed. ` +
+          'All documents must be done reviewing before closing this request.'
+        );
+      }
+    }
+
     updater.set(RequestsFields.Status, RequestStatus.Closeout);
     SPContext.logger.info('WorkflowActionService: All reviews complete, progressing to Closeout', {
       correlationId,
@@ -299,6 +331,32 @@ export async function submitComplianceReview(
   );
 
   if (shouldProgressToCloseout) {
+    // Validate no documents are still checked out before transitioning to Closeout
+    if (isCheckoutRequiredForTransition()) {
+      // Load documents — wrap SP failure as an infrastructure error (fail-closed)
+      let documents: Awaited<ReturnType<typeof loadDocuments>>;
+      try {
+        documents = await loadDocuments(itemId);
+      } catch (loadError) {
+        const msg = loadError instanceof Error ? loadError.message : String(loadError);
+        SPContext.logger.error('WorkflowActionService: Failed to load documents for checkout validation', loadError, {
+          correlationId,
+          itemId,
+        });
+        throw new Error(`Cannot transition to Closeout — unable to verify document review status: ${msg}`);
+      }
+
+      // Business check — re-thrown directly so the caller sees the real message
+      const checkoutStatus = getRequestCheckoutStatus(documents);
+      if (checkoutStatus.hasActiveCheckouts) {
+        const totalCheckedOut = checkoutStatus.checkedOutByCurrentUser.length + checkoutStatus.checkedOutByOthers.length;
+        throw new Error(
+          `Cannot transition to Closeout — ${totalCheckedOut} document${totalCheckedOut !== 1 ? 's are' : ' is'} still being reviewed. ` +
+          'All documents must be done reviewing before closing this request.'
+        );
+      }
+    }
+
     updater.set(RequestsFields.Status, RequestStatus.Closeout);
     SPContext.logger.info('WorkflowActionService: All reviews complete, progressing to Closeout', {
       correlationId,

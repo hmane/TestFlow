@@ -25,4 +25,9 @@ export const ConfigKeys = {
   // Features
   EnablePhase2RequestTypes: 'EnablePhase2RequestTypes',
   EnableAzureFunctions: 'EnableAzureFunctions',
+
+  // Document Review Tracking
+  EnableDocumentCheckout: 'EnableDocumentCheckout',
+  AutoCheckoutOnReplace: 'AutoCheckoutOnReplace',
+  CheckoutRequiredForTransition: 'CheckoutRequiredForTransition',
 } as const;

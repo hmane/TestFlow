@@ -23,6 +23,76 @@
   font-weight: 600;
 }
 
+// Currently Being Reviewed Section
+.currently-reviewing-section {
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid #e1dfdd;
+  border-radius: 4px;
+  background: #faf9f8;
+
+  .reviewing-section-header {
+    margin-bottom: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #edebe9;
+  }
+
+  .reviewing-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 3px;
+    margin-bottom: 4px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+
+    &--mine {
+      background: rgba(#0078d4, 0.04);
+    }
+
+    &--other {
+      background: rgba(#ffaa44, 0.04);
+    }
+
+    // Stale review escalation
+    &--amber {
+      background: rgba(#b8860b, 0.06);
+
+      .reviewing-item-name {
+        color: #8a6914;
+      }
+    }
+
+    &--warning {
+      background: rgba(#d83b01, 0.06);
+
+      .reviewing-item-name {
+        color: #d83b01;
+      }
+    }
+
+    &--critical {
+      background: rgba(#a4262c, 0.06);
+      border-left: 3px solid #a4262c;
+
+      .reviewing-item-name {
+        color: #a4262c;
+      }
+    }
+
+    .reviewing-item-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+  }
+}
+
 // Responsive design
 @media (max-width: 768px) {
   .request-documents-card {

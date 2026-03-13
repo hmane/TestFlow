@@ -445,6 +445,31 @@ Update the following Configuration list items:
 
 > **Note:** SharePoint has a platform maximum of 250MB per file. Setting this higher has no effect.
 
+### 5.5 Document Review Tracking (Checkout Feature)
+
+Three configuration keys control the document review tracking feature. All sub-flags only activate when the master switch is `true`.
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `EnableDocumentCheckout` | `false` | Master switch. Set to `true` to enable review tracking badges and checkout/checkin actions on documents. |
+| `AutoCheckoutOnReplace` | `true` | When `true`, replacing a file that another user is reviewing is blocked. Set to `false` to allow replacements without checkout enforcement. |
+| `CheckoutRequiredForTransition` | `true` | When `true`, attorneys and compliance users cannot submit their review while any documents are still checked out. Set to `false` to allow transitions regardless of checkout state. |
+
+**To enable the feature:**
+1. Navigate to **Site Contents > Configuration** list
+2. Find `EnableDocumentCheckout` and set **ConfigValue** to `true`
+3. Save — review tracking badges and Start/Done/Stop Reviewing buttons appear on document cards within seconds (no code deploy needed)
+
+**To disable the feature:**
+1. Set `EnableDocumentCheckout` to `false`
+2. Save — no new checkouts can be started
+3. **Important:** Any files that are already checked out will still show Done/Stop controls so users can release their locks. These controls disappear once the checkout is cleared. Do **not** manually undo the SharePoint checkout from the library — always use the in-app "Stop Reviewing" button to ensure the UI state stays consistent.
+
+**Safe toggle-off procedure if files are stranded:**
+1. Identify which files are still checked out: go to **RequestDocuments** library > view **Check Out Status** column
+2. Contact the user who has the file checked out and ask them to click "Stop Reviewing" in the form
+3. If the user is unavailable, an Admin can navigate to the file in the library and use **... > Discard Checkout** from the SharePoint document library toolbar
+
 ---
 
 ## 6. Workflow Statuses & Transitions
@@ -789,6 +814,41 @@ RequestDocuments/
 
 > **To modify allowed file types:** Update the `allowedFileExtensions` value in the Configuration list.
 
+### 9.4 Document Review Tracking
+
+When `EnableDocumentCheckout = true`, non-Office files (PDFs, images, ZIPs, etc.) gain a review tracking workflow using SharePoint's native checkout/checkin mechanism.
+
+**How it works:**
+
+| Action | User sees | SharePoint state |
+|--------|-----------|-----------------|
+| "Start Reviewing" | Badge: "Reviewing (you)" | File checked out to current user |
+| "Done Reviewing" | Badge disappears | File checked in (major version) |
+| "Stop Reviewing" | Badge disappears | Checkout discarded |
+
+**File type coverage:**
+
+| File type | Review tracking | Notes |
+|-----------|----------------|-------|
+| PDF, PNG, ZIP, etc. | Yes | Full checkout/checkin supported |
+| .doc, .docx | No | Office files use co-authoring instead |
+| .xls, .xlsx | No | Office files use co-authoring instead |
+| .ppt, .pptx | No | Office files use co-authoring instead |
+
+**Stale review indicators** (shown on document card badge):
+
+| Duration checked out | Badge color | Action available |
+|----------------------|-------------|-----------------|
+| < 4 hours | Normal | — |
+| 4–24 hours | Amber | — |
+| 1–3 days | Warning | Contact user link shown |
+| 3+ days | Critical | Admin "Force Done" button shown |
+
+**Review gating behavior (when `CheckoutRequiredForTransition = true`):**
+
+- *Mid-workflow submission* (e.g., attorney submitting but compliance still pending): blocked only if the **current user** has files checked out. Other users' checkouts produce an informational warning but do not block.
+- *Final transition* (last review completing, triggering closeout): blocked if **anyone** has files checked out.
+
 ---
 
 ## 10. Common Admin Tasks & Procedures
@@ -986,6 +1046,45 @@ If an item was accidentally deleted by a Site Collection Admin:
 2. Verify TargetReturnDate on the request
 3. Rush = TargetReturnDate < (SubmittedOn + TurnAroundDays in business days)
 4. Note: Only weekends are excluded; company holidays are not yet integrated
+
+---
+
+#### "Start Reviewing button is not visible" / "Review tracking badges missing"
+
+**Possible Causes:**
+- `EnableDocumentCheckout` is `false` (feature disabled)
+- File is an Office type (.docx, .xlsx, .pptx) — these are always excluded
+
+**Resolution Steps:**
+1. Check Configuration list — verify `EnableDocumentCheckout` = `true`
+2. Verify the file is not an Office document (Word, Excel, PowerPoint files never show checkout controls)
+3. If the setting is correct and still not showing, have user refresh the browser (config is cached per session)
+
+---
+
+#### "Cannot complete review — documents are still being reviewed"
+
+User sees a blocking message when submitting their review outcome.
+
+**Possible Causes:**
+- One or more non-Office files are still checked out (by the current user or others, depending on transition type)
+- `CheckoutRequiredForTransition` = `true` (default)
+
+**Resolution Steps:**
+1. Ask the user to scroll to the Documents section — files with active checkouts show a yellow/red "Reviewing" badge
+2. The user should click **"Done Reviewing"** on each file they own
+3. If the block is because another user has files checked out (final transition only), contact that user to release their checkout
+4. If the blocker cannot be resolved (e.g., user is unavailable), an Admin can use **Force Done** (visible on stale ≥3-day checkouts) or discard the checkout via the SharePoint library toolbar
+
+---
+
+#### "Done Reviewing / Stop Reviewing still visible after disabling the feature"
+
+This is expected behavior — not a bug.
+
+**Explanation:** When `EnableDocumentCheckout` is toggled to `false`, files that were already checked out remain in that state. The in-app Done/Stop controls stay visible so users can release their locks without needing SharePoint library access. The controls disappear automatically once the checkout is cleared.
+
+**Resolution:** No action required. Instruct users with outstanding checkouts to click "Done Reviewing" or "Stop Reviewing." Once all locks are released, no checkout controls will appear for any files.
 
 ---
 

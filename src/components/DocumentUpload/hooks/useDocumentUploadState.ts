@@ -14,6 +14,10 @@ import { ConfigKeys } from '@sp/ConfigKeys';
 import { useDocumentsStore, type IStagedDocument } from '@stores/documentsStore';
 import { DocumentType } from '@appTypes/documentTypes';
 import { checkDuplicateFiles } from '@services/documentService';
+import {
+  isAutoCheckoutOnReplaceEnabled,
+  getDocumentCheckoutStatus,
+} from '@services/documentCheckoutService';
 import { UploadMode } from '../DocumentUploadTypes';
 
 /**
@@ -440,6 +444,57 @@ export function useDocumentUploadState(props: IUseDocumentUploadStateProps): IUs
         }
       }
 
+      // Block replace for files checked out by others.
+      // Only applies when AutoCheckoutOnReplace is enabled — if the sub-flag is off, replace always succeeds.
+      if (allDuplicates.length > 0 && isAutoCheckoutOnReplaceEnabled()) {
+        const existingDocs = getDocumentsByType(typeToCheck as any);
+        const blockedFileNames: string[] = [];
+
+        for (let i = 0; i < allDuplicates.length; i++) {
+          const dupNameLower = allDuplicates[i].toLowerCase();
+          for (let j = 0; j < existingDocs.length; j++) {
+            if (existingDocs[j].name && existingDocs[j].name.toLowerCase() === dupNameLower) {
+              const checkoutStatus = getDocumentCheckoutStatus(existingDocs[j]);
+              if (checkoutStatus.isCheckedOut && !checkoutStatus.isCheckedOutByMe) {
+                blockedFileNames.push(allDuplicates[i]);
+              }
+              break;
+            }
+          }
+        }
+
+        if (blockedFileNames.length > 0) {
+          const blockedSet = new Set(blockedFileNames.map(function(n) { return n.toLowerCase(); }));
+          const errorMsg = blockedFileNames.length === 1
+            ? `"${blockedFileNames[0]}" is being reviewed by another user and cannot be replaced.`
+            : `${blockedFileNames.length} files are being reviewed by other users and cannot be replaced: ${blockedFileNames.join(', ')}`;
+
+          if (onError) {
+            onError(errorMsg);
+          }
+          setValidationError(errorMsg);
+
+          for (let i = allDuplicates.length - 1; i >= 0; i--) {
+            if (blockedSet.has(allDuplicates[i].toLowerCase())) {
+              allDuplicates.splice(i, 1);
+            }
+          }
+
+          for (let i = validFiles.length - 1; i >= 0; i--) {
+            if (blockedSet.has(validFiles[i].name.toLowerCase())) {
+              validFiles.splice(i, 1);
+            }
+          }
+
+          if (validFiles.length === 0) {
+            forceResetDragState();
+            return;
+          }
+
+          setPendingFiles(validFiles);
+        }
+      }
+
       if (allDuplicates.length > 0) {
         setDuplicateFiles(allDuplicates);
         setIsDuplicateDialogOpen(true);
@@ -464,7 +519,7 @@ export function useDocumentUploadState(props: IUseDocumentUploadStateProps): IUs
         }
       }
     },
-    [validateFile, itemId, documentType, documentLibraryTitle, mode, stageFiles, stagedFiles, onFilesChange, onError, isTypeDialogOpen, isDuplicateDialogOpen, forceResetDragState]
+    [validateFile, itemId, documentType, documentLibraryTitle, mode, stageFiles, stagedFiles, onFilesChange, onError, isTypeDialogOpen, isDuplicateDialogOpen, forceResetDragState, getDocumentsByType]
   );
 
   /**

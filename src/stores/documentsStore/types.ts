@@ -23,6 +23,10 @@ export interface IExistingFile {
   uniqueId: string;
   version?: string;
   listItemId?: number; // SharePoint list item ID for version history
+  checkOutType?: number;
+  checkedOutByName?: string;
+  checkedOutByEmail?: string;
+  checkedOutDate?: string;
 }
 
 /**

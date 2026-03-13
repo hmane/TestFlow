@@ -294,6 +294,10 @@ This document provides a comprehensive reference for the SharePoint site schema 
 | DocumentType | Document Type | Choice | Yes | `Review`, `Supplemental`, `Communication Approval`, `Portfolio Manager Approval`, `Research Analyst Approval`, `Subject Matter Expert Approval`, `Performance Approval`, `Other Approval`, `Review Final` |
 | Request | Request | Lookup | Yes | Lookup to Requests list (Title field) |
 | Description | Description | Note (Multi-line) | No | 6 lines, no rich text |
+| checkOutType | Check Out Type | Number | No | SharePoint native checkout type: 0 = not checked out, 1 = online, 2 = offline. Populated by SP automatically |
+| checkedOutByName | Checked Out By Name | Text | No | Display name of the user who checked out the file. Populated by SP automatically |
+| checkedOutByEmail | Checked Out By Email | Text | No | Email of the user who checked out the file. Populated by SP automatically |
+| checkedOutDate | Checked Out Date | DateTime | No | ISO timestamp when checkout started. Populated by SP automatically |
 
 ### Views
 
@@ -370,6 +374,9 @@ This document provides a comprehensive reference for the SharePoint site schema 
 | SearchResultLimit | 10 | Maximum number of search results to display in spotlight search | Yes | Search |
 | RecentSearchesLimit | 5 | Maximum number of recent searches to store and display | Yes | Search |
 | allowedFileExtensions | .pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif,.zip,.msg,.eml | Comma-separated list of allowed file extensions for document uploads | Yes | FileUpload |
+| EnableDocumentCheckout | false | Master switch for document review tracking. When false, no new checkout/checkin actions are available. Pre-existing checkouts can still be released. | Yes | DocumentReviewTracking |
+| AutoCheckoutOnReplace | true | When true, replacing a file that is already checked out by another user is blocked. Only active when EnableDocumentCheckout = true. | Yes | DocumentReviewTracking |
+| CheckoutRequiredForTransition | true | When true, review completion and closeout transitions are blocked while any documents are still checked out. Only active when EnableDocumentCheckout = true. | Yes | DocumentReviewTracking |
 
 ### Views
 

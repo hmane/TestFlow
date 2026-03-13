@@ -86,6 +86,13 @@ $neutral-lighter: #faf9f8;
       gap: 2px;
       overflow: hidden; // Contain children
       width: 100%;
+
+      .file-size-inline {
+        font-size: 11px;
+        color: $neutral-secondary;
+        font-weight: 400;
+        line-height: 1.2;
+      }
     }
 
     .file-name {
@@ -249,13 +256,6 @@ $neutral-lighter: #faf9f8;
       gap: 6px;
       flex: 1;
       min-width: 0; // Allow truncation
-
-      .file-size {
-        font-size: 11px;
-        color: $neutral-secondary;
-        font-weight: 400;
-        white-space: nowrap;
-      }
     }
 
     .footer-right {
@@ -377,6 +377,159 @@ $neutral-lighter: #faf9f8;
       background: $warning-color;
       color: white;
     }
+  }
+
+  // Review tracking: card state borders
+  &.card--reviewing-mine {
+    border-left: 4px solid $primary-color;
+    background: rgba($primary-color, 0.02);
+  }
+
+  &.card--reviewing-other {
+    border-left: 4px solid $warning-color;
+    background: rgba($warning-color, 0.02);
+  }
+
+  // Review Status Badge
+  .review-badge {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    line-height: 1.3;
+
+    &--mine {
+      background: rgba($primary-color, 0.08);
+      color: $primary-color;
+
+      .review-badge-icon {
+        color: $primary-color;
+      }
+    }
+
+    &--other {
+      background: rgba($warning-color, 0.1);
+      color: #8a6914;
+
+      .review-badge-icon {
+        color: #b8860b;
+      }
+    }
+
+    // Stale review escalation
+    &--amber .review-badge-time {
+      color: #8a6914;
+      font-weight: 600;
+    }
+
+    &--warning {
+      background: rgba(#d83b01, 0.08);
+      color: #d83b01;
+
+      .review-badge-icon {
+        color: #d83b01;
+      }
+
+      .review-badge-time {
+        color: #d83b01;
+        font-weight: 600;
+      }
+    }
+
+    &--critical {
+      background: rgba($error-color, 0.08);
+      color: $error-color;
+
+      .review-badge-icon {
+        color: $error-color;
+      }
+
+      .review-badge-time {
+        color: $error-color;
+        font-weight: 700;
+      }
+    }
+
+    .review-badge-icon {
+      font-size: 12px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .review-badge-details {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      min-width: 0;
+    }
+
+    .review-badge-text {
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .review-badge-time {
+      font-size: 10px;
+      color: $neutral-secondary;
+    }
+  }
+
+  // Review Action Icon Buttons
+  .review-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 0 0;
+
+    .review-icon-btn {
+      border-radius: 3px;
+      color: $neutral-secondary;
+
+      &:hover {
+        color: $neutral-primary;
+        background: $neutral-lighter;
+      }
+
+      &--start {
+        color: $primary-color;
+
+        &:hover {
+          color: darken($primary-color, 10%);
+          background: rgba($primary-color, 0.08);
+        }
+      }
+
+      &--done {
+        color: $success-color;
+
+        &:hover {
+          color: darken($success-color, 10%);
+          background: rgba($success-color, 0.08);
+        }
+      }
+
+      &--stop {
+        color: $error-color;
+
+        &:hover {
+          color: darken($error-color, 10%);
+          background: rgba($error-color, 0.08);
+        }
+      }
+    }
+  }
+
+  // Stop Reviewing Confirmation
+  .stop-review-confirm {
+    padding: 8px;
+    margin-top: 4px;
+    background: rgba($warning-color, 0.06);
+    border: 1px solid rgba($warning-color, 0.2);
+    border-radius: 3px;
   }
 }
 

@@ -22,6 +22,12 @@ import type {
 } from '@services/approvalFileService';
 import { ConflictResolution } from '@services/approvalFileService';
 import { DocumentType } from '@appTypes/documentTypes';
+import {
+  isDocumentCheckoutEnabled,
+  isAutoCheckoutOnReplaceEnabled,
+  supportsReviewTracking,
+  startReviewing,
+} from '@services/documentCheckoutService';
 
 /**
  * SharePoint document metadata update payload
@@ -45,8 +51,11 @@ interface IRenderListDataRow {
   Modified?: string;
   UniqueId: string;
   DocumentType?: string;
-  Author?: Array<{ title?: string; email?: string }>;
-  Editor?: Array<{ title?: string; email?: string }>;
+  Author?: Array<{ title?: string; email?: string; sip?: string }>;
+  Editor?: Array<{ title?: string; email?: string; sip?: string }>;
+  CheckoutUser?: Array<{ title?: string; email?: string; sip?: string; id?: string }>;
+  CheckedOutDate?: string;
+  CheckOutType?: string;
 }
 
 /**
@@ -281,6 +290,41 @@ export async function uploadFile(
     // Upload file
     const shouldOverwrite = conflictResolution === ConflictResolution.Overwrite;
 
+    // Block overwrite when the existing file is checked out by another user.
+    // Only applies when AutoCheckoutOnReplace is enabled (sub-flag of EnableDocumentCheckout).
+    if (shouldOverwrite && isAutoCheckoutOnReplaceEnabled() && supportsReviewTracking(file.name)) {
+      try {
+        const existingFiles = await folder.files.select('Name', 'CheckOutType', 'CheckedOutByUser/Title', 'CheckedOutByUser/EMail')
+          .expand('CheckedOutByUser')();
+        let matchingFile: any = undefined;
+        for (let i = 0; i < existingFiles.length; i++) {
+          if ((existingFiles[i] as any).Name.toLowerCase() === file.name.toLowerCase()) {
+            matchingFile = existingFiles[i];
+            break;
+          }
+        }
+        if (matchingFile && (matchingFile.CheckOutType || 0) !== 0) {
+          const currentUserEmail = (SPContext.currentUser?.email || '').toLowerCase();
+          const checkedOutEmail = (matchingFile.CheckedOutByUser?.EMail || '').toLowerCase();
+          const isMe = checkedOutEmail !== '' && checkedOutEmail === currentUserEmail;
+          if (!isMe) {
+            const reviewerName = matchingFile.CheckedOutByUser?.Title || 'another user';
+            return {
+              success: false,
+              fileName: file.name,
+              error: `Cannot replace "${file.name}" — it is being reviewed by ${reviewerName}.`,
+            };
+          }
+        }
+      } catch (checkError) {
+        // Log but don't block — if we can't check, let SharePoint enforce
+        SPContext.logger.warn('DocumentService: Could not verify checkout status before overwrite', {
+          fileName: file.name,
+          error: checkError instanceof Error ? checkError.message : String(checkError),
+        });
+      }
+    }
+
     const uploadResult = await folder.files.addUsingPath(
       file.name,
       file,
@@ -314,6 +358,31 @@ export async function uploadFile(
           error: updateError
         });
         // Don't fail the upload if field update fails
+      }
+    }
+
+    // Auto-checkout on successful replace so the file is marked as "being reviewed"
+    if (shouldOverwrite && isAutoCheckoutOnReplaceEnabled() && supportsReviewTracking(file.name)) {
+      try {
+        const doc = {
+          name: file.name,
+          url: uploadResult.data.ServerRelativeUrl,
+        };
+        const checkoutResult = await startReviewing(doc as any);
+        if (checkoutResult.success) {
+          SPContext.logger.info('DocumentService: Auto-checkout after replace', { fileName: file.name });
+        } else {
+          SPContext.logger.warn('DocumentService: Auto-checkout after replace failed', {
+            fileName: file.name,
+            error: checkoutResult.error,
+          });
+        }
+      } catch (autoCheckoutError) {
+        // Non-fatal — the replace succeeded even if auto-checkout fails
+        SPContext.logger.warn('DocumentService: Auto-checkout after replace threw', {
+          fileName: file.name,
+          error: autoCheckoutError instanceof Error ? autoCheckoutError.message : String(autoCheckoutError),
+        });
       }
     }
 
@@ -518,6 +587,9 @@ export async function loadDocuments(
           <FieldRef Name="DocumentType" />
           <FieldRef Name="Author" />
           <FieldRef Name="Editor" />
+          <FieldRef Name="CheckoutUser" />
+          <FieldRef Name="CheckedOutDate" />
+          <FieldRef Name="CheckOutType" />
         </ViewFields>
         <RowLimit>5000</RowLimit>
       </View>`;
@@ -531,6 +603,24 @@ export async function loadDocuments(
       count: result.Row?.length || 0,
       hasRow: !!result.Row,
     });
+
+    // DEBUG: Log raw row keys and checkout-related fields for first document
+    if (result.Row && result.Row.length > 0) {
+      const firstRow = result.Row[0];
+      const allKeys = Object.keys(firstRow);
+      const checkoutKeys = allKeys.filter(function(k) {
+        return k.toLowerCase().indexOf('check') !== -1 || k.toLowerCase().indexOf('cout') !== -1;
+      });
+      SPContext.logger.warn('DEBUG: Raw row keys for first document', {
+        fileName: firstRow.FileLeafRef,
+        allKeys: allKeys.join(', '),
+        checkoutRelatedKeys: checkoutKeys.join(', '),
+        checkoutValues: JSON.stringify(checkoutKeys.reduce(function(acc: Record<string, unknown>, key: string) {
+          acc[key] = firstRow[key];
+          return acc;
+        }, {})),
+      });
+    }
 
     // Check if we got any results
     if (!result.Row || result.Row.length === 0) {
@@ -585,11 +675,17 @@ export async function loadDocuments(
         timeLastModified: row.Modified || row.Created,
         uniqueId: row.UniqueId,
         createdBy: row.Author?.[0]?.title || 'Unknown',
-        createdByEmail: row.Author?.[0]?.email || '',
+        createdByEmail: row.Author?.[0]?.email || row.Author?.[0]?.sip || '',
         modifiedBy: row.Editor?.[0]?.title || 'Unknown',
-        modifiedByEmail: row.Editor?.[0]?.email || '',
+        modifiedByEmail: row.Editor?.[0]?.email || row.Editor?.[0]?.sip || '',
         listItemId: parseInt(row.ID, 10),
         documentType: docType,
+        checkOutType: row.CheckOutType
+          ? parseInt(row.CheckOutType, 10)
+          : (row.CheckoutUser && row.CheckoutUser.length > 0 ? 1 : 0),
+        checkedOutByName: row.CheckoutUser?.[0]?.title,
+        checkedOutByEmail: row.CheckoutUser?.[0]?.email || row.CheckoutUser?.[0]?.sip,
+        checkedOutDate: row.CheckedOutDate,
       };
 
       SPContext.logger.info('Mapped document', {
@@ -598,6 +694,12 @@ export async function loadDocuments(
         size: doc.size,
         url: doc.url,
         listItemId: doc.listItemId,
+        checkOutType: doc.checkOutType,
+        checkedOutByName: doc.checkedOutByName,
+        checkedOutByEmail: doc.checkedOutByEmail,
+        rawCheckOutType: row.CheckOutType,
+        rawCheckoutUser: JSON.stringify(row.CheckoutUser),
+        rawCheckedOutDate: row.CheckedOutDate,
       });
 
       return doc;
@@ -619,9 +721,51 @@ export async function loadDocuments(
 }
 
 /**
+ * Query SharePoint for live checkout state of a file.
+ * Throws if the file is checked out (blocks the mutation).
+ *
+ * @param file - Document with a URL
+ * @param operation - Human-readable operation name for error messages
+ */
+async function assertFileNotCheckedOut(file: IDocument, operation: string): Promise<void> {
+  if (!isDocumentCheckoutEnabled() || !supportsReviewTracking(file.name) || !file.url) {
+    return;
+  }
+
+  try {
+    const urlObj = new URL(file.url);
+    const serverRelativeUrl = decodeServerRelativePath(urlObj.pathname);
+    const spFile = SPContext.sp.web.getFileByServerRelativePath(serverRelativeUrl);
+    const fileInfo = await spFile.select('CheckOutType', 'CheckedOutByUser/Title', 'CheckedOutByUser/EMail')
+      .expand('CheckedOutByUser')() as any;
+
+    if ((fileInfo.CheckOutType || 0) !== 0) {
+      const currentUserEmail = (SPContext.currentUser?.email || '').toLowerCase();
+      const checkedOutEmail = (fileInfo.CheckedOutByUser?.EMail || '').toLowerCase();
+      const isMe = checkedOutEmail !== '' && checkedOutEmail === currentUserEmail;
+      const reviewer = isMe ? 'you' : (fileInfo.CheckedOutByUser?.Title || 'another user');
+      throw new Error(`Cannot ${operation} "${file.name}" — it is being reviewed by ${reviewer}.`);
+    }
+  } catch (error) {
+    // Re-throw checkout validation errors
+    if (error instanceof Error && error.message.indexOf('Cannot ') === 0) {
+      throw error;
+    }
+    // For query failures, log and let the operation proceed — SharePoint will enforce server-side
+    SPContext.logger.warn('DocumentService: Could not verify checkout status before ' + operation, {
+      fileName: file.name,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+/**
  * Delete file from SharePoint
  */
 export async function deleteFile(file: IDocument): Promise<void> {
+  // Block deletion of files under review (live query)
+  await assertFileNotCheckedOut(file, 'delete');
+
   try {
     SPContext.logger.info('Deleting file', { fileName: file.name, url: file.url });
 
@@ -644,6 +788,9 @@ export async function deleteFile(file: IDocument): Promise<void> {
  * Rename file in SharePoint
  */
 export async function renameFile(file: IDocument, newName: string): Promise<void> {
+  // Block renaming files under review (live query)
+  await assertFileNotCheckedOut(file, 'rename');
+
   try {
     SPContext.logger.info('Renaming file', {
       oldName: file.name,
@@ -726,6 +873,11 @@ export async function changeDocumentType(
   itemId: number,
   libraryTitle: string = DEFAULT_LIBRARY_TITLE
 ): Promise<void> {
+  // Block type change for files under review (live query per file)
+  for (let i = 0; i < files.length; i++) {
+    await assertFileNotCheckedOut(files[i], 'change type of');
+  }
+
   try {
     SPContext.logger.info('Changing document types', {
       count: files.length,

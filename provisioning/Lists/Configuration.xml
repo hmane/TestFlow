@@ -157,6 +157,27 @@
       <pnp:DataValue FieldName="Category">Features</pnp:DataValue>
     </pnp:DataRow>
     <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">EnableDocumentCheckout</pnp:DataValue>
+      <pnp:DataValue FieldName="ConfigValue">false</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Enable document review tracking for non-Office files. Shows review status badges, checkout/checkin actions, and enforces review completion before status transitions.</pnp:DataValue>
+      <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Category">Features</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">AutoCheckoutOnReplace</pnp:DataValue>
+      <pnp:DataValue FieldName="ConfigValue">true</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Automatically mark non-Office files as reviewing when a user replaces them. Blocks replace if another user is reviewing. Only applies when EnableDocumentCheckout is true.</pnp:DataValue>
+      <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Category">Features</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
+      <pnp:DataValue FieldName="Title">CheckoutRequiredForTransition</pnp:DataValue>
+      <pnp:DataValue FieldName="ConfigValue">true</pnp:DataValue>
+      <pnp:DataValue FieldName="Description">Enforce that all files are done reviewing before completing review or closing a request. Only applies when EnableDocumentCheckout is true.</pnp:DataValue>
+      <pnp:DataValue FieldName="IsActive">1</pnp:DataValue>
+      <pnp:DataValue FieldName="Category">Features</pnp:DataValue>
+    </pnp:DataRow>
+    <pnp:DataRow>
       <pnp:DataValue FieldName="Title">AllowedFileExtensions</pnp:DataValue>
       <pnp:DataValue FieldName="ConfigValue">.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png,.gif,.zip,.msg,.eml</pnp:DataValue>
       <pnp:DataValue FieldName="Description">Comma-separated list of allowed file extensions for document uploads (include the dot). Example: .pdf,.docx,.xlsx</pnp:DataValue>

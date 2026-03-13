@@ -25,7 +25,19 @@ import { Lists } from '@sp/Lists';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 
 import type { IStagedDocument } from '@stores/documentsStore';
+import { useDocumentsStore } from '@stores/documentsStore';
+import { useConfigStore } from '@stores/configStore';
 import { DocumentType } from '@appTypes/documentTypes';
+import {
+  isDocumentCheckoutEnabled,
+  getDocumentCheckoutStatus,
+  supportsReviewTracking,
+  startReviewing,
+  doneReviewing,
+  stopReviewing,
+  type IDocumentCheckoutStatus,
+} from '@services/documentCheckoutService';
+import { useNotification } from '@contexts/NotificationContext';
 import { DocumentCard } from './DocumentCard';
 import { DropZoneCard } from './DropZoneCard';
 import { DocumentTypeDialog } from './DocumentTypeDialog';
@@ -119,6 +131,120 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
     hasAtLeastOneDocument,
     isApprovalDocumentType,
   } = state;
+
+  // Notifications
+  const { showSuccess } = useNotification();
+
+  // Review tracking: checkout status per document
+  const configLoaded = useConfigStore((s) => s.isLoaded);
+  const checkoutEnabled = React.useMemo(() => isDocumentCheckoutEnabled(), [configLoaded]);
+  const loadDocumentsFromStore = useDocumentsStore((s) => s.loadDocuments);
+
+  /**
+   * Get checkout status for an existing document.
+   * Returns undefined if checkout tracking is disabled or not applicable.
+   */
+  const getCheckoutStatusForDoc = React.useCallback(
+    (doc: any): IDocumentCheckoutStatus | undefined => {
+      if (!doc || !doc.url) return undefined;
+      if (!supportsReviewTracking(doc.name)) return undefined;
+      // When the feature is disabled, still surface status for documents that are
+      // currently checked out so "Done" and "Stop" buttons remain visible — otherwise
+      // existing SP locks become unreleasable through the UI.
+      const status = getDocumentCheckoutStatus(doc);
+      if (!checkoutEnabled && !status.isCheckedOut) return undefined;
+      return status;
+    },
+    [checkoutEnabled]
+  );
+
+  /**
+   * Handle start reviewing: checkout file + open in new tab
+   */
+  const handleStartReviewing = React.useCallback(
+    async (doc: any): Promise<void> => {
+      const result = await startReviewing(doc);
+      if (result.success) {
+        showSuccess(`Started reviewing "${doc.name}"`);
+        if (doc.url) {
+          window.open(doc.url, '_blank');
+        }
+        if (itemId) {
+          await loadDocumentsFromStore(itemId, true);
+        }
+      } else {
+        const errorMsg = result.error || 'Failed to start reviewing';
+        setValidationError(`Could not start reviewing "${doc.name}": ${errorMsg}`);
+        SPContext.logger.error('DocumentUpload: Failed to start reviewing', undefined, {
+          fileName: doc.name,
+          error: result.error,
+        });
+        // Reload so the card reflects the actual checkout state (e.g. another user got there first)
+        if (itemId) {
+          await loadDocumentsFromStore(itemId, true);
+        }
+      }
+    },
+    [itemId, loadDocumentsFromStore, showSuccess]
+  );
+
+  /**
+   * Handle done reviewing: checkin file + reload documents
+   */
+  const handleDoneReviewing = React.useCallback(
+    async (doc: any): Promise<void> => {
+      const result = await doneReviewing(doc);
+      if (result.success) {
+        showSuccess(`Done reviewing "${doc.name}"`);
+        if (itemId) {
+          await loadDocumentsFromStore(itemId, true);
+        }
+      } else {
+        const errorMsg = result.error || 'Failed to complete review';
+        setValidationError(`Could not complete review for "${doc.name}": ${errorMsg}`);
+        SPContext.logger.error('DocumentUpload: Failed to complete review', undefined, {
+          fileName: doc.name,
+          error: result.error,
+        });
+      }
+    },
+    [itemId, loadDocumentsFromStore, showSuccess]
+  );
+
+  /**
+   * Handle stop reviewing: undo checkout + reload documents
+   */
+  const handleStopReviewing = React.useCallback(
+    async (doc: any): Promise<void> => {
+      const result = await stopReviewing(doc);
+      if (result.success) {
+        showSuccess(`Stopped reviewing "${doc.name}"`);
+        if (itemId) {
+          await loadDocumentsFromStore(itemId, true);
+        }
+      } else {
+        const errorMsg = result.error || 'Failed to stop reviewing';
+        setValidationError(`Could not stop reviewing "${doc.name}": ${errorMsg}`);
+        SPContext.logger.error('DocumentUpload: Failed to stop reviewing', undefined, {
+          fileName: doc.name,
+          error: result.error,
+        });
+      }
+    },
+    [itemId, loadDocumentsFromStore, showSuccess]
+  );
+
+  /**
+   * Handle open view only: open file without checkout
+   */
+  const handleOpenViewOnly = React.useCallback(
+    (doc: any): void => {
+      if (doc.url) {
+        window.open(doc.url, '_blank');
+      }
+    },
+    []
+  );
 
   /**
    * Render Approval Mode
@@ -278,6 +404,9 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
               }
             }
 
+            const docCheckoutStatus = getCheckoutStatusForDoc(doc);
+            const isLockedByCheckout = docCheckoutStatus?.isCheckedOut ?? false;
+
             return (
               <DocumentCard
                 key={doc.uniqueId}
@@ -289,9 +418,14 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
                 isReadOnly={isReadOnly}
                 allDocuments={sortedDocs}
                 stagedFiles={stagedFiles.map(sf => ({ name: sf.file.name, documentType: sf.documentType, uniqueId: sf.id }))}
-                onRename={(newName) => handleDocumentAction({ type: 'rename', documentId: doc.uniqueId, data: newName })}
-                onCancelRename={() => handleDocumentAction({ type: 'cancelRename', documentId: doc.uniqueId })}
-                onDelete={() => handleDocumentAction({ type: 'delete', documentId: doc.uniqueId })}
+                checkoutStatus={docCheckoutStatus}
+                onStartReviewing={docCheckoutStatus ? () => { void handleStartReviewing(doc); } : undefined}
+                onDoneReviewing={docCheckoutStatus ? () => { void handleDoneReviewing(doc); } : undefined}
+                onStopReviewing={docCheckoutStatus ? () => { void handleStopReviewing(doc); } : undefined}
+                onOpenViewOnly={docCheckoutStatus ? () => { handleOpenViewOnly(doc); } : undefined}
+                onRename={isLockedByCheckout ? undefined : (newName) => handleDocumentAction({ type: 'rename', documentId: doc.uniqueId, data: newName })}
+                onCancelRename={isLockedByCheckout ? undefined : () => handleDocumentAction({ type: 'cancelRename', documentId: doc.uniqueId })}
+                onDelete={isLockedByCheckout ? undefined : () => handleDocumentAction({ type: 'delete', documentId: doc.uniqueId })}
                 onDownload={() => handleDocumentAction({ type: 'download', documentId: doc.uniqueId })}
                 onUndoDelete={isDeleted ? () => handleDocumentAction({ type: 'undoDelete', documentId: doc.uniqueId }) : undefined}
               />
@@ -504,6 +638,9 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
               }
               const isPending = !!renameInfo || !!pendingType;
 
+              const docCheckoutStatus = getCheckoutStatusForDoc(doc);
+              const isLockedByCheckout = docCheckoutStatus?.isCheckedOut ?? false;
+
               return (
                 <DocumentCard
                   key={doc.uniqueId}
@@ -512,19 +649,24 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
                   isPending={isPending}
                   pendingName={renameInfo ? renameInfo.newName : undefined}
                   pendingType={pendingType}
-                  showTypeChange={true}
+                  showTypeChange={!isLockedByCheckout}
                   isReadOnly={isReadOnly}
                   isDragging={draggedDocId === doc.uniqueId}
                   allDocuments={allDocs}
                   stagedFiles={allStaged.map(sf => ({ name: sf.file.name, documentType: sf.documentType, uniqueId: sf.id }))}
-                  onRename={(newName) => handleDocumentAction({ type: 'rename', documentId: doc.uniqueId, data: newName })}
-                  onCancelRename={() => handleDocumentAction({ type: 'cancelRename', documentId: doc.uniqueId })}
-                  onDelete={() => handleDocumentAction({ type: 'delete', documentId: doc.uniqueId })}
+                  checkoutStatus={docCheckoutStatus}
+                  onStartReviewing={docCheckoutStatus ? () => { void handleStartReviewing(doc); } : undefined}
+                  onDoneReviewing={docCheckoutStatus ? () => { void handleDoneReviewing(doc); } : undefined}
+                  onStopReviewing={docCheckoutStatus ? () => { void handleStopReviewing(doc); } : undefined}
+                  onOpenViewOnly={docCheckoutStatus ? () => { handleOpenViewOnly(doc); } : undefined}
+                  onRename={isLockedByCheckout ? undefined : (newName) => handleDocumentAction({ type: 'rename', documentId: doc.uniqueId, data: newName })}
+                  onCancelRename={isLockedByCheckout ? undefined : () => handleDocumentAction({ type: 'cancelRename', documentId: doc.uniqueId })}
+                  onDelete={isLockedByCheckout ? undefined : () => handleDocumentAction({ type: 'delete', documentId: doc.uniqueId })}
                   onDownload={() => handleDocumentAction({ type: 'download', documentId: doc.uniqueId })}
-                  onChangeType={(newType) => handleDocumentAction({ type: 'changeType', documentId: doc.uniqueId, data: newType })}
+                  onChangeType={isLockedByCheckout ? undefined : (newType) => handleDocumentAction({ type: 'changeType', documentId: doc.uniqueId, data: newType })}
                   onUndoDelete={isDeleted ? () => handleDocumentAction({ type: 'undoDelete', documentId: doc.uniqueId }) : undefined}
-                  onDragStart={() => handleCardDragStart(doc.uniqueId, sectionDocumentType)}
-                  onDragEnd={handleCardDragEnd}
+                  onDragStart={isLockedByCheckout ? undefined : () => handleCardDragStart(doc.uniqueId, sectionDocumentType)}
+                  onDragEnd={isLockedByCheckout ? undefined : handleCardDragEnd}
                 />
               );
             })}
