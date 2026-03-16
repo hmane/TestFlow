@@ -572,6 +572,7 @@ export const DocumentCard: React.FC<IDocumentCardProps> = React.memo(({
                   showVersionHistory={false}
                   showDownloadInCard={false}
                   onClick="preview"
+                  previewMode="edit"
                   className="file-name-link"
                   linkClassName={isDeleted ? 'deleted' : ''}
                   enableCache={false}

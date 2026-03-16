@@ -102,6 +102,11 @@ export function getDocumentFolderPath(itemId: number, documentType: DocumentType
     return `${itemId}`;
   }
 
+  // ReviewFinal documents go to their own subfolder
+  if (normalizedType === DocumentType.ReviewFinal || normalizedType === 'Review Final') {
+    return `${itemId}/ReviewFinal`;
+  }
+
   // FINRA documents go to their own subfolder
   if (normalizedType === DocumentType.FINRA || normalizedType === 'FINRA') {
     return `${itemId}/FINRADocuments`;

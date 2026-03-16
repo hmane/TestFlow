@@ -31,21 +31,21 @@ export interface IConfigurationListItem {
  *
  * NOTE: These values MUST match the group titles in @sp/Groups (auto-generated from SharePoint)
  * - Submitters = Groups.LwSubmitters.Title ('LW - Submitters')
- * - LegalAdmin = Groups.LwLegalAdmin.Title ('LW - Legal Admin')
- * - AttorneyAssigner = Groups.LwAttorneyAssigner.Title ('LW - Attorney Assigner')
+ * - LegalAdmin = Groups.LwLegalAdmins.Title ('LW - Legal Admins')
+ * - AttorneyAssigner = Groups.LwAttorneyAssigners.Title ('LW - Attorney Assigners')
  * - Attorneys = Groups.LwAttorneys.Title ('LW - Attorneys')
- * - ComplianceUsers = Groups.LwComplianceUsers.Title ('LW - Compliance Users')
- * - Admin = Groups.LwAdmin.Title ('LW - Admin')
+ * - ComplianceUsers = Groups.LwComplianceReviewers.Title ('LW - Compliance Reviewers')
+ * - Admin = Groups.LwAdmins.Title ('LW - Admins')
  *
  * If group names change in SharePoint, regenerate constants with Generate-SPConstants.ps1
  */
 export enum AppRole {
   Submitters = 'LW - Submitters',
-  LegalAdmin = 'LW - Legal Admin',
-  AttorneyAssigner = 'LW - Attorney Assigner',
+  LegalAdmin = 'LW - Legal Admins',
+  AttorneyAssigner = 'LW - Attorney Assigners',
   Attorneys = 'LW - Attorneys',
-  ComplianceUsers = 'LW - Compliance Users',
-  Admin = 'LW - Admin',
+  ComplianceUsers = 'LW - Compliance Reviewers',
+  Admin = 'LW - Admins',
 }
 
 /**

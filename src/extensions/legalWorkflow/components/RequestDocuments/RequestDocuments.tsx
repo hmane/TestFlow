@@ -122,10 +122,28 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
   // Review tracking: subscribe to configStore.isLoaded so we recompute after async config load
   const configLoaded = useConfigStore((s) => s.isLoaded);
   const checkoutEnabled = React.useMemo(() => isDocumentCheckoutEnabled(), [configLoaded]);
+  // Only show review tracking when request is actively In Review
+  const isInReview = status === RequestStatus.InReview;
   const requestCheckoutStatus = React.useMemo(() => {
-    if (!checkoutEnabled || allDocumentsFlat.length === 0) return undefined;
+    if (!checkoutEnabled || !isInReview || allDocumentsFlat.length === 0) return undefined;
     return getRequestCheckoutStatus(allDocumentsFlat);
-  }, [checkoutEnabled, allDocumentsFlat]);
+  }, [checkoutEnabled, isInReview, allDocumentsFlat]);
+
+  // Auto-refresh document checkout status every 30 seconds while In Review
+  // so users see when others lock/unlock documents without needing a manual page refresh
+  React.useEffect(() => {
+    if (!checkoutEnabled || !isInReview || !itemId) return;
+
+    const intervalId = setInterval(() => {
+      loadDocuments(itemId, true).catch(() => {
+        // Silently ignore refresh errors — stale data is acceptable here
+      });
+    }, 30000);
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [checkoutEnabled, isInReview, itemId, loadDocuments]);
 
   /**
    * Handle "Mark All as Done" — checkin all files checked out by current user
