@@ -265,7 +265,8 @@ export async function uploadFile(
   conflictResolution: ConflictResolution = ConflictResolution.Skip,
   documentType?: DocumentType,
   requestItemId?: number,
-  skipFolderCreation: boolean = false
+  skipFolderCreation: boolean = false,
+  isReplacement: boolean = false
 ): Promise<IUploadResult> {
   try {
     SPContext.logger.info('Uploading file', {
@@ -366,8 +367,8 @@ export async function uploadFile(
       }
     }
 
-    // Auto-checkout on successful replace so the file is marked as "being reviewed"
-    if (shouldOverwrite && isAutoCheckoutOnReplaceEnabled() && supportsReviewTracking(file.name)) {
+    // Auto-checkout only when explicitly replacing an existing document during review
+    if (isReplacement && isAutoCheckoutOnReplaceEnabled() && supportsReviewTracking(file.name)) {
       try {
         const doc = {
           name: file.name,
@@ -427,7 +428,7 @@ export async function uploadFile(
  * Batch upload files with progress tracking and retry support
  */
 export async function batchUploadFiles(
-  files: Array<{ file: File; documentType: DocumentType }>,
+  files: Array<{ file: File; documentType: DocumentType; isReplacement?: boolean }>,
   itemId: number,
   onFileProgress: (fileId: string, progress: number, status: FileOperationStatus) => void,
   onFileComplete: (fileId: string, result: IUploadResult) => void,
@@ -461,7 +462,7 @@ export async function batchUploadFiles(
     }
   }
 
-  for (const { file, documentType } of files) {
+  for (const { file, documentType, isReplacement } of files) {
     const fileId = `upload-${Date.now()}-${file.name}`;
     const folderPath = getDocumentFolderPath(itemId, documentType);
 
@@ -481,7 +482,8 @@ export async function batchUploadFiles(
           ConflictResolution.Overwrite,
           documentType,
           itemId,
-          true // skipFolderCreation - folders already created above
+          true, // skipFolderCreation - folders already created above
+          isReplacement
         );
 
         if (uploadResult.success) {

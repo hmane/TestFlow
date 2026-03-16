@@ -332,11 +332,11 @@ export function canSubmitComplianceReview(context: IActionContext): IPermissionC
 
 /**
  * Check if user can closeout request
- * Who can perform: LegalAdmin, Admin
+ * Who can perform: LegalAdmin, Admin, or request owner (submitter)
  * Valid from status: Closeout
  */
 export function canCloseoutRequest(context: IActionContext): IPermissionCheckResult {
-  const { request, permissions } = context;
+  const { request, permissions, currentUserId } = context;
 
   // Check status
   if (request.status !== RequestStatus.Closeout) {
@@ -346,11 +346,14 @@ export function canCloseoutRequest(context: IActionContext): IPermissionCheckRes
     };
   }
 
-  // Check permissions
-  if (!permissions.isLegalAdmin && !permissions.isAdmin) {
+  // Check permissions — Legal Admin, Admin, or the request owner can closeout
+  const isOwner = String(request.submittedBy?.id ?? '') === currentUserId ||
+                  String(request.author?.id ?? '') === currentUserId;
+
+  if (!permissions.isLegalAdmin && !permissions.isAdmin && !isOwner) {
     return {
       allowed: false,
-      reason: 'Only Legal Admin or Admin can closeout requests',
+      reason: 'Only the request submitter, Legal Admin, or Admin can closeout requests',
     };
   }
 

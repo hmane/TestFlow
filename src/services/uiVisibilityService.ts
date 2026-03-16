@@ -324,7 +324,7 @@ export function getButtonVisibility(ctx: IVisibilityContext): IButtonVisibility 
 
   // Closeout status
   if (status === RequestStatus.Closeout) {
-    const canCloseout = isAdmin || isLegalAdmin;
+    const canCloseout = isAdmin || isLegalAdmin || isOwner;
     return {
       saveAsDraft: hidden(),
       submitRequest: hidden(),

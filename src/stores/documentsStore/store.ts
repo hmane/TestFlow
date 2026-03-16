@@ -354,11 +354,21 @@ export const useDocumentsStore = create<IDocumentsState>()(
             '../../services/documentService'
           );
 
-          // Prepare files for upload
-          const filesForUpload = state.stagedFiles.map(staged => ({
-            file: staged.file,
-            documentType: staged.documentType,
-          }));
+          // Prepare files for upload.
+          // Mark as replacement if an existing document with the same name already exists
+          // in the same document type bucket — only replacements should trigger auto-checkout.
+          const existingDocs = state.documents;
+          const filesForUpload = state.stagedFiles.map(staged => {
+            const existing = existingDocs.get(staged.documentType) || [];
+            const isReplacement = existing.some(
+              doc => doc.name.toLowerCase() === staged.file.name.toLowerCase()
+            );
+            return {
+              file: staged.file,
+              documentType: staged.documentType,
+              isReplacement,
+            };
+          });
 
           // Upload with progress tracking
           await batchUploadFiles(
