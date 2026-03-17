@@ -6,13 +6,12 @@
  * before any update is allowed.
  *
  * Coverage:
- * - Admin: always allowed (except terminal)
+ * - Admin: allowed in non-terminal statuses
  * - LegalAdmin: allowed in non-terminal statuses
  * - Owner: allowed until Closeout
- * - Assigned attorney: allowed during In Review
- * - Compliance user: allowed during In Review
+ * - Reviewers: must use dedicated review actions, not generic request edits
  * - Non-owner/non-reviewer: denied
- * - Terminal statuses: denied for all except admin
+ * - Terminal statuses: denied for all roles
  */
 
 import type { IUserPermissions } from '@hooks/usePermissions';
@@ -105,17 +104,13 @@ describe('canEditRequest', () => {
     });
 
     it('should deny admin for Completed', () => {
-      // canEditRequest allows admin always — admin is the first check and returns true
-      // Let's verify: admin check is before status check
       const ctx = makeContext({ status: 'Completed', permissions: { isAdmin: true }, currentUserId: '99' });
-      // Admin can always edit per the implementation (line 558)
-      expect(canEditRequest(ctx).allowed).toBe(true);
+      expect(canEditRequest(ctx).allowed).toBe(false);
     });
 
     it('should deny admin for Cancelled', () => {
       const ctx = makeContext({ status: 'Cancelled', permissions: { isAdmin: true }, currentUserId: '99' });
-      // Admin can always edit per the implementation
-      expect(canEditRequest(ctx).allowed).toBe(true);
+      expect(canEditRequest(ctx).allowed).toBe(false);
     });
   });
 
@@ -229,8 +224,8 @@ describe('canEditRequest', () => {
   // =========================================================================
   // Assigned Attorney (not owner)
   // =========================================================================
-  describe('Assigned Attorney', () => {
-    it('should allow assigned attorney during In Review', () => {
+  describe('Attorney Reviewer', () => {
+    it('should deny assigned attorney during In Review for generic edits', () => {
       const ctx = makeContext({
         status: 'In Review',
         permissions: { isAttorney: true, canReviewLegal: true },
@@ -239,7 +234,7 @@ describe('canEditRequest', () => {
         authorId: '10',
         assignedAttorneyIds: ['20'],
       });
-      expect(canEditRequest(ctx).allowed).toBe(true);
+      expect(canEditRequest(ctx).allowed).toBe(false);
     });
 
     it('should deny unassigned attorney during In Review', () => {
@@ -254,7 +249,7 @@ describe('canEditRequest', () => {
       expect(canEditRequest(ctx).allowed).toBe(false);
     });
 
-    it('should deny assigned attorney in non-In Review status', () => {
+    it('should deny attorney in non-In Review status', () => {
       const ctx = makeContext({
         status: 'Legal Intake',
         permissions: { isAttorney: true, canReviewLegal: true },
@@ -271,7 +266,7 @@ describe('canEditRequest', () => {
   // Compliance User (not owner)
   // =========================================================================
   describe('Compliance User', () => {
-    it('should allow compliance user during In Review', () => {
+    it('should deny compliance user during In Review for generic edits', () => {
       const ctx = makeContext({
         status: 'In Review',
         permissions: { isComplianceUser: true, canReviewCompliance: true },
@@ -279,7 +274,7 @@ describe('canEditRequest', () => {
         submittedById: '10',
         authorId: '10',
       });
-      expect(canEditRequest(ctx).allowed).toBe(true);
+      expect(canEditRequest(ctx).allowed).toBe(false);
     });
 
     it('should deny compliance user in non-In Review status', () => {

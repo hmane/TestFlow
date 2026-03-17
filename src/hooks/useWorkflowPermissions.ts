@@ -142,7 +142,7 @@ export function useWorkflowPermissions(): IWorkflowPermissionsResult {
     // (the actual permission check happens on submit)
 
     if (isNewRequest) {
-      const canCreate = permissions.isLoading || permissions.isSubmitter || permissions.isAdmin || permissions.isLegalAdmin;
+      const canCreate = permissions.isLoading || permissions.isSubmitter || permissions.isAdmin;
       return {
         canSaveDraft: canCreate,
         canSubmit: canCreate,

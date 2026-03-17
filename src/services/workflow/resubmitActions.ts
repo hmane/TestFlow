@@ -23,7 +23,12 @@ import { ReviewOutcome, LegalReviewStatus, ComplianceReviewStatus, RequestStatus
 import { getCurrentUserPrincipal, updateItem } from './workflowHelpers';
 
 // Lazy getter to avoid top-level import of permissionsStore (breaks Jest due to ESM deps)
-function getPermissionsState(): { isAdmin: boolean; isLegalAdmin: boolean; isComplianceUser: boolean } {
+function getPermissionsState(): {
+  isAdmin: boolean;
+  isLegalAdmin: boolean;
+  isComplianceUser: boolean;
+  isAttorney: boolean;
+} {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { usePermissionsStore } = require('@stores/permissionsStore');
   return usePermissionsStore.getState();
@@ -386,13 +391,10 @@ export async function requestLegalReviewChanges(
     throw new Error(`Cannot request legal review changes: request status is "${currentRequest.status}", expected "In Review"`);
   }
 
-  // Assigned-attorney guard: only the assigned attorney, admin, or legal admin can request changes
-  const currentUserId = String(SPContext.currentUser?.id ?? '');
-  const { isAdmin: isAdminUser, isLegalAdmin: isLegalAdminUser } = getPermissionsState();
-  const assignedAttorneys = currentRequest.legalReview?.assignedAttorney || currentRequest.attorney;
-  const isAssignedAtty = assignedAttorneys?.some(a => String(a.id) === currentUserId) ?? false;
-  if (!isAssignedAtty && !isAdminUser && !isLegalAdminUser) {
-    throw new Error('Cannot request legal review changes: you are not an assigned attorney on this request');
+  // Role guard: any attorney, admin, or legal admin can request legal review changes
+  const { isAdmin: isAdminUser, isLegalAdmin: isLegalAdminUser, isAttorney: isAttorneyUser } = getPermissionsState();
+  if (!isAttorneyUser && !isAdminUser && !isLegalAdminUser) {
+    throw new Error('Cannot request legal review changes: requires Attorney, Legal Admin, or Admin role');
   }
 
   const currentUser = getCurrentUserPrincipal();

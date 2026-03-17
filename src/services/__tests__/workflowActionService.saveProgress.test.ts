@@ -2,7 +2,7 @@
  * Workflow Action Service - Save Progress Tests
  *
  * Tests for save-progress permission guards and field update logic:
- * - saveLegalReviewProgress: assigned-attorney / admin / legal-admin enforcement
+ * - saveLegalReviewProgress: attorney / admin / legal-admin enforcement
  * - saveComplianceReviewProgress: compliance-user / admin enforcement
  * - Both: status guard (must be In Review), conditional timestamp update
  */
@@ -256,28 +256,25 @@ describe('Workflow Action Service - Save Progress', () => {
       ).rejects.toThrow('expected "In Review"');
     });
 
-    it('should reject when user is not assigned attorney and not admin/legal-admin', async () => {
-      // Current user id = 1, attorney id = 99 → not assigned
+    it('should allow an attorney who is not specifically assigned', async () => {
       mockLoadRequestById.mockResolvedValue({
         ...baseRequest,
         attorney: [{ id: '99', title: 'Other Attorney', email: 'other@example.com' }],
       });
 
-      await expect(
-        saveLegalReviewProgress(1, { notes: 'test' })
-      ).rejects.toThrow('you are not an assigned attorney');
+      const result = await saveLegalReviewProgress(1, { notes: 'test' });
+      expect(result.success).toBe(true);
     });
 
-    it('should reject when no attorneys assigned and not admin/legal-admin', async () => {
+    it('should allow an attorney when no specific assignees are stored', async () => {
       mockLoadRequestById.mockResolvedValue({
         ...baseRequest,
         attorney: undefined,
         legalReview: undefined,
       });
 
-      await expect(
-        saveLegalReviewProgress(1, {})
-      ).rejects.toThrow('you are not an assigned attorney');
+      const result = await saveLegalReviewProgress(1, {});
+      expect(result.success).toBe(true);
     });
 
     it('should match via legalReview.assignedAttorney when attorney field is absent', async () => {
@@ -407,6 +404,7 @@ describe('Workflow Action Service - Save Progress', () => {
 
     it('should reject submitter (not compliance user, not admin)', async () => {
       mockPermissionsState.isComplianceUser = false;
+      mockPermissionsState.isAttorney = false;
 
       await expect(
         saveComplianceReviewProgress(1, {})

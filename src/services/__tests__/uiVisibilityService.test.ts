@@ -102,6 +102,23 @@ describe('uiVisibilityService', () => {
       expect(visibility.attachments.canDelete).toBe(true);
     });
 
+    it('should allow any attorney to edit legal review during In Review', () => {
+      const ctx = createVisibilityContext(
+        RequestStatus.InReview,
+        { ...basePermissions, isAttorney: true, canReviewLegal: true },
+        '20',
+        {
+          submittedBy: { id: '10' },
+          author: { id: '10' },
+          reviewAudience: 'Legal',
+          attorney: [{ id: '99', title: 'Other Attorney', email: 'other@test.com' }],
+        },
+        { isNewRequest: false }
+      );
+
+      expect(getFieldVisibility(ctx).legalReview.canEdit).toBe(true);
+    });
+
     it('should allow a submitter to manage attachments on an unsaved new request', () => {
       const ctx = createVisibilityContext(
         RequestStatus.Draft,

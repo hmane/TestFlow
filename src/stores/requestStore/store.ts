@@ -11,6 +11,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 
 import type { IExistingFile } from '@stores/documentsStore';
+import { usePermissionsStore } from '@stores/permissionsStore';
 import type { IStagedFile, IFileToDelete } from '@services/approvalFileService';
 import { loadRequestById } from '@services/requestLoadService';
 import { saveDraft, saveRequest } from '@services/requestSaveService';
@@ -18,6 +19,7 @@ import { requestCache, createRequestKey } from '../../utils/requestCache';
 import {
   submitRequest as submitRequestAction,
   assignAttorney as assignAttorneyAction,
+  assignFromCommittee as assignFromCommitteeAction,
   sendToCommittee as sendToCommitteeAction,
   submitLegalReview as submitLegalReviewAction,
   submitComplianceReview as submitComplianceReviewAction,
@@ -51,6 +53,7 @@ import {
   canHoldRequest as checkCanHoldRequest,
   canResumeRequest as checkCanResumeRequest,
   canAssignAttorney as checkCanAssignAttorney,
+  canCommitteeAssignAttorney as checkCanCommitteeAssignAttorney,
   canSendToCommittee as checkCanSendToCommittee,
   canSubmitLegalReview as checkCanSubmitLegalReview,
   canSubmitComplianceReview as checkCanSubmitComplianceReview,
@@ -58,6 +61,13 @@ import {
   canCompleteFINRADocuments as checkCanCompleteFINRADocuments,
   canEditRequest as checkCanEditRequest,
 } from '@services/workflowPermissionService';
+
+function enforceAdminOverridePermission(): void {
+  const permissions = usePermissionsStore.getState();
+  if (!permissions.isAdmin) {
+    throw new Error('Admin override requires Admin role');
+  }
+}
 
 /**
  * Request store
@@ -325,11 +335,9 @@ export const useRequestStore = create<IRequestState>()(
           throw new Error('No request to save');
         }
 
-        // Permission guard: only owner/admin can save drafts
-        if (state.itemId) {
-          const context = buildActionContext(state.currentRequest);
-          enforcePermission('Save Draft', checkCanSaveDraft(context));
-        }
+        // Permission guard: submitter/admin for new drafts; owner/admin for existing drafts
+        const context = buildActionContext(state.currentRequest);
+        enforcePermission('Save Draft', checkCanSaveDraft(context));
 
         set({ isSaving: true, error: undefined });
 
@@ -541,10 +549,15 @@ export const useRequestStore = create<IRequestState>()(
         }
 
         // Permission guard
+        const isCommitteeStage = state.currentRequest.status === 'Assign Attorney';
         const context = buildActionContext(state.currentRequest);
-        enforcePermission('Assign Attorney', checkCanAssignAttorney(context));
+        enforcePermission(
+          'Assign Attorney',
+          isCommitteeStage ? checkCanCommitteeAssignAttorney(context) : checkCanAssignAttorney(context)
+        );
 
-        const result = await assignAttorneyAction(state.itemId, {
+        const assignAction = isCommitteeStage ? assignFromCommitteeAction : assignAttorneyAction;
+        const result = await assignAction(state.itemId, {
           attorney,
           notes,
           reviewAudience,
@@ -860,6 +873,7 @@ export const useRequestStore = create<IRequestState>()(
         if (!state.itemId || !state.currentRequest) {
           throw new Error('No request loaded');
         }
+        enforceAdminOverridePermission();
 
         SPContext.logger.warn('ADMIN OVERRIDE: Status change initiated', {
           requestId: state.currentRequest.requestId,
@@ -902,6 +916,7 @@ export const useRequestStore = create<IRequestState>()(
         if (!state.itemId || !state.currentRequest) {
           throw new Error('No request loaded');
         }
+        enforceAdminOverridePermission();
 
         const previousAttorneys = state.currentRequest.attorney || state.currentRequest.legalReview?.assignedAttorney;
         const previousAttorneyNames = previousAttorneys?.map(a => a.title).join(', ') || 'Unknown';
@@ -946,6 +961,7 @@ export const useRequestStore = create<IRequestState>()(
         if (!state.itemId || !state.currentRequest) {
           throw new Error('No request loaded');
         }
+        enforceAdminOverridePermission();
 
         const previousAudience = state.currentRequest.reviewAudience;
 
@@ -990,6 +1006,7 @@ export const useRequestStore = create<IRequestState>()(
         if (!state.itemId || !state.currentRequest) {
           throw new Error('No request loaded');
         }
+        enforceAdminOverridePermission();
 
         const currentLegalReview: Partial<ILegalReview> = state.currentRequest.legalReview || {};
 
@@ -1054,6 +1071,7 @@ export const useRequestStore = create<IRequestState>()(
         if (!state.itemId || !state.currentRequest) {
           throw new Error('No request loaded');
         }
+        enforceAdminOverridePermission();
 
         const currentComplianceReview: Partial<IComplianceReview> = state.currentRequest.complianceReview || {};
 
@@ -1119,6 +1137,7 @@ export const useRequestStore = create<IRequestState>()(
         if (!state.itemId || !state.currentRequest) {
           throw new Error('No request loaded');
         }
+        enforceAdminOverridePermission();
 
         SPContext.logger.warn('ADMIN OVERRIDE: Modifying compliance flags', {
           requestId: state.currentRequest.requestId,
@@ -1172,6 +1191,7 @@ export const useRequestStore = create<IRequestState>()(
         if (!state.itemId || !state.currentRequest) {
           throw new Error('No request loaded');
         }
+        enforceAdminOverridePermission();
 
         const currentStatus = state.currentRequest.status;
 

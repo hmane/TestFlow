@@ -145,7 +145,7 @@ export function canAssignAttorney(context: IActionContext): IPermissionCheckResu
   }
 
   // Check permissions
-  if (!permissions.canAssignAttorney) {
+  if (!permissions.isLegalAdmin && !permissions.isAdmin) {
     return {
       allowed: false,
       reason: 'You do not have permission to assign attorneys. Requires Legal Admin or Admin role.',
@@ -218,7 +218,7 @@ export function canCommitteeAssignAttorney(context: IActionContext): IPermission
  *   - Legal review must not already be completed
  */
 export function canSubmitLegalReview(context: IActionContext): IPermissionCheckResult {
-  const { request, permissions, currentUserId } = context;
+  const { request, permissions } = context;
 
   // Check status
   if (request.status !== RequestStatus.InReview) {
@@ -248,33 +248,11 @@ export function canSubmitLegalReview(context: IActionContext): IPermissionCheckR
     };
   }
 
-  // Admin and Legal Admin can always submit
-  if (permissions.isAdmin || permissions.isLegalAdmin) {
-    return { allowed: true };
-  }
-
-  // Must be attorney role
+  // Any attorney, Legal Admin, or Admin can submit legal review
   if (!permissions.canReviewLegal) {
     return {
       allowed: false,
       reason: 'You do not have permission to submit legal reviews. Requires Attorney role.',
-    };
-  }
-
-  // Must be one of the assigned attorneys - check both nested object and flat field
-  const assignedAttorneys = request.legalReview?.assignedAttorney || request.attorney;
-  const assignedAttorneyIds = assignedAttorneys?.map(a => String(a.id)) || [];
-  if (assignedAttorneyIds.length === 0) {
-    return {
-      allowed: false,
-      reason: 'No attorney has been assigned to this request',
-    };
-  }
-
-  if (!assignedAttorneyIds.includes(String(currentUserId))) {
-    return {
-      allowed: false,
-      reason: 'Only an assigned attorney can submit the legal review',
     };
   }
 
@@ -561,19 +539,22 @@ export function canSaveDraft(context: IActionContext): IPermissionCheckResult {
 export function canEditRequest(context: IActionContext): IPermissionCheckResult {
   const { request, permissions, currentUserId } = context;
 
-  // Admin can always edit
+  const terminalStatuses = [RequestStatus.Completed, RequestStatus.Cancelled];
+
+  if (terminalStatuses.indexOf(request.status as RequestStatus) !== -1) {
+    return {
+      allowed: false,
+      reason: `Cannot edit ${request.status} requests`,
+    };
+  }
+
+  // Admin can edit any non-terminal request
   if (permissions.isAdmin) {
     return { allowed: true };
   }
 
   // Legal Admin can edit in most statuses
   if (permissions.isLegalAdmin) {
-    if (request.status === RequestStatus.Completed || request.status === RequestStatus.Cancelled) {
-      return {
-        allowed: false,
-        reason: `Cannot edit ${request.status} requests`,
-      };
-    }
     return { allowed: true };
   }
 
@@ -589,21 +570,6 @@ export function canEditRequest(context: IActionContext): IPermissionCheckResult 
   ];
 
   if (isOwner && ownerBlockedStatuses.indexOf(request.status as RequestStatus) === -1) {
-    return { allowed: true };
-  }
-
-  // Assigned attorney can edit legal review fields during In Review
-  if (permissions.isAttorney && request.status === RequestStatus.InReview) {
-    const isAssigned = request.legalReview?.assignedAttorney?.some(
-      a => String(a.id) === String(currentUserId)
-    );
-    if (isAssigned) {
-      return { allowed: true };
-    }
-  }
-
-  // Compliance user can edit compliance review fields during In Review
-  if (permissions.isComplianceUser && request.status === RequestStatus.InReview) {
     return { allowed: true };
   }
 

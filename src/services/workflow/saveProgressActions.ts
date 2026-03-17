@@ -19,7 +19,12 @@ import { LegalReviewStatus, ComplianceReviewStatus, RequestStatus } from '@appTy
 import { getCurrentUserPrincipal, updateItem } from './workflowHelpers';
 
 // Lazy getter to avoid top-level import of permissionsStore (breaks Jest due to ESM deps)
-function getPermissionsState(): { isAdmin: boolean; isLegalAdmin: boolean; isComplianceUser: boolean } {
+function getPermissionsState(): {
+  isAdmin: boolean;
+  isLegalAdmin: boolean;
+  isComplianceUser: boolean;
+  isAttorney: boolean;
+} {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const { usePermissionsStore } = require('@stores/permissionsStore');
   return usePermissionsStore.getState();
@@ -64,13 +69,10 @@ export async function saveLegalReviewProgress(
     throw new Error(`Cannot save legal review progress: request status is "${currentRequest.status}", expected "In Review"`);
   }
 
-  // Assigned-attorney guard: only the assigned attorney, admin, or legal admin can save progress
-  const currentUserId = String(SPContext.currentUser?.id ?? '');
-  const { isAdmin, isLegalAdmin } = getPermissionsState();
-  const assignedAttorneys = currentRequest.legalReview?.assignedAttorney || currentRequest.attorney;
-  const isAssigned = assignedAttorneys?.some(a => String(a.id) === currentUserId) ?? false;
-  if (!isAssigned && !isAdmin && !isLegalAdmin) {
-    throw new Error('Cannot save legal review progress: you are not an assigned attorney on this request');
+  // Role guard: any attorney, admin, or legal admin can save legal review progress
+  const { isAdmin, isLegalAdmin, isAttorney } = getPermissionsState();
+  if (!isAttorney && !isAdmin && !isLegalAdmin) {
+    throw new Error('Cannot save legal review progress: requires Attorney, Legal Admin, or Admin role');
   }
 
   const currentUser = getCurrentUserPrincipal();

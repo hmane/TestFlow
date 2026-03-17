@@ -137,9 +137,19 @@ import {
   requestComplianceReviewChanges,
 } from '../workflowActionService';
 
+function resetPermissions(): void {
+  mockPermissionsState.isAdmin = false;
+  mockPermissionsState.isLegalAdmin = false;
+  mockPermissionsState.isComplianceUser = true;
+  mockPermissionsState.isSubmitter = true;
+  mockPermissionsState.isAttorney = true;
+  mockPermissionsState.isAttorneyAssigner = false;
+}
+
 describe('Workflow Action Service - Resubmit Workflow', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    resetPermissions();
 
     // Default mock implementations
     mockCalculateAndUpdateStageTime.mockResolvedValue({
@@ -310,7 +320,6 @@ describe('Workflow Action Service - Resubmit Workflow', () => {
   describe('requestLegalReviewChanges', () => {
     beforeEach(() => {
       // Set up request in InProgress state
-      // attorney.id matches SPContext.currentUser.id (1) for assigned-attorney guard
       mockLoadRequestById.mockResolvedValue({
         id: 1,
         requestId: 'CRR-2025-001',
@@ -359,6 +368,20 @@ describe('Workflow Action Service - Resubmit Workflow', () => {
       expect(result.fieldsUpdated).toContain('LegalReviewNotes');
     });
 
+    it('should allow an attorney who is not specifically assigned', async () => {
+      mockLoadRequestById.mockResolvedValue({
+        id: 1,
+        requestId: 'CRR-2025-001',
+        status: 'In Review',
+        reviewAudience: 'Legal',
+        legalReviewStatus: LegalReviewStatus.InProgress,
+        attorney: [{ id: '99', title: 'Other Attorney', email: 'other@example.com' }],
+      } as Partial<ILegalRequest>);
+
+      const result = await requestLegalReviewChanges(1, 'Please update disclosures');
+      expect(result.success).toBe(true);
+    });
+
     it('should update LegalStatusUpdatedOn timestamp', async () => {
       const result = await requestLegalReviewChanges(1, 'Changes needed');
 
@@ -379,6 +402,16 @@ describe('Workflow Action Service - Resubmit Workflow', () => {
       // Service still succeeds but this is an edge case
       // In production, the UI prevents this from happening
       expect(result.success).toBe(true);
+    });
+
+    it('should reject a non-attorney who is not admin or legal admin', async () => {
+      mockPermissionsState.isAttorney = false;
+      mockPermissionsState.isAdmin = false;
+      mockPermissionsState.isLegalAdmin = false;
+
+      await expect(requestLegalReviewChanges(1, 'Notes')).rejects.toThrow(
+        'requires Attorney, Legal Admin, or Admin role'
+      );
     });
   });
 

@@ -399,7 +399,7 @@ export function getButtonVisibility(ctx: IVisibilityContext): IButtonVisibility 
  * Get field visibility based on context
  */
 export function getFieldVisibility(ctx: IVisibilityContext): IFieldVisibility {
-  const { status, permissions, isOwner, isNewRequest, isAssignedAttorney, isWaitingOnSubmitter } = ctx;
+  const { status, permissions, isOwner, isNewRequest, isWaitingOnSubmitter } = ctx;
   const isAdmin = permissions.isAdmin;
   const isLegalAdmin = permissions.isLegalAdmin;
   const isAttorney = permissions.isAttorney;
@@ -445,9 +445,9 @@ export function getFieldVisibility(ctx: IVisibilityContext): IFieldVisibility {
       canEdit: !isTerminal &&
                status === RequestStatus.InReview &&
                !ctx.legalReviewCompleted &&
-               (isAdmin || isLegalAdmin || (isAttorney && isAssignedAttorney)),
+               (isAdmin || isLegalAdmin || isAttorney),
       reason: ctx.legalReviewCompleted ? 'Legal review already completed' :
-              !isAssignedAttorney && !isAdmin && !isLegalAdmin ? 'Only assigned attorney can submit' :
+              !isAttorney && !isAdmin && !isLegalAdmin ? 'Only attorneys, Legal Admin, or admin can submit' :
               undefined,
     },
 
