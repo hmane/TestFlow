@@ -346,10 +346,12 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
   const isForesideReviewRequired = watch('isForesideReviewRequired');
   const recordRetentionOnly = watch('recordRetentionOnly');
   const isRetailUse = watch('isRetailUse');
-  const { buttons, fields } = useUIVisibility();
+  const { fields, context: visibilityContext } = useUIVisibility();
   const { isAdmin } = usePermissions();
   const canReview = fields.complianceReview.canEdit;
-  const canResubmit = reviewStatus === ComplianceReviewStatus.WaitingOnSubmitter && buttons.resubmitForReview.visible;
+  const canResubmit =
+    reviewStatus === ComplianceReviewStatus.WaitingOnSubmitter &&
+    (visibilityContext.isOwner || isAdmin);
   const canEditSubmitterNotes = canReview || canResubmit;
 
   /**

@@ -39,6 +39,7 @@ import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 // App imports using path aliases
 import { DocumentType } from '@appTypes/documentTypes';
 import { ReviewAudience, ReviewOutcome } from '@appTypes/index';
+import { RequestStatus } from '@appTypes/workflowTypes';
 import { DocumentUpload } from '@components/DocumentUpload';
 import { ValidationErrorContainer } from '@components/ValidationErrorContainer';
 import { WorkflowCardHeader } from '@components/WorkflowCardHeader';
@@ -488,25 +489,29 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
       }
     : undefined;
 
-  // Determine header status
-  const headerStatus = isReadOnly ? 'completed' : 'in-progress';
+  const isCloseoutStageCompleted =
+    currentRequest.status === RequestStatus.AwaitingFINRADocuments ||
+    currentRequest.status === RequestStatus.Completed;
+
+  // Read-only does not imply the closeout stage is complete.
+  const headerStatus = isCloseoutStageCompleted ? 'completed' : 'in-progress';
 
   return (
     <Card
       id='closeout-card'
-      className={`closeout-form ${isReadOnly ? 'closeout-form--completed' : ''}`}
+      className={`closeout-form ${isCloseoutStageCompleted ? 'closeout-form--completed' : ''}`}
       allowExpand={true}
-      defaultExpanded={!defaultCollapsed && !isReadOnly}
+      defaultExpanded={!defaultCollapsed && !isCloseoutStageCompleted}
     >
       <Header size='regular'>
         <WorkflowCardHeader
           title='Closeout'
           status={headerStatus}
           startedOn={startedOn}
-          completedOn={isReadOnly ? currentRequest.closeoutOn : undefined}
-          completedBy={isReadOnly ? completedBy : undefined}
+          completedOn={isCloseoutStageCompleted ? currentRequest.closeoutOn : undefined}
+          completedBy={isCloseoutStageCompleted ? completedBy : undefined}
           durationMinutes={durationMinutes}
-          trackingId={isReadOnly ? currentRequest.trackingId : undefined}
+          trackingId={isCloseoutStageCompleted ? currentRequest.trackingId : undefined}
         />
       </Header>
 

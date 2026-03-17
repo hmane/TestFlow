@@ -278,10 +278,12 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
 
   const reviewStatus = watch('legalReviewStatus');
   const selectedOutcome = watch('legalReviewOutcome');
-  const { buttons, fields } = useUIVisibility();
+  const { fields, context: visibilityContext } = useUIVisibility();
   const { isAdmin } = usePermissions();
   const canReview = fields.legalReview.canEdit;
-  const canResubmit = reviewStatus === LegalReviewStatus.WaitingOnSubmitter && buttons.resubmitForReview.visible;
+  const canResubmit =
+    reviewStatus === LegalReviewStatus.WaitingOnSubmitter &&
+    (visibilityContext.isOwner || isAdmin);
   const canEditSubmitterNotes = canReview || canResubmit;
 
   // Sync form with store when currentRequest changes
