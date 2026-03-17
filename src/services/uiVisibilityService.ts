@@ -493,6 +493,8 @@ export function getFieldVisibility(ctx: IVisibilityContext): IFieldVisibility {
         (isNewRequest && (permissions.isSubmitter || isAdmin)) ||
         // Owner can add in Draft
         (status === RequestStatus.Draft && (isOwner || isAdmin)) ||
+        // Owner can manage attachments during intake routing before review begins
+        ((status === RequestStatus.LegalIntake || status === RequestStatus.AssignAttorney) && isOwner) ||
         // Owner can respond to reviewer comments while waiting on submitter
         (status === RequestStatus.InReview && isOwner && isWaitingOnSubmitter) ||
         // LegalAdmin, Attorney, Compliance can add before closeout
@@ -503,6 +505,8 @@ export function getFieldVisibility(ctx: IVisibilityContext): IFieldVisibility {
         (isNewRequest && (permissions.isSubmitter || isAdmin)) ||
         // Owner can delete in Draft
         (status === RequestStatus.Draft && (isOwner || isAdmin)) ||
+        // Owner can manage attachments during intake routing before review begins
+        ((status === RequestStatus.LegalIntake || status === RequestStatus.AssignAttorney) && isOwner) ||
         // Owner can update attachments while responding to reviewer comments
         (status === RequestStatus.InReview && isOwner && isWaitingOnSubmitter) ||
         // Admin, LegalAdmin can delete anytime before closeout

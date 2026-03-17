@@ -102,6 +102,24 @@ describe('uiVisibilityService', () => {
       expect(visibility.attachments.canDelete).toBe(true);
     });
 
+    it('should allow the owner to manage attachments during Legal Intake', () => {
+      const ctx = createVisibilityContext(
+        RequestStatus.LegalIntake,
+        basePermissions,
+        '10',
+        {
+          submittedBy: { id: '10' },
+          author: { id: '10' },
+          reviewAudience: 'Legal',
+        },
+        { isNewRequest: false }
+      );
+
+      const visibility = getFieldVisibility(ctx);
+      expect(visibility.attachments.canAdd).toBe(true);
+      expect(visibility.attachments.canDelete).toBe(true);
+    });
+
     it('should allow any attorney to edit legal review during In Review', () => {
       const ctx = createVisibilityContext(
         RequestStatus.InReview,
