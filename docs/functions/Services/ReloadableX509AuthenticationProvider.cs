@@ -29,8 +29,9 @@ namespace LegalWorkflow.Functions.Services
         private readonly ILogger<ReloadableX509AuthenticationProvider> _logger;
         private readonly SemaphoreSlim _refreshLock = new(1, 1);
 
-        private IAuthenticationProvider _innerProvider;
-        private CertificateLoadInfo _currentCertificate;
+        private volatile IAuthenticationProvider? _innerProvider;
+        private volatile CertificateLoadInfo? _currentCertificate;
+        private volatile bool _initialized;
 
         public ReloadableX509AuthenticationProvider(
             string clientId,
@@ -50,27 +51,52 @@ namespace LegalWorkflow.Functions.Services
             }
 
             _certificateClient = new CertificateClient(new Uri(keyVaultUrl), new DefaultAzureCredential());
-            (_innerProvider, _currentCertificate) = CreateAuthenticationProvider();
+            // Certificate is loaded lazily on first use via EnsureInitializedAsync()
         }
 
         /// <summary>
         /// Gets metadata about the currently loaded certificate.
+        /// Returns null if the certificate has not been loaded yet.
         /// </summary>
-        public CertificateLoadInfo CurrentCertificate => _currentCertificate;
+        public CertificateLoadInfo? CurrentCertificate => _currentCertificate;
 
         public async Task AuthenticateRequestAsync(Uri resource, HttpRequestMessage request)
         {
-            await _innerProvider.AuthenticateRequestAsync(resource, request);
+            await EnsureInitializedAsync();
+            await _innerProvider!.AuthenticateRequestAsync(resource, request);
         }
 
-        public Task<string> GetAccessTokenAsync(Uri resource)
+        public async Task<string> GetAccessTokenAsync(Uri resource)
         {
-            return _innerProvider.GetAccessTokenAsync(resource);
+            await EnsureInitializedAsync();
+            return await _innerProvider!.GetAccessTokenAsync(resource);
         }
 
-        public Task<string> GetAccessTokenAsync(Uri resource, string[] scopes)
+        public async Task<string> GetAccessTokenAsync(Uri resource, string[] scopes)
         {
-            return _innerProvider.GetAccessTokenAsync(resource, scopes);
+            await EnsureInitializedAsync();
+            return await _innerProvider!.GetAccessTokenAsync(resource, scopes);
+        }
+
+        /// <summary>
+        /// Ensures the certificate is loaded from Key Vault before first use.
+        /// Uses double-check locking to avoid redundant loads.
+        /// </summary>
+        private async Task EnsureInitializedAsync()
+        {
+            if (_initialized) return;
+
+            await _refreshLock.WaitAsync();
+            try
+            {
+                if (_initialized) return;
+                (_innerProvider, _currentCertificate) = await CreateAuthenticationProviderAsync();
+                _initialized = true;
+            }
+            finally
+            {
+                _refreshLock.Release();
+            }
         }
 
         /// <summary>
@@ -83,20 +109,21 @@ namespace LegalWorkflow.Functions.Services
             try
             {
                 var previous = _currentCertificate;
-                var (provider, current) = CreateAuthenticationProvider();
+                var (provider, current) = await CreateAuthenticationProviderAsync();
 
                 _innerProvider = provider;
                 _currentCertificate = current;
+                _initialized = true;
 
                 _logger.LogInformation(
                     "Reloaded certificate cache from Key Vault. Previous thumbprint suffix: {PreviousThumbprintSuffix}, new thumbprint suffix: {CurrentThumbprintSuffix}, expires on: {ExpiresOnUtc}",
-                    previous.ThumbprintSuffix,
+                    previous?.ThumbprintSuffix ?? "none",
                     current.ThumbprintSuffix,
                     current.ExpiresOnUtc);
 
                 return new CertificateRefreshResult
                 {
-                    Previous = previous,
+                    Previous = previous ?? new CertificateLoadInfo(),
                     Current = current,
                     RefreshedAtUtc = DateTime.UtcNow
                 };
@@ -107,9 +134,9 @@ namespace LegalWorkflow.Functions.Services
             }
         }
 
-        private (IAuthenticationProvider Provider, CertificateLoadInfo Info) CreateAuthenticationProvider()
+        private async Task<(IAuthenticationProvider Provider, CertificateLoadInfo Info)> CreateAuthenticationProviderAsync()
         {
-            var certificate = DownloadCertificate();
+            var certificate = await DownloadCertificateAsync();
             var info = CertificateLoadInfo.FromCertificate(certificate, DateTime.UtcNow);
             var provider = new X509CertificateAuthenticationProvider(_clientId, _tenantId, certificate);
 
@@ -119,12 +146,23 @@ namespace LegalWorkflow.Functions.Services
                 info.ThumbprintSuffix,
                 info.ExpiresOnUtc);
 
+            var daysUntilExpiry = (info.ExpiresOnUtc - DateTime.UtcNow).TotalDays;
+            if (daysUntilExpiry <= 30)
+            {
+                _logger.LogWarning(
+                    "Certificate is expiring soon! Subject: {Subject}, thumbprint suffix: {ThumbprintSuffix}, expires on: {ExpiresOnUtc} ({DaysUntilExpiry:F0} days remaining)",
+                    info.Subject,
+                    info.ThumbprintSuffix,
+                    info.ExpiresOnUtc,
+                    daysUntilExpiry);
+            }
+
             return (provider, info);
         }
 
-        private X509Certificate2 DownloadCertificate()
+        private async Task<X509Certificate2> DownloadCertificateAsync()
         {
-            var response = _certificateClient.DownloadCertificate(_certificateName);
+            var response = await _certificateClient.DownloadCertificateAsync(_certificateName);
             return response.Value;
         }
     }

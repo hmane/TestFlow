@@ -21,18 +21,18 @@ This document provides a comprehensive reference for the SharePoint site schema 
 
 | Group Name | Description | Owner | Permissions |
 |------------|-------------|-------|-------------|
-| **LW - Admin** | System administrators with full access to Legal Workflow | Self-owned | Full Control - Can manage all lists, items, and site settings |
-| **LW - Submitters** | Users who can submit legal review requests | LW - Admin | Contribute - Create requests, view all requests (read-only for others' requests) |
-| **LW - Legal Admin** | Legal administrators who can triage and manage all requests | LW - Admin | Full Control on Requests - Triage, assign attorneys, override settings, manage all requests |
-| **LW - Attorney Assigner** | Committee members who can assign attorneys to requests | LW - Admin | Edit on Assign Attorney stage - Can assign attorneys to requests pending assignment |
-| **LW - Attorneys** | Attorneys who can review and approve assigned legal requests | LW - Admin | Edit on assigned items - Review and submit legal reviews for assigned requests |
-| **LW - Compliance Users** | Compliance users who can review compliance aspects of requests | LW - Admin | Edit on compliance items - Review and submit compliance reviews |
+| **LW - Admins** | System administrators with full access to Legal Workflow | Self-owned | Full Control - Can manage all lists, items, and site settings |
+| **LW - Submitters** | Users who can submit legal review requests | LW - Admins | Contribute - Create requests, view all requests (read-only for others' requests) |
+| **LW - Legal Admins** | Legal administrators who can triage and manage all requests | LW - Admins | Full Control on Requests - Triage, assign attorneys, override settings, manage all requests |
+| **LW - Attorney Assigners** | Committee members who can assign attorneys to requests | LW - Admins | Edit on Assign Attorney stage - Can assign attorneys to requests pending assignment |
+| **LW - Attorneys** | Attorneys who can review and approve assigned legal requests | LW - Admins | Edit on assigned items - Review and submit legal reviews for assigned requests |
+| **LW - Compliance Reviewers** | Compliance users who can review compliance aspects of requests | LW - Admins | Edit on compliance items - Review and submit compliance reviews |
 
 ### Group Settings (All Groups)
 
 | Setting | Value |
 |---------|-------|
-| AllowMembersEditMembership | false (except LW - Admin: true) |
+| AllowMembersEditMembership | false (except LW - Admins: true) |
 | AllowRequestToJoinLeave | false |
 | AutoAcceptRequestToJoinLeave | false |
 | OnlyAllowMembersViewMembership | true |

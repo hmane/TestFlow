@@ -212,14 +212,14 @@ describe('Workflow Action Service - Save Progress', () => {
 
     // --- Timestamp logic ---
 
-    it('should update timestamp when status changes from NotStarted to InProgress', async () => {
+    it('should not reset timestamp when status changes from NotStarted to InProgress', async () => {
       mockLoadRequestById.mockResolvedValue({
         ...baseRequest,
         legalReviewStatus: LegalReviewStatus.NotStarted,
       });
 
       const result = await saveLegalReviewProgress(1, {});
-      expect(result.fieldsUpdated).toContain('LegalStatusUpdatedOn');
+      expect(result.fieldsUpdated).not.toContain('LegalStatusUpdatedOn');
     });
 
     it('should NOT update timestamp when already In Progress', async () => {
@@ -359,9 +359,9 @@ describe('Workflow Action Service - Save Progress', () => {
 
     // --- Timestamp logic ---
 
-    it('should update timestamp when status changes from NotStarted to InProgress', async () => {
+    it('should not reset timestamp when status changes from NotStarted to InProgress', async () => {
       const result = await saveComplianceReviewProgress(1, {});
-      expect(result.fieldsUpdated).toContain('ComplianceStatusUpdatedOn');
+      expect(result.fieldsUpdated).not.toContain('ComplianceStatusUpdatedOn');
     });
 
     it('should NOT update timestamp when already In Progress', async () => {

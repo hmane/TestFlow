@@ -242,11 +242,11 @@ legal-workflow/
 
 ### User Roles
 - **LW - Submitters**: Create and view requests
-- **LW - Legal Admin**: Triage and assign
-- **LW - Attorney Assigner**: Committee members
+- **LW - Legal Admins**: Triage and assign
+- **LW - Attorney Assigners**: Committee members
 - **LW - Attorneys**: Review assigned requests
-- **LW - Compliance Users**: Compliance reviews
-- **LW - Admin**: Full system administration
+- **LW - Compliance Reviewers**: Compliance reviews
+- **LW - Admins**: Full system administration
 
 ### Dashboard Views (19 total)
 

@@ -95,6 +95,25 @@ describe('Time Tracking Service', () => {
       jest.useRealTimers();
     });
 
+    it('should calculate straight-through legal review hours from initial assignment when no handoff timestamp exists', async () => {
+      const request = createBaseRequest({
+        legalReviewStatus: LegalReviewStatus.NotStarted,
+        submittedForReviewOn: new Date('2025-02-03T10:00:00'),
+        legalReviewAttorneyHours: 0,
+      });
+
+      const now = new Date('2025-02-03T14:00:00');
+      jest.useFakeTimers();
+      jest.setSystemTime(now);
+
+      const updates = await calculateAndUpdateStageTime(request, 'LegalReview', 'Submitter');
+
+      expect(updates.legalReviewAttorneyHours).toBe(4);
+      expect(updates.totalReviewerHours).toBe(4);
+
+      jest.useRealTimers();
+    });
+
     it('should calculate compliance reviewer hours', async () => {
       const lastHandoff = new Date('2025-02-03T09:00:00'); // Monday 9 AM PST
       const request = createBaseRequest({
@@ -110,6 +129,25 @@ describe('Time Tracking Service', () => {
       const updates = await calculateAndUpdateStageTime(request, 'ComplianceReview', 'Submitter');
 
       // Should have 1 (existing) + 3 (new) = 4 hours
+      expect(updates.complianceReviewReviewerHours).toBe(4);
+      expect(updates.totalReviewerHours).toBe(4);
+
+      jest.useRealTimers();
+    });
+
+    it('should calculate straight-through compliance review hours from initial assignment when no handoff timestamp exists', async () => {
+      const request = createBaseRequest({
+        complianceReviewStatus: ComplianceReviewStatus.NotStarted,
+        submittedForReviewOn: new Date('2025-02-03T09:00:00'),
+        complianceReviewReviewerHours: 1,
+      });
+
+      const now = new Date('2025-02-03T12:00:00');
+      jest.useFakeTimers();
+      jest.setSystemTime(now);
+
+      const updates = await calculateAndUpdateStageTime(request, 'ComplianceReview', 'Submitter');
+
       expect(updates.complianceReviewReviewerHours).toBe(4);
       expect(updates.totalReviewerHours).toBe(4);
 
@@ -169,6 +207,26 @@ describe('Time Tracking Service', () => {
 
       jest.useRealTimers();
     });
+
+    it('should use the later review completion date when calculating submitter closeout time', async () => {
+      const request = createBaseRequest({
+        status: 'Closeout',
+        legalReviewCompletedOn: new Date('2025-02-03T12:00:00'),
+        complianceReviewCompletedOn: new Date('2025-02-03T10:00:00'),
+        closeoutSubmitterHours: 1,
+      });
+
+      const now = new Date('2025-02-03T14:00:00');
+      jest.useFakeTimers();
+      jest.setSystemTime(now);
+
+      const updates = await calculateAndUpdateStageTime(request, 'Closeout', 'Submitter');
+
+      expect(updates.closeoutSubmitterHours).toBe(3);
+      expect(updates.totalSubmitterHours).toBe(3);
+
+      jest.useRealTimers();
+    });
   });
 
   describe('pauseTimeTracking', () => {
@@ -205,6 +263,26 @@ describe('Time Tracking Service', () => {
       // Totals should be recalculated
       expect(updates.totalReviewerHours).toBeDefined();
       expect(updates.totalSubmitterHours).toBeDefined();
+    });
+
+    it('should finalize closeout time into submitter hours when a request is put on hold', async () => {
+      const request = createBaseRequest({
+        status: 'Closeout',
+        legalReviewCompletedOn: new Date('2025-02-03T09:00:00'),
+        complianceReviewCompletedOn: new Date('2025-02-03T11:00:00'),
+        closeoutSubmitterHours: 0.5,
+      });
+
+      const now = new Date('2025-02-03T13:00:00');
+      jest.useFakeTimers();
+      jest.setSystemTime(now);
+
+      const updates = await pauseTimeTracking(request);
+
+      expect(updates.closeoutSubmitterHours).toBe(2.5);
+      expect(updates.totalSubmitterHours).toBe(2.5);
+
+      jest.useRealTimers();
     });
   });
 

@@ -23,6 +23,8 @@ import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
 
 import { Lists } from '@sp/Lists';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
+import type { IDocumentInfo } from 'spfx-toolkit/lib/components/DocumentLink/DocumentLink.types';
+import { openPreviewModal } from 'spfx-toolkit/lib/components/DocumentLink/components/DocumentActions';
 
 import type { IStagedDocument } from '@stores/documentsStore';
 import { useDocumentsStore } from '@stores/documentsStore';
@@ -52,6 +54,49 @@ import './DocumentUpload.scss';
  * Default library title
  */
 const DEFAULT_LIBRARY_TITLE = Lists.RequestDocuments.Title;
+
+function buildPreviewDocument(doc: any, documentLibraryTitle: string): IDocumentInfo | undefined {
+  if (!doc?.url || !doc?.name) {
+    return undefined;
+  }
+
+  try {
+    const serverRelativeUrl = new URL(doc.url).pathname;
+    return {
+      id: doc.listItemId ?? 0,
+      uniqueId: doc.uniqueId ?? '',
+      name: doc.name,
+      title: doc.name,
+      url: doc.url,
+      serverRelativeUrl,
+      size: doc.size ?? 0,
+      fileType: doc.name.split('.').pop()?.toLowerCase() ?? '',
+      created: new Date(doc.timeCreated ?? doc.timeLastModified ?? Date.now()),
+      createdBy: {
+        id: 0,
+        email: doc.createdByEmail ?? '',
+        title: typeof doc.createdBy === 'string' ? doc.createdBy : 'Unknown',
+        loginName: '',
+      },
+      modified: new Date(doc.timeLastModified ?? doc.timeCreated ?? Date.now()),
+      modifiedBy: {
+        id: 0,
+        email: doc.modifiedByEmail ?? '',
+        title: typeof doc.modifiedBy === 'string' ? doc.modifiedBy : 'Unknown',
+        loginName: '',
+      },
+      libraryName: documentLibraryTitle,
+      listId: '',
+      version: doc.version ?? '',
+    };
+  } catch (error) {
+    SPContext.logger.warn('DocumentUpload: Failed to build preview metadata, falling back to new tab', {
+      fileName: doc?.name,
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return undefined;
+  }
+}
 
 /**
  * DocumentUpload Component
@@ -166,7 +211,10 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
       const result = await startReviewing(doc);
       if (result.success) {
         showSuccess(`Started reviewing "${doc.name}"`);
-        if (doc.url) {
+        const previewDocument = buildPreviewDocument(doc, documentLibraryTitle);
+        if (previewDocument) {
+          openPreviewModal(previewDocument, 'edit');
+        } else if (doc.url) {
           window.open(doc.url, '_blank');
         }
         if (itemId) {
@@ -185,7 +233,7 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
         }
       }
     },
-    [itemId, loadDocumentsFromStore, showSuccess]
+    [documentLibraryTitle, itemId, loadDocumentsFromStore, showSuccess]
   );
 
   /**
@@ -239,25 +287,20 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
    */
   const handleOpenViewOnly = React.useCallback(
     (doc: any): void => {
-      if (doc.url) {
+      const previewDocument = buildPreviewDocument(doc, documentLibraryTitle);
+      if (previewDocument) {
+        openPreviewModal(previewDocument, 'view');
+      } else if (doc.url) {
         window.open(doc.url, '_blank');
       }
     },
-    []
+    [documentLibraryTitle]
   );
 
   /**
    * Render Approval Mode
    */
   const renderApprovalMode = (): React.ReactNode => {
-    SPContext.logger.info('🔍 renderApprovalMode ENTRY', {
-      documentType: documentType ? String(documentType) : 'undefined',
-      isReadOnly,
-      mode,
-      itemId,
-      fileInputRefExists: !!fileInputRef.current,
-    });
-
     if (!documentType) return null;
 
     const docs = getDocumentsByType(documentType as any);
@@ -292,18 +335,6 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
 
     const hasDocuments = docs.length > 0 || staged.length > 0;
 
-    SPContext.logger.info('🔍 renderApprovalMode', {
-      documentType,
-      documentTypeValue: String(documentType),
-      docsCount: docs.length,
-      stagedCount: staged.length,
-      allStagedFilesCount: stagedFiles.length,
-      stagedFilesForThisType: staged.map(sf => ({
-        fileName: sf.file.name,
-        documentType: sf.documentType,
-      })),
-    });
-
     return (
       <div className="document-upload document-upload--approval-mode">
         {label && (
@@ -330,13 +361,7 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
               onDrop={handleDrop}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
-              onClick={() => {
-                SPContext.logger.info('🔍 DropZoneCard CLICKED', {
-                  documentType: documentType ? String(documentType) : 'undefined',
-                  fileInputRefExists: !!fileInputRef.current,
-                });
-                fileInputRef.current?.click();
-              }}
+              onClick={() => { fileInputRef.current?.click(); }}
               className={
                 isDragging
                   ? 'drop-zone-card--active'
@@ -422,7 +447,7 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
                 onStartReviewing={docCheckoutStatus ? () => { void handleStartReviewing(doc); } : undefined}
                 onDoneReviewing={docCheckoutStatus ? () => { void handleDoneReviewing(doc); } : undefined}
                 onStopReviewing={docCheckoutStatus ? () => { void handleStopReviewing(doc); } : undefined}
-                onOpenViewOnly={docCheckoutStatus ? () => { handleOpenViewOnly(doc); } : undefined}
+                onOpenViewOnly={() => { handleOpenViewOnly(doc); }}
                 onRename={isLockedByCheckout ? undefined : (newName) => handleDocumentAction({ type: 'rename', documentId: doc.uniqueId, data: newName })}
                 onCancelRename={isLockedByCheckout ? undefined : () => handleDocumentAction({ type: 'cancelRename', documentId: doc.uniqueId })}
                 onDelete={isLockedByCheckout ? undefined : () => handleDocumentAction({ type: 'delete', documentId: doc.uniqueId })}
@@ -450,16 +475,6 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
    * Render Attachment Mode
    */
   const renderAttachmentMode = (): React.ReactNode => {
-    SPContext.logger.info('🔍 renderAttachmentMode - ALL STAGED FILES', {
-      totalStagedCount: stagedFiles.length,
-      allStagedFiles: stagedFiles.map(sf => ({
-        id: sf.id,
-        fileName: sf.file.name,
-        documentType: sf.documentType,
-        documentTypeValue: String(sf.documentType),
-      })),
-    });
-
     // Get documents and apply defensive filtering (including pending type changes)
     const pendingTypeById = new Map<string, DocumentType>();
     for (let i = 0; i < filesToChangeType.length; i++) {
@@ -490,15 +505,6 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
     });
 
     const allReviewStaged = stagedFiles.filter(function(sf) { return sf.documentType === DocumentType.Review; });
-
-    SPContext.logger.info('🔍 Review section filtering', {
-      allStagedFilesCount: stagedFiles.length,
-      matchingReviewTypeCount: allReviewStaged.length,
-      matchingReviewFiles: allReviewStaged.map(sf => ({
-        fileName: sf.file.name,
-        documentType: sf.documentType,
-      })),
-    });
 
     const reviewStaged = allReviewStaged.filter(function(sf) {
       return !isApprovalDocumentType(sf.documentType);
@@ -658,7 +664,7 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
                   onStartReviewing={docCheckoutStatus ? () => { void handleStartReviewing(doc); } : undefined}
                   onDoneReviewing={docCheckoutStatus ? () => { void handleDoneReviewing(doc); } : undefined}
                   onStopReviewing={docCheckoutStatus ? () => { void handleStopReviewing(doc); } : undefined}
-                  onOpenViewOnly={docCheckoutStatus ? () => { handleOpenViewOnly(doc); } : undefined}
+                  onOpenViewOnly={() => { handleOpenViewOnly(doc); }}
                   onRename={isLockedByCheckout ? undefined : (newName) => handleDocumentAction({ type: 'rename', documentId: doc.uniqueId, data: newName })}
                   onCancelRename={isLockedByCheckout ? undefined : () => handleDocumentAction({ type: 'cancelRename', documentId: doc.uniqueId })}
                   onDelete={isLockedByCheckout ? undefined : () => handleDocumentAction({ type: 'delete', documentId: doc.uniqueId })}

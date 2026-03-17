@@ -1121,7 +1121,7 @@ This section describes detailed use cases with scenarios, acceptance criteria, a
 
 **Preconditions:**
 - Request exists in Legal Intake status
-- User is member of LW - Legal Admin SharePoint group
+- User is member of LW - Legal Admins SharePoint group
 - At least one Attorney exists in LW - Attorneys group
 
 **Main Success Scenario:**
@@ -1178,8 +1178,8 @@ This section describes detailed use cases with scenarios, acceptance criteria, a
 
 **Preconditions:**
 - Request exists in Legal Intake status
-- User (Legal Admin) is member of LW - Legal Admin group
-- Committee members exist in LW - Attorney Assigner group
+- User (Legal Admin) is member of LW - Legal Admins group
+- Committee members exist in LW - Attorney Assigners group
 
 **Main Success Scenario:**
 
@@ -1422,7 +1422,7 @@ This section describes detailed use cases with scenarios, acceptance criteria, a
 
 **Preconditions:**
 - Request exists in any status except Completed or Cancelled
-- User is member of LW - Legal Admin group
+- User is member of LW - Legal Admins group
 
 **Main Success Scenario:**
 
@@ -1465,7 +1465,7 @@ This section describes detailed use cases with scenarios, acceptance criteria, a
 
 **Preconditions:**
 - Request exists in active status (Legal Intake, Assign Attorney, In Review, or Closeout)
-- User is member of LW - Legal Admin group
+- User is member of LW - Legal Admins group
 
 **Main Success Scenario:**
 
@@ -1754,11 +1754,11 @@ This section describes detailed use cases with scenarios, acceptance criteria, a
 
 **INT-004:** The system shall use SharePoint Groups for role-based access control:
 - LW - Submitters
-- LW - Legal Admin
-- LW - Attorney Assigner
+- LW - Legal Admins
+- LW - Attorney Assigners
 - LW - Attorneys
-- LW - Compliance Users
-- LW - Admin
+- LW - Compliance Reviewers
+- LW - Admins
 
 **INT-005:** The system shall leverage SharePoint built-in version history for audit trail (enabled on Requests list with versioning for all columns).
 
@@ -1971,11 +1971,11 @@ This section describes detailed use cases with scenarios, acceptance criteria, a
 
 **CFG-012:** IT Admin shall be able to add/remove users from groups:
 - LW - Submitters (all employees who submit requests)
-- LW - Legal Admin (legal administrative staff)
-- LW - Attorney Assigner (committee members who assign attorneys)
+- LW - Legal Admins (legal administrative staff)
+- LW - Attorney Assigners (committee members who assign attorneys)
 - LW - Attorneys (legal reviewers)
-- LW - Compliance Users (compliance reviewers)
-- LW - Admin (IT administrators with full site control)
+- LW - Compliance Reviewers (compliance reviewers)
+- LW - Admins (IT administrators with full site control)
 
 **CFG-013:** A user may be member of multiple groups (e.g., Legal Admin AND Attorney).
 
@@ -2786,11 +2786,11 @@ The system defines six SharePoint groups for role-based access control:
 | Group Name | Description | Typical Members | Permissions Level (Site) |
 |------------|-------------|-----------------|--------------------------|
 | **LW - Submitters** | Users who create and submit review requests | All employees (Marketing, Sales, Product, etc.) | Contribute |
-| **LW - Legal Admin** | Legal administrative staff who triage and manage requests | Legal Administrators, Legal Coordinators | Full Control |
-| **LW - Attorney Assigner** | Committee members who assign attorneys to complex requests | Senior Attorneys, Practice Group Leads | Read (site-level); Edit (item-level when assigned) |
+| **LW - Legal Admins** | Legal administrative staff who triage and manage requests | Legal Administrators, Legal Coordinators | Full Control |
+| **LW - Attorney Assigners** | Committee members who assign attorneys to complex requests | Senior Attorneys, Practice Group Leads | Read (site-level); Edit (item-level when assigned) |
 | **LW - Attorneys** | Legal reviewers who perform legal analysis | All Attorneys | Read (site-level); Edit (item-level when assigned) |
-| **LW - Compliance Users** | Compliance reviewers who perform regulatory review | Compliance Analysts, Compliance Officers | Read (site-level); Edit (item-level when assigned) |
-| **LW - Admin** | IT administrators with full system access | IT Support, SharePoint Admins | Full Control |
+| **LW - Compliance Reviewers** | Compliance reviewers who perform regulatory review | Compliance Analysts, Compliance Officers | Read (site-level); Edit (item-level when assigned) |
+| **LW - Admins** | IT administrators with full system access | IT Support, SharePoint Admins | Full Control |
 
 **Group Membership Management:**
 - IT Admin adds/removes users via SharePoint Site Settings → People and Groups
@@ -2808,8 +2808,8 @@ The system implements dynamic item-level permissions that change based on workfl
 | Group | Permission Level | Can Read | Can Edit | Can Delete |
 |-------|------------------|----------|----------|------------|
 | LW - Submitters | Contribute | Own items only | Own items only | Own items only |
-| LW - Legal Admin | Full Control | All | All | All |
-| LW - Admin | Full Control | All | All | All |
+| LW - Legal Admins | Full Control | All | All | All |
+| LW - Admins | Full Control | All | All | All |
 
 **Rationale:** Submitters have full control of own drafts; Legal Admin can see all drafts for monitoring/support.
 
@@ -2820,11 +2820,11 @@ The system implements dynamic item-level permissions that change based on workfl
 | Group/User | Permission Level | Can Read | Can Edit | Can Delete |
 |------------|------------------|----------|----------|------------|
 | Submitter (Creator) | Read | Yes | No | No |
-| LW - Legal Admin | Full Control | Yes | Yes | Yes (Cancel only) |
-| LW - Attorney Assigner | Read | Yes | No | No |
+| LW - Legal Admins | Full Control | Yes | Yes | Yes (Cancel only) |
+| LW - Attorney Assigners | Read | Yes | No | No |
 | LW - Attorneys | None | No | No | No |
-| LW - Compliance Users | None | No | No | No |
-| LW - Admin | Full Control | Yes | Yes | Yes |
+| LW - Compliance Reviewers | None | No | No | No |
+| LW - Admins | Full Control | Yes | Yes | Yes |
 
 **Rationale:** Submitter can no longer edit after submission (prevents changes after approval); Legal Admin has full control for triage; Committee can view for awareness.
 
@@ -2835,11 +2835,11 @@ The system implements dynamic item-level permissions that change based on workfl
 | Group/User | Permission Level | Can Read | Can Edit | Can Delete |
 |------------|------------------|----------|----------|------------|
 | Submitter (Creator) | Read | Yes | No | No |
-| LW - Legal Admin | Full Control | Yes | Yes | Yes (Cancel only) |
-| LW - Attorney Assigner | Edit | Yes | Yes (Assign Attorney only) | No |
+| LW - Legal Admins | Full Control | Yes | Yes | Yes (Cancel only) |
+| LW - Attorney Assigners | Edit | Yes | Yes (Assign Attorney only) | No |
 | LW - Attorneys | None | No | No | No |
-| LW - Compliance Users | None | No | No | No |
-| LW - Admin | Full Control | Yes | Yes | Yes |
+| LW - Compliance Reviewers | None | No | No | No |
+| LW - Admins | Full Control | Yes | Yes | Yes |
 
 **Rationale:** Committee members can assign attorney; no other changes allowed to preserve request integrity.
 
@@ -2851,11 +2851,11 @@ The system implements dynamic item-level permissions that change based on workfl
 |------------|------------------|----------|----------|------------|
 | Submitter (Creator) | Read | Yes | No (except upload docs if Waiting On Submitter) | No |
 | Assigned Attorney | Edit | Yes | Yes (Legal Review section only) | No |
-| LW - Legal Admin | Full Control | Yes | Yes | Yes (Cancel only) |
-| LW - Attorney Assigner | Read | Yes | No | No |
+| LW - Legal Admins | Full Control | Yes | Yes | Yes (Cancel only) |
+| LW - Attorney Assigners | Read | Yes | No | No |
 | LW - Attorneys (others) | None | No | No | No |
-| LW - Compliance Users | None | No | No | No |
-| LW - Admin | Full Control | Yes | Yes | Yes |
+| LW - Compliance Reviewers | None | No | No | No |
+| LW - Admins | Full Control | Yes | Yes | Yes |
 
 **Rationale:** Assigned Attorney has edit access to perform review; other attorneys cannot see request (confidentiality).
 
@@ -2867,10 +2867,10 @@ The system implements dynamic item-level permissions that change based on workfl
 |------------|------------------|----------|----------|------------|
 | Submitter (Creator) | Read | Yes | No (except upload docs if Waiting On Submitter) | No |
 | Assigned Attorney | Edit | Yes | Yes (Legal Review section only) | No |
-| LW - Compliance Users (group) | Edit | Yes | Yes (Compliance Review section only) | No |
-| LW - Legal Admin | Full Control | Yes | Yes | Yes (Cancel only) |
-| LW - Attorney Assigner | Read | Yes | No | No |
-| LW - Admin | Full Control | Yes | Yes | Yes |
+| LW - Compliance Reviewers (group) | Edit | Yes | Yes (Compliance Review section only) | No |
+| LW - Legal Admins | Full Control | Yes | Yes | Yes (Cancel only) |
+| LW - Attorney Assigners | Read | Yes | No | No |
+| LW - Admins | Full Control | Yes | Yes | Yes |
 
 **Rationale:** Compliance Users group granted Edit access when Compliance review required; any member can perform review.
 
@@ -2882,9 +2882,9 @@ The system implements dynamic item-level permissions that change based on workfl
 |------------|------------------|----------|----------|------------|
 | Submitter (Creator) | Edit | Yes | Yes (Closeout section only) | No |
 | Assigned Attorney | Read | Yes | No | No |
-| LW - Compliance Users | Read | Yes (if involved) | No | No |
-| LW - Legal Admin | Full Control | Yes | Yes | Yes (Cancel only) |
-| LW - Admin | Full Control | Yes | Yes | Yes |
+| LW - Compliance Reviewers | Read | Yes (if involved) | No | No |
+| LW - Legal Admins | Full Control | Yes | Yes | Yes (Cancel only) |
+| LW - Admins | Full Control | Yes | Yes | Yes |
 
 **Rationale:** Submitter regains edit access to enter Tracking ID and complete request; reviewers have read access to monitor.
 
@@ -2896,10 +2896,10 @@ The system implements dynamic item-level permissions that change based on workfl
 |------------|------------------|----------|----------|------------|
 | Submitter (Creator) | Read | Yes | No | No |
 | Assigned Attorney | Read | Yes | No | No |
-| LW - Compliance Users | Read | Yes (if involved) | No | No |
-| LW - Legal Admin | Full Control | Yes | Yes (with audit trail) | No (only Site Collection Admin) |
-| LW - Attorney Assigner | Read | Yes | No | No |
-| LW - Admin | Full Control | Yes | Yes | Yes (recycle bin only) |
+| LW - Compliance Reviewers | Read | Yes (if involved) | No | No |
+| LW - Legal Admins | Full Control | Yes | Yes (with audit trail) | No (only Site Collection Admin) |
+| LW - Attorney Assigners | Read | Yes | No | No |
+| LW - Admins | Full Control | Yes | Yes | Yes (recycle bin only) |
 
 **Rationale:** All stakeholders retain read access for audit; Legal Admin can make corrections if needed (logged); no deletion to preserve records.
 
@@ -2941,7 +2941,7 @@ Endpoint: `POST /api/PermissionManagement`
   "success": true,
   "permissionsApplied": [
     "Submitter (creator@company.com): Read",
-    "LW - Legal Admin: Full Control",
+    "LW - Legal Admins: Full Control",
     "john.smith@company.com: Edit"
   ],
   "timestamp": "2025-01-15T14:23:45Z"
@@ -3060,7 +3060,7 @@ All templates support the following dynamic placeholders (replaced by Azure Func
 #### Notification 1: Request Submitted
 
 **Trigger:** Status changes from Draft → Legal Intake
-**Recipients:** LW - Legal Admin group (all members)
+**Recipients:** LW - Legal Admins group (all members)
 **Purpose:** Alert Legal Admin that new request requires triage
 
 **Subject:** New Legal Review Request: {RequestID} - {RequestTitle} {RushFlag}
@@ -3089,7 +3089,7 @@ All templates support the following dynamic placeholders (replaced by Azure Func
 #### Notification 3: Sent to Committee
 
 **Trigger:** Legal Admin sends request to committee (Legal Intake → Assign Attorney)
-**Recipients:** LW - Attorney Assigner group (all members)
+**Recipients:** LW - Attorney Assigners group (all members)
 **Purpose:** Alert committee that request requires attorney assignment decision
 
 **Subject:** Committee Assignment Needed: {RequestID} - {RequestTitle} {RushFlag}
@@ -3120,7 +3120,7 @@ All templates support the following dynamic placeholders (replaced by Azure Func
 #### Notification 5: Compliance Review Required
 
 **Trigger:** Request enters In Review status with Review Audience = Compliance or Both
-**Recipients:** LW - Compliance Users group (all members)
+**Recipients:** LW - Compliance Reviewers group (all members)
 **Purpose:** Alert Compliance team that request requires compliance review
 
 **Subject:** Compliance Review Required: {RequestID} - {RequestTitle} {RushFlag}
@@ -3183,7 +3183,7 @@ All templates support the following dynamic placeholders (replaced by Azure Func
 #### Notification 9: Review Completed (Single)
 
 **Trigger:** Legal OR Compliance review completes (only one review type required)
-**Recipients:** Submitter (Creator) and LW - Legal Admin group
+**Recipients:** Submitter (Creator) and LW - Legal Admins group
 **Purpose:** Inform submitter and Legal Admin of review outcome
 
 **Subject:** Review Completed: {RequestID} - {RequestTitle}

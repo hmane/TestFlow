@@ -260,12 +260,12 @@ try {
 
     # Check if security groups exist
     $securityGroups = @(
-        "LW - Admin",
+        "LW - Admins",
         "LW - Submitters",
-        "LW - Legal Admin",
-        "LW - Attorney Assigner",
+        "LW - Legal Admins",
+        "LW - Attorney Assigners",
         "LW - Attorneys",
-        "LW - Compliance Users"
+        "LW - Compliance Reviewers"
     )
 
     $groupsCreated = 0

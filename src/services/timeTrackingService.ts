@@ -9,7 +9,11 @@
 
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import type { ILegalRequest, TimeTrackingOwner, TimeTrackingStage } from '@appTypes/requestTypes';
-import { RequestStatus } from '@appTypes/workflowTypes';
+import {
+  ComplianceReviewStatus,
+  LegalReviewStatus,
+  RequestStatus,
+} from '@appTypes/workflowTypes';
 import { calculateBusinessHours } from '@utils/businessHoursCalculator';
 import { getWorkingHoursConfig } from './configurationService';
 
@@ -259,25 +263,35 @@ function getStageCurrentOwner(
       return undefined;
 
     case 'LegalReview':
-      if (request.legalReviewStatus === 'In Progress' || request.legalReviewStatus === 'Waiting On Attorney') {
+      if (
+        request.legalReviewStatus === LegalReviewStatus.NotStarted ||
+        request.legalReviewStatus === LegalReviewStatus.InProgress ||
+        request.legalReviewStatus === LegalReviewStatus.WaitingOnAttorney
+      ) {
         return 'Attorney';
-      } else if (request.legalReviewStatus === 'Waiting On Submitter') {
+      } else if (request.legalReviewStatus === LegalReviewStatus.WaitingOnSubmitter) {
         return 'Submitter';
       }
       return undefined;
 
     case 'ComplianceReview':
-      if (request.complianceReviewStatus === 'In Progress' || request.complianceReviewStatus === 'Waiting On Compliance') {
+      if (
+        request.complianceReviewStatus === ComplianceReviewStatus.NotStarted ||
+        request.complianceReviewStatus === ComplianceReviewStatus.InProgress ||
+        request.complianceReviewStatus === ComplianceReviewStatus.WaitingOnCompliance
+      ) {
         return 'Reviewer';
-      } else if (request.complianceReviewStatus === 'Waiting On Submitter') {
+      } else if (request.complianceReviewStatus === ComplianceReviewStatus.WaitingOnSubmitter) {
         return 'Submitter';
       }
       return undefined;
 
     case 'Closeout':
-      // Closeout is owned by the reviewer, but only when request is actually in Closeout stage
+      // Closeout is the submitter-facing completion step.
+      // Admin and legal admin may assist operationally, but analytics should
+      // attribute active closeout time to the submitter-facing stage owner.
       if (request.status === RequestStatus.Closeout) {
-        return 'Reviewer';
+        return 'Submitter';
       }
       return undefined;
 
@@ -300,16 +314,23 @@ function getStageLastHandoffDate(
       return request.submittedOn;
 
     case 'LegalReview':
-      // Status change timestamp = handoff
-      return request.legalStatusUpdatedOn;
+      // Track from the most recent ownership handoff. For straight-through reviews
+      // with no intermediate "save progress", fall back to initial assignment.
+      return request.legalStatusUpdatedOn || request.submittedForReviewOn;
 
     case 'ComplianceReview':
-      // Status change timestamp = handoff
-      return request.complianceStatusUpdatedOn;
+      // Track from the most recent ownership handoff. For straight-through reviews
+      // with no intermediate "save progress", fall back to initial assignment.
+      return request.complianceStatusUpdatedOn || request.submittedForReviewOn;
 
     case 'Closeout':
       // Use when the last review completed (entry into Closeout stage)
       // Note: closeoutOn is the completion timestamp, not the entry timestamp
+      if (request.complianceReviewCompletedOn && request.legalReviewCompletedOn) {
+        return request.complianceReviewCompletedOn > request.legalReviewCompletedOn
+          ? request.complianceReviewCompletedOn
+          : request.legalReviewCompletedOn;
+      }
       return request.complianceReviewCompletedOn || request.legalReviewCompletedOn;
 
     default:

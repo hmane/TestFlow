@@ -21,7 +21,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using LegalWorkflow.Functions.Helpers;
@@ -52,35 +51,29 @@ namespace LegalWorkflow.Functions
     {
         private readonly IPnPContextFactory _contextFactory;
         private readonly ILogger<NotificationFunctions> _logger;
-        private readonly IConfiguration _configuration;
         private readonly PermissionGroupConfig _groupConfig;
         private readonly NotificationConfig _notificationConfig;
+        private readonly SharePointListConfig _listConfig;
         private readonly IMemoryCache _memoryCache;
+        private readonly AuthorizationHelper _authorizationHelper;
         private readonly JsonSerializerOptions _jsonOptions;
 
-        /// <summary>
-        /// Creates a new NotificationFunctions instance with dependency injection.
-        /// </summary>
-        /// <param name="contextFactory">PnP Core context factory for SharePoint access</param>
-        /// <param name="logger">ILogger instance for Azure Functions logging</param>
-        /// <param name="configuration">Application configuration for settings</param>
-        /// <param name="groupConfig">SharePoint group configuration</param>
-        /// <param name="notificationConfig">Notification configuration</param>
-        /// <param name="memoryCache">Memory cache for group member email caching</param>
         public NotificationFunctions(
             IPnPContextFactory contextFactory,
             ILogger<NotificationFunctions> logger,
-            IConfiguration configuration,
             PermissionGroupConfig groupConfig,
             NotificationConfig notificationConfig,
-            IMemoryCache memoryCache)
+            SharePointListConfig listConfig,
+            IMemoryCache memoryCache,
+            AuthorizationHelper authorizationHelper)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _groupConfig = groupConfig ?? throw new ArgumentNullException(nameof(groupConfig));
             _notificationConfig = notificationConfig ?? throw new ArgumentNullException(nameof(notificationConfig));
+            _listConfig = listConfig ?? throw new ArgumentNullException(nameof(listConfig));
             _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
+            _authorizationHelper = authorizationHelper ?? throw new ArgumentNullException(nameof(authorizationHelper));
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
@@ -91,28 +84,8 @@ namespace LegalWorkflow.Functions
         /// <summary>
         /// Processes a notification request and returns the email to send (if any).
         ///
-        /// This function:
-        /// 1. Validates the forwarded Azure AD bearer token
-        /// 2. Loads the current request data from SharePoint
-        /// 3. Loads the previous version from version history
-        /// 4. Compares versions to detect notification triggers
-        /// 5. Generates and returns the email content if a notification is needed
-        ///
-        /// Called from Power Automate flow when a request is modified.
-        ///
-        /// Authorization:
-        /// - Power Automate: Uses the configured service account bearer token
-        /// - User: Requires valid Azure AD token and SharePoint item access
-        ///
         /// POST /api/notifications/send
         /// Body: { "requestId": 123, "previousVersion": "1.0" }
-        ///
-        /// Response:
-        /// {
-        ///   "shouldSendNotification": true/false,
-        ///   "email": { ... } or null,
-        ///   "reason": "Explanation of why notification was/wasn't sent"
-        /// }
         /// </summary>
         [Function("SendNotification")]
         public async Task<IActionResult> SendNotification(
@@ -123,14 +96,15 @@ namespace LegalWorkflow.Functions
 
             try
             {
-                // Step 1: Authenticate - Extract user identity from token
+                // Step 1: Authenticate
                 var authResult = await AuthenticateAsync(req, logger);
                 if (!authResult.IsAuthorized)
                 {
+                    logger.LogAuditSummary("SendNotification", "Unauthorized", authResult.ErrorMessage ?? "Token validation failed");
                     return new UnauthorizedObjectResult(new SendNotificationResponse
                     {
                         ShouldSendNotification = false,
-                        Reason = authResult.ErrorMessage
+                        Reason = authResult.ErrorMessage ?? "Unauthorized"
                     });
                 }
 
@@ -143,6 +117,7 @@ namespace LegalWorkflow.Functions
                 if (request == null || request.RequestId <= 0)
                 {
                     logger.Warning("Invalid request - missing RequestId");
+                    logger.LogAuditSummary("SendNotification", "InvalidRequest", "RequestId is missing or invalid");
                     return new BadRequestObjectResult(new SendNotificationResponse
                     {
                         ShouldSendNotification = false,
@@ -150,30 +125,29 @@ namespace LegalWorkflow.Functions
                     });
                 }
 
-                // Step 3: Authorize - Service account check or item-level permission check
+                // Step 3: Authorize
                 var authzResult = await AuthorizeAsync(authResult.User!, request.RequestId, logger);
                 if (!authzResult.IsAuthorized)
                 {
+                    logger.LogAuditSummary("SendNotification", "Forbidden", authzResult.ErrorMessage ?? "Insufficient permissions");
                     return new ObjectResult(new SendNotificationResponse
                     {
                         ShouldSendNotification = false,
-                        Reason = authzResult.ErrorMessage
+                        Reason = authzResult.ErrorMessage ?? "Access denied"
                     })
                     { StatusCode = 403 };
                 }
 
                 logger.Info("Processing notification for request", new { request.RequestId, AuthReason = authzResult.Reason });
 
-                // Create services with injected dependencies
+                // Step 4: Execute
                 var requestServiceLogger = new Logger(_logger, "RequestService");
-                var requestService = new RequestService(_contextFactory, requestServiceLogger);
+                var requestService = new RequestService(_contextFactory, requestServiceLogger, _listConfig);
                 var notificationService = new NotificationService(
-                    requestService, _contextFactory, _groupConfig, logger, _notificationConfig, _memoryCache);
+                    requestService, _contextFactory, _groupConfig, logger, _notificationConfig, _memoryCache, _listConfig);
 
-                // Process the notification
                 var result = await notificationService.ProcessNotificationAsync(request);
 
-                // Log the outcome
                 if (result.ShouldSendNotification && result.Email != null)
                 {
                     logger.Info("Notification will be sent", new
@@ -182,21 +156,22 @@ namespace LegalWorkflow.Functions
                         RecipientCount = result.Email.To.Count,
                         Subject = result.Email.Subject
                     });
-
-                    // Return the email response for Power Automate to send
+                    logger.LogAuditSummary("SendNotification", "Success",
+                        $"{result.Email.NotificationId} queued for {result.Email.To.Count} recipient(s) on request {request.RequestId}");
                     return new OkObjectResult(result);
                 }
                 else
                 {
                     logger.Info("No notification needed", new { Reason = result.Reason });
-
-                    // Return response indicating no notification
+                    logger.LogAuditSummary("SendNotification", "Skipped",
+                        $"Request {request.RequestId} — {result.Reason}");
                     return new OkObjectResult(result);
                 }
             }
             catch (Exception ex)
             {
                 logger.Error("Unhandled exception in SendNotification", ex);
+                logger.LogAuditSummary("SendNotification", "Error", ex.Message);
                 return new ObjectResult(new SendNotificationResponse
                 {
                     ShouldSendNotification = false,
@@ -208,8 +183,6 @@ namespace LegalWorkflow.Functions
 
         /// <summary>
         /// Health check endpoint to verify the notification function is running.
-        /// This endpoint is anonymous for monitoring purposes.
-        ///
         /// GET /api/notifications/health
         /// </summary>
         [Function("NotificationHealth")]
@@ -227,25 +200,17 @@ namespace LegalWorkflow.Functions
 
         #region Private Helper Methods
 
-        /// <summary>
-        /// Authenticates the request by validating the JWT token and extracting user identity.
-        /// APIM handles primary authentication; this provides defense-in-depth.
-        /// </summary>
         private async Task<AuthorizationResult> AuthenticateAsync(HttpRequest request, Logger logger)
         {
-            var authHelper = new AuthorizationHelper(_configuration, _logger);
-            return await authHelper.ValidateTokenAsync(request);
+            return await _authorizationHelper.ValidateTokenAsync(request);
         }
 
-        /// <summary>
-        /// Authorizes the request by checking service account match or item-level permissions.
-        /// </summary>
         private async Task<SharePointAuthorizationResult> AuthorizeAsync(
             UserAuthInfo userInfo,
             int requestId,
             Logger logger)
         {
-            var authzService = new SharePointAuthorizationService(_contextFactory, logger, _groupConfig);
+            var authzService = new SharePointAuthorizationService(_contextFactory, logger, _groupConfig, _listConfig);
             return await authzService.AuthorizeAsync(userInfo, requestId);
         }
 

@@ -71,6 +71,22 @@ export function areAllReviewsComplete(
 }
 
 /**
+ * Calculate turnaround in whole days from submission to completion.
+ *
+ * Uses the same ceiling-based day calculation as analytics fallback logic.
+ */
+export function calculateTurnaroundDays(
+  submittedOn?: Date,
+  completedOn?: Date
+): number | undefined {
+  if (!submittedOn || !completedOn || submittedOn >= completedOn) {
+    return undefined;
+  }
+
+  return Math.ceil((completedOn.getTime() - submittedOn.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+/**
  * Update SharePoint item with specific fields only
  */
 export async function updateItem(

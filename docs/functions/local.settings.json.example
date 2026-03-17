@@ -22,11 +22,11 @@
 
     "_comment_permissions": "SharePoint group names for permission management and notification recipient resolution",
     "Permissions:SubmittersGroup": "LW - Submitters",
-    "Permissions:LegalAdminGroup": "LW - Legal Admin",
-    "Permissions:AttorneyAssignerGroup": "LW - Attorney Assigner",
+    "Permissions:LegalAdminGroup": "LW - Legal Admins",
+    "Permissions:AttorneyAssignerGroup": "LW - Attorney Assigners",
     "Permissions:AttorneysGroup": "LW - Attorneys",
-    "Permissions:ComplianceGroup": "LW - Compliance Users",
-    "Permissions:AdminGroup": "LW - Admin",
+    "Permissions:ComplianceGroup": "LW - Compliance Reviewers",
+    "Permissions:AdminGroup": "LW - Admins",
     "Permissions:ServiceAccountUpn": "svc-powerautomate@company.com"
   },
   "Host": {

@@ -137,6 +137,32 @@
     min-width: 0; // Allow flex shrink
   }
 
+  &__conflict-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+  }
+
+  &__conflict-body {
+    position: relative;
+    width: 100%;
+
+    &--locked {
+      min-height: 240px;
+      filter: saturate(0.82);
+    }
+  }
+
+  &__conflict-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.58);
+    backdrop-filter: blur(1px);
+    cursor: not-allowed;
+    z-index: 20;
+  }
+
   // Comments area - right side (fixed width)
   &__comments-area {
     width: 360px;

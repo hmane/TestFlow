@@ -74,8 +74,6 @@ export async function saveLegalReviewProgress(
   }
 
   const currentUser = getCurrentUserPrincipal();
-  const now = new Date();
-
   // Build update payload - save progress fields
   const updater = createSPUpdater();
 
@@ -93,17 +91,9 @@ export async function saveLegalReviewProgress(
   updater.set(RequestsFields.LegalReviewStatus, LegalReviewStatus.InProgress);
   updater.set(RequestsFields.LegalStatusUpdatedBy, currentUser);
 
-  // IMPORTANT: Only update timestamp if status is actually changing
-  // This preserves time tracking - we track from when status first changed to "In Progress"
-  const isStatusChanging = currentRequest.legalReviewStatus !== LegalReviewStatus.InProgress;
-  if (isStatusChanging) {
-    updater.set(RequestsFields.LegalStatusUpdatedOn, now.toISOString());
-    SPContext.logger.info('WorkflowActionService: Legal review status changing to In Progress, updating timestamp', {
-      correlationId,
-      itemId,
-      previousStatus: currentRequest.legalReviewStatus,
-    });
-  }
+  // Do not reset LegalStatusUpdatedOn here.
+  // Save-progress is not an ownership handoff, so resetting the timestamp would
+  // discard elapsed reviewer time before completion/request-changes analytics.
 
   const updatePayload = updater.getUpdates();
   const fieldsUpdated = Object.keys(updatePayload);
@@ -177,8 +167,6 @@ export async function saveComplianceReviewProgress(
   }
 
   const currentUser = getCurrentUserPrincipal();
-  const now = new Date();
-
   // Build update payload - save progress fields
   const updater = createSPUpdater();
 
@@ -196,17 +184,9 @@ export async function saveComplianceReviewProgress(
   updater.set(RequestsFields.ComplianceReviewStatus, ComplianceReviewStatus.InProgress);
   updater.set(RequestsFields.ComplianceStatusUpdatedBy, currentUser);
 
-  // IMPORTANT: Only update timestamp if status is actually changing
-  // This preserves time tracking - we track from when status first changed to "In Progress"
-  const isStatusChanging = currentRequest.complianceReviewStatus !== ComplianceReviewStatus.InProgress;
-  if (isStatusChanging) {
-    updater.set(RequestsFields.ComplianceStatusUpdatedOn, now.toISOString());
-    SPContext.logger.info('WorkflowActionService: Compliance review status changing to In Progress, updating timestamp', {
-      correlationId,
-      itemId,
-      previousStatus: currentRequest.complianceReviewStatus,
-    });
-  }
+  // Do not reset ComplianceStatusUpdatedOn here.
+  // Save-progress is not an ownership handoff, so resetting the timestamp would
+  // discard elapsed reviewer time before completion/request-changes analytics.
 
   // Optional flags
   if (payload.isForesideReviewRequired !== undefined) {

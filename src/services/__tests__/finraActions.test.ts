@@ -86,6 +86,7 @@ describe('FINRA Actions - completeFINRADocuments', () => {
           id: 1,
           requestId: 'CRR-2025-001',
           status: RequestStatus.AwaitingFINRADocuments,
+          submittedOn: new Date('2025-02-03T16:00:00Z'),
         } as Partial<ILegalRequest>)
         .mockResolvedValueOnce({
           id: 1,
@@ -113,6 +114,7 @@ describe('FINRA Actions - completeFINRADocuments', () => {
 
       expect(result.fieldsUpdated).toContain('FINRACompletedBy');
       expect(result.fieldsUpdated).toContain('FINRACompletedOn');
+      expect(result.fieldsUpdated).toContain('TotalTurnaroundDays');
     });
 
     it('should call manageRequestPermissions for Completed status', async () => {
@@ -137,6 +139,7 @@ describe('FINRA Actions - completeFINRADocuments', () => {
           id: 1,
           requestId: 'CRR-2025-001',
           status: RequestStatus.AwaitingFINRADocuments,
+          submittedOn: new Date('2025-02-03T16:00:00Z'),
         } as Partial<ILegalRequest>)
         .mockResolvedValueOnce({
           id: 1,

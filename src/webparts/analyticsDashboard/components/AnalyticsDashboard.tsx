@@ -636,7 +636,11 @@ const AnalyticsDashboard: React.FC<IAnalyticsDashboardProps> = (props) => {
               ) : (
                 <div className={styles.emptyState}>
                   <Icon iconName="Clock" className={styles.emptyIcon} />
-                  <Text>No time tracking data available</Text>
+                  <Text>
+                    {kpiMetrics.totalRequests > 0
+                      ? 'Requests were found, but no business hours were recorded in the selected date range.'
+                      : 'No time tracking data available'}
+                  </Text>
                 </div>
               )}
             </div>

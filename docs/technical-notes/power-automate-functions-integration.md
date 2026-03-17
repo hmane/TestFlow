@@ -503,7 +503,7 @@ HTTP `200`
     {
       "target": "Requests list item 123",
       "action": "UpdatePermission",
-      "principal": "LW - Legal Admin",
+      "principal": "LW - Legal Admins",
       "level": "Read"
     }
   ],

@@ -61,9 +61,13 @@ export interface IDocumentCheckoutStatus {
   /** Whether the current user has it checked out */
   isCheckedOutByMe: boolean;
   /** Name of user who checked it out */
+  checkedOutById?: string;
+  /** Name of user who checked it out */
   checkedOutByName?: string;
   /** Email of user who checked it out */
   checkedOutByEmail?: string;
+  /** Login name of user who checked it out */
+  checkedOutByLoginName?: string;
   /** When the checkout started */
   checkedOutDate?: string;
   /** Stale review level based on duration */
@@ -93,12 +97,108 @@ export interface ICheckoutOperationResult {
   error?: string;
 }
 
+interface ICheckoutHint {
+  checkedOutById?: string;
+  checkedOutByName?: string;
+  checkedOutByEmail?: string;
+  checkedOutByLoginName?: string;
+}
+
+const CHECKOUT_HINT_PREFIX = 'LW_CHECKOUT_HINT:';
+
 function buildOperationFailure(fileName: string, error: string): ICheckoutOperationResult {
   return {
     success: false,
     fileName,
     error,
   };
+}
+
+function getSessionStorage(): Storage | undefined {
+  try {
+    if (typeof globalThis !== 'undefined' && 'sessionStorage' in globalThis) {
+      return globalThis.sessionStorage;
+    }
+  } catch {
+    // Ignore storage failures
+  }
+  return undefined;
+}
+
+function getCheckoutHintKey(serverRelativeUrl: string): string {
+  return `${CHECKOUT_HINT_PREFIX}${serverRelativeUrl.toLowerCase()}`;
+}
+
+export function getCheckoutHint(serverRelativeUrl: string): ICheckoutHint | undefined {
+  try {
+    const storage = getSessionStorage();
+    const raw = storage?.getItem(getCheckoutHintKey(serverRelativeUrl));
+    if (!raw) {
+      return undefined;
+    }
+    return JSON.parse(raw) as ICheckoutHint;
+  } catch {
+    return undefined;
+  }
+}
+
+function setCheckoutHint(serverRelativeUrl: string): void {
+  try {
+    const storage = getSessionStorage();
+    if (!storage) {
+      return;
+    }
+
+    storage.setItem(
+      getCheckoutHintKey(serverRelativeUrl),
+      JSON.stringify({
+        checkedOutById: String(SPContext.currentUser?.id ?? ''),
+        checkedOutByName: SPContext.currentUser?.title,
+        checkedOutByEmail: SPContext.currentUser?.email,
+        checkedOutByLoginName: SPContext.currentUser?.loginName,
+      })
+    );
+  } catch {
+    // Ignore storage failures
+  }
+}
+
+function clearCheckoutHint(serverRelativeUrl: string): void {
+  try {
+    const storage = getSessionStorage();
+    storage?.removeItem(getCheckoutHintKey(serverRelativeUrl));
+  } catch {
+    // Ignore storage failures
+  }
+}
+
+function isAlreadyCheckedOutByCurrentUser(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  const currentUserEmail = (SPContext.currentUser?.email || '').toLowerCase();
+  const currentUserLoginName = (SPContext.currentUser?.loginName || '').toLowerCase();
+  const emailPrefix = currentUserEmail.split('@')[0];
+
+  if (
+    message.indexOf('spfilecheckoutexception') === -1 &&
+    message.indexOf('checked out for editing by') === -1
+  ) {
+    return false;
+  }
+
+  if (currentUserLoginName && message.indexOf(currentUserLoginName) !== -1) {
+    return true;
+  }
+
+  if (currentUserEmail && message.indexOf(currentUserEmail) !== -1) {
+    return true;
+  }
+
+  // SharePoint sometimes truncates the login string in error payloads.
+  return emailPrefix !== '' && message.indexOf(emailPrefix) !== -1;
 }
 
 // ============================================
@@ -232,22 +332,53 @@ export function formatCheckoutDuration(checkedOutDate?: string): string {
  * @returns Checkout status with stale level
  */
 export function getDocumentCheckoutStatus(document: IDocument): IDocumentCheckoutStatus {
-  const isCheckedOut = (document.checkOutType || 0) !== 0;
+  const hasCheckoutOwner =
+    !!(document.checkedOutById || '').trim() ||
+    !!(document.checkedOutByEmail || '').trim() ||
+    !!(document.checkedOutByName || '').trim() ||
+    !!(document.checkedOutByLoginName || '').trim();
+  const isCheckedOut = (document.checkOutType || 0) !== 0 || hasCheckoutOwner;
+  const currentUserId = String(SPContext.currentUser?.id ?? '');
+  const checkedOutById = String(document.checkedOutById || '');
   const currentUserEmail = SPContext.currentUser?.email?.toLowerCase() || '';
   const currentUserTitle = SPContext.currentUser?.title?.toLowerCase() || '';
+  const currentUserLoginName = SPContext.currentUser?.loginName?.toLowerCase() || '';
   const checkedOutEmail = document.checkedOutByEmail?.toLowerCase() || '';
   const checkedOutName = document.checkedOutByName?.toLowerCase() || '';
-  const isCheckedOutByMe = isCheckedOut && (
-    (checkedOutEmail !== '' && checkedOutEmail === currentUserEmail) ||
-    (checkedOutEmail === '' && currentUserTitle !== '' && checkedOutName === currentUserTitle)
-  );
+  const checkedOutLoginName = document.checkedOutByLoginName?.toLowerCase() || '';
+  const matchesId =
+    checkedOutById !== '' &&
+    currentUserId !== '' &&
+    checkedOutById === currentUserId;
+  const matchesEmail =
+    checkedOutById === '' &&
+    checkedOutEmail !== '' &&
+    currentUserEmail !== '' &&
+    checkedOutEmail === currentUserEmail;
+  const matchesLoginName =
+    checkedOutById === '' &&
+    checkedOutEmail === '' &&
+    checkedOutLoginName !== '' &&
+    (
+      (currentUserLoginName !== '' && checkedOutLoginName === currentUserLoginName) ||
+      (currentUserEmail !== '' && checkedOutLoginName.indexOf(currentUserEmail) !== -1)
+    );
+  const matchesTitle =
+    checkedOutById === '' &&
+    checkedOutEmail === '' &&
+    checkedOutName !== '' &&
+    currentUserTitle !== '' &&
+    checkedOutName === currentUserTitle;
+  const isCheckedOutByMe = isCheckedOut && (matchesId || matchesEmail || matchesLoginName || matchesTitle);
 
   return {
     document,
     isCheckedOut,
     isCheckedOutByMe,
+    checkedOutById: document.checkedOutById,
     checkedOutByName: document.checkedOutByName,
     checkedOutByEmail: document.checkedOutByEmail,
+    checkedOutByLoginName: document.checkedOutByLoginName,
     checkedOutDate: document.checkedOutDate,
     staleLevel: isCheckedOut ? getStaleReviewLevel(document.checkedOutDate) : 'normal',
   };
@@ -357,6 +488,7 @@ export async function startReviewing(document: IDocument): Promise<ICheckoutOper
 
     const serverRelativeUrl = getServerRelativeUrl(document.url);
     await SPContext.sp.web.getFileByServerRelativePath(serverRelativeUrl).checkout();
+    setCheckoutHint(serverRelativeUrl);
 
     SPContext.logger.success('DocumentCheckout: Review started', {
       fileName: document.name,
@@ -364,6 +496,16 @@ export async function startReviewing(document: IDocument): Promise<ICheckoutOper
 
     return { success: true, fileName: document.name };
   } catch (error: unknown) {
+    if (isAlreadyCheckedOutByCurrentUser(error)) {
+      const serverRelativeUrl = getServerRelativeUrl(document.url);
+      setCheckoutHint(serverRelativeUrl);
+      SPContext.logger.warn('DocumentCheckout: File was already checked out by current user', {
+        fileName: document.name,
+        message: error instanceof Error ? error.message : String(error),
+      });
+      return { success: true, fileName: document.name };
+    }
+
     const message = error instanceof Error ? error.message : String(error);
     SPContext.logger.error('DocumentCheckout: Failed to start review', error, {
       fileName: document.name,
@@ -397,6 +539,7 @@ export async function doneReviewing(
     const serverRelativeUrl = getServerRelativeUrl(document.url);
     // CheckinType 1 = Major version
     await SPContext.sp.web.getFileByServerRelativePath(serverRelativeUrl).checkin(comment, 1);
+    clearCheckoutHint(serverRelativeUrl);
 
     SPContext.logger.success('DocumentCheckout: Review completed', {
       fileName: document.name,
@@ -432,6 +575,7 @@ export async function stopReviewing(document: IDocument): Promise<ICheckoutOpera
 
     const serverRelativeUrl = getServerRelativeUrl(document.url);
     await SPContext.sp.web.getFileByServerRelativePath(serverRelativeUrl).undoCheckout();
+    clearCheckoutHint(serverRelativeUrl);
 
     SPContext.logger.success('DocumentCheckout: Review stopped', {
       fileName: document.name,

@@ -45,6 +45,7 @@ import { WorkflowCardHeader } from '@components/WorkflowCardHeader';
 import { CLOSEOUT_NOTES_MAX_LENGTH, TRACKING_ID_MAX_LENGTH } from '@constants/fieldLimits';
 import { useNotification } from '@contexts/NotificationContext';
 import { useRequestFormContext } from '@contexts/RequestFormContext';
+import { useUIVisibility } from '@hooks/useUIVisibility';
 import { Lists } from '@sp/Lists';
 import { useCloseoutStore } from '@stores/closeoutStore';
 import { useDocumentsStore } from '@stores/documentsStore';
@@ -101,6 +102,11 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
   const { setCloseoutValues, commentsAcknowledged, setCommentsAcknowledged } = useCloseoutStore();
   const { showSuccess } = useNotification();
   const { validationErrors, setValidationErrors } = useRequestFormContext();
+  const { fields } = useUIVisibility({
+    status: currentRequest?.status,
+    itemId,
+    request: currentRequest ?? undefined,
+  });
 
   // Get documents from store for ReviewFinal document count
   const { documents, stagedFiles } = useDocumentsStore();
@@ -189,6 +195,7 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
     mode: 'onChange',
   });
   const { control, watch, setError, clearErrors, reset } = formMethods;
+  const isReadOnly = readOnly || !fields.closeout.canEdit;
 
   // Watch form values and sync to store
   const trackingIdValue = watch('trackingId');
@@ -289,6 +296,10 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
    * Handle Complete Request button click
    */
   const handleCompleteRequest = React.useCallback(async (): Promise<void> => {
+    if (isReadOnly) {
+      return;
+    }
+
     setIsCompleting(true);
     setCloseoutError(undefined);
     setValidationErrors([]);
@@ -384,6 +395,7 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
     }
   }, [
     currentRequest,
+    isReadOnly,
     trackingIdValue,
     closeoutNotesValue,
     commentsAcknowledged,
@@ -477,24 +489,24 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
     : undefined;
 
   // Determine header status
-  const headerStatus = readOnly ? 'completed' : 'in-progress';
+  const headerStatus = isReadOnly ? 'completed' : 'in-progress';
 
   return (
     <Card
       id='closeout-card'
-      className={`closeout-form ${readOnly ? 'closeout-form--completed' : ''}`}
+      className={`closeout-form ${isReadOnly ? 'closeout-form--completed' : ''}`}
       allowExpand={true}
-      defaultExpanded={!defaultCollapsed && !readOnly}
+      defaultExpanded={!defaultCollapsed && !isReadOnly}
     >
       <Header size='regular'>
         <WorkflowCardHeader
           title='Closeout'
           status={headerStatus}
           startedOn={startedOn}
-          completedOn={readOnly ? currentRequest.closeoutOn : undefined}
-          completedBy={readOnly ? completedBy : undefined}
+          completedOn={isReadOnly ? currentRequest.closeoutOn : undefined}
+          completedBy={isReadOnly ? completedBy : undefined}
           durationMinutes={durationMinutes}
-          trackingId={readOnly ? currentRequest.trackingId : undefined}
+          trackingId={isReadOnly ? currentRequest.trackingId : undefined}
         />
       </Header>
 
@@ -503,7 +515,7 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
           <FormProvider control={control as any} autoShowErrors={true}>
             <Stack tokens={{ childrenGap: 20 }}>
               {/* Review Comments Acknowledgment Section - FIRST, show only if there are "Approved with Comments" reviews */}
-              {reviewCommentsInfo.hasCommentsToAcknowledge && !readOnly && (
+              {reviewCommentsInfo.hasCommentsToAcknowledge && !isReadOnly && (
                 <Stack tokens={{ childrenGap: 16 }}>
                   <MessageBar
                     messageBarType={MessageBarType.warning}
@@ -750,19 +762,19 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
               {/* Tracking ID and Closeout Notes */}
               <FormContainer labelWidth='180px'>
                 {/* Tracking ID - only visible when Foreside Review Required is checked */}
-                {(isTrackingIdRequired || (readOnly && currentRequest.trackingId)) && (
+                {(isTrackingIdRequired || (isReadOnly && currentRequest.trackingId)) && (
                   <FormItem fieldName='trackingId'>
                     <FormLabel
-                      isRequired={!readOnly && isTrackingIdRequired}
+                      isRequired={!isReadOnly && isTrackingIdRequired}
                       infoText={
-                        readOnly
+                        isReadOnly
                           ? undefined
                           : 'Tracking ID is required because Foreside Review Required was indicated during compliance review'
                       }
                     >
                       Foreside Tracking Id
                     </FormLabel>
-                    {readOnly ? (
+                    {isReadOnly ? (
                       <span>{currentRequest.trackingId || '—'}</span>
                     ) : (
                       <SPTextField
@@ -778,16 +790,16 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
                 )}
 
                 {/* Final Notes - show in both edit and read-only mode */}
-                {(!readOnly || currentRequest.closeoutNotes) && (
+                {(!isReadOnly || currentRequest.closeoutNotes) && (
                   <FormItem fieldName='closeoutNotes'>
                     <FormLabel
                       infoText={
-                        readOnly ? undefined : 'Add any final notes or comments about this request'
+                        isReadOnly ? undefined : 'Add any final notes or comments about this request'
                       }
                     >
                       Closeout Notes
                     </FormLabel>
-                    {readOnly ? (
+                    {isReadOnly ? (
                       <Text
                         styles={{
                           root: {
@@ -816,7 +828,7 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
               </FormContainer>
 
               {/* Show acknowledgment status in read-only mode if comments were acknowledged */}
-              {readOnly && currentRequest.commentsAcknowledged && (
+              {isReadOnly && currentRequest.commentsAcknowledged && (
                 <>
                   <Separator />
                   <Stack
@@ -878,7 +890,7 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
               )}
 
               {/* Validation errors - at the end of content (only in edit mode) */}
-              {!readOnly && (
+              {!isReadOnly && (
                 <ValidationErrorContainer
                   errors={closeoutValidationErrors}
                   onScrollToField={handleScrollToField}
@@ -891,7 +903,7 @@ export const CloseoutForm: React.FC<ICloseoutFormProps> = ({
       </Content>
 
       {/* Footer with Complete Request button - only show in edit mode */}
-      {!readOnly && (
+      {!isReadOnly && (
         <Footer>
           <Stack tokens={{ childrenGap: 8 }}>
             {closeoutError && (

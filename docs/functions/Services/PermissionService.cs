@@ -26,17 +26,17 @@ namespace LegalWorkflow.Functions.Services
     /// Permission Model:
     /// - Request Creation (Draft/Legal Intake):
     ///   - Break inheritance on request item and documents folder
-    ///   - LW - Admin: Full Control on both
+    ///   - LW - Admins: Full Control on both
     ///   - LW - Submitters: Contribute Without Delete on item, Contribute on docs
-    ///   - LW - Legal Admin: Contribute Without Delete on item, Contribute on docs
-    ///   - LW - Attorney Assigner: Contribute Without Delete on item, Contribute on docs
+    ///   - LW - Legal Admins: Contribute Without Delete on item, Contribute on docs
+    ///   - LW - Attorney Assigners: Contribute Without Delete on item, Contribute on docs
     ///   - LW - Attorneys: Contribute Without Delete on item, Contribute on docs
-    ///   - LW - Compliance Users: Contribute Without Delete on item, Contribute on docs
+    ///   - LW - Compliance Reviewers: Contribute Without Delete on item, Contribute on docs
     ///   - Additional Parties: Read only on item and docs
     ///   - Approvers: Read only on item and docs
     ///
     /// - Request Completion:
-    ///   - LW - Admin: Keep Full Control
+    ///   - LW - Admins: Keep Full Control
     ///   - Everyone else: Change to Read only
     ///
     /// - Manage Access (user add/remove):
@@ -48,6 +48,7 @@ namespace LegalWorkflow.Functions.Services
         private readonly IPnPContextFactory _contextFactory;
         private readonly Logger _logger;
         private readonly PermissionGroupConfig _groupConfig;
+        private readonly SharePointListConfig _listConfig;
 
         /// <summary>
         /// Creates a new PermissionService instance.
@@ -55,11 +56,13 @@ namespace LegalWorkflow.Functions.Services
         /// <param name="contextFactory">PnP Core context factory for SharePoint access</param>
         /// <param name="logger">Logger instance for logging operations</param>
         /// <param name="groupConfig">Configuration for SharePoint group names</param>
-        public PermissionService(IPnPContextFactory contextFactory, Logger logger, PermissionGroupConfig? groupConfig = null)
+        /// <param name="listConfig">SharePoint list name configuration (optional)</param>
+        public PermissionService(IPnPContextFactory contextFactory, Logger logger, PermissionGroupConfig? groupConfig = null, SharePointListConfig? listConfig = null)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _groupConfig = groupConfig ?? new PermissionGroupConfig();
+            _listConfig = listConfig ?? new SharePointListConfig();
         }
 
         /// <summary>
@@ -85,16 +88,22 @@ namespace LegalWorkflow.Functions.Services
             {
                 using var context = await _contextFactory.CreateAsync("Default");
 
-                // Get permission levels we'll need
-                var roleDefinitions = await GetRoleDefinitionsAsync(context);
+                // Load the request item once with all fields (used for both participant extraction
+                // and permission initialization — avoids a duplicate REST call).
+                var requestsList = await context.Web.Lists.GetByTitleAsync(_listConfig.RequestsListName);
+                var requestItem = await requestsList.Items.GetByIdAsync(request.RequestId, i => i.All);
 
-                var readOnlyParticipants = await GetReadOnlyParticipantsAsync(context, request.RequestId);
+                // Pre-load site groups, role definitions, and participants sequentially.
+                // PnPContext is not thread-safe — all operations must run on the same context serially.
+                var siteGroups = await LoadSiteGroupsAsync(context);
+                var roleDefinitions = await GetRoleDefinitionsAsync(context);
+                var readOnlyParticipants = GetReadOnlyParticipantsFromItem(requestItem);
 
                 // 1. Initialize permissions on the request list item
-                await InitializeItemPermissionsAsync(context, request.RequestId, roleDefinitions, readOnlyParticipants, response);
+                await InitializeItemPermissionsAsync(context, requestItem, request.RequestId, siteGroups, roleDefinitions, readOnlyParticipants, response);
 
                 // 2. Initialize permissions on the documents folder
-                await InitializeDocumentsFolderPermissionsAsync(context, request.RequestId, roleDefinitions, readOnlyParticipants, response);
+                await InitializeDocumentsFolderPermissionsAsync(context, request.RequestId, siteGroups, roleDefinitions, readOnlyParticipants, response);
 
                 response.Message = $"Permissions initialized successfully. {response.Changes.Count} changes made.";
                 _logger.Info("Permissions initialized successfully", new { ChangeCount = response.Changes.Count });
@@ -151,7 +160,7 @@ namespace LegalWorkflow.Functions.Services
                 }
 
                 // 1. Add permission on request item
-                var requestsList = await context.Web.Lists.GetByTitleAsync(SharePointLists.Requests);
+                var requestsList = await context.Web.Lists.GetByTitleAsync(_listConfig.RequestsListName);
                 var requestItem = await requestsList.Items.GetByIdAsync(request.RequestId);
 
                 await EnsureRoleDefinitionAsync(requestItem, user.Id, readRole);
@@ -230,7 +239,7 @@ namespace LegalWorkflow.Functions.Services
                 }
 
                 // 1. Remove permission from request item
-                var requestsList = await context.Web.Lists.GetByTitleAsync(SharePointLists.Requests);
+                var requestsList = await context.Web.Lists.GetByTitleAsync(_listConfig.RequestsListName);
                 var requestItem = await requestsList.Items.GetByIdAsync(request.RequestId);
 
                 await RemoveAllRoleDefinitionsAsync(requestItem, user.Id);
@@ -340,29 +349,57 @@ namespace LegalWorkflow.Functions.Services
         #region Private Helper Methods
 
         /// <summary>
-        /// Gets required role definitions from SharePoint.
+        /// Loads all role definitions from SharePoint in a single REST call.
+        /// Returns a snapshot list so callers can safely use LINQ without triggering extra network requests.
         /// </summary>
-        private async Task<IRoleDefinitionCollection> GetRoleDefinitionsAsync(PnPContext context)
+        private static async Task<IReadOnlyList<IRoleDefinition>> GetRoleDefinitionsAsync(PnPContext context)
         {
-            // Load role definitions we need
             await context.Web.RoleDefinitions.LoadAsync();
-            return context.Web.RoleDefinitions;
+            return context.Web.RoleDefinitions.AsRequested().ToList();
+        }
+
+        /// <summary>
+        /// Loads all site groups from SharePoint in a single REST call and returns them
+        /// in a case-insensitive dictionary keyed by Title. Pre-loading avoids one REST call
+        /// per group during permission initialization (6+ groups × 2 targets = 12+ round trips otherwise).
+        /// </summary>
+        private static async Task<Dictionary<string, ISharePointGroup>> LoadSiteGroupsAsync(PnPContext context)
+        {
+            await context.Web.SiteGroups.LoadAsync(g => g.Title, g => g.Id);
+            return context.Web.SiteGroups.AsRequested()
+                .ToDictionary(g => g.Title, g => g, StringComparer.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Returns the named group from the pre-loaded dictionary, or throws a clear error
+        /// so callers fail fast with an actionable message instead of a null-ref at add time.
+        /// </summary>
+        private static ISharePointGroup GetGroupOrThrow(Dictionary<string, ISharePointGroup> groups, string groupName)
+        {
+            if (groups.TryGetValue(groupName, out var group))
+            {
+                return group;
+            }
+
+            throw new InvalidOperationException(
+                $"Required SharePoint group '{groupName}' was not found. " +
+                $"Available groups: {string.Join(", ", groups.Keys)}");
         }
 
         /// <summary>
         /// Initializes permissions on the request list item.
+        /// Accepts the pre-loaded item, groups, and role definitions to avoid extra REST round-trips.
         /// </summary>
         private async Task InitializeItemPermissionsAsync(
             PnPContext context,
+            IListItem requestItem,
             int requestId,
-            IRoleDefinitionCollection roleDefinitions,
+            Dictionary<string, ISharePointGroup> siteGroups,
+            IReadOnlyList<IRoleDefinition> roleDefinitions,
             IReadOnlyCollection<RequestParticipant> readOnlyParticipants,
             PermissionResponse response)
         {
             _logger.Info($"Initializing item permissions for request {requestId}");
-
-            var requestsList = await context.Web.Lists.GetByTitleAsync(SharePointLists.Requests);
-            var requestItem = await requestsList.Items.GetByIdAsync(requestId);
 
             // Break inheritance (copy existing = false to start fresh)
             await requestItem.BreakRoleInheritanceAsync(copyRoleAssignments: false, clearSubscopes: true);
@@ -376,12 +413,14 @@ namespace LegalWorkflow.Functions.Services
 
             _logger.LogPermissionChange("BreakInheritance", $"Requests item {requestId}", "System");
 
-            // Get role definitions we need
+            // Get role definitions we need (from pre-loaded snapshot — no extra REST calls)
             var fullControlRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.FullControl);
             var contributeNoDeleteRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.ContributeWithoutDelete)
                 ?? roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.Contribute); // Fallback
+            var readRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.Read);
+
             // Add Admin group with Full Control
-            await AddGroupPermissionAsync(context, requestItem, _groupConfig.AdminGroup, fullControlRole, response, $"Requests item {requestId}");
+            await AddGroupPermissionAsync(requestItem, GetGroupOrThrow(siteGroups, _groupConfig.AdminGroup), fullControlRole, response, $"Requests item {requestId}");
 
             // Add operational groups with Contribute Without Delete
             var operationalGroups = new[]
@@ -395,10 +434,9 @@ namespace LegalWorkflow.Functions.Services
 
             foreach (var groupName in operationalGroups)
             {
-                await AddGroupPermissionAsync(context, requestItem, groupName, contributeNoDeleteRole, response, $"Requests item {requestId}");
+                await AddGroupPermissionAsync(requestItem, GetGroupOrThrow(siteGroups, groupName), contributeNoDeleteRole, response, $"Requests item {requestId}");
             }
 
-            var readRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.Read);
             await AddReadPermissionsForParticipantsAsync(
                 context,
                 requestItem,
@@ -412,11 +450,13 @@ namespace LegalWorkflow.Functions.Services
 
         /// <summary>
         /// Initializes permissions on the documents folder.
+        /// Accepts pre-loaded groups and role definitions to avoid per-group REST round-trips.
         /// </summary>
         private async Task InitializeDocumentsFolderPermissionsAsync(
             PnPContext context,
             int requestId,
-            IRoleDefinitionCollection roleDefinitions,
+            Dictionary<string, ISharePointGroup> siteGroups,
+            IReadOnlyList<IRoleDefinition> roleDefinitions,
             IReadOnlyCollection<RequestParticipant> readOnlyParticipants,
             PermissionResponse response)
         {
@@ -443,11 +483,13 @@ namespace LegalWorkflow.Functions.Services
 
             _logger.LogPermissionChange("BreakInheritance", $"RequestDocuments/{requestId}", "System");
 
-            // Get role definitions
+            // Get role definitions from pre-loaded snapshot — no extra REST calls
             var fullControlRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.FullControl);
             var contributeRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.Contribute);
+            var readRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.Read);
+
             // Add Admin group with Full Control
-            await AddGroupPermissionToFolderAsync(context, docsFolder, _groupConfig.AdminGroup, fullControlRole, response, $"RequestDocuments/{requestId}");
+            await AddGroupPermissionToFolderAsync(docsFolder, GetGroupOrThrow(siteGroups, _groupConfig.AdminGroup), fullControlRole, response, $"RequestDocuments/{requestId}");
 
             // Add operational groups with Contribute (they need to upload/modify documents)
             var operationalGroups = new[]
@@ -461,10 +503,9 @@ namespace LegalWorkflow.Functions.Services
 
             foreach (var groupName in operationalGroups)
             {
-                await AddGroupPermissionToFolderAsync(context, docsFolder, groupName, contributeRole, response, $"RequestDocuments/{requestId}");
+                await AddGroupPermissionToFolderAsync(docsFolder, GetGroupOrThrow(siteGroups, groupName), contributeRole, response, $"RequestDocuments/{requestId}");
             }
 
-            var readRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.Read);
             await AddReadPermissionsForParticipantsAsync(
                 context,
                 docsFolderItem,
@@ -477,25 +518,19 @@ namespace LegalWorkflow.Functions.Services
         }
 
         /// <summary>
-        /// Adds a group permission to a list item.
+        /// Adds a permission for a pre-loaded group to a list item.
+        /// Caller is responsible for resolving the group from the pre-loaded cache.
         /// </summary>
         private async Task AddGroupPermissionAsync(
-            PnPContext context,
             IListItem item,
-            string groupName,
+            ISharePointGroup group,
             IRoleDefinition? roleDefinition,
             PermissionResponse response,
             string targetDescription)
         {
             if (roleDefinition == null)
             {
-                throw new InvalidOperationException($"Role definition not found for required group '{groupName}'");
-            }
-
-            var group = await context.Web.SiteGroups.FirstOrDefaultAsync(g => g.Title == groupName);
-            if (group == null)
-            {
-                throw new InvalidOperationException($"Required SharePoint group '{groupName}' was not found");
+                throw new InvalidOperationException($"Role definition not found for group '{group.Title}'");
             }
 
             await EnsureRoleDefinitionAsync(item, group.Id, roleDefinition);
@@ -505,33 +540,27 @@ namespace LegalWorkflow.Functions.Services
             {
                 Target = targetDescription,
                 Action = "AddPermission",
-                Principal = groupName,
+                Principal = group.Title,
                 Level = permLevel
             });
 
-            _logger.LogPermissionChange("AddPermission", targetDescription, groupName, roleDefinition.Name);
+            _logger.LogPermissionChange("AddPermission", targetDescription, group.Title, roleDefinition.Name);
         }
 
         /// <summary>
-        /// Adds a group permission to a folder.
+        /// Adds a permission for a pre-loaded group to a folder.
+        /// Caller is responsible for resolving the group from the pre-loaded cache.
         /// </summary>
         private async Task AddGroupPermissionToFolderAsync(
-            PnPContext context,
             IFolder folder,
-            string groupName,
+            ISharePointGroup group,
             IRoleDefinition? roleDefinition,
             PermissionResponse response,
             string targetDescription)
         {
             if (roleDefinition == null)
             {
-                throw new InvalidOperationException($"Role definition not found for required group '{groupName}'");
-            }
-
-            var group = await context.Web.SiteGroups.FirstOrDefaultAsync(g => g.Title == groupName);
-            if (group == null)
-            {
-                throw new InvalidOperationException($"Required SharePoint group '{groupName}' was not found");
+                throw new InvalidOperationException($"Role definition not found for group '{group.Title}'");
             }
 
             var folderItem = await GetFolderListItemAsync(folder);
@@ -542,11 +571,11 @@ namespace LegalWorkflow.Functions.Services
             {
                 Target = targetDescription,
                 Action = "AddPermission",
-                Principal = groupName,
+                Principal = group.Title,
                 Level = permLevel
             });
 
-            _logger.LogPermissionChange("AddPermission", targetDescription, groupName, roleDefinition.Name);
+            _logger.LogPermissionChange("AddPermission", targetDescription, group.Title, roleDefinition.Name);
         }
 
         /// <summary>
@@ -659,7 +688,7 @@ namespace LegalWorkflow.Functions.Services
         {
             _logger.Info($"Updating item {requestId} to read-only");
 
-            var requestsList = await context.Web.Lists.GetByTitleAsync(SharePointLists.Requests);
+            var requestsList = await context.Web.Lists.GetByTitleAsync(_listConfig.RequestsListName);
             var requestItem = await requestsList.Items.GetByIdAsync(requestId);
 
             // Load current role assignments
@@ -759,7 +788,7 @@ namespace LegalWorkflow.Functions.Services
         private async Task<PnP.Core.Model.SharePoint.IList> GetDocumentsLibraryAsync(PnPContext context)
         {
             var docsLibrary = await context.Web.Lists.GetByTitleAsync(
-                SharePointLists.RequestDocuments,
+                _listConfig.DocumentsLibraryName,
                 l => l.RootFolder);
 
             await docsLibrary.RootFolder.LoadAsync(f => f.ServerRelativeUrl);
@@ -824,13 +853,11 @@ namespace LegalWorkflow.Functions.Services
         }
 
         /// <summary>
-        /// Gets the additional parties and approval users that require direct read permissions.
+        /// Extracts additional parties and approval users from an already-loaded request item.
+        /// The item must have been loaded with i => i.All (all fields) by the caller.
         /// </summary>
-        private async Task<IReadOnlyCollection<RequestParticipant>> GetReadOnlyParticipantsAsync(PnPContext context, int requestId)
+        private static IReadOnlyCollection<RequestParticipant> GetReadOnlyParticipantsFromItem(IListItem requestItem)
         {
-            var requestsList = await context.Web.Lists.GetByTitleAsync(SharePointLists.Requests);
-            var requestItem = await requestsList.Items.GetByIdAsync(requestId, i => i.All);
-
             var participants = new Dictionary<string, RequestParticipant>(StringComparer.OrdinalIgnoreCase);
 
             AddParticipantsFromValue(participants, GetFieldValue(requestItem, RequestsFields.AdditionalParty));

@@ -8,7 +8,6 @@
  * Features:
  * - Runtime toggle via localStorage.setItem('LRS_DEBUG', 'true')
  * - Wraps SPContext.logger methods
- * - Preserves full context information for debugging
  *
  * Usage:
  * ```typescript

@@ -16,7 +16,7 @@ import { generateCorrelationId } from '../../utils/correlationId';
 
 import { RequestStatus } from '@appTypes/workflowTypes';
 
-import { getCurrentUserPrincipal, updateItem } from './workflowHelpers';
+import { calculateTurnaroundDays, getCurrentUserPrincipal, updateItem } from './workflowHelpers';
 import type { IWorkflowActionResult, ICompleteFINRADocumentsPayload } from './workflowTypes';
 
 /**
@@ -75,6 +75,11 @@ export async function completeFINRADocuments(
   updater.set(RequestsFields.Status, RequestStatus.Completed);
   updater.set(RequestsFields.FINRACompletedBy, currentUser);
   updater.set(RequestsFields.FINRACompletedOn, now.toISOString());
+
+  const turnaroundDays = calculateTurnaroundDays(currentRequest.submittedOn, now);
+  if (turnaroundDays !== undefined) {
+    updater.set(RequestsFields.TotalTurnaroundDays, turnaroundDays);
+  }
 
   // Add notes if provided (append-only field)
   if (payload?.notes) {

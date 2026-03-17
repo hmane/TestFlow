@@ -250,6 +250,7 @@ describe('Workflow Action Service - Time Tracking Integration', () => {
         id: 1,
         requestId: 'CRR-2025-001',
         status: 'Closeout',
+        submittedOn: new Date('2025-02-03T16:00:00Z'),
         legalReviewStatus: 'Completed',
         complianceReviewStatus: 'Completed',
       });
@@ -284,6 +285,7 @@ describe('Workflow Action Service - Time Tracking Integration', () => {
 
       expect(result.success).toBe(true);
       expect(result.newStatus).toBe(RequestStatus.Completed);
+      expect(result.fieldsUpdated).toContain('TotalTurnaroundDays');
     });
   });
 

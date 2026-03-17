@@ -9,7 +9,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using PnP.Core.Services.Builder.Configuration;
 using LegalWorkflow.Functions.Helpers;
 using LegalWorkflow.Functions.Models;
@@ -50,12 +49,24 @@ namespace LegalWorkflow.Functions
                         return new PermissionGroupConfig
                         {
                             SubmittersGroup = configuration["Permissions:SubmittersGroup"] ?? "LW - Submitters",
-                            LegalAdminGroup = configuration["Permissions:LegalAdminGroup"] ?? "LW - Legal Admin",
-                            AttorneyAssignerGroup = configuration["Permissions:AttorneyAssignerGroup"] ?? "LW - Attorney Assigner",
+                            LegalAdminGroup = configuration["Permissions:LegalAdminGroup"] ?? "LW - Legal Admins",
+                            AttorneyAssignerGroup = configuration["Permissions:AttorneyAssignerGroup"] ?? "LW - Attorney Assigners",
                             AttorneysGroup = configuration["Permissions:AttorneysGroup"] ?? "LW - Attorneys",
-                            ComplianceGroup = configuration["Permissions:ComplianceGroup"] ?? "LW - Compliance Users",
-                            AdminGroup = configuration["Permissions:AdminGroup"] ?? "LW - Admin",
+                            ComplianceGroup = configuration["Permissions:ComplianceGroup"] ?? "LW - Compliance Reviewers",
+                            AdminGroup = configuration["Permissions:AdminGroup"] ?? "LW - Admins",
                             ServiceAccountUpn = configuration["Permissions:ServiceAccountUpn"] ?? string.Empty
+                        };
+                    });
+
+                    // Register SharePoint list name configuration
+                    // These values are used at runtime by all services that access SharePoint lists.
+                    services.AddSingleton(sp =>
+                    {
+                        return new SharePointListConfig
+                        {
+                            RequestsListName = configuration["SharePoint:RequestsListName"] ?? "Requests",
+                            NotificationsListName = configuration["SharePoint:NotificationsListName"] ?? "Notifications",
+                            DocumentsLibraryName = configuration["SharePoint:DocumentsLibraryName"] ?? "RequestDocuments"
                         };
                     });
 
@@ -65,7 +76,6 @@ namespace LegalWorkflow.Functions
                         return new NotificationConfig
                         {
                             SiteUrl = configuration["SharePoint:SiteUrl"] ?? string.Empty,
-                            RequestsListName = configuration["SharePoint:RequestsListName"] ?? "Requests",
                             EnableDebugLogging = bool.TryParse(configuration["Notifications:EnableDebugLogging"], out var debug) && debug
                         };
                     });
@@ -85,12 +95,8 @@ namespace LegalWorkflow.Functions
                     // Add Memory Cache for authorization caching
                     services.AddMemoryCache();
 
-                    // Register services
-                    services.AddScoped<Logger>();
-                    services.AddScoped<RequestService>();
-                    services.AddScoped<PermissionService>();
-                    services.AddScoped<NotificationService>();
-                    services.AddScoped<SharePointAuthorizationService>();
+                    // Register shared singleton helpers
+                    services.AddSingleton<AuthorizationHelper>();
                 })
                 .Build();
 
@@ -109,20 +115,20 @@ namespace LegalWorkflow.Functions
             var certificateName = configuration["AzureAd:CertificateName"];
             var siteUrl = configuration["SharePoint:SiteUrl"];
 
-            var authenticationProvider = new ReloadableX509AuthenticationProvider(
-                clientId!,
-                tenantId!,
-                keyVaultUrl!,
-                certificateName!,
-                NullLogger<ReloadableX509AuthenticationProvider>.Instance);
-
-            services.AddSingleton(authenticationProvider);
+            services.AddSingleton(sp =>
+            {
+                var logger = sp.GetRequiredService<ILogger<ReloadableX509AuthenticationProvider>>();
+                return new ReloadableX509AuthenticationProvider(
+                    clientId!,
+                    tenantId!,
+                    keyVaultUrl!,
+                    certificateName!,
+                    logger);
+            });
 
             // Configure PnP Core with retry/resilience settings
             services.AddPnPCore(options =>
             {
-                options.DefaultAuthenticationProvider = authenticationProvider;
-
                 options.Sites.Add("Default", new PnPCoreSiteOptions
                 {
                     SiteUrl = siteUrl
@@ -172,6 +178,13 @@ namespace LegalWorkflow.Functions
                     }
                 };
             });
+
+            // Wire up the auth provider after DI is fully configured — avoids BuildServiceProvider() anti-pattern
+            services.AddOptions<PnPCoreOptions>()
+                .PostConfigure<ReloadableX509AuthenticationProvider>((options, provider) =>
+                {
+                    options.DefaultAuthenticationProvider = provider;
+                });
         }
     }
 }

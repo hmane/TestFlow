@@ -78,7 +78,7 @@ Automate and streamline legal/compliance review process for marketing communicat
 - Respond to feedback and upload revisions
 - Perform closeout when approved
 
-### 2.2 Legal Admin (LW - Legal Admin Group)
+### 2.2 Legal Admin (LW - Legal Admins Group)
 
 **Who:** Legal department administrators (gatekeepers)
 **Permissions:** View/edit all requests, override review audience, assign attorneys
@@ -90,7 +90,7 @@ Automate and streamline legal/compliance review process for marketing communicat
 - Monitor workflow health across all stages
 - Handle reassignments and exceptions
 
-### 2.3 Attorney Assigner (LW - Attorney Assigner Group)
+### 2.3 Attorney Assigner (LW - Attorney Assigners Group)
 
 **Who:** Committee members for attorney assignment
 **Permissions:** View pending assignments, assign attorneys
@@ -112,7 +112,7 @@ Automate and streamline legal/compliance review process for marketing communicat
 - Submit review with outcome (Approved, Approved With Comments, Respond To Comments And Resubmit, Not Approved) and notes
 - Communicate via comments for changes/questions
 
-### 2.5 Compliance Users (LW - Compliance Users Group)
+### 2.5 Compliance Users (LW - Compliance Reviewers Group)
 
 **Who:** Compliance department staff
 **Permissions:** View all, edit compliance requests
@@ -123,7 +123,7 @@ Automate and streamline legal/compliance review process for marketing communicat
 - Set compliance flags (`isForesideReviewRequired`, `isRetailUse`, `recordRetentionOnly`)
 - **Note:** No specific assignment - any compliance user can review
 
-### 2.6 Application Admin (LW - Admin Group)
+### 2.6 Application Admin (LW - Admins Group)
 
 **Who:** IT administrators, developers
 **Permissions:** Full control
@@ -608,10 +608,10 @@ Response: {
   - Creator: Edit
   - Additional Party: Read
   - LW - Submitters: Read
-  - LW - Legal Admin: Contributor Without Delete
-  - LW - Compliance Users: Contributor Without Delete (if applicable)
+  - LW - Legal Admins: Contributor Without Delete
+  - LW - Compliance Reviewers: Contributor Without Delete (if applicable)
   - Assigned Attorney: Contributor Without Delete
-  - LW - Admin: Full Control
+  - LW - Admins: Full Control
 
 #### Endpoint 2: POST /api/notifications/generate
 
@@ -806,11 +806,11 @@ Response: {
 | Group Name             | Members           | Purpose                  |
 | ---------------------- | ----------------- | ------------------------ |
 | LW - Submitters        | All requesters    | Create and view requests |
-| LW - Legal Admin       | Legal admins      | Triage and routing       |
-| LW - Attorney Assigner | Committee members | Attorney assignment      |
+| LW - Legal Admins       | Legal admins      | Triage and routing       |
+| LW - Attorney Assigners | Committee members | Attorney assignment      |
 | LW - Attorneys         | All attorneys     | Legal reviews            |
-| LW - Compliance Users  | Compliance staff  | Compliance reviews       |
-| LW - Admin             | IT/Developers     | System administration    |
+| LW - Compliance Reviewers  | Compliance staff  | Compliance reviews       |
+| LW - Admins             | IT/Developers     | System administration    |
 
 **Membership:** Managed by SharePoint Admins via ServiceNow tickets
 
@@ -818,7 +818,7 @@ Response: {
 
 **Standard:**
 
-- Full Control (LW - Admin)
+- Full Control (LW - Admins)
 - Read (base level for all at site)
 
 **Custom:**
@@ -841,11 +841,11 @@ Response: {
 | Creator                | Contributor Without Delete | Contributor                | Only own requests      |
 | Additional Party       | Read                       | Read                       | Stakeholders           |
 | LW - Submitters        | Read                       | Read                       | All requests           |
-| LW - Legal Admin       | Contributor Without Delete | Contributor Without Delete | All requests           |
-| LW - Attorney Assigner | Read                       | Read                       | All requests           |
+| LW - Legal Admins       | Contributor Without Delete | Contributor Without Delete | All requests           |
+| LW - Attorney Assigners | Read                       | Read                       | All requests           |
 | Assigned Attorney      | Contributor Without Delete | Contributor Without Delete | Assigned only          |
-| LW - Compliance Users  | Contributor Without Delete | Contributor Without Delete | If compliance required |
-| LW - Admin             | Contributor Without Delete | Contributor Without Delete | All requests           |
+| LW - Compliance Reviewers  | Contributor Without Delete | Contributor Without Delete | If compliance required |
+| LW - Admins             | Contributor Without Delete | Contributor Without Delete | All requests           |
 | Ad-hoc Users           | Read                       | Read                       | Via ManageAccess       |
 
 ### 8.4 Access Control Matrix
@@ -2133,11 +2133,11 @@ Response: {
 | Group Name                 | Purpose                                  | Typical Members                           |
 | -------------------------- | ---------------------------------------- | ----------------------------------------- |
 | **LW - Submitters**        | Create and submit requests               | Marketing, Communications, Business units |
-| **LW - Legal Admin**       | Triage and route requests                | Legal department administrators           |
-| **LW - Attorney Assigner** | Assign attorneys when Legal Admin unsure | Senior legal staff, committee members     |
+| **LW - Legal Admins**       | Triage and route requests                | Legal department administrators           |
+| **LW - Attorney Assigners** | Assign attorneys when Legal Admin unsure | Senior legal staff, committee members     |
 | **LW - Attorneys**         | Perform legal reviews                    | All legal department attorneys            |
-| **LW - Compliance Users**  | Perform compliance reviews               | Compliance department staff               |
-| **LW - Admin**             | System administration                    | IT staff, developers, system admins       |
+| **LW - Compliance Reviewers**  | Perform compliance reviews               | Compliance department staff               |
+| **LW - Admins**             | System administration                    | IT staff, developers, system admins       |
 
 ### 15.4 Request Status Reference (Continued)
 

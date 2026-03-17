@@ -95,6 +95,13 @@ export interface IFieldVisibility {
     reason?: string;
   };
 
+  // FINRA Documents
+  finra: {
+    canView: boolean;
+    canEdit: boolean;
+    reason?: string;
+  };
+
   // Attachments
   attachments: {
     canView: boolean;
@@ -141,6 +148,7 @@ export interface IVisibilityContext {
   complianceReviewRequired: boolean;
   legalReviewCompleted: boolean;
   complianceReviewCompleted: boolean;
+  isWaitingOnSubmitter: boolean;
 }
 
 /**
@@ -162,6 +170,16 @@ function enabled(): IUIElementState {
  */
 function disabled(reason: string): IUIElementState {
   return { visible: true, enabled: false, disabledReason: reason };
+}
+
+function canManageCloseout(ctx: IVisibilityContext): boolean {
+  const { status, permissions, isOwner } = ctx;
+  return status === RequestStatus.Closeout && (permissions.isAdmin || permissions.isLegalAdmin || isOwner);
+}
+
+function canManageFINRADocuments(ctx: IVisibilityContext): boolean {
+  const { status, permissions, isOwner } = ctx;
+  return status === RequestStatus.AwaitingFINRADocuments && (permissions.isAdmin || isOwner);
 }
 
 /**
@@ -324,7 +342,7 @@ export function getButtonVisibility(ctx: IVisibilityContext): IButtonVisibility 
 
   // Closeout status
   if (status === RequestStatus.Closeout) {
-    const canCloseout = isAdmin || isLegalAdmin || isOwner;
+    const canCloseout = canManageCloseout(ctx);
     return {
       saveAsDraft: hidden(),
       submitRequest: hidden(),
@@ -343,6 +361,7 @@ export function getButtonVisibility(ctx: IVisibilityContext): IButtonVisibility 
 
   // Awaiting FINRA Documents status
   if (status === RequestStatus.AwaitingFINRADocuments) {
+    const canCompleteFINRA = canManageFINRADocuments(ctx);
     return {
       saveAsDraft: hidden(),
       submitRequest: hidden(),
@@ -354,7 +373,7 @@ export function getButtonVisibility(ctx: IVisibilityContext): IButtonVisibility 
       assignAttorney: hidden(),
       sendToCommittee: hidden(),
       submitCloseout: hidden(),
-      completeFINRADocuments: isAdmin || isOwner ? enabled() : hidden(),
+      completeFINRADocuments: canCompleteFINRA ? enabled() : hidden(),
       resubmitForReview: hidden(),
     };
   }
@@ -380,7 +399,7 @@ export function getButtonVisibility(ctx: IVisibilityContext): IButtonVisibility 
  * Get field visibility based on context
  */
 export function getFieldVisibility(ctx: IVisibilityContext): IFieldVisibility {
-  const { status, permissions, isOwner, isNewRequest, isAssignedAttorney } = ctx;
+  const { status, permissions, isOwner, isNewRequest, isAssignedAttorney, isWaitingOnSubmitter } = ctx;
   const isAdmin = permissions.isAdmin;
   const isLegalAdmin = permissions.isLegalAdmin;
   const isAttorney = permissions.isAttorney;
@@ -450,9 +469,19 @@ export function getFieldVisibility(ctx: IVisibilityContext): IFieldVisibility {
     // Closeout fields
     closeout: {
       canView: status === RequestStatus.Closeout || status === RequestStatus.Completed,
-      canEdit: !isTerminal && status === RequestStatus.Closeout && (isAdmin || isLegalAdmin),
+      canEdit: !isTerminal && canManageCloseout(ctx),
       reason: status === RequestStatus.Completed ? 'Request already completed' :
-              !isAdmin && !isLegalAdmin ? 'Only Legal Admin can closeout' :
+              status !== RequestStatus.Closeout ? 'Closeout is only editable during Closeout status' :
+              !isAdmin && !isLegalAdmin && !isOwner ? 'Only the submitter, Legal Admin, or admin can closeout' :
+              undefined,
+    },
+
+    finra: {
+      canView: status === RequestStatus.AwaitingFINRADocuments || status === RequestStatus.Completed,
+      canEdit: !isTerminal && canManageFINRADocuments(ctx),
+      reason: status === RequestStatus.Completed ? 'Request already completed' :
+              status !== RequestStatus.AwaitingFINRADocuments ? 'FINRA documents are only editable during Awaiting FINRA Documents' :
+              !isAdmin && !isOwner ? 'Only the submitter or admin can manage FINRA documents' :
               undefined,
     },
 
@@ -462,12 +491,16 @@ export function getFieldVisibility(ctx: IVisibilityContext): IFieldVisibility {
       canAdd: !isTerminal && (
         // Owner can add in Draft
         (status === RequestStatus.Draft && (isOwner || isAdmin)) ||
+        // Owner can respond to reviewer comments while waiting on submitter
+        (status === RequestStatus.InReview && isOwner && isWaitingOnSubmitter) ||
         // LegalAdmin, Attorney, Compliance can add before closeout
         (isBeforeCloseout && (isAdmin || isLegalAdmin || isAttorney || isComplianceUser))
       ),
       canDelete: !isTerminal && (
         // Owner can delete in Draft
         (status === RequestStatus.Draft && (isOwner || isAdmin)) ||
+        // Owner can update attachments while responding to reviewer comments
+        (status === RequestStatus.InReview && isOwner && isWaitingOnSubmitter) ||
         // Admin, LegalAdmin can delete anytime before closeout
         (isBeforeCloseout && (isAdmin || isLegalAdmin))
       ),
@@ -551,6 +584,11 @@ export function createVisibilityContext(
   const complianceReviewCompleted =
     request?.complianceReview?.status === 'Completed' ||
     request?.complianceReviewStatus === 'Completed';
+  const isWaitingOnSubmitter =
+    request?.legalReview?.status === 'Waiting On Submitter' ||
+    request?.legalReviewStatus === 'Waiting On Submitter' ||
+    request?.complianceReview?.status === 'Waiting On Submitter' ||
+    request?.complianceReviewStatus === 'Waiting On Submitter';
 
   return {
     status: status || RequestStatus.Draft,
@@ -564,6 +602,7 @@ export function createVisibilityContext(
     complianceReviewRequired,
     legalReviewCompleted,
     complianceReviewCompleted,
+    isWaitingOnSubmitter,
   };
 }
 
@@ -582,6 +621,7 @@ export function debugVisibility(ctx: IVisibilityContext): void {
     isDirty: ctx.isDirty,
     hasAssignedAttorney: ctx.hasAssignedAttorney,
     isAssignedAttorney: ctx.isAssignedAttorney,
+    isWaitingOnSubmitter: ctx.isWaitingOnSubmitter,
   });
 
   SPContext.logger.debug('UI Visibility Debug - Permissions', {

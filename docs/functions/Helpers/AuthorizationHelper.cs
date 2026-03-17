@@ -36,7 +36,7 @@ namespace LegalWorkflow.Functions.Helpers
     public class AuthorizationHelper
     {
         private readonly IConfiguration _configuration;
-        private readonly ILogger _logger;
+        private readonly ILogger<AuthorizationHelper> _logger;
         private readonly string _tenantId;
         private readonly string _clientId;
         private readonly string _audience;
@@ -47,7 +47,7 @@ namespace LegalWorkflow.Functions.Helpers
         /// </summary>
         /// <param name="configuration">Application configuration containing Azure AD settings</param>
         /// <param name="logger">Logger instance for diagnostic logging</param>
-        public AuthorizationHelper(IConfiguration configuration, ILogger logger)
+        public AuthorizationHelper(IConfiguration configuration, ILogger<AuthorizationHelper> logger)
         {
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -115,6 +115,15 @@ namespace LegalWorkflow.Functions.Helpers
                 // Extract user information from claims
                 var userInfo = ExtractUserInfo(principal);
 
+                // Reject tokens that lack any usable identity. SharePoint permission checks
+                // require either email or UPN; without them all downstream calls will fail
+                // with confusing errors rather than a clear 401.
+                if (string.IsNullOrWhiteSpace(userInfo.Email) && string.IsNullOrWhiteSpace(userInfo.UserPrincipalName))
+                {
+                    _logger.LogWarning("Token validated but contains no usable identity claims (email and UPN are both empty)");
+                    return AuthorizationResult.Unauthorized("Token does not contain required identity claims");
+                }
+
                 _logger.LogInformation("Token validated successfully for user: {UserEmail}", userInfo.Email);
 
                 return AuthorizationResult.Success(userInfo);
@@ -136,8 +145,10 @@ namespace LegalWorkflow.Functions.Helpers
             }
             catch (SecurityTokenException ex)
             {
+                // Log full detail internally but do not expose the internal error message
+                // in the response — it may contain clues useful for token-forgery attacks.
                 _logger.LogWarning("Token validation failed: {Message}", ex.Message);
-                return AuthorizationResult.Unauthorized($"Token validation failed: {ex.Message}");
+                return AuthorizationResult.Unauthorized("Token validation failed");
             }
             catch (Exception ex)
             {

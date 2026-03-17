@@ -24,8 +24,10 @@ export interface IExistingFile {
   version?: string;
   listItemId?: number; // SharePoint list item ID for version history
   checkOutType?: number;
+  checkedOutById?: string;
   checkedOutByName?: string;
   checkedOutByEmail?: string;
+  checkedOutByLoginName?: string;
   checkedOutDate?: string;
 }
 

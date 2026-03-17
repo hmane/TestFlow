@@ -60,11 +60,11 @@ The Legal Review System (LRS) is a SharePoint Framework (SPFx) Form Customizer e
 | Role | Group | Primary Actions |
 |------|-------|-----------------|
 | Submitter | LW - Submitters | Create requests, upload documents, closeout |
-| Legal Admin | LW - Legal Admin | Triage, assign attorneys, override settings |
-| Attorney Assigner | LW - Attorney Assigner | Committee-based attorney assignment |
+| Legal Admin | LW - Legal Admins | Triage, assign attorneys, override settings |
+| Attorney Assigner | LW - Attorneys Assigner | Committee-based attorney assignment |
 | Attorney | LW - Attorneys | Legal review of assigned requests |
-| Compliance User | LW - Compliance Users | Compliance review |
-| Admin | LW - Admin | Full system administration |
+| Compliance User | LW - Compliance Reviewers | Compliance review |
+| Admin | LW - Admins | Full system administration |
 
 ---
 
@@ -101,15 +101,15 @@ The `RequestIds` list (hidden) stores the sequence counter per prefix per year.
 
 | Group Name | Owner | Member Management | View Membership | Description |
 |------------|-------|-------------------|-----------------|-------------|
-| **LW - Admin** | Self | Admins only | Members only | Full system access |
-| **LW - Submitters** | LW - Admin | Closed | Members only | Create and manage own requests |
-| **LW - Legal Admin** | LW - Admin | Closed | Members only | Triage, manage all requests |
-| **LW - Attorney Assigner** | LW - Admin | Closed | Members only | Committee attorney assignment |
-| **LW - Attorneys** | LW - Admin | Closed | Members only | Legal review of assigned requests |
-| **LW - Compliance Users** | LW - Admin | Closed | Members only | Compliance review |
+| **LW - Admins** | Self | Admins only | Members only | Full system access |
+| **LW - Submitters** | LW - Admins | Closed | Members only | Create and manage own requests |
+| **LW - Legal Admins** | LW - Admins | Closed | Members only | Triage, manage all requests |
+| **LW - Attorney Assigners** | LW - Admins | Closed | Members only | Committee attorney assignment |
+| **LW - Attorneys** | LW - Admins | Closed | Members only | Legal review of assigned requests |
+| **LW - Compliance Reviewers** | LW - Admins | Closed | Members only | Compliance review |
 
 **Group Settings (All Groups):**
-- `AllowMembersEditMembership`: false (except LW - Admin: true)
+- `AllowMembersEditMembership`: false (except LW - Admins: true)
 - `AllowRequestToJoinLeave`: false
 - `AutoAcceptRequestToJoinLeave`: false
 - `OnlyAllowMembersViewMembership`: true
@@ -119,13 +119,13 @@ The `RequestIds` list (hidden) stores the sequence counter per prefix per year.
 | Permission Level | Base | Removed Rights | Applied To |
 |------------------|------|----------------|------------|
 | **Contributor Without Delete** | Contribute | DeleteListItems, DeleteVersions | Attorneys, Compliance Users on Requests |
-| **Admin Without Delete** | Full Control | DeleteListItems, DeleteVersions | LW - Admin on Requests |
+| **Admin Without Delete** | Full Control | DeleteListItems, DeleteVersions | LW - Admins on Requests |
 
 > **Why no delete?** Audit trail integrity requires that no request can be deleted. Version history must be preserved for compliance. Site Collection Admins can still delete (SharePoint platform constraint) - train them on audit policy.
 
 ### 3.3 List-Level Permissions
 
-| List | Inheritance | LW - Admin | LW - Submitters | LW - Legal Admin | LW - Attorneys | LW - Compliance |
+| List | Inheritance | LW - Admins | LW - Submitters | LW - Legal Admins | LW - Attorneys | LW - Compliance |
 |------|-------------|------------|------------------|------------------|----------------|-----------------|
 | **Requests** | Broken | Admin Without Delete | Read (+ Contribute on own items) | Contribute Without Delete | Contribute Without Delete | Contribute Without Delete |
 | **RequestDocuments** | Broken | Full Control | Read/Contribute (own) | Full Control | Contribute | Contribute |
@@ -619,17 +619,17 @@ TargetReturnDate < (RequestedDate + SubmissionItem.TurnAroundTimeInDays)
 
 | Template ID | Trigger | Recipients | Subject | Importance |
 |-------------|---------|------------|---------|------------|
-| RequestSubmitted | Draft -> Legal Intake | LW - Legal Admin group | [Action Required] New Legal Review Request | Normal |
-| RushRequestAlert | Draft -> Legal Intake (Rush) | LW - Legal Admin group | [RUSH] Urgent Legal Review Request | High |
+| RequestSubmitted | Draft -> Legal Intake | LW - Legal Admins group | [Action Required] New Legal Review Request | Normal |
+| RushRequestAlert | Draft -> Legal Intake (Rush) | LW - Legal Admins group | [RUSH] Urgent Legal Review Request | High |
 
 #### Assignment Notifications
 
 | Template ID | Trigger | Recipients | Subject | Importance |
 |-------------|---------|------------|---------|------------|
-| ReadyForAttorneyAssignment | Status -> Assign Attorney | LW - Attorney Assigner group | [Action Required] Attorney Assignment Needed | Normal |
+| ReadyForAttorneyAssignment | Status -> Assign Attorney | LW - Attorney Assigners group | [Action Required] Attorney Assignment Needed | Normal |
 | AttorneyAssigned | Attorney assigned | Assigned Attorney; CC: Submitter | [Action Required] Legal Review Assigned | Normal |
 | AttorneyReassigned | Attorney field changed | New Attorney; CC: Submitter, Legal Admin | [Legal Review] Attorney Reassigned | Normal |
-| ComplianceReviewRequired | Status -> In Review (compliance needed) | LW - Compliance Users; CC: Submitter | [Compliance Review] Review Required | Normal |
+| ComplianceReviewRequired | Status -> In Review (compliance needed) | LW - Compliance Reviewers; CC: Submitter | [Compliance Review] Review Required | Normal |
 
 #### Legal Review Notifications
 
@@ -647,7 +647,7 @@ TargetReturnDate < (RequestedDate + SubmissionItem.TurnAroundTimeInDays)
 | ComplianceReviewApproved | Compliance outcome = Approved/With Comments | Submitter; CC: Additional Parties | [Compliance Review] Review Complete | Normal |
 | ComplianceChangesRequested | Compliance status -> Waiting On Submitter | Submitter; CC: Additional Parties | [Action Required] Compliance Changes Requested | High |
 | ComplianceReviewNotApproved | Compliance outcome = Not Approved | Submitter; CC: Additional Parties | [Compliance Review] Not Approved | Normal |
-| ResubmissionReceivedCompliance | Compliance status -> Waiting On Compliance | LW - Compliance Users | [Action Required] Compliance Resubmission | Normal |
+| ResubmissionReceivedCompliance | Compliance status -> Waiting On Compliance | LW - Compliance Reviewers | [Action Required] Compliance Resubmission | Normal |
 
 #### Status Change Notifications
 
@@ -1475,11 +1475,11 @@ A consolidated reference of every SharePoint list and library in the LRS site, i
 
 | Group | Permission Level | Notes |
 |-------|-----------------|-------|
-| LW - Admin | Admin Without Delete | Full control except delete (audit trail protection) |
+| LW - Admins | Admin Without Delete | Full control except delete (audit trail protection) |
 | LW - Submitters | Read + Contribute on own items | Can create and edit own Draft requests; read-only on others |
-| LW - Legal Admin | Contribute Without Delete | Full management of all requests except delete |
+| LW - Legal Admins | Contribute Without Delete | Full management of all requests except delete |
 | LW - Attorneys | Contribute Without Delete | Edit assigned requests during review |
-| LW - Compliance Users | Contribute Without Delete | Edit requests during compliance review |
+| LW - Compliance Reviewers | Contribute Without Delete | Edit requests during compliance review |
 
 **Item-Level Permissions:** Broken on transition from Draft → Legal Intake. See [Section 3.4](#34-item-level-permissions-requests) for per-stage breakdown.
 
@@ -1498,11 +1498,11 @@ A consolidated reference of every SharePoint list and library in the LRS site, i
 
 | Group | Permission Level | Notes |
 |-------|-----------------|-------|
-| LW - Admin | Full Control | Complete document management |
+| LW - Admins | Full Control | Complete document management |
 | LW - Submitters | Read / Contribute on own | Can upload to own request folders |
-| LW - Legal Admin | Full Control | Manage all documents |
+| LW - Legal Admins | Full Control | Manage all documents |
 | LW - Attorneys | Contribute | Upload/edit documents for assigned reviews |
-| LW - Compliance Users | Contribute | Upload/edit documents for compliance reviews |
+| LW - Compliance Reviewers | Contribute | Upload/edit documents for compliance reviews |
 
 **Folder Structure:** `/{ItemID}/` root contains review and supplemental documents; subfolders for each approval type (`CommunicationsApproval/`, `PortfolioManagerApproval/`, etc.) and `FINRADocuments/`.
 
@@ -1524,11 +1524,11 @@ A consolidated reference of every SharePoint list and library in the LRS site, i
 
 | Group | Permission Level |
 |-------|-----------------|
-| LW - Admin | Full Control |
+| LW - Admins | Full Control |
 | LW - Submitters | Read |
-| LW - Legal Admin | Read |
+| LW - Legal Admins | Read |
 | LW - Attorneys | Read |
-| LW - Compliance Users | Read |
+| LW - Compliance Reviewers | Read |
 
 ---
 
@@ -1548,11 +1548,11 @@ A consolidated reference of every SharePoint list and library in the LRS site, i
 
 | Group | Permission Level |
 |-------|-----------------|
-| LW - Admin | Full Control |
+| LW - Admins | Full Control |
 | LW - Submitters | Read |
-| LW - Legal Admin | Read |
+| LW - Legal Admins | Read |
 | LW - Attorneys | Read |
-| LW - Compliance Users | Read |
+| LW - Compliance Reviewers | Read |
 
 ---
 
@@ -1632,8 +1632,8 @@ This section documents what happens at each stage when a request is created or m
 
 | Template | To | Importance |
 |----------|-----|-----------|
-| `RequestSubmitted` | LW - Legal Admin group | Normal |
-| `RushRequestAlert` | LW - Legal Admin group | High (only if rush) |
+| `RequestSubmitted` | LW - Legal Admins group | Normal |
+| `RushRequestAlert` | LW - Legal Admins group | High (only if rush) |
 
 **Time Tracking:** Legal Intake stage timer starts (Legal Admin is current owner).
 
@@ -1659,7 +1659,7 @@ This section documents what happens at each stage when a request is created or m
 
 | Template | To | Importance |
 |----------|-----|-----------|
-| `ReadyForAttorneyAssignment` | LW - Attorney Assigner group | Normal |
+| `ReadyForAttorneyAssignment` | LW - Attorney Assigners group | Normal |
 
 **Time Tracking:** Legal Intake stage time calculated and saved. Assign Attorney timer starts.
 
@@ -1693,7 +1693,7 @@ This section documents what happens at each stage when a request is created or m
 | Template | To | Importance |
 |----------|-----|-----------|
 | `AttorneyAssigned` | Assigned Attorney; CC: Submitter, Additional Parties | Normal |
-| `ComplianceReviewRequired` | LW - Compliance Users (only if compliance review needed) | Normal |
+| `ComplianceReviewRequired` | LW - Compliance Reviewers (only if compliance review needed) | Normal |
 
 **Time Tracking:** Legal Intake stage time calculated. In Review timer starts.
 

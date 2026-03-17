@@ -96,7 +96,7 @@ Status changes from `Draft` → `Legal Intake`
 ### Recipients
 | Field | Value |
 |-------|-------|
-| **To** | LW - Legal Admin (SharePoint Group) |
+| **To** | LW - Legal Admins (SharePoint Group) |
 | **CC** | Submitter (Creator) |
 
 ### Subject
@@ -375,7 +375,7 @@ Legal Intake → Assign Attorney (via "Send to Committee" action)
 ### Recipients
 | Field | Value |
 |-------|-------|
-| **To** | LW - Attorney Assigner (SharePoint Group) |
+| **To** | LW - Attorney Assigners (SharePoint Group) |
 | **CC** | Legal Admin who sent, Submitter |
 
 ### Subject
@@ -534,7 +534,7 @@ Notifies Compliance team when a request requires compliance review.
 ### Recipients
 | Field | Value |
 |-------|-------|
-| **To** | LW - Compliance Users (SharePoint Group) |
+| **To** | LW - Compliance Reviewers (SharePoint Group) |
 | **CC** | Submitter, Assigned Attorney (if applicable) |
 
 ### Subject

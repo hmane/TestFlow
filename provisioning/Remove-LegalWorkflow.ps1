@@ -54,11 +54,11 @@ $pagesToRemove = @(
     "ComplianceDashboard.aspx"
 )
 $groupsToRemove = @(
-    "LW - Admin",
-    "LW - Legal Admin",
-    "LW - Attorney Assigner",
+    "LW - Admins",
+    "LW - Legal Admins",
+    "LW - Attorney Assigners",
     "LW - Attorneys",
-    "LW - Compliance Users",
+    "LW - Compliance Reviewers",
     "LW - Submitters"
 )
 $permissionLevelsToRemove = @(

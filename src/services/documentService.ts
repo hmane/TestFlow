@@ -54,8 +54,73 @@ interface IRenderListDataRow {
   Author?: Array<{ title?: string; email?: string; sip?: string }>;
   Editor?: Array<{ title?: string; email?: string; sip?: string }>;
   CheckoutUser?: Array<{ title?: string; email?: string; sip?: string; id?: string }>;
+  CheckedOutUserId?: string;
   CheckedOutDate?: string;
   CheckOutType?: string;
+}
+
+export function normalizeSharePointCheckOutType(value: unknown): number {
+  if (typeof value === 'number') {
+    return isNaN(value) ? 0 : value;
+  }
+
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+
+    if (!normalized || normalized === '0' || normalized === 'none') {
+      return 0;
+    }
+
+    const parsed = parseInt(normalized, 10);
+    if (!isNaN(parsed)) {
+      return parsed;
+    }
+
+    if (normalized.indexOf('online') !== -1) {
+      return 1;
+    }
+
+    if (normalized.indexOf('offline') !== -1) {
+      return 2;
+    }
+  }
+
+  return 0;
+}
+
+export function shouldBlockMutationForCheckout(
+  checkoutType: number,
+  checkedOutByEmail?: string,
+  checkedOutByTitle?: string
+): boolean {
+  if (checkoutType === 0) {
+    return false;
+  }
+
+  const normalizedEmail = (checkedOutByEmail || '').trim();
+  const normalizedTitle = (checkedOutByTitle || '').trim();
+
+  return normalizedEmail !== '' || normalizedTitle !== '';
+}
+
+export function resolveEffectiveCheckoutType(
+  checkoutType: number,
+  checkedOutById?: string,
+  checkedOutByName?: string,
+  checkedOutByEmail?: string,
+  checkedOutByLoginName?: string
+): number {
+  const hasOwner =
+    !!(checkedOutById || '').trim() ||
+    !!(checkedOutByName || '').trim() ||
+    !!(checkedOutByEmail || '').trim() ||
+    !!(checkedOutByLoginName || '').trim();
+
+  if (hasOwner) {
+    return checkoutType !== 0 ? checkoutType : 1;
+  }
+
+  return 0;
 }
 
 /**
@@ -309,9 +374,19 @@ export async function uploadFile(
             break;
           }
         }
-        if (matchingFile && (matchingFile.CheckOutType || 0) !== 0) {
+        const checkoutType = normalizeSharePointCheckOutType(matchingFile?.CheckOutType);
+        if (matchingFile && checkoutType !== 0) {
           const currentUserEmail = (SPContext.currentUser?.email || '').toLowerCase();
           const checkedOutEmail = (matchingFile.CheckedOutByUser?.EMail || '').toLowerCase();
+          const checkedOutTitle = (matchingFile.CheckedOutByUser?.Title || '').toLowerCase();
+
+          if (!shouldBlockMutationForCheckout(checkoutType, checkedOutEmail, checkedOutTitle)) {
+            SPContext.logger.warn('DocumentService: Non-attributed checkout detected before overwrite; allowing server to decide', {
+              fileName: file.name,
+              rawCheckOutType: matchingFile?.CheckOutType,
+              normalizedCheckOutType: checkoutType,
+            });
+          } else {
           const isMe = checkedOutEmail !== '' && checkedOutEmail === currentUserEmail;
           if (!isMe) {
             const reviewerName = matchingFile.CheckedOutByUser?.Title || 'another user';
@@ -320,6 +395,7 @@ export async function uploadFile(
               fileName: file.name,
               error: `Cannot replace "${file.name}" — it is being reviewed by ${reviewerName}.`,
             };
+          }
           }
         }
       } catch (checkError) {
@@ -550,7 +626,7 @@ export async function loadDocuments(
   libraryTitle: string = DEFAULT_LIBRARY_TITLE
 ): Promise<IDocument[]> {
   try {
-    const sp = SPContext.sp;
+    const sp = SPContext.tryGetFreshSP() || SPContext.sp || SPContext.spPessimistic;
     const library = sp.web.lists.getByTitle(libraryTitle);
 
     // Get library root folder path
@@ -562,6 +638,7 @@ export async function loadDocuments(
       itemId,
       libraryServerRelativeUrl,
       folderPath,
+      usingFreshSP: sp !== SPContext.sp,
     });
 
     // Build CAML query to get all files (not folders) recursively from RequestDocuments/{itemId}
@@ -595,6 +672,7 @@ export async function loadDocuments(
           <FieldRef Name="Author" />
           <FieldRef Name="Editor" />
           <FieldRef Name="CheckoutUser" />
+          <FieldRef Name="CheckedOutUserId" />
           <FieldRef Name="CheckedOutDate" />
           <FieldRef Name="CheckOutType" />
         </ViewFields>
@@ -611,24 +689,6 @@ export async function loadDocuments(
       hasRow: !!result.Row,
     });
 
-    // DEBUG: Log raw row keys and checkout-related fields for first document
-    if (result.Row && result.Row.length > 0) {
-      const firstRow = result.Row[0];
-      const allKeys = Object.keys(firstRow);
-      const checkoutKeys = allKeys.filter(function(k) {
-        return k.toLowerCase().indexOf('check') !== -1 || k.toLowerCase().indexOf('cout') !== -1;
-      });
-      SPContext.logger.warn('DEBUG: Raw row keys for first document', {
-        fileName: firstRow.FileLeafRef,
-        allKeys: allKeys.join(', '),
-        checkoutRelatedKeys: checkoutKeys.join(', '),
-        checkoutValues: JSON.stringify(checkoutKeys.reduce(function(acc: Record<string, unknown>, key: string) {
-          acc[key] = firstRow[key];
-          return acc;
-        }, {})),
-      });
-    }
-
     // Check if we got any results
     if (!result.Row || result.Row.length === 0) {
       SPContext.logger.info('No documents found', { itemId, folderPath });
@@ -643,21 +703,12 @@ export async function loadDocuments(
       const fileDirRef = row.FileDirRef;
       const fileSize = parseInt(row.File_x0020_Size || '0', 10);
 
-      SPContext.logger.info('Raw SharePoint row', {
-        ID: row.ID,
-        FileLeafRef: row.FileLeafRef,
-        FileRef: row.FileRef,
-        DocumentType: row.DocumentType,
-        hasDocumentType: !!row.DocumentType,
-      });
-
       // Determine document type
       // Documents MUST have DocumentType field set
       let docType: DocumentType;
 
       if (row.DocumentType) {
         docType = row.DocumentType as DocumentType;
-        SPContext.logger.info('✅ Document type from field', { fileName, docType });
       } else {
         SPContext.logger.error('❌ CRITICAL: Document missing DocumentType field! Skipping this document.', {
           fileName,
@@ -687,27 +738,19 @@ export async function loadDocuments(
         modifiedByEmail: row.Editor?.[0]?.email || row.Editor?.[0]?.sip || '',
         listItemId: parseInt(row.ID, 10),
         documentType: docType,
-        checkOutType: row.CheckOutType
-          ? parseInt(row.CheckOutType, 10)
-          : (row.CheckoutUser && row.CheckoutUser.length > 0 ? 1 : 0),
+        checkOutType: resolveEffectiveCheckoutType(
+          normalizeSharePointCheckOutType(row.CheckOutType),
+          row.CheckedOutUserId,
+          row.CheckoutUser?.[0]?.title,
+          row.CheckoutUser?.[0]?.email || row.CheckoutUser?.[0]?.sip,
+          undefined
+        ),
+        checkedOutById: row.CheckedOutUserId,
         checkedOutByName: row.CheckoutUser?.[0]?.title,
         checkedOutByEmail: row.CheckoutUser?.[0]?.email || row.CheckoutUser?.[0]?.sip,
+        checkedOutByLoginName: undefined,
         checkedOutDate: row.CheckedOutDate,
       };
-
-      SPContext.logger.info('Mapped document', {
-        name: doc.name,
-        type: doc.documentType,
-        size: doc.size,
-        url: doc.url,
-        listItemId: doc.listItemId,
-        checkOutType: doc.checkOutType,
-        checkedOutByName: doc.checkedOutByName,
-        checkedOutByEmail: doc.checkedOutByEmail,
-        rawCheckOutType: row.CheckOutType,
-        rawCheckoutUser: JSON.stringify(row.CheckoutUser),
-        rawCheckedOutDate: row.CheckedOutDate,
-      });
 
       return doc;
     })
@@ -743,14 +786,68 @@ async function assertFileNotCheckedOut(file: IDocument, operation: string): Prom
     const urlObj = new URL(file.url);
     const serverRelativeUrl = decodeServerRelativePath(urlObj.pathname);
     const spFile = SPContext.sp.web.getFileByServerRelativePath(serverRelativeUrl);
+    SPContext.logger.debug('DocumentService: Verifying live checkout state before mutation', {
+      fileName: file.name,
+      operation,
+      serverRelativeUrl,
+      localCheckOutType: file.checkOutType,
+      localCheckedOutByName: file.checkedOutByName,
+      localCheckedOutByEmail: file.checkedOutByEmail,
+      listItemId: file.listItemId,
+      uniqueId: file.uniqueId,
+    });
     const fileInfo = await spFile.select('CheckOutType', 'CheckedOutByUser/Title', 'CheckedOutByUser/EMail')
       .expand('CheckedOutByUser')() as any;
+    SPContext.logger.debug('DocumentService: Live checkout query result', {
+      fileName: file.name,
+      operation,
+      serverRelativeUrl,
+      rawCheckOutType: fileInfo?.CheckOutType,
+      normalizedCheckOutType: normalizeSharePointCheckOutType(fileInfo?.CheckOutType),
+      checkedOutByTitle: fileInfo?.CheckedOutByUser?.Title,
+      checkedOutByEmail: fileInfo?.CheckedOutByUser?.EMail,
+      fileInfoKeys: fileInfo ? Object.keys(fileInfo) : [],
+    });
 
-    if ((fileInfo.CheckOutType || 0) !== 0) {
+    const checkoutType = normalizeSharePointCheckOutType(fileInfo.CheckOutType);
+    if (checkoutType !== 0) {
       const currentUserEmail = (SPContext.currentUser?.email || '').toLowerCase();
+      const currentUserTitle = (SPContext.currentUser?.title || '').toLowerCase();
       const checkedOutEmail = (fileInfo.CheckedOutByUser?.EMail || '').toLowerCase();
-      const isMe = checkedOutEmail !== '' && checkedOutEmail === currentUserEmail;
+      const checkedOutTitle = (fileInfo.CheckedOutByUser?.Title || '').toLowerCase();
+      const shouldBlock = shouldBlockMutationForCheckout(
+        checkoutType,
+        checkedOutEmail,
+        checkedOutTitle
+      );
+
+      if (!shouldBlock) {
+        SPContext.logger.warn('DocumentService: Non-attributed checkout detected; allowing mutation to proceed', {
+          fileName: file.name,
+          operation,
+          serverRelativeUrl,
+          rawCheckOutType: fileInfo.CheckOutType,
+          normalizedCheckOutType: checkoutType,
+        });
+        return;
+      }
+
+      const isMe =
+        (checkedOutEmail !== '' && checkedOutEmail === currentUserEmail) ||
+        (checkedOutEmail === '' && checkedOutTitle !== '' && checkedOutTitle === currentUserTitle);
       const reviewer = isMe ? 'you' : (fileInfo.CheckedOutByUser?.Title || 'another user');
+      SPContext.logger.warn('DocumentService: Live checkout blocked document mutation', {
+        fileName: file.name,
+        operation,
+        serverRelativeUrl,
+        rawCheckOutType: fileInfo.CheckOutType,
+        normalizedCheckOutType: checkoutType,
+        checkedOutByTitle: fileInfo.CheckedOutByUser?.Title,
+        checkedOutByEmail: fileInfo.CheckedOutByUser?.EMail,
+        currentUserEmail: SPContext.currentUser?.email,
+        currentUserTitle: SPContext.currentUser?.title,
+        isCurrentUser: isMe,
+      });
       throw new Error(`Cannot ${operation} "${file.name}" — it is being reviewed by ${reviewer}.`);
     }
   } catch (error) {
@@ -880,6 +977,22 @@ export async function changeDocumentType(
   itemId: number,
   libraryTitle: string = DEFAULT_LIBRARY_TITLE
 ): Promise<void> {
+  SPContext.logger.debug('DocumentService: changeDocumentType called', {
+    itemId,
+    newType,
+    fileCount: files.length,
+    files: files.map(file => ({
+      fileName: file.name,
+      uniqueId: file.uniqueId,
+      listItemId: file.listItemId,
+      currentType: file.documentType,
+      localCheckOutType: file.checkOutType,
+      localCheckedOutByName: file.checkedOutByName,
+      localCheckedOutByEmail: file.checkedOutByEmail,
+      url: file.url,
+    })),
+  });
+
   // Block type change for files under review (live query per file)
   for (let i = 0; i < files.length; i++) {
     await assertFileNotCheckedOut(files[i], 'change type of');

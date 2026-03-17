@@ -85,9 +85,13 @@ export const useDocumentsStore = create<IDocumentsState>()(
        * concurrently, only one API call is made and all callers await the same promise.
        */
       loadDocuments: async (itemId: number, forceReload?: boolean): Promise<void> => {
-        // If we already have a pending load for this itemId, wait for it (unless force reload)
-        if (pendingLoadPromise && lastLoadedItemId === itemId && !forceReload) {
-          SPContext.logger.info('Documents load already in progress, waiting...', { itemId });
+        // If we already have a pending load for this itemId, always await it.
+        // This keeps polling/action-triggered refreshes from stacking duplicate requests.
+        if (pendingLoadPromise && lastLoadedItemId === itemId) {
+          SPContext.logger.info('Documents load already in progress, waiting...', {
+            itemId,
+            forceReload: !!forceReload,
+          });
           return pendingLoadPromise;
         }
 
@@ -822,6 +826,19 @@ export const useDocumentsStore = create<IDocumentsState>()(
           SPContext.logger.info('Changing document types', {
             count: pendingTypeChanges.length,
             itemId,
+          });
+          SPContext.logger.debug('DocumentsStore: Type change payload', {
+            itemId,
+            files: pendingTypeChanges.map(change => ({
+              fileName: change.file.name,
+              uniqueId: change.file.uniqueId,
+              listItemId: change.file.listItemId,
+              currentType: change.file.documentType,
+              newType: change.newType,
+              localCheckOutType: change.file.checkOutType,
+              localCheckedOutByName: change.file.checkedOutByName,
+              localCheckedOutByEmail: change.file.checkedOutByEmail,
+            })),
           });
 
           // Group files by their new type

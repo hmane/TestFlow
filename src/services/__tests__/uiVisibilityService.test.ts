@@ -82,6 +82,58 @@ describe('uiVisibilityService', () => {
 
       expect(getFieldVisibility(ctx).requestInfo.canEdit).toBe(true);
     });
+
+    it('should allow the owner to manage attachments while waiting on submitter', () => {
+      const ctx = createVisibilityContext(
+        RequestStatus.InReview,
+        basePermissions,
+        '10',
+        {
+          submittedBy: { id: '10' },
+          author: { id: '10' },
+          reviewAudience: 'Legal',
+          legalReviewStatus: 'Waiting On Submitter',
+        },
+        { isNewRequest: false }
+      );
+
+      const visibility = getFieldVisibility(ctx);
+      expect(visibility.attachments.canAdd).toBe(true);
+      expect(visibility.attachments.canDelete).toBe(true);
+    });
+
+    it('should allow the owner to edit closeout fields during Closeout', () => {
+      const ctx = createVisibilityContext(
+        RequestStatus.Closeout,
+        basePermissions,
+        '10',
+        {
+          submittedBy: { id: '10' },
+          author: { id: '10' },
+          reviewAudience: 'Legal',
+        },
+        { isNewRequest: false }
+      );
+
+      const visibility = getFieldVisibility(ctx);
+      expect(visibility.closeout.canEdit).toBe(true);
+    });
+
+    it('should allow the owner to edit FINRA fields during Awaiting FINRA Documents', () => {
+      const ctx = createVisibilityContext(
+        RequestStatus.AwaitingFINRADocuments,
+        basePermissions,
+        '10',
+        {
+          submittedBy: { id: '10' },
+          author: { id: '10' },
+        },
+        { isNewRequest: false }
+      );
+
+      const visibility = getFieldVisibility(ctx);
+      expect(visibility.finra.canEdit).toBe(true);
+    });
   });
 
   describe('getButtonVisibility', () => {

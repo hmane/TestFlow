@@ -368,19 +368,40 @@ export const LegalReviewForm: React.FC<ILegalReviewFormProps> = ({ defaultCollap
    * For resubmit outcomes, skip checkout validation (no transition).
    */
   const handlePreSubmit = React.useCallback(
-    (data: ILegalReviewFormData): void => {
+    async (data: ILegalReviewFormData): Promise<void> => {
       const isResubmit = data.legalReviewOutcome === ReviewOutcome.RespondToCommentsAndResubmit;
       if (!isResubmit && checkoutEnabled) {
-        const validation = validateCheckoutForTransition(allDocumentsFlat, isFinalTransition);
+        let documentsToValidate = allDocumentsFlat;
+
+        if (itemId) {
+          try {
+            await loadDocuments(itemId, true);
+            const freshDocs = useDocumentsStore.getState().documents;
+            const freshFlat: IDocument[] = [];
+            freshDocs.forEach(function(docs) {
+              for (let i = 0; i < docs.length; i++) {
+                freshFlat.push(docs[i]);
+              }
+            });
+            documentsToValidate = freshFlat;
+          } catch (loadError: unknown) {
+            const message = loadError instanceof Error ? loadError.message : 'Failed to refresh document checkout status';
+            setError(message);
+            SPContext.logger.error('LegalReviewForm: Failed to refresh checkout state before submit', loadError);
+            return;
+          }
+        }
+
+        const validation = validateCheckoutForTransition(documentsToValidate, isFinalTransition);
         if (!validation.canProceed || validation.othersHaveCheckouts) {
           setPendingFormData(data);
           setCheckoutValidation(validation);
           return;
         }
       }
-      onSubmit(data);
+      await onSubmit(data);
     },
-    [checkoutEnabled, allDocumentsFlat, isFinalTransition, onSubmit]
+    [checkoutEnabled, allDocumentsFlat, isFinalTransition, itemId, loadDocuments, onSubmit]
   );
 
   const handleDoneReviewingAndSubmit = React.useCallback(async (): Promise<void> => {

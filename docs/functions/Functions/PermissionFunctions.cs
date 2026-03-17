@@ -19,7 +19,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
 using LegalWorkflow.Functions.Helpers;
@@ -45,24 +44,24 @@ namespace LegalWorkflow.Functions
     public class PermissionFunctions
     {
         private readonly IPnPContextFactory _contextFactory;
-        private readonly IConfiguration _configuration;
         private readonly ILogger<PermissionFunctions> _logger;
         private readonly PermissionGroupConfig _groupConfig;
+        private readonly SharePointListConfig _listConfig;
+        private readonly AuthorizationHelper _authorizationHelper;
         private readonly JsonSerializerOptions _jsonOptions;
 
-        /// <summary>
-        /// Creates a new PermissionFunctions instance with dependency injection.
-        /// </summary>
         public PermissionFunctions(
             IPnPContextFactory contextFactory,
-            IConfiguration configuration,
             ILogger<PermissionFunctions> logger,
-            PermissionGroupConfig groupConfig)
+            PermissionGroupConfig groupConfig,
+            SharePointListConfig listConfig,
+            AuthorizationHelper authorizationHelper)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _groupConfig = groupConfig ?? throw new ArgumentNullException(nameof(groupConfig));
+            _listConfig = listConfig ?? throw new ArgumentNullException(nameof(listConfig));
+            _authorizationHelper = authorizationHelper ?? throw new ArgumentNullException(nameof(authorizationHelper));
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
@@ -89,14 +88,15 @@ namespace LegalWorkflow.Functions
 
             try
             {
-                // Step 1: Authenticate - Extract user identity from token
+                // Step 1: Authenticate
                 var authResult = await AuthenticateAsync(req, logger);
                 if (!authResult.IsAuthorized)
                 {
+                    logger.LogAuditSummary("InitializePermissions", "Unauthorized", authResult.ErrorMessage ?? "Token validation failed");
                     return new UnauthorizedObjectResult(new PermissionResponse
                     {
                         Success = false,
-                        Message = authResult.ErrorMessage
+                        Message = authResult.ErrorMessage ?? "Unauthorized"
                     });
                 }
 
@@ -109,6 +109,7 @@ namespace LegalWorkflow.Functions
                 if (request == null || request.RequestId <= 0)
                 {
                     logger.Warning("Invalid request - missing required fields");
+                    logger.LogAuditSummary("InitializePermissions", "InvalidRequest", "RequestId is missing or invalid");
                     return new BadRequestObjectResult(new PermissionResponse
                     {
                         Success = false,
@@ -118,14 +119,15 @@ namespace LegalWorkflow.Functions
 
                 logger.SetRequestContext(request.RequestId, GetRequestContextTitle(request.RequestId, request.RequestTitle));
 
-                // Step 3: Authorize - Service account check or item-level permission check
+                // Step 3: Authorize
                 var authzResult = await AuthorizeAsync(authResult.User!, request.RequestId, logger);
                 if (!authzResult.IsAuthorized)
                 {
+                    logger.LogAuditSummary("InitializePermissions", "Forbidden", authzResult.ErrorMessage ?? "Insufficient permissions");
                     return new ObjectResult(new PermissionResponse
                     {
                         Success = false,
-                        Message = authzResult.ErrorMessage
+                        Message = authzResult.ErrorMessage ?? "Access denied"
                     })
                     { StatusCode = 403 };
                 }
@@ -139,26 +141,26 @@ namespace LegalWorkflow.Functions
                 });
 
                 // Step 4: Execute
-                var permissionService = new PermissionService(_contextFactory, logger);
+                var permissionService = new PermissionService(_contextFactory, logger, _groupConfig, _listConfig);
                 var result = await permissionService.InitializePermissionsAsync(request);
 
                 if (result.Success)
                 {
-                    logger.Info("Permission initialization completed successfully", new
-                    {
-                        ChangeCount = result.Changes.Count
-                    });
+                    logger.Info("Permission initialization completed successfully", new { ChangeCount = result.Changes.Count });
+                    logger.LogAuditSummary("InitializePermissions", "Success", $"{result.Changes.Count} permission changes applied to request {request.RequestId}");
                     return new OkObjectResult(result);
                 }
                 else
                 {
                     logger.Error("Permission initialization failed", null, new { Error = result.Error });
+                    logger.LogAuditSummary("InitializePermissions", "Failed", result.Error ?? "Permission initialization failed");
                     return new ObjectResult(CreateInternalErrorResponse("Permission initialization failed")) { StatusCode = 500 };
                 }
             }
             catch (Exception ex)
             {
                 logger.Error("Unhandled exception in InitializePermissions", ex);
+                logger.LogAuditSummary("InitializePermissions", "Error", ex.Message);
                 return new ObjectResult(CreateInternalErrorResponse()) { StatusCode = 500 };
             }
         }
@@ -185,10 +187,11 @@ namespace LegalWorkflow.Functions
                 var authResult = await AuthenticateAsync(req, logger);
                 if (!authResult.IsAuthorized)
                 {
+                    logger.LogAuditSummary("AddUserPermission", "Unauthorized", authResult.ErrorMessage ?? "Token validation failed");
                     return new UnauthorizedObjectResult(new PermissionResponse
                     {
                         Success = false,
-                        Message = authResult.ErrorMessage
+                        Message = authResult.ErrorMessage ?? "Unauthorized"
                     });
                 }
 
@@ -202,6 +205,7 @@ namespace LegalWorkflow.Functions
                     string.IsNullOrEmpty(request.UserLoginName))
                 {
                     logger.Warning("Invalid request - missing required fields");
+                    logger.LogAuditSummary("AddUserPermission", "InvalidRequest", "RequestId or UserLoginName is missing");
                     return new BadRequestObjectResult(new PermissionResponse
                     {
                         Success = false,
@@ -215,10 +219,11 @@ namespace LegalWorkflow.Functions
                 var authzResult = await AuthorizeAsync(authResult.User!, request.RequestId, logger);
                 if (!authzResult.IsAuthorized)
                 {
+                    logger.LogAuditSummary("AddUserPermission", "Forbidden", authzResult.ErrorMessage ?? "Insufficient permissions");
                     return new ObjectResult(new PermissionResponse
                     {
                         Success = false,
-                        Message = authzResult.ErrorMessage
+                        Message = authzResult.ErrorMessage ?? "Access denied"
                     })
                     { StatusCode = 403 };
                 }
@@ -232,23 +237,26 @@ namespace LegalWorkflow.Functions
                 });
 
                 // Step 4: Execute
-                var permissionService = new PermissionService(_contextFactory, logger);
+                var permissionService = new PermissionService(_contextFactory, logger, _groupConfig, _listConfig);
                 var result = await permissionService.AddUserPermissionAsync(request);
 
                 if (result.Success)
                 {
                     logger.Info("User permission added successfully");
+                    logger.LogAuditSummary("AddUserPermission", "Success", $"Read access granted to {request.UserEmail} on request {request.RequestId}");
                     return new OkObjectResult(result);
                 }
                 else
                 {
                     logger.Error("Failed to add user permission", null, new { Error = result.Error });
+                    logger.LogAuditSummary("AddUserPermission", "Failed", result.Error ?? "Failed to add user permission");
                     return new ObjectResult(CreateInternalErrorResponse("Failed to add user permission")) { StatusCode = 500 };
                 }
             }
             catch (Exception ex)
             {
                 logger.Error("Unhandled exception in AddUserPermission", ex);
+                logger.LogAuditSummary("AddUserPermission", "Error", ex.Message);
                 return new ObjectResult(CreateInternalErrorResponse()) { StatusCode = 500 };
             }
         }
@@ -275,10 +283,11 @@ namespace LegalWorkflow.Functions
                 var authResult = await AuthenticateAsync(req, logger);
                 if (!authResult.IsAuthorized)
                 {
+                    logger.LogAuditSummary("RemoveUserPermission", "Unauthorized", authResult.ErrorMessage ?? "Token validation failed");
                     return new UnauthorizedObjectResult(new PermissionResponse
                     {
                         Success = false,
-                        Message = authResult.ErrorMessage
+                        Message = authResult.ErrorMessage ?? "Unauthorized"
                     });
                 }
 
@@ -292,6 +301,7 @@ namespace LegalWorkflow.Functions
                     string.IsNullOrEmpty(request.UserLoginName))
                 {
                     logger.Warning("Invalid request - missing required fields");
+                    logger.LogAuditSummary("RemoveUserPermission", "InvalidRequest", "RequestId or UserLoginName is missing");
                     return new BadRequestObjectResult(new PermissionResponse
                     {
                         Success = false,
@@ -305,10 +315,11 @@ namespace LegalWorkflow.Functions
                 var authzResult = await AuthorizeAsync(authResult.User!, request.RequestId, logger);
                 if (!authzResult.IsAuthorized)
                 {
+                    logger.LogAuditSummary("RemoveUserPermission", "Forbidden", authzResult.ErrorMessage ?? "Insufficient permissions");
                     return new ObjectResult(new PermissionResponse
                     {
                         Success = false,
-                        Message = authzResult.ErrorMessage
+                        Message = authzResult.ErrorMessage ?? "Access denied"
                     })
                     { StatusCode = 403 };
                 }
@@ -322,23 +333,26 @@ namespace LegalWorkflow.Functions
                 });
 
                 // Step 4: Execute
-                var permissionService = new PermissionService(_contextFactory, logger);
+                var permissionService = new PermissionService(_contextFactory, logger, _groupConfig, _listConfig);
                 var result = await permissionService.RemoveUserPermissionAsync(request);
 
                 if (result.Success)
                 {
                     logger.Info("User permission removed successfully");
+                    logger.LogAuditSummary("RemoveUserPermission", "Success", $"Access removed for {request.UserEmail} from request {request.RequestId}");
                     return new OkObjectResult(result);
                 }
                 else
                 {
                     logger.Error("Failed to remove user permission", null, new { Error = result.Error });
+                    logger.LogAuditSummary("RemoveUserPermission", "Failed", result.Error ?? "Failed to remove user permission");
                     return new ObjectResult(CreateInternalErrorResponse("Failed to remove user permission")) { StatusCode = 500 };
                 }
             }
             catch (Exception ex)
             {
                 logger.Error("Unhandled exception in RemoveUserPermission", ex);
+                logger.LogAuditSummary("RemoveUserPermission", "Error", ex.Message);
                 return new ObjectResult(CreateInternalErrorResponse()) { StatusCode = 500 };
             }
         }
@@ -364,10 +378,11 @@ namespace LegalWorkflow.Functions
                 var authResult = await AuthenticateAsync(req, logger);
                 if (!authResult.IsAuthorized)
                 {
+                    logger.LogAuditSummary("CompletePermissions", "Unauthorized", authResult.ErrorMessage ?? "Token validation failed");
                     return new UnauthorizedObjectResult(new PermissionResponse
                     {
                         Success = false,
-                        Message = authResult.ErrorMessage
+                        Message = authResult.ErrorMessage ?? "Unauthorized"
                     });
                 }
 
@@ -380,6 +395,7 @@ namespace LegalWorkflow.Functions
                 if (request == null || request.RequestId <= 0)
                 {
                     logger.Warning("Invalid request - missing required fields");
+                    logger.LogAuditSummary("CompletePermissions", "InvalidRequest", "RequestId is missing or invalid");
                     return new BadRequestObjectResult(new PermissionResponse
                     {
                         Success = false,
@@ -389,14 +405,15 @@ namespace LegalWorkflow.Functions
 
                 logger.SetRequestContext(request.RequestId, GetRequestContextTitle(request.RequestId, request.RequestTitle));
 
-                // Step 3: Authorize - service account or item-level permission
+                // Step 3: Authorize
                 var authzResult = await AuthorizeAsync(authResult.User!, request.RequestId, logger);
                 if (!authzResult.IsAuthorized)
                 {
+                    logger.LogAuditSummary("CompletePermissions", "Forbidden", authzResult.ErrorMessage ?? "Insufficient permissions");
                     return new ObjectResult(new PermissionResponse
                     {
                         Success = false,
-                        Message = authzResult.ErrorMessage
+                        Message = authzResult.ErrorMessage ?? "Access denied"
                     })
                     { StatusCode = 403 };
                 }
@@ -409,57 +426,46 @@ namespace LegalWorkflow.Functions
                 });
 
                 // Step 4: Execute
-                var permissionService = new PermissionService(_contextFactory, logger);
+                var permissionService = new PermissionService(_contextFactory, logger, _groupConfig, _listConfig);
                 var result = await permissionService.CompletePermissionsAsync(request);
 
                 if (result.Success)
                 {
-                    logger.Info("Completion permissions set successfully", new
-                    {
-                        ChangeCount = result.Changes.Count
-                    });
+                    logger.Info("Completion permissions set successfully", new { ChangeCount = result.Changes.Count });
+                    logger.LogAuditSummary("CompletePermissions", "Success", $"{result.Changes.Count} principals set to read-only on request {request.RequestId}");
                     return new OkObjectResult(result);
                 }
                 else
                 {
                     logger.Error("Failed to set completion permissions", null, new { Error = result.Error });
+                    logger.LogAuditSummary("CompletePermissions", "Failed", result.Error ?? "Failed to finalize permissions");
                     return new ObjectResult(CreateInternalErrorResponse("Failed to finalize permissions")) { StatusCode = 500 };
                 }
             }
             catch (Exception ex)
             {
                 logger.Error("Unhandled exception in CompletePermissions", ex);
+                logger.LogAuditSummary("CompletePermissions", "Error", ex.Message);
                 return new ObjectResult(CreateInternalErrorResponse()) { StatusCode = 500 };
             }
         }
 
         #region Private Helper Methods
 
-        /// <summary>
-        /// Authenticates the request by validating the JWT token and extracting user identity.
-        /// APIM handles primary authentication; this provides defense-in-depth.
-        /// </summary>
         private async Task<AuthorizationResult> AuthenticateAsync(HttpRequest request, Logger logger)
         {
-            var authHelper = new AuthorizationHelper(_configuration, _logger);
-            return await authHelper.ValidateTokenAsync(request);
+            return await _authorizationHelper.ValidateTokenAsync(request);
         }
 
-        /// <summary>
-        /// Authorizes the request by checking service account match or item-level permissions.
-        /// </summary>
         private async Task<SharePointAuthorizationResult> AuthorizeAsync(
             UserAuthInfo userInfo,
             int requestId,
             Logger logger)
         {
-            var authzService = new SharePointAuthorizationService(_contextFactory, logger, _groupConfig);
+            var authzService = new SharePointAuthorizationService(_contextFactory, logger, _groupConfig, _listConfig);
             return await authzService.AuthorizeAsync(userInfo, requestId);
         }
 
-        /// <summary>
-        /// Creates a generic 500 response without leaking backend details.
-        /// </summary>
         private static PermissionResponse CreateInternalErrorResponse(string message = "Internal server error")
         {
             return new PermissionResponse

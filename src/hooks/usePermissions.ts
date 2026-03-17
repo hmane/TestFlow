@@ -12,6 +12,7 @@
 
 import * as React from 'react';
 import { usePermissionsStore } from '@stores/permissionsStore';
+import { useShallow } from 'zustand/react/shallow';
 import type { IItemPermissions } from '@stores/permissionsStore';
 import { AppRole } from '@appTypes/configTypes';
 
@@ -51,7 +52,7 @@ export interface IItemPermissionsResult extends IItemPermissions {
  */
 export function usePermissions(): IUserPermissions & { isLoading: boolean; error?: string } {
   // Read directly from the store (no API calls - data already loaded)
-  return usePermissionsStore((state) => ({
+  return usePermissionsStore(useShallow((state) => ({
     isSubmitter: state.isSubmitter,
     isLegalAdmin: state.isLegalAdmin,
     isAttorneyAssigner: state.isAttorneyAssigner,
@@ -66,7 +67,7 @@ export function usePermissions(): IUserPermissions & { isLoading: boolean; error
     canReviewCompliance: state.canReviewCompliance,
     isLoading: state.isLoading,
     error: state.error,
-  }));
+  })));
 }
 
 /**

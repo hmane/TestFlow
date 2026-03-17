@@ -1,7 +1,7 @@
 <pnp:Security xmlns:pnp="http://schemas.dev.office.com/PnP/2022/09/ProvisioningSchema">
 
   <pnp:SiteGroups>
-    <pnp:SiteGroup Title="LW - Admin"
+    <pnp:SiteGroup Title="LW - Admins"
                    Description="System administrators with full access to Legal Workflow"
                    AllowMembersEditMembership="true"
                    AllowRequestToJoinLeave="false"
@@ -10,23 +10,23 @@
 
     <pnp:SiteGroup Title="LW - Submitters"
                    Description="Users who can submit legal review requests"
-                   Owner="LW - Admin"
+                   Owner="LW - Admins"
                    AllowMembersEditMembership="false"
                    AllowRequestToJoinLeave="false"
                    AutoAcceptRequestToJoinLeave="false"
                    OnlyAllowMembersViewMembership="true" />
 
-    <pnp:SiteGroup Title="LW - Legal Admin"
+    <pnp:SiteGroup Title="LW - Legal Admins"
                    Description="Legal administrators who can triage and manage all requests"
-                   Owner="LW - Admin"
+                   Owner="LW - Admins"
                    AllowMembersEditMembership="false"
                    AllowRequestToJoinLeave="false"
                    AutoAcceptRequestToJoinLeave="false"
                    OnlyAllowMembersViewMembership="true" />
 
-    <pnp:SiteGroup Title="LW - Attorney Assigner"
+    <pnp:SiteGroup Title="LW - Attorney Assigners"
                    Description="Committee members who can assign attorneys to requests"
-                   Owner="LW - Admin"
+                   Owner="LW - Admins"
                    AllowMembersEditMembership="false"
                    AllowRequestToJoinLeave="false"
                    AutoAcceptRequestToJoinLeave="false"
@@ -34,15 +34,15 @@
 
     <pnp:SiteGroup Title="LW - Attorneys"
                    Description="Attorneys who can review and approve assigned legal requests"
-                   Owner="LW - Admin"
+                   Owner="LW - Admins"
                    AllowMembersEditMembership="false"
                    AllowRequestToJoinLeave="false"
                    AutoAcceptRequestToJoinLeave="false"
                    OnlyAllowMembersViewMembership="true" />
 
-    <pnp:SiteGroup Title="LW - Compliance Users"
+    <pnp:SiteGroup Title="LW - Compliance Reviewers"
                    Description="Compliance users who can review compliance aspects of requests"
-                   Owner="LW - Admin"
+                   Owner="LW - Admins"
                    AllowMembersEditMembership="false"
                    AllowRequestToJoinLeave="false"
                    AutoAcceptRequestToJoinLeave="false"
@@ -51,15 +51,15 @@
 
   <pnp:Permissions>
     <pnp:RoleAssignments>
-      <pnp:RoleAssignment Principal="LW - Admin" RoleDefinition="Full Control" />
+      <pnp:RoleAssignment Principal="LW - Admins" RoleDefinition="Full Control" />
       <pnp:RoleAssignment Principal="LW - Submitters" RoleDefinition="Read" />
-      <pnp:RoleAssignment Principal="LW - Legal Admin" RoleDefinition="Read" />
-      <pnp:RoleAssignment Principal="LW - Attorney Assigner" RoleDefinition="Read" />
+      <pnp:RoleAssignment Principal="LW - Legal Admins" RoleDefinition="Read" />
+      <pnp:RoleAssignment Principal="LW - Attorney Assigners" RoleDefinition="Read" />
       <pnp:RoleAssignment Principal="LW - Attorneys" RoleDefinition="Read" />
-      <pnp:RoleAssignment Principal="LW - Compliance Users" RoleDefinition="Read" />
+      <pnp:RoleAssignment Principal="LW - Compliance Reviewers" RoleDefinition="Read" />
     </pnp:RoleAssignments>
   </pnp:Permissions>
 
-  
+
 
 </pnp:Security>

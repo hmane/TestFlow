@@ -24,11 +24,11 @@ The Legal Review System (LRS) automates the review and approval process for mark
 | Role | SharePoint Group | Description |
 |------|------------------|-------------|
 | **Submitter** | LW - Submitters | Creates and submits requests for review. Can view all requests (read-only for others' requests). |
-| **Legal Admin** | LW - Legal Admin | Triages incoming requests, assigns attorneys (directly or to committee), manages intake settings. |
-| **Attorney Assigner** | LW - Attorney Assigner | Committee members who assign attorneys when requests are sent to committee. |
+| **Legal Admin** | LW - Legal Admins | Triages incoming requests, assigns attorneys (directly or to committee), manages intake settings. |
+| **Attorney Assigner** | LW - Attorney Assigners | Committee members who assign attorneys when requests are sent to committee. |
 | **Attorney** | LW - Attorneys | Reviews assigned requests and submits legal review decisions. |
-| **Compliance User** | LW - Compliance Users | Reviews requests requiring compliance approval, sets compliance flags. |
-| **Admin** | LW - Admin | Full system administration, configuration management. |
+| **Compliance User** | LW - Compliance Reviewers | Reviews requests requiring compliance approval, sets compliance flags. |
+| **Admin** | LW - Admins | Full system administration, configuration management. |
 
 ### 2.2 Permission Matrix
 

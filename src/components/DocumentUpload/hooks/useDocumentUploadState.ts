@@ -6,6 +6,7 @@
  */
 
 import * as React from 'react';
+import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 
 import { DEFAULT_ALLOWED_EXTENSIONS } from '@services/configurationService';
 import { useConfigStore } from '@stores/configStore';
@@ -753,6 +754,16 @@ export function useDocumentUploadState(props: IUseDocumentUploadStateProps): IUs
         case 'changeType':
           if (action.data && typeof action.data === 'string') {
             const newType = action.data as DocumentType;
+            SPContext.logger.debug('DocumentUploadState: Change type requested', {
+              fileName: doc.name,
+              uniqueId: doc.uniqueId,
+              listItemId: doc.listItemId,
+              currentType: doc.documentType,
+              newType,
+              localCheckOutType: doc.checkOutType,
+              localCheckedOutByName: doc.checkedOutByName,
+              localCheckedOutByEmail: doc.checkedOutByEmail,
+            });
             if (newType === doc.documentType) {
               cancelTypeChange([doc.uniqueId]);
             } else {

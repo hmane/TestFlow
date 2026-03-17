@@ -53,6 +53,27 @@ jest.mock('spfx-toolkit/lib/utilities/context', () => ({
 
 jest.mock('spfx-toolkit/lib/utilities/context/pnpImports/files', () => ({}));
 
+const sessionStorageMock = (() => {
+  let store: Record<string, string> = {};
+  return {
+    getItem: jest.fn((key: string) => store[key] || null),
+    setItem: jest.fn((key: string, value: string) => {
+      store[key] = value;
+    }),
+    removeItem: jest.fn((key: string) => {
+      delete store[key];
+    }),
+    clear: jest.fn(() => {
+      store = {};
+    }),
+  };
+})();
+
+Object.defineProperty(global, 'sessionStorage', {
+  value: sessionStorageMock,
+  writable: true,
+});
+
 // Config store mock — controlled via mockConfigStore helpers below
 const mockGetConfigBoolean = jest.fn();
 const mockIsLoaded = { value: true };
@@ -105,7 +126,9 @@ function makeDoc(overrides: Partial<IDocument> = {}): IDocument {
 function makeCheckedOutDoc(overrides: Partial<IDocument> = {}): IDocument {
   return makeDoc({
     checkOutType: 1,
+    checkedOutById: '1',
     checkedOutByEmail: 'user@example.com',
+    checkedOutByLoginName: 'i:0#.f|membership|user@example.com',
     checkedOutByName: 'Current User',
     checkedOutDate: new Date().toISOString(),
     ...overrides,
@@ -340,9 +363,15 @@ describe('getDocumentCheckoutStatus', () => {
   });
 
   it('identifies checkout by current user via email match', () => {
-    const doc = makeCheckedOutDoc({ checkedOutByEmail: 'user@example.com' });
+    const doc = makeCheckedOutDoc({ checkedOutById: '', checkedOutByEmail: 'user@example.com' });
     const status = getDocumentCheckoutStatus(doc);
     expect(status.isCheckedOut).toBe(true);
+    expect(status.isCheckedOutByMe).toBe(true);
+  });
+
+  it('identifies checkout by current user via id match', () => {
+    const doc = makeCheckedOutDoc({ checkedOutById: '1', checkedOutByEmail: '' });
+    const status = getDocumentCheckoutStatus(doc);
     expect(status.isCheckedOutByMe).toBe(true);
   });
 
@@ -352,8 +381,19 @@ describe('getDocumentCheckoutStatus', () => {
     expect(status.isCheckedOutByMe).toBe(true);
   });
 
+  it('identifies checkout by current user via login name fallback', () => {
+    const doc = makeCheckedOutDoc({
+      checkedOutByEmail: '',
+      checkedOutByName: '',
+      checkedOutByLoginName: 'i:0#.f|membership|user@example.com',
+    });
+    const status = getDocumentCheckoutStatus(doc);
+    expect(status.isCheckedOutByMe).toBe(true);
+  });
+
   it('does not match by name when email is present but different', () => {
     const doc = makeCheckedOutDoc({
+      checkedOutById: '2',
       checkedOutByEmail: 'other@example.com',
       checkedOutByName: 'Current User',
     });
@@ -362,7 +402,11 @@ describe('getDocumentCheckoutStatus', () => {
   });
 
   it('identifies checkout by another user', () => {
-    const doc = makeCheckedOutDoc({ checkedOutByEmail: 'other@example.com', checkedOutByName: 'Other User' });
+    const doc = makeCheckedOutDoc({
+      checkedOutById: '2',
+      checkedOutByEmail: 'other@example.com',
+      checkedOutByName: 'Other User',
+    });
     const status = getDocumentCheckoutStatus(doc);
     expect(status.isCheckedOut).toBe(true);
     expect(status.isCheckedOutByMe).toBe(false);
@@ -434,7 +478,12 @@ describe('getRequestCheckoutStatus', () => {
   });
 
   it('groups other user checkouts correctly', () => {
-    const otherDoc = makeCheckedOutDoc({ name: 'other.pdf', checkedOutByEmail: 'other@example.com' });
+    const otherDoc = makeCheckedOutDoc({
+      name: 'other.pdf',
+      checkedOutById: '2',
+      checkedOutByEmail: 'other@example.com',
+      checkedOutByName: 'Other User',
+    });
     const result = getRequestCheckoutStatus([otherDoc]);
     expect(result.checkedOutByCurrentUser).toHaveLength(0);
     expect(result.checkedOutByOthers).toHaveLength(1);
@@ -445,8 +494,18 @@ describe('getRequestCheckoutStatus', () => {
   it('handles mixed scenario: my file + others file + office file + unchecked', () => {
     const docs = [
       makeCheckedOutDoc({ name: 'my.pdf', checkedOutByEmail: 'user@example.com' }),
-      makeCheckedOutDoc({ name: 'theirs.pdf', checkedOutByEmail: 'other@example.com' }),
-      makeCheckedOutDoc({ name: 'report.docx', checkedOutByEmail: 'other@example.com' }), // Office — skipped
+      makeCheckedOutDoc({
+        name: 'theirs.pdf',
+        checkedOutById: '2',
+        checkedOutByEmail: 'other@example.com',
+        checkedOutByName: 'Other User',
+      }),
+      makeCheckedOutDoc({
+        name: 'report.docx',
+        checkedOutById: '2',
+        checkedOutByEmail: 'other@example.com',
+        checkedOutByName: 'Other User',
+      }), // Office — skipped
       makeDoc({ name: 'clean.pdf', checkOutType: 0 }), // not checked out
     ];
     const result = getRequestCheckoutStatus(docs);
@@ -463,6 +522,7 @@ describe('getRequestCheckoutStatus', () => {
 describe('startReviewing', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    sessionStorageMock.clear();
     setConfigFlags({ enableDocumentCheckout: true });
     mockCheckout.mockResolvedValue(undefined);
   });
@@ -474,6 +534,7 @@ describe('startReviewing', () => {
     expect(result.fileName).toBe('document.pdf');
     expect(mockGetFileByServerRelativePath).toHaveBeenCalledWith('/sites/lrs/Docs/file.pdf');
     expect(mockCheckout).toHaveBeenCalled();
+    expect(sessionStorageMock.setItem).toHaveBeenCalled();
   });
 
   it('returns failure when feature is disabled', async () => {
@@ -507,6 +568,19 @@ describe('startReviewing', () => {
     expect(result.error).toContain('SP access denied');
   });
 
+  it('treats already checked out by current user as success', async () => {
+    mockCheckout.mockRejectedValue(
+      new Error(
+        'Error making HttpClient request in queryable [423] ::> {"odata.error":{"code":"-2130575306, Microsoft.SharePoint.SPFileCheckOutException","message":{"lang":"en-US","value":"The file is checked out for editing by i:0#.f|membership|user@example.com."}}}'
+      )
+    );
+    const doc = makeDoc();
+    const result = await startReviewing(doc);
+    expect(result.success).toBe(true);
+    expect(result.error).toBeUndefined();
+    expect(sessionStorageMock.setItem).toHaveBeenCalled();
+  });
+
   it('handles already-relative URL (starts with /)', async () => {
     const doc = makeDoc({ url: '/sites/lrs/Docs/file.pdf' });
     const result = await startReviewing(doc);
@@ -518,6 +592,7 @@ describe('startReviewing', () => {
 describe('doneReviewing', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    sessionStorageMock.clear();
     setConfigFlags({ enableDocumentCheckout: true });
     mockCheckin.mockResolvedValue(undefined);
   });
@@ -527,6 +602,7 @@ describe('doneReviewing', () => {
     const result = await doneReviewing(doc);
     expect(result.success).toBe(true);
     expect(mockCheckin).toHaveBeenCalledWith('Review complete', 1);
+    expect(sessionStorageMock.removeItem).toHaveBeenCalled();
   });
 
   it('uses custom comment when provided', async () => {
@@ -562,6 +638,7 @@ describe('doneReviewing', () => {
 describe('stopReviewing', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    sessionStorageMock.clear();
     setConfigFlags({ enableDocumentCheckout: true });
     mockUndoCheckout.mockResolvedValue(undefined);
   });
@@ -571,6 +648,7 @@ describe('stopReviewing', () => {
     const result = await stopReviewing(doc);
     expect(result.success).toBe(true);
     expect(mockUndoCheckout).toHaveBeenCalled();
+    expect(sessionStorageMock.removeItem).toHaveBeenCalled();
   });
 
   it('succeeds even when feature is disabled (graceful recovery)', async () => {
@@ -617,7 +695,12 @@ describe('doneReviewingAll', () => {
 
   it('checks in only documents belonging to current user', async () => {
     const myDoc = makeCheckedOutDoc({ name: 'mine.pdf', checkedOutByEmail: 'user@example.com' });
-    const otherDoc = makeCheckedOutDoc({ name: 'other.pdf', checkedOutByEmail: 'other@example.com' });
+    const otherDoc = makeCheckedOutDoc({
+      name: 'other.pdf',
+      checkedOutById: '2',
+      checkedOutByEmail: 'other@example.com',
+      checkedOutByName: 'Other User',
+    });
     const results = await doneReviewingAll([myDoc, otherDoc]);
     expect(results).toHaveLength(1);
     expect(results[0].fileName).toBe('mine.pdf');
@@ -730,7 +813,11 @@ describe('validateCheckoutForTransition', () => {
     });
 
     it('canProceed=true (info-only) when only others have checkouts', () => {
-      const docs = [makeCheckedOutDoc({ checkedOutByEmail: 'other@example.com' })];
+      const docs = [makeCheckedOutDoc({
+        checkedOutById: '2',
+        checkedOutByEmail: 'other@example.com',
+        checkedOutByName: 'Other User',
+      })];
       const result = validateCheckoutForTransition(docs, false);
       // Mid-workflow: others' checkouts are informational only — current user can proceed
       expect(result.canProceed).toBe(true);
@@ -755,7 +842,11 @@ describe('validateCheckoutForTransition', () => {
     });
 
     it('canProceed=false when others have checkouts (final requires all clear)', () => {
-      const docs = [makeCheckedOutDoc({ checkedOutByEmail: 'other@example.com' })];
+      const docs = [makeCheckedOutDoc({
+        checkedOutById: '2',
+        checkedOutByEmail: 'other@example.com',
+        checkedOutByName: 'Other User',
+      })];
       const result = validateCheckoutForTransition(docs, true);
       // Final: ANY active checkout blocks the transition
       expect(result.canProceed).toBe(false);

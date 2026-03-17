@@ -28,7 +28,7 @@ import { Card, Header, Content } from 'spfx-toolkit/lib/components/Card';
 import { Lists } from '@sp/Lists';
 import { RequestsFields } from '@sp/listFields/RequestsFields';
 import { DocumentUpload } from '@components/DocumentUpload';
-import { usePermissions } from '@hooks/usePermissions';
+import { useUIVisibility } from '@hooks/useUIVisibility';
 import { useDocumentsStore } from '@stores/documentsStore';
 import { useRequestStore } from '@stores/requestStore';
 import { DocumentType } from '@appTypes/documentTypes';
@@ -64,45 +64,22 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
   onDocumentCountChange,
   onCommentsReceivedChange,
 }) => {
-  const { isAdmin, isSubmitter } = usePermissions();
-  const currentRequest = useRequestStore((s) => s.currentRequest);
-
-  // Check if current user is the owner (creator/submitter of this specific request)
-  const isOwner = React.useMemo((): boolean => {
-    if (!currentRequest) return false;
-    const currentUserId = SPContext.currentUser?.id;
-    if (!currentUserId) return false;
-
-    // Compare as strings to handle mixed number/string types
-    const currentUserIdStr = String(currentUserId);
-    const submittedById = currentRequest.submittedBy?.id ? String(currentRequest.submittedBy.id) : '';
-    const authorId = currentRequest.author?.id ? String(currentRequest.author.id) : '';
-
-    return submittedById === currentUserIdStr || authorId === currentUserIdStr;
-  }, [currentRequest]);
+  const { currentRequest, storeItemId, originalRequest } = useRequestStore((s) => ({
+    currentRequest: s.currentRequest,
+    storeItemId: s.itemId,
+    originalRequest: s.originalRequest,
+  }));
+  const effectiveItemId = storeItemId ?? itemId;
+  const { fields } = useUIVisibility({
+    status: currentRequest?.status,
+    itemId: effectiveItemId,
+    request: currentRequest ?? undefined,
+  });
 
   // Get documents from store
   const { documents, stagedFiles, isLoading } = useDocumentsStore();
 
-  // Read-only if prop is set, otherwise owner, submitter, and admin can upload
-  // Note: isOwner checks if user is the specific request owner (author/submittedBy)
-  // isSubmitter checks if user has the "Submitter" role in permissions
-  const isReadOnly = React.useMemo(() => {
-    SPContext.logger.info('🔍 FINRADocuments isReadOnly check', {
-      readOnlyProp,
-      isAdmin,
-      isSubmitter,
-      isOwner,
-      currentUserId: SPContext.currentUser?.id?.toString(),
-      submittedById: currentRequest?.submittedBy?.id,
-      authorId: currentRequest?.author?.id,
-    });
-    if (readOnlyProp) return true;
-    if (isAdmin) return false;
-    if (isOwner) return false;
-    if (isSubmitter) return false; // Allow submitters to upload FINRA documents
-    return true;
-  }, [readOnlyProp, isAdmin, isSubmitter, isOwner, currentRequest]);
+  const isReadOnly = readOnlyProp || !fields.finra.canEdit;
 
   /**
    * Calculate FINRA document count (existing + staged)
@@ -123,7 +100,11 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
   // Comments received state - read from store, update store directly
   const commentsReceived = currentRequest?.finraCommentsReceived ?? false;
   const finraComment = currentRequest?.finraComment ?? '';
-  const isSavingRef = React.useRef(false);
+  const isSavingCommentsFlagRef = React.useRef(false);
+  const isSavingCommentTextRef = React.useRef(false);
+  const setIsSavingCommentText = React.useCallback((value: boolean): void => {
+    isSavingCommentTextRef.current = value;
+  }, []);
 
   /**
    * Handle FINRA comment text change
@@ -150,7 +131,7 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
    */
   const handleCommentsReceivedChange = React.useCallback(
     (_ev?: React.FormEvent<HTMLElement | HTMLInputElement>, checked?: boolean) => {
-      if (isSavingRef.current || !itemId) return;
+      if (isSavingCommentsFlagRef.current || !effectiveItemId) return;
 
       const value = checked ?? false;
       const storeState = useRequestStore.getState();
@@ -171,7 +152,7 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
           ? {
             ...storeState.originalRequest,
             finraCommentsReceived: value,
-            finraComment: value ? storeState.originalRequest.finraComment : '',
+            finraComment: nextComment,
           }
           : storeState.originalRequest,
       });
@@ -181,7 +162,7 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
       }
 
       // Persist directly to SharePoint — the Save button is hidden in Awaiting FINRA Documents status
-      isSavingRef.current = true;
+      isSavingCommentsFlagRef.current = true;
       const updatePayload: Record<string, unknown> = {
         [RequestsFields.FINRACommentsReceived]: value,
       };
@@ -191,15 +172,14 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
       }
       SPContext.sp.web.lists
         .getByTitle(Lists.Requests.Title)
-        .items.getById(itemId)
+        .items.getById(effectiveItemId)
         .update(updatePayload)
         .then(() => {
-          isSavingRef.current = false;
-          SPContext.logger.info('FINRACommentsReceived saved to SharePoint', { itemId, value });
+          isSavingCommentsFlagRef.current = false;
         })
         .catch((error: unknown) => {
-          isSavingRef.current = false;
-          SPContext.logger.error('Failed to save FINRACommentsReceived', error, { itemId });
+          isSavingCommentsFlagRef.current = false;
+          SPContext.logger.error('Failed to save FINRACommentsReceived', error, { itemId: effectiveItemId });
           // Revert both currentRequest and originalRequest on failure
           const current = useRequestStore.getState();
           if (current.currentRequest) {
@@ -220,24 +200,73 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
           }
         });
     },
-    [onCommentsReceivedChange, itemId]
+    [onCommentsReceivedChange, effectiveItemId]
   );
+
+  const handleFinraCommentBlur = React.useCallback(async (): Promise<void> => {
+    if (!effectiveItemId || isReadOnly || !commentsReceived || isSavingCommentTextRef.current) {
+      return;
+    }
+
+    const nextComment = useRequestStore.getState().currentRequest?.finraComment ?? '';
+    const savedComment = originalRequest?.finraComment ?? '';
+
+    if (nextComment === savedComment) {
+      return;
+    }
+
+    setIsSavingCommentText(true);
+
+    try {
+      await SPContext.sp.web.lists
+        .getByTitle(Lists.Requests.Title)
+        .items.getById(effectiveItemId)
+        .update({
+          [RequestsFields.FINRAComment]: nextComment,
+        });
+
+      const latest = useRequestStore.getState();
+      if (latest.currentRequest) {
+        useRequestStore.setState({
+          currentRequest: {
+            ...latest.currentRequest,
+            finraComment: nextComment,
+          },
+          originalRequest: latest.originalRequest
+            ? {
+              ...latest.originalRequest,
+              finraComment: nextComment,
+            }
+            : latest.originalRequest,
+        });
+      }
+
+    } catch (error: unknown) {
+      SPContext.logger.error('Failed to save FINRAComment', error, { itemId: effectiveItemId });
+    } finally {
+      setIsSavingCommentText(false);
+    }
+  }, [commentsReceived, effectiveItemId, isReadOnly, originalRequest?.finraComment, setIsSavingCommentText]);
+
+  const handleFinraCommentBlurEvent = React.useCallback((): void => {
+    handleFinraCommentBlur().catch((error: unknown) => {
+      SPContext.logger.error('Failed to process FINRA comment blur', error, { itemId: effectiveItemId });
+    });
+  }, [effectiveItemId, handleFinraCommentBlur]);
 
   /**
    * Handle files change
    */
-  const handleFilesChange = React.useCallback(() => {
-    SPContext.logger.info('FINRA documents changed', { itemId });
-  }, [itemId]);
+  const handleFilesChange = React.useCallback((): void => {}, []);
 
   /**
    * Handle error
    */
   const handleError = React.useCallback(
     (error: string) => {
-      SPContext.logger.error('FINRA document error', new Error(error), { itemId });
+      SPContext.logger.error('FINRA document error', new Error(error), { itemId: effectiveItemId });
     },
-    [itemId]
+    [effectiveItemId]
   );
 
   // Check if request was completed without FINRA documents
@@ -306,7 +335,7 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
           </Stack>
         ) : (
           <DocumentUpload
-            itemId={itemId}
+            itemId={effectiveItemId}
             documentType={DocumentType.FINRA}
             isReadOnly={isReadOnly}
             required={true}
@@ -383,6 +412,7 @@ export const FINRADocuments: React.FC<IFINRADocumentsProps> = ({
                 rows={4}
                 value={finraComment}
                 onChange={handleFinraCommentChange}
+                onBlur={handleFinraCommentBlurEvent}
                 placeholder='Enter details about the FINRA comments received (optional)'
                 ariaLabel='FINRA comment details'
                 styles={{

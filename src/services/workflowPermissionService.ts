@@ -101,7 +101,6 @@ export function isValidStatusTransition(
  */
 export function canSubmitRequest(context: IActionContext): IPermissionCheckResult {
   const { request, permissions, currentUserId } = context;
-
   // Must be in Draft status
   if (request.status !== RequestStatus.Draft) {
     return {

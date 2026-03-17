@@ -15,11 +15,11 @@ It is derived directly from `uiVisibilityService.ts` (UI layer) and `workflowPer
 
 | Role | SharePoint Group | Description |
 |------|-----------------|-------------|
-| **Admin** | LW - Admin | Full access everywhere, including terminal statuses |
-| **Legal Admin** | LW - Legal Admin | Triage, attorney assignment, closeout; blocked from terminal edits |
-| **Attorney Assigner** | LW - Attorney Assigner | Assigns attorneys during committee stage only |
+| **Admin** | LW - Admins | Full access everywhere, including terminal statuses |
+| **Legal Admin** | LW - Legal Admins | Triage, attorney assignment, closeout; blocked from terminal edits |
+| **Attorney Assigner** | LW - Attorney Assigners | Assigns attorneys during committee stage only |
 | **Attorney** | LW - Attorneys | Submits legal review for their assigned requests only |
-| **Compliance User** | LW - Compliance Users | Submits compliance review; no legal review access |
+| **Compliance User** | LW - Compliance Reviewers | Submits compliance review; no legal review access |
 | **Submitter / Owner** | LW - Submitters | Creates requests; limited access after Legal Intake |
 
 > **Owner** = the user who created the request (`submittedBy.id` or `author.id` matches current user).

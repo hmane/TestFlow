@@ -58,13 +58,15 @@ export const WorkflowFormWrapper: React.FC<IWorkflowFormWrapperProps> = ({
   onCancelRequest: customOnCancelRequest,
   onClose: customOnClose,
 }) => {
-  const { currentRequest, isLoading: storeLoading } = useRequestStore(
+  const { currentRequest, isLoading: storeLoading, storeItemId } = useRequestStore(
     useShallow((s) => ({
       currentRequest: s.currentRequest,
       isLoading: s.isLoading,
+      storeItemId: s.itemId,
     }))
   );
   const [validationErrors, setValidationErrors] = React.useState<IValidationError[]>([]);
+  const effectiveItemId = storeItemId ?? itemId;
 
   // Set up form for the current request data
   // Note: No zodResolver here — this wrapper only provides form context for
@@ -164,7 +166,7 @@ export const WorkflowFormWrapper: React.FC<IWorkflowFormWrapperProps> = ({
       control,
       isDirty,
       isLoading: storeLoading || isSubmitting,
-      itemId,
+      itemId: effectiveItemId,
       status: currentRequest?.status,
       validationErrors,
       handleSubmit,
@@ -181,7 +183,7 @@ export const WorkflowFormWrapper: React.FC<IWorkflowFormWrapperProps> = ({
       isDirty,
       storeLoading,
       isSubmitting,
-      itemId,
+      effectiveItemId,
       currentRequest?.status,
       validationErrors,
       handleSubmit,

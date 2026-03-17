@@ -59,7 +59,7 @@
 | Field | Value |
 |-------|-------|
 | **Priority** | High |
-| **Preconditions** | User is member of "LW - Legal Admin" group |
+| **Preconditions** | User is member of "LW - Legal Admins" group |
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
@@ -91,7 +91,7 @@
 | Field | Value |
 |-------|-------|
 | **Priority** | High |
-| **Preconditions** | User is member of "LW - Compliance Users" group |
+| **Preconditions** | User is member of "LW - Compliance Reviewers" group |
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
@@ -106,7 +106,7 @@
 | Field | Value |
 |-------|-------|
 | **Priority** | High |
-| **Preconditions** | User is member of "LW - Attorney Assigner" group |
+| **Preconditions** | User is member of "LW - Attorney Assigners" group |
 
 | Step | Action | Expected Result |
 |------|--------|-----------------|
@@ -2219,12 +2219,12 @@
 |------|------------------|---------|
 | Test Submitter 1 | LW - Submitters | Create and submit requests |
 | Test Submitter 2 | LW - Submitters | Test cross-user visibility |
-| Test Legal Admin | LW - Legal Admin | Intake and assignment |
+| Test Legal Admin | LW - Legal Admins | Intake and assignment |
 | Test Attorney 1 | LW - Attorneys | Legal review |
 | Test Attorney 2 | LW - Attorneys | Alternative attorney |
-| Test Compliance | LW - Compliance Users | Compliance review |
-| Test Assigner | LW - Attorney Assigner | Committee assignment |
-| Test Admin | LW - Admin | System administration |
+| Test Compliance | LW - Compliance Reviewers | Compliance review |
+| Test Assigner | LW - Attorney Assigners | Committee assignment |
+| Test Admin | LW - Admins | System administration |
 
 ### Submission Types Required
 

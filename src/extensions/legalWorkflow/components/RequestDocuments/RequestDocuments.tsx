@@ -32,16 +32,12 @@ import { useNotification } from '@contexts/NotificationContext';
 import { Lists } from '@sp/Lists';
 import { DocumentUpload } from '@components/DocumentUpload';
 import { useRequestFormContext } from '@contexts/RequestFormContext';
-import { usePermissions } from '@hooks/usePermissions';
+import { useUIVisibility } from '@hooks/useUIVisibility';
 import { useDocumentsStore } from '@stores/documentsStore';
 import type { IDocument } from '@stores/documentsStore';
 import { useConfigStore } from '@stores/configStore';
 import { useRequestStore } from '@stores/requestStore';
-import {
-  ComplianceReviewStatus,
-  LegalReviewStatus,
-  RequestStatus,
-} from '@appTypes/workflowTypes';
+import { RequestStatus } from '@appTypes/workflowTypes';
 import {
   isDocumentCheckoutEnabled,
   getRequestCheckoutStatus,
@@ -52,6 +48,8 @@ import {
 } from '@services/documentCheckoutService';
 
 import './RequestDocuments.scss';
+
+const CHECKOUT_REFRESH_INTERVAL_MS = 10000;
 
 /**
  * RequestDocuments Component Props
@@ -74,18 +72,15 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
   defaultExpanded = true,
 }) => {
   const { status, validationErrors } = useRequestFormContext();
-  const { isSubmitter, isLegalAdmin, isAttorney, isComplianceUser, isAdmin } = usePermissions();
   const currentRequest = useRequestStore((s) => s.currentRequest);
-
-  // Check if current user is the owner (creator/submitter of this specific request)
-  const isOwner = React.useMemo((): boolean => {
-    if (!currentRequest) return false;
-    const currentUserId = SPContext.currentUser?.id?.toString() ?? '';
-    return (
-      String(currentRequest.submittedBy?.id ?? '') === currentUserId ||
-      String(currentRequest.author?.id ?? '') === currentUserId
-    );
-  }, [currentRequest]);
+  const storeItemId = useRequestStore((s) => s.itemId);
+  const effectiveItemId = storeItemId ?? itemId;
+  const { fields } = useUIVisibility({
+    status,
+    itemId: effectiveItemId,
+    request: currentRequest ?? undefined,
+  });
+  const attachmentsVisibility = fields.attachments;
 
   // Get documents from store
   const {
@@ -129,27 +124,28 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
     return getRequestCheckoutStatus(allDocumentsFlat);
   }, [checkoutEnabled, isInReview, allDocumentsFlat]);
 
-  // Auto-refresh document checkout status every 30 seconds while In Review
-  // so users see when others lock/unlock documents without needing a manual page refresh
+  // Auto-refresh document checkout status every 10 seconds whenever this section
+  // is active for an existing request, so users see cross-user lock changes
+  // without needing a manual page refresh.
   React.useEffect(() => {
-    if (!checkoutEnabled || !isInReview || !itemId) return;
+    if (!checkoutEnabled || !effectiveItemId) return;
 
     const intervalId = setInterval(() => {
-      loadDocuments(itemId, true).catch(() => {
+      loadDocuments(effectiveItemId, true).catch(() => {
         // Silently ignore refresh errors — stale data is acceptable here
       });
-    }, 30000);
+    }, CHECKOUT_REFRESH_INTERVAL_MS);
 
     return () => {
       clearInterval(intervalId);
     };
-  }, [checkoutEnabled, isInReview, itemId, loadDocuments]);
+  }, [checkoutEnabled, effectiveItemId, loadDocuments]);
 
   /**
    * Handle "Mark All as Done" — checkin all files checked out by current user
    */
   const handleDoneReviewingAll = React.useCallback(async (): Promise<void> => {
-    if (!itemId || !requestCheckoutStatus?.currentUserHasCheckouts) return;
+    if (!effectiveItemId || !requestCheckoutStatus?.currentUserHasCheckouts) return;
 
     try {
       const results = await doneReviewingAll(allDocumentsFlat);
@@ -162,12 +158,12 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
       }
 
       // Reload documents to refresh checkout state
-      await loadDocuments(itemId, true);
+      await loadDocuments(effectiveItemId, true);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to complete reviews';
       showError?.(message);
     }
-  }, [itemId, requestCheckoutStatus, allDocumentsFlat, loadDocuments, showSuccess, showError]);
+  }, [effectiveItemId, requestCheckoutStatus, allDocumentsFlat, loadDocuments, showSuccess, showError]);
 
   /**
    * Handle individual review actions (called from "Currently Being Reviewed" section)
@@ -176,11 +172,11 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
     const result = await doneReviewing(doc);
     if (result.success) {
       showSuccess?.(`Done reviewing ${result.fileName}`);
-      if (itemId) await loadDocuments(itemId, true);
+      if (effectiveItemId) await loadDocuments(effectiveItemId, true);
     } else {
       showError?.(result.error || 'Failed to complete review');
     }
-  }, [itemId, loadDocuments, showSuccess, showError]);
+  }, [effectiveItemId, loadDocuments, showSuccess, showError]);
 
   // Check if there's an attachments validation error
   // The error is set on 'attachments' path via Zod superRefine in requestSchema.ts
@@ -189,82 +185,9 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
     return validationErrors.some(error => error.field === 'attachments');
   }, [validationErrors]);
 
-  // Get Legal and Compliance review statuses
-  const legalReviewStatus: LegalReviewStatus | undefined = React.useMemo(() => {
-    return undefined;
-  }, []);
-
-  const complianceReviewStatus: ComplianceReviewStatus | undefined = React.useMemo(() => {
-    return undefined;
-  }, []);
-
-  /**
-   * Determine if attachments should be read-only
-   *
-   * Permissions for attachments:
-   * - Admin: can edit anytime (except Completed/Cancelled/AwaitingFINRADocuments)
-   * - Legal Admin, Attorney, Compliance: can add/update anytime before Closeout
-   * - Owner (creator/submitter): can edit in Draft or when waiting on submitter
-   */
   const isReadOnly = React.useMemo(() => {
-    // Completed, Cancelled, and AwaitingFINRADocuments are always read-only for everyone
-    // (AwaitingFINRADocuments has its own separate FINRADocuments section)
-    if (
-      status === RequestStatus.Completed ||
-      status === RequestStatus.Cancelled ||
-      status === RequestStatus.AwaitingFINRADocuments
-    ) {
-      return true;
-    }
-
-    // Admin can always edit (except Completed/Cancelled above)
-    if (isAdmin) {
-      return false;
-    }
-
-    // Draft is editable by owner (creator) or anyone with general access
-    if (!status || status === RequestStatus.Draft) {
-      // Owner can always edit their own draft
-      if (isOwner) {
-        return false;
-      }
-      // Others with submitter role can also edit drafts they have access to
-      return false;
-    }
-
-    // Closeout and beyond - only admin can edit (handled above)
-    if (status === RequestStatus.Closeout) {
-      return true;
-    }
-
-    // Legal Admin, Attorney, Compliance can edit anytime before Closeout
-    // (Legal Intake, Assign Attorney, In Review statuses)
-    if (isLegalAdmin || isAttorney || isComplianceUser) {
-      return false;
-    }
-
-    // Owner (creator/submitter of this request) can edit when waiting on submitter
-    if (isOwner || isSubmitter) {
-      if (
-        legalReviewStatus === LegalReviewStatus.WaitingOnSubmitter ||
-        complianceReviewStatus === ComplianceReviewStatus.WaitingOnSubmitter
-      ) {
-        return false;
-      }
-    }
-
-    return true;
-  }, [
-    isAdmin,
-    isLegalAdmin,
-    isAttorney,
-    isComplianceUser,
-    isSubmitter,
-    isOwner,
-    status,
-    legalReviewStatus,
-    complianceReviewStatus,
-  ]);
+    return !attachmentsVisibility.canAdd && !attachmentsVisibility.canDelete;
+  }, [attachmentsVisibility.canAdd, attachmentsVisibility.canDelete]);
 
   /**
    * Calculate total document count (existing + staged)
@@ -283,17 +206,17 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
    * Handle files change
    */
   const handleFilesChange = React.useCallback(() => {
-    SPContext.logger.info('Attachments changed', { itemId });
-  }, [itemId]);
+    SPContext.logger.info('Attachments changed', { itemId: effectiveItemId });
+  }, [effectiveItemId]);
 
   /**
    * Handle error
    */
   const handleError = React.useCallback(
     (error: string) => {
-      SPContext.logger.error('Attachment error', new Error(error), { itemId });
+      SPContext.logger.error('Attachment error', new Error(error), { itemId: effectiveItemId });
     },
-    [itemId]
+    [effectiveItemId]
   );
 
   /**
@@ -342,18 +265,46 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
    * Handle save document changes
    */
   const handleSaveDocuments = React.useCallback(async (): Promise<void> => {
-    if (!itemId) {
+    if (!effectiveItemId) {
       showError?.('Cannot save: No request ID');
       return;
     }
 
     setIsSaving(true);
-    SPContext.logger.info('RequestDocuments: Saving document changes', { itemId });
+    SPContext.logger.info('RequestDocuments: Saving document changes', { itemId: effectiveItemId });
+    SPContext.logger.debug('RequestDocuments: Pending document operation snapshot', {
+      itemId: effectiveItemId,
+      stagedFiles: stagedFiles.map(file => ({
+        name: file.file.name,
+        documentType: file.documentType,
+      })),
+      filesToRename: filesToRename.map(file => ({
+        name: file.file.name,
+        uniqueId: file.file.uniqueId,
+        listItemId: file.file.listItemId,
+        newName: file.newName,
+      })),
+      filesToDelete: filesToDelete.map(file => ({
+        name: file.name,
+        uniqueId: file.uniqueId,
+        listItemId: file.listItemId,
+      })),
+      filesToChangeType: filesToChangeType.map(file => ({
+        name: file.file.name,
+        uniqueId: file.file.uniqueId,
+        listItemId: file.file.listItemId,
+        currentType: file.file.documentType,
+        newType: file.newType,
+        localCheckOutType: file.file.checkOutType,
+        localCheckedOutByName: file.file.checkedOutByName,
+        localCheckedOutByEmail: file.file.checkedOutByEmail,
+      })),
+    });
 
     try {
       // Upload staged files
       if (stagedFiles.length > 0) {
-        await uploadPendingFiles(itemId, (fileId, progress, uploadStatus) => {
+        await uploadPendingFiles(effectiveItemId, (fileId, progress, uploadStatus) => {
           SPContext.logger.info('Upload progress', { fileId, progress, status: uploadStatus });
         });
       }
@@ -365,7 +316,7 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
 
       // Process type changes (Review <-> Supplemental)
       if (filesToChangeType.length > 0) {
-        await changeTypePendingFiles(itemId);
+        await changeTypePendingFiles(effectiveItemId);
       }
 
       // Process deletions
@@ -374,18 +325,18 @@ export const RequestDocuments: React.FC<IRequestDocumentsProps> = ({
       }
 
       // Reload documents to refresh the view
-      await loadDocuments(itemId, true);
+      await loadDocuments(effectiveItemId, true);
 
       showSuccess?.('Attachments saved successfully!');
-      SPContext.logger.success('RequestDocuments: Document changes saved', { itemId });
+      SPContext.logger.success('RequestDocuments: Document changes saved', { itemId: effectiveItemId });
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to save attachments';
       showError?.(message);
-      SPContext.logger.error('RequestDocuments: Save failed', error, { itemId });
+      SPContext.logger.error('RequestDocuments: Save failed', error, { itemId: effectiveItemId });
     } finally {
       setIsSaving(false);
     }
-  }, [itemId, stagedFiles, filesToRename, filesToChangeType, filesToDelete, uploadPendingFiles, renamePendingFiles, changeTypePendingFiles, deletePendingFiles, loadDocuments, showSuccess, showError]);
+  }, [effectiveItemId, stagedFiles, filesToRename, filesToChangeType, filesToDelete, uploadPendingFiles, renamePendingFiles, changeTypePendingFiles, deletePendingFiles, loadDocuments, showSuccess, showError]);
 
   /**
    * Handle cancel - discard all pending changes

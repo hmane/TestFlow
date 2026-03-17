@@ -14,7 +14,11 @@ jest.mock('spfx-toolkit/lib/utilities/context', () => ({
   },
 }));
 
-import { isDebugEnabled, debugLogger, debugFlag } from '../debugLogger';
+import {
+  isDebugEnabled,
+  debugLogger,
+  debugFlag,
+} from '../debugLogger';
 
 // Get reference to mocked logger
 const getMockLogger = () => {
@@ -261,4 +265,5 @@ describe('Debug Logger Utility', () => {
       });
     });
   });
+
 });

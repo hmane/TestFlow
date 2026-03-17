@@ -34,11 +34,11 @@
 
 | Role | SharePoint Group | Description |
 |------|-----------------|-------------|
-| **Admin** | LW - Admin | Full system administration. Universal override for all actions. |
-| **Legal Admin** | LW - Legal Admin | Triages requests, assigns attorneys, manages Legal Intake and Closeout. |
-| **Attorney Assigner** | LW - Attorney Assigner | Committee member who assigns attorneys during the committee stage only. |
+| **Admin** | LW - Admins | Full system administration. Universal override for all actions. |
+| **Legal Admin** | LW - Legal Admins| Triages requests, assigns attorneys, manages Legal Intake and Closeout. |
+| **Attorney Assigner** | LW - Attorney Assigners | Committee member who assigns attorneys during the committee stage only. |
 | **Attorney** | LW - Attorneys | Reviews assigned legal requests. Must be explicitly assigned to act. |
-| **Compliance User** | LW - Compliance Users | Reviews compliance requests. Any compliance user can review (no assignment). |
+| **Compliance User** | LW - Compliance Reviewers | Reviews compliance requests. Any compliance user can review (no assignment). |
 | **Submitter (Owner)** | LW - Submitters | Creates and owns requests. "Owner" = `submittedBy.id` or `author.id` matches current user. |
 
 ---

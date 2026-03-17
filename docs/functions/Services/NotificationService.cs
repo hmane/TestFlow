@@ -9,7 +9,6 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Memory;
-using PnP.Core.Model.Security;
 using PnP.Core.QueryModel;
 using PnP.Core.Services;
 using LegalWorkflow.Functions.Constants;
@@ -52,6 +51,7 @@ namespace LegalWorkflow.Functions.Services
         private readonly IMemoryCache _groupMembersCache;
         private readonly Logger _logger;
         private readonly NotificationConfig _config;
+        private readonly SharePointListConfig _listConfig;
 
         /// <summary>
         /// Cache expiration time for group member emails (5 minutes).
@@ -86,13 +86,15 @@ namespace LegalWorkflow.Functions.Services
         /// <param name="logger">Logger instance for logging operations</param>
         /// <param name="config">Configuration for notification settings (optional)</param>
         /// <param name="memoryCache">Memory cache for caching group member emails (optional)</param>
+        /// <param name="listConfig">SharePoint list name configuration (optional)</param>
         public NotificationService(
             RequestService requestService,
             IPnPContextFactory contextFactory,
             PermissionGroupConfig groupConfig,
             Logger logger,
             NotificationConfig? config = null,
-            IMemoryCache? memoryCache = null)
+            IMemoryCache? memoryCache = null,
+            SharePointListConfig? listConfig = null)
         {
             _requestService = requestService ?? throw new ArgumentNullException(nameof(requestService));
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
@@ -100,6 +102,7 @@ namespace LegalWorkflow.Functions.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _config = config ?? new NotificationConfig();
             _groupMembersCache = memoryCache ?? new MemoryCache(new MemoryCacheOptions());
+            _listConfig = listConfig ?? new SharePointListConfig();
         }
 
         /// <summary>
@@ -131,6 +134,21 @@ namespace LegalWorkflow.Functions.Services
 
                 // Load the previous version for comparison
                 var previousVersion = await _requestService.GetPreviousVersionAsync(request.RequestId, request.PreviousVersion);
+
+                // If a previous version was specified but could not be loaded, we cannot safely
+                // determine the change delta. Returning no notification is safer than misclassifying
+                // an existing item as a new submission and firing a spurious RequestSubmitted/rush alert.
+                if (previousVersion == null && !string.IsNullOrEmpty(request.PreviousVersion))
+                {
+                    _logger.Warning("Previous version not found — cannot determine change delta, skipping notification",
+                        new { request.RequestId, RequestedVersion = request.PreviousVersion });
+                    tracker.Complete(true, "Previous version not available");
+                    return new SendNotificationResponse
+                    {
+                        ShouldSendNotification = false,
+                        Reason = $"Previous version '{request.PreviousVersion}' not available for comparison"
+                    };
+                }
 
                 // Determine which notification (if any) should be sent
                 var notificationId = DetermineNotification(currentRequest, previousVersion);
@@ -542,7 +560,7 @@ namespace LegalWorkflow.Functions.Services
 
             // Request Link - generates full URL to the request
             // Format: {SiteUrl}/Lists/{ListName}/EditForm.aspx?ID={RequestId}
-            var requestLink = $"{_config.SiteUrl.TrimEnd('/')}/Lists/{SharePointLists.Requests}/EditForm.aspx?ID={request.Id}";
+            var requestLink = $"{_config.SiteUrl.TrimEnd('/')}/Lists/{_listConfig.RequestsListName}/EditForm.aspx?ID={request.Id}";
             result = result.Replace("{{RequestLink}}", requestLink);
 
             // Submitter email for recipient resolution
@@ -770,7 +788,7 @@ namespace LegalWorkflow.Functions.Services
         /// Gets email addresses of all members in a SharePoint group.
         /// Results are cached for 5 minutes to avoid repeated SharePoint calls.
         /// </summary>
-        /// <param name="groupName">The SharePoint group name (e.g., "LW - Legal Admin")</param>
+        /// <param name="groupName">The SharePoint group name (e.g., "LW - Legal Admins")</param>
         /// <returns>List of email addresses for group members</returns>
         private async Task<List<string>> GetGroupMemberEmailsAsync(string groupName)
         {
@@ -793,8 +811,7 @@ namespace LegalWorkflow.Functions.Services
             {
                 using var context = await _contextFactory.CreateAsync("Default");
 
-                var siteGroups = await context.Web.SiteGroups.ToListAsync();
-                var group = FindSiteGroup(siteGroups, normalizedGroupName);
+                var group = await context.Web.SiteGroups.FirstOrDefaultAsync(g => g.Title == normalizedGroupName);
 
                 if (group == null)
                 {
@@ -852,17 +869,6 @@ namespace LegalWorkflow.Functions.Services
 
             groupName = string.Empty;
             return false;
-        }
-
-        /// <summary>
-        /// Finds a SharePoint site group using normalized title matching.
-        /// </summary>
-        private static ISharePointGroup? FindSiteGroup(IEnumerable<ISharePointGroup> siteGroups, string groupName)
-        {
-            var normalizedGroupName = NormalizeKey(groupName);
-
-            return siteGroups.FirstOrDefault(group =>
-                NormalizeKey(group.Title) == normalizedGroupName);
         }
 
         /// <summary>
@@ -1065,12 +1071,6 @@ namespace LegalWorkflow.Functions.Services
         /// Example: "https://contoso.sharepoint.com/sites/LegalWorkflow"
         /// </summary>
         public string SiteUrl { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Name of the Requests list in SharePoint.
-        /// Defaults to "Requests".
-        /// </summary>
-        public string RequestsListName { get; set; } = "Requests";
 
         /// <summary>
         /// Whether to include debug information in logs.

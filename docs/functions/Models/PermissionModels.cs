@@ -170,19 +170,19 @@ namespace LegalWorkflow.Functions.Models
         public string SubmittersGroup { get; set; } = "LW - Submitters";
 
         /// <summary>SharePoint group name for Legal Admin</summary>
-        public string LegalAdminGroup { get; set; } = "LW - Legal Admin";
+        public string LegalAdminGroup { get; set; } = "LW - Legal Admins";
 
         /// <summary>SharePoint group name for Attorney Assigners</summary>
-        public string AttorneyAssignerGroup { get; set; } = "LW - Attorney Assigner";
+        public string AttorneyAssignerGroup { get; set; } = "LW - Attorney Assigners";
 
         /// <summary>SharePoint group name for Attorneys</summary>
         public string AttorneysGroup { get; set; } = "LW - Attorneys";
 
-        /// <summary>SharePoint group name for Compliance Users</summary>
-        public string ComplianceGroup { get; set; } = "LW - Compliance Users";
+        /// <summary>SharePoint group name for Compliance Reviewers</summary>
+        public string ComplianceGroup { get; set; } = "LW - Compliance Reviewers";
 
         /// <summary>SharePoint group name for Admins (full control)</summary>
-        public string AdminGroup { get; set; } = "LW - Admin";
+        public string AdminGroup { get; set; } = "LW - Admins";
 
         /// <summary>
         /// UPN (User Principal Name) of the Power Automate service account.

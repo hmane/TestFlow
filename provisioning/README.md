@@ -75,11 +75,11 @@ Get-PnPField -List "Requests" | Select-Object Title, InternalName, Id | Format-T
 
 **SharePoint Groups:**
 1. **LW - Submitters** - Submit legal review requests
-2. **LW - Legal Admin** - Triage and manage all requests
-3. **LW - Attorney Assigner** - Assign attorneys to requests
+2. **LW - Legal Admins** - Triage and manage all requests
+3. **LW - Attorney Assigners** - Assign attorneys to requests
 4. **LW - Attorneys** - Review assigned requests
-5. **LW - Compliance Users** - Review compliance aspects
-6. **LW - Admin** - Full system access
+5. **LW - Compliance Reviewers** - Review compliance aspects
+6. **LW - Admins** - Full system access
 
 **Broken Permissions:**
 - **Requests list**: Inheritance broken, "Admin Without Delete" applied to prevent accidental/intentional deletion for audit compliance

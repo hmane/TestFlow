@@ -2,6 +2,8 @@
  * Configuration and settings types
  */
 
+import { Groups } from '@sp/Groups';
+
 /**
  * Application configuration from SharePoint Configuration list
  */
@@ -39,14 +41,16 @@ export interface IConfigurationListItem {
  *
  * If group names change in SharePoint, regenerate constants with Generate-SPConstants.ps1
  */
-export enum AppRole {
-  Submitters = 'LW - Submitters',
-  LegalAdmin = 'LW - Legal Admins',
-  AttorneyAssigner = 'LW - Attorney Assigners',
-  Attorneys = 'LW - Attorneys',
-  ComplianceUsers = 'LW - Compliance Reviewers',
-  Admin = 'LW - Admins',
-}
+export const AppRole = {
+  Submitters: Groups.LwSubmitters.Title,
+  LegalAdmin: Groups.LwLegalAdmins.Title,
+  AttorneyAssigner: Groups.LwAttorneyAssigners.Title,
+  Attorneys: Groups.LwAttorneys.Title,
+  ComplianceUsers: Groups.LwComplianceReviewers.Title,
+  Admin: Groups.LwAdmins.Title,
+} as const;
+
+export type AppRole = typeof AppRole[keyof typeof AppRole];
 
 /**
  * User role information
@@ -63,4 +67,3 @@ export interface IUserRoleInfo {
   isComplianceUser: boolean;
   isAdmin: boolean;
 }
-

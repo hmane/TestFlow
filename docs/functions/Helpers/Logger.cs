@@ -200,6 +200,40 @@ namespace LegalWorkflow.Functions.Helpers
         }
 
         /// <summary>
+        /// Logs a structured audit summary as the final entry for each function invocation.
+        /// Tagged with AuditType = "FunctionAudit" so all function outcomes can be filtered in
+        /// Application Insights with: where customDimensions.AuditType == "FunctionAudit"
+        ///
+        /// Outcome conventions:
+        ///   Success        — operation completed as intended
+        ///   Skipped        — valid call, nothing to act on (e.g. no notification triggered)
+        ///   Unauthorized   — missing or invalid bearer token (HTTP 401)
+        ///   Forbidden      — authenticated but not permitted (HTTP 403)
+        ///   InvalidRequest — required fields missing or malformed (HTTP 400)
+        ///   Failed         — service-level error with a known message (HTTP 500)
+        ///   Error          — unhandled exception (HTTP 500)
+        /// </summary>
+        public void LogAuditSummary(string action, string outcome, string reason)
+        {
+            var data = new
+            {
+                Action = action,
+                Outcome = outcome,
+                Reason = reason,
+                AuditType = "FunctionAudit"
+            };
+
+            var level = outcome switch
+            {
+                "Unauthorized" or "Forbidden" or "InvalidRequest" => LogLevel.Warning,
+                "Failed" or "Error" => LogLevel.Error,
+                _ => LogLevel.Information
+            };
+
+            Log(level, $"[AUDIT] {action} | {outcome} | {reason}", data);
+        }
+
+        /// <summary>
         /// Logs a status change for workflow tracking.
         /// </summary>
         /// <param name="previousStatus">Previous request status</param>

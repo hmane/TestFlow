@@ -34,6 +34,7 @@ namespace LegalWorkflow.Functions.Services
         private readonly IPnPContextFactory _contextFactory;
         private readonly Logger _logger;
         private readonly PermissionGroupConfig _groupConfig;
+        private readonly SharePointListConfig _listConfig;
 
         /// <summary>
         /// Creates a new SharePointAuthorizationService instance.
@@ -41,14 +42,17 @@ namespace LegalWorkflow.Functions.Services
         /// <param name="contextFactory">PnP Core context factory for SharePoint access</param>
         /// <param name="logger">Logger instance for logging operations</param>
         /// <param name="groupConfig">Configuration containing service account and group settings</param>
+        /// <param name="listConfig">SharePoint list name configuration (optional)</param>
         public SharePointAuthorizationService(
             IPnPContextFactory contextFactory,
             Logger logger,
-            PermissionGroupConfig groupConfig)
+            PermissionGroupConfig groupConfig,
+            SharePointListConfig? listConfig = null)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _groupConfig = groupConfig ?? throw new ArgumentNullException(nameof(groupConfig));
+            _listConfig = listConfig ?? new SharePointListConfig();
         }
 
         /// <summary>
@@ -145,17 +149,19 @@ namespace LegalWorkflow.Functions.Services
             {
                 using var context = await _contextFactory.CreateAsync("Default");
 
-                // Ensure the user exists in SharePoint
-                var user = await context.Web.EnsureUserAsync(userInfo.SharePointLoginName);
-                if (user == null)
+                // Reject early if there is no login name to check against.
+                // This can only happen if token validation missed an empty-claims token —
+                // the extra guard here prevents a confusing SharePoint error further down.
+                if (string.IsNullOrWhiteSpace(userInfo.SharePointLoginName))
                 {
-                    _logger.Warning($"User not found in SharePoint: {userInfo.SharePointLoginName}");
-                    tracker.Complete(false, "User not found");
+                    _logger.Warning("Cannot check permissions — user has no SharePoint login name");
+                    tracker.Complete(false, "Empty login name");
                     return false;
                 }
 
-                // Get the request item
-                var list = await context.Web.Lists.GetByTitleAsync(SharePointLists.Requests);
+                // Get the request item — CheckIfUserHasPermissionsAsync resolves the login
+                // name itself; a preceding EnsureUserAsync call is redundant and wastes a REST round-trip.
+                var list = await context.Web.Lists.GetByTitleAsync(_listConfig.RequestsListName);
                 var item = await list.Items.GetByIdAsync(requestId);
 
                 var hasWritePermission = await item.CheckIfUserHasPermissionsAsync(

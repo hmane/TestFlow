@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using LegalWorkflow.Functions.Helpers;
 using LegalWorkflow.Functions.Models;
@@ -21,21 +20,21 @@ namespace LegalWorkflow.Functions
     /// </summary>
     public class ManagementFunctions
     {
-        private readonly IConfiguration _configuration;
         private readonly ILogger<ManagementFunctions> _logger;
         private readonly PermissionGroupConfig _groupConfig;
         private readonly ReloadableX509AuthenticationProvider _authenticationProvider;
+        private readonly AuthorizationHelper _authorizationHelper;
 
         public ManagementFunctions(
-            IConfiguration configuration,
             ILogger<ManagementFunctions> logger,
             PermissionGroupConfig groupConfig,
-            ReloadableX509AuthenticationProvider authenticationProvider)
+            ReloadableX509AuthenticationProvider authenticationProvider,
+            AuthorizationHelper authorizationHelper)
         {
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _groupConfig = groupConfig ?? throw new ArgumentNullException(nameof(groupConfig));
             _authenticationProvider = authenticationProvider ?? throw new ArgumentNullException(nameof(authenticationProvider));
+            _authorizationHelper = authorizationHelper ?? throw new ArgumentNullException(nameof(authorizationHelper));
         }
 
         /// <summary>
@@ -70,6 +69,7 @@ namespace LegalWorkflow.Functions
                 var authResult = await AuthenticateAsync(req);
                 if (!authResult.IsAuthorized)
                 {
+                    logger.LogAuditSummary("FlushCertificateCache", "Unauthorized", authResult.ErrorMessage ?? "Token validation failed");
                     return new UnauthorizedObjectResult(new
                     {
                         Success = false,
@@ -83,6 +83,7 @@ namespace LegalWorkflow.Functions
                 if (!IsServiceAccount(user))
                 {
                     logger.Warning("Certificate cache flush denied for non-service-account caller");
+                    logger.LogAuditSummary("FlushCertificateCache", "Forbidden", $"{user.Email} is not the configured service account");
                     return new ObjectResult(new
                     {
                         Success = false,
@@ -99,6 +100,8 @@ namespace LegalWorkflow.Functions
                     CurrentThumbprintSuffix = refreshResult.Current.ThumbprintSuffix,
                     RefreshedAtUtc = refreshResult.RefreshedAtUtc
                 });
+                logger.LogAuditSummary("FlushCertificateCache", "Success",
+                    $"Certificate refreshed by {user.Email} — previous: ...{refreshResult.Previous.ThumbprintSuffix}, current: ...{refreshResult.Current.ThumbprintSuffix}");
 
                 return new OkObjectResult(new
                 {
@@ -124,6 +127,7 @@ namespace LegalWorkflow.Functions
             catch (Exception ex)
             {
                 logger.Error("Unhandled exception while flushing certificate cache", ex);
+                logger.LogAuditSummary("FlushCertificateCache", "Error", ex.Message);
                 return new ObjectResult(new
                 {
                     Success = false,
@@ -135,8 +139,7 @@ namespace LegalWorkflow.Functions
 
         private async Task<AuthorizationResult> AuthenticateAsync(HttpRequest request)
         {
-            var authHelper = new AuthorizationHelper(_configuration, _logger);
-            return await authHelper.ValidateTokenAsync(request);
+            return await _authorizationHelper.ValidateTokenAsync(request);
         }
 
         private bool IsServiceAccount(UserAuthInfo user)

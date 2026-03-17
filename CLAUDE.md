@@ -406,11 +406,11 @@ The Tracking ID field is only visible on the Closeout form when Foreside Review 
 ## User Roles & Permissions
 
 1. **LW - Submitters**: Create requests, view all (read-only for others' requests)
-2. **LW - Legal Admin**: Triage, assign attorneys, override settings
-3. **LW - Attorney Assigner**: Committee members who assign attorneys
+2. **LW - Legal Admins**: Triage, assign attorneys, override settings
+3. **LW - Attorney Assigners**: Committee members who assign attorneys
 4. **LW - Attorneys**: Review assigned requests, submit legal reviews
-5. **LW - Compliance Users**: Review compliance requests, set flags
-6. **LW - Admin**: Full system administration
+5. **LW - Compliance Reviewers**: Review compliance requests, set flags
+6. **LW - Admins**: Full system administration
 
 Item-level permissions are broken when status changes from Draft → Legal Intake.
 

@@ -21,7 +21,7 @@ namespace LegalWorkflow.Functions.Constants
         /// <summary>
         /// System administrators with full access.
         /// </summary>
-        public const string Admin = "LW - Admin";
+        public const string Admin = "LW - Admins";
 
         /// <summary>
         /// Users who can submit legal review requests.
@@ -31,12 +31,12 @@ namespace LegalWorkflow.Functions.Constants
         /// <summary>
         /// Legal administrators who can manage all requests.
         /// </summary>
-        public const string LegalAdmin = "LW - Legal Admin";
+        public const string LegalAdmin = "LW - Legal Admins";
 
         /// <summary>
         /// Users who can assign attorneys to requests.
         /// </summary>
-        public const string AttorneyAssigner = "LW - Attorney Assigner";
+        public const string AttorneyAssigner = "LW - Attorney Assigners";
 
         /// <summary>
         /// Attorneys who can review and approve legal requests.
@@ -44,8 +44,8 @@ namespace LegalWorkflow.Functions.Constants
         public const string Attorneys = "LW - Attorneys";
 
         /// <summary>
-        /// Compliance users who can review compliance aspects.
+        /// Compliance reviewers who can review compliance aspects.
         /// </summary>
-        public const string ComplianceUsers = "LW - Compliance Users";
+        public const string ComplianceUsers = "LW - Compliance Reviewers";
     }
 }

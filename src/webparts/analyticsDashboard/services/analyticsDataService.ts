@@ -52,6 +52,194 @@ const OUTCOME_COLORS: Record<string, string> = {
   'Not Approved': '#a4262c',
 };
 
+interface ITurnaroundMetricsItem {
+  SubmittedOn?: string;
+  CloseoutOn?: string;
+  FINRACompletedOn?: string;
+  TotalTurnaroundDays?: number;
+}
+
+interface IDateScopedRequestItem {
+  Created?: string;
+  SubmittedOn?: string;
+}
+
+interface ITimeTrackingMetricsItem {
+  ID?: number;
+  LegalIntakeLegalAdminHours?: number;
+  LegalIntakeSubmitterHours?: number;
+  LegalReviewAttorneyHours?: number;
+  LegalReviewSubmitterHours?: number;
+  ComplianceReviewReviewerHours?: number;
+  ComplianceReviewSubmitterHours?: number;
+  CloseoutReviewerHours?: number;
+  CloseoutSubmitterHours?: number;
+  TotalReviewerHours?: number;
+  TotalSubmitterHours?: number;
+}
+
+type IAnalyticsRequestDebugItem = ITimeTrackingMetricsItem & ITurnaroundMetricsItem & {
+  RequestId?: string;
+  RequestTitle?: string;
+  Status?: string;
+  Created?: string;
+  TargetReturnDate?: string;
+  Attorney?: Array<{ Id?: number; Title?: string; EMail?: string }> | { Id?: number; Title?: string; EMail?: string };
+  ReviewAudience?: string;
+  RequestType?: string;
+  Department?: string;
+  FINRACommentsReceived?: boolean;
+  FINRAComment?: string;
+};
+
+function getTurnaroundDays(item: ITurnaroundMetricsItem): number {
+  if (typeof item.TotalTurnaroundDays === 'number' && item.TotalTurnaroundDays > 0) {
+    return item.TotalTurnaroundDays;
+  }
+
+  const completionDateStr = item.FINRACompletedOn || item.CloseoutOn;
+  if (!item.SubmittedOn || !completionDateStr) {
+    return 0;
+  }
+
+  const submitted = new Date(item.SubmittedOn);
+  const completion = new Date(completionDateStr);
+  return Math.ceil((completion.getTime() - submitted.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function buildEffectivePeriodFilter(
+  startDate: Date,
+  endDate: Date,
+  segmentationFilter: string
+): string {
+  const submittedRange =
+    `${RequestsFields.SubmittedOn} ge datetime'${startDate.toISOString()}' and ` +
+    `${RequestsFields.SubmittedOn} le datetime'${endDate.toISOString()}'`;
+  const createdFallbackRange =
+    `${RequestsFields.SubmittedOn} eq null and ` +
+    `${RequestsFields.Created} ge datetime'${startDate.toISOString()}' and ` +
+    `${RequestsFields.Created} le datetime'${endDate.toISOString()}'`;
+
+  return `((${submittedRange}) or (${createdFallbackRange}))${segmentationFilter}`;
+}
+
+function getRequestTimelineDate(item: IDateScopedRequestItem): Date | undefined {
+  const rawDate = item.SubmittedOn || item.Created;
+  return rawDate ? new Date(rawDate) : undefined;
+}
+
+function hasTrackedHours(item: ITimeTrackingMetricsItem): boolean {
+  return [
+    item.LegalIntakeLegalAdminHours,
+    item.LegalIntakeSubmitterHours,
+    item.LegalReviewAttorneyHours,
+    item.LegalReviewSubmitterHours,
+    item.ComplianceReviewReviewerHours,
+    item.ComplianceReviewSubmitterHours,
+    item.CloseoutReviewerHours,
+    item.CloseoutSubmitterHours,
+    item.TotalReviewerHours,
+    item.TotalSubmitterHours,
+  ].some((value) => typeof value === 'number' ? value > 0 : Number(value || 0) > 0);
+}
+
+function summarizeAttorneyField(
+  attorneys?: IAnalyticsRequestDebugItem['Attorney']
+): Array<{ Id?: number; Title?: string; EMail?: string }> {
+  if (!attorneys) {
+    return [];
+  }
+
+  return (Array.isArray(attorneys) ? attorneys : [attorneys]).map((attorney) => ({
+    Id: attorney.Id,
+    Title: attorney.Title,
+    EMail: attorney.EMail,
+  }));
+}
+
+function summarizeAnalyticsItem(item?: IAnalyticsRequestDebugItem): Record<string, unknown> | undefined {
+  if (!item) {
+    return undefined;
+  }
+
+  return {
+    ID: item.ID,
+    RequestId: item.RequestId,
+    RequestTitle: item.RequestTitle,
+    Status: item.Status,
+    Created: item.Created,
+    SubmittedOn: item.SubmittedOn,
+    CloseoutOn: item.CloseoutOn,
+    FINRACompletedOn: item.FINRACompletedOn,
+    TargetReturnDate: item.TargetReturnDate,
+    ReviewAudience: item.ReviewAudience,
+    RequestType: item.RequestType,
+    Department: item.Department,
+    Attorney: summarizeAttorneyField(item.Attorney),
+    LegalIntakeLegalAdminHours: item.LegalIntakeLegalAdminHours,
+    LegalIntakeSubmitterHours: item.LegalIntakeSubmitterHours,
+    LegalReviewAttorneyHours: item.LegalReviewAttorneyHours,
+    LegalReviewSubmitterHours: item.LegalReviewSubmitterHours,
+    ComplianceReviewReviewerHours: item.ComplianceReviewReviewerHours,
+    ComplianceReviewSubmitterHours: item.ComplianceReviewSubmitterHours,
+    CloseoutReviewerHours: item.CloseoutReviewerHours,
+    CloseoutSubmitterHours: item.CloseoutSubmitterHours,
+    TotalReviewerHours: item.TotalReviewerHours,
+    TotalSubmitterHours: item.TotalSubmitterHours,
+    TotalTurnaroundDays: item.TotalTurnaroundDays,
+    FINRACommentsReceived: item.FINRACommentsReceived,
+    FINRAComment: item.FINRAComment,
+  };
+}
+
+export function buildTimeByStageMetrics(items: ITimeTrackingMetricsItem[]): ITimeByStage[] {
+  const stageHours: Record<string, { reviewer: number; submitter: number; count: number }> = {
+    'Legal Intake': { reviewer: 0, submitter: 0, count: 0 },
+    'Legal Review': { reviewer: 0, submitter: 0, count: 0 },
+    'Compliance Review': { reviewer: 0, submitter: 0, count: 0 },
+    'Closeout': { reviewer: 0, submitter: 0, count: 0 },
+  };
+
+  items.forEach((item) => {
+    if (!hasTrackedHours(item)) {
+      return;
+    }
+
+    if (item.LegalIntakeLegalAdminHours || item.LegalIntakeSubmitterHours) {
+      stageHours['Legal Intake'].reviewer += Number(item.LegalIntakeLegalAdminHours || 0);
+      stageHours['Legal Intake'].submitter += Number(item.LegalIntakeSubmitterHours || 0);
+      stageHours['Legal Intake'].count++;
+    }
+    if (item.LegalReviewAttorneyHours || item.LegalReviewSubmitterHours) {
+      stageHours['Legal Review'].reviewer += Number(item.LegalReviewAttorneyHours || 0);
+      stageHours['Legal Review'].submitter += Number(item.LegalReviewSubmitterHours || 0);
+      stageHours['Legal Review'].count++;
+    }
+    if (item.ComplianceReviewReviewerHours || item.ComplianceReviewSubmitterHours) {
+      stageHours['Compliance Review'].reviewer += Number(item.ComplianceReviewReviewerHours || 0);
+      stageHours['Compliance Review'].submitter += Number(item.ComplianceReviewSubmitterHours || 0);
+      stageHours['Compliance Review'].count++;
+    }
+    if (item.CloseoutReviewerHours || item.CloseoutSubmitterHours) {
+      stageHours['Closeout'].reviewer += Number(item.CloseoutReviewerHours || 0);
+      stageHours['Closeout'].submitter += Number(item.CloseoutSubmitterHours || 0);
+      stageHours['Closeout'].count++;
+    }
+  });
+
+  const stageOrder = ['Legal Intake', 'Legal Review', 'Compliance Review', 'Closeout'];
+  return stageOrder.map(stage => {
+    const data = stageHours[stage];
+    return {
+      stage,
+      avgReviewerHours: data.count > 0 ? Math.round((data.reviewer / data.count) * 10) / 10 : 0,
+      avgSubmitterHours: data.count > 0 ? Math.round((data.submitter / data.count) * 10) / 10 : 0,
+      totalHours: data.count > 0 ? Math.round(((data.reviewer + data.submitter) / data.count) * 10) / 10 : 0,
+      color: STAGE_COLORS[stage] || '#8a8886',
+    };
+  });
+}
+
 /**
  * Calculate date range based on option
  */
@@ -337,20 +525,38 @@ export const fetchDashboardData = async (
     }
 
     // Build query filters
-    const dateFilter = `${RequestsFields.Created} ge datetime'${startDate.toISOString()}' and ${RequestsFields.Created} le datetime'${endDate.toISOString()}'${segmentationFilter}`;
+    const dateFilter = buildEffectivePeriodFilter(startDate, endDate, segmentationFilter);
 
     // Previous period for trend comparison (same segmentation filters)
     const periodMs = endDate.getTime() - startDate.getTime();
     const prevEndDate = new Date(startDate.getTime() - 1);
     const prevStartDate = new Date(prevEndDate.getTime() - periodMs);
     prevStartDate.setHours(0, 0, 0, 0);
-    const prevDateFilter = `${RequestsFields.Created} ge datetime'${prevStartDate.toISOString()}' and ${RequestsFields.Created} le datetime'${prevEndDate.toISOString()}'${segmentationFilter}`;
+    const prevDateFilter = buildEffectivePeriodFilter(prevStartDate, prevEndDate, segmentationFilter);
 
     // Snapshot filter — active items only (no date range), excludes On Hold
     const snapshotFilter = `${RequestsFields.Status} ne 'Draft' and ${RequestsFields.Status} ne 'Completed' and ${RequestsFields.Status} ne 'Cancelled' and ${RequestsFields.Status} ne 'On Hold'${segmentationFilter}`;
 
-    // Run all three queries in parallel
-    const [items, snapshotItems, prevItems] = await Promise.all([
+    const timeTrackingFilter =
+      `${RequestsFields.Modified} ge datetime'${startDate.toISOString()}' and ` +
+      `${RequestsFields.Modified} le datetime'${endDate.toISOString()}' and ` +
+      `(${RequestsFields.TotalReviewerHours} gt 0 or ${RequestsFields.TotalSubmitterHours} gt 0)` +
+      `${segmentationFilter}`;
+
+    SPContext.logger.debug('AnalyticsDataService: Query definitions', {
+      dateRange,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      segmentationFilter,
+      periodFilter: dateFilter,
+      previousPeriodFilter: prevDateFilter,
+      snapshotFilter,
+      timeTrackingFilter,
+      top: 5000,
+    });
+
+    // Run all queries in parallel
+    const [items, snapshotItems, prevItems, timeTrackingItems] = await Promise.all([
       // 1. Period query — items created within date range
       SPContext.sp.web.lists
         .getByTitle(Lists.Requests.Title)
@@ -362,10 +568,12 @@ export const fetchDashboardData = async (
           RequestsFields.Status,
           RequestsFields.TargetReturnDate,
           RequestsFields.Created,
+          RequestsFields.SubmittedOn,
           RequestsFields.IsRushRequest,
           RequestsFields.CommunicationsOnly,
-          `${RequestsFields.Attorney}/ID`,
+          `${RequestsFields.Attorney}/Id`,
           `${RequestsFields.Attorney}/Title`,
+          `${RequestsFields.Attorney}/EMail`,
           RequestsFields.LegalReviewOutcome,
           RequestsFields.ComplianceReviewOutcome,
           RequestsFields.LegalIntakeLegalAdminHours,
@@ -380,6 +588,7 @@ export const fetchDashboardData = async (
           RequestsFields.TotalSubmitterHours,
           RequestsFields.CloseoutOn,
           RequestsFields.SubmittedOn,
+          RequestsFields.TotalTurnaroundDays,
           RequestsFields.FINRACommentsReceived,
           RequestsFields.FINRACompletedOn,
           RequestsFields.ReviewAudience,
@@ -400,8 +609,11 @@ export const fetchDashboardData = async (
           RequestsFields.RequestTitle,
           RequestsFields.Status,
           RequestsFields.TargetReturnDate,
-          `${RequestsFields.Attorney}/ID`,
+          RequestsFields.Created,
+          RequestsFields.SubmittedOn,
+          `${RequestsFields.Attorney}/Id`,
           `${RequestsFields.Attorney}/Title`,
+          `${RequestsFields.Attorney}/EMail`,
           RequestsFields.FINRACommentsReceived,
           RequestsFields.FINRAComment
         )
@@ -418,11 +630,92 @@ export const fetchDashboardData = async (
           RequestsFields.Status,
           RequestsFields.SubmittedOn,
           RequestsFields.CloseoutOn,
+          RequestsFields.TotalTurnaroundDays,
           RequestsFields.FINRACompletedOn
         )
         .filter(prevDateFilter)
         .top(5000)(),
+
+      // 4. Time tracking query — requests with tracked hours updated within period
+      SPContext.sp.web.lists
+        .getByTitle(Lists.Requests.Title)
+        .items
+        .select(
+          RequestsFields.ID,
+          RequestsFields.LegalIntakeLegalAdminHours,
+          RequestsFields.LegalIntakeSubmitterHours,
+          RequestsFields.LegalReviewAttorneyHours,
+          RequestsFields.LegalReviewSubmitterHours,
+          RequestsFields.ComplianceReviewReviewerHours,
+          RequestsFields.ComplianceReviewSubmitterHours,
+          RequestsFields.CloseoutReviewerHours,
+          RequestsFields.CloseoutSubmitterHours,
+          RequestsFields.TotalReviewerHours,
+          RequestsFields.TotalSubmitterHours
+        )
+        .filter(timeTrackingFilter)
+        .top(5000)(),
     ]);
+
+    SPContext.logger.debug('AnalyticsDataService: Query results received', {
+      dateRange,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      itemCount: items.length,
+      snapshotCount: snapshotItems.length,
+      previousPeriodCount: prevItems.length,
+      timeTrackingCount: timeTrackingItems.length,
+    });
+
+    SPContext.logger.debug('AnalyticsDataService: Query sample payloads', {
+      periodItemIds: (items as IAnalyticsRequestDebugItem[]).slice(0, 10).map((item) => item.ID),
+      snapshotItemIds: (snapshotItems as IAnalyticsRequestDebugItem[]).slice(0, 10).map((item) => item.ID),
+      previousPeriodItemIds: (prevItems as IAnalyticsRequestDebugItem[]).slice(0, 10).map((item) => item.ID),
+      timeTrackingItemIds: (timeTrackingItems as IAnalyticsRequestDebugItem[]).slice(0, 10).map((item) => item.ID),
+      firstPeriodItem: summarizeAnalyticsItem((items as IAnalyticsRequestDebugItem[])[0]),
+      firstSnapshotItem: summarizeAnalyticsItem((snapshotItems as IAnalyticsRequestDebugItem[])[0]),
+      firstPreviousPeriodItem: summarizeAnalyticsItem((prevItems as IAnalyticsRequestDebugItem[])[0]),
+      firstTimeTrackingItem: summarizeAnalyticsItem((timeTrackingItems as IAnalyticsRequestDebugItem[])[0]),
+    });
+
+    const firstPeriodItem = (items as ITimeTrackingMetricsItem[])[0];
+    const firstTimeTrackingItem = (timeTrackingItems as ITimeTrackingMetricsItem[])[0];
+
+    const countNonZero = (
+      sourceItems: ITimeTrackingMetricsItem[],
+      field: keyof ITimeTrackingMetricsItem
+    ): number => sourceItems.filter((item) => Number(item[field] || 0) > 0).length;
+
+    SPContext.logger.debug('AnalyticsDataService: Raw time field sample', {
+      firstPeriodItem,
+      firstTimeTrackingItem,
+      nonZeroCounts: {
+        period: {
+          totalReviewerHours: countNonZero(items as ITimeTrackingMetricsItem[], 'TotalReviewerHours'),
+          totalSubmitterHours: countNonZero(items as ITimeTrackingMetricsItem[], 'TotalSubmitterHours'),
+          legalIntakeLegalAdminHours: countNonZero(items as ITimeTrackingMetricsItem[], 'LegalIntakeLegalAdminHours'),
+          legalIntakeSubmitterHours: countNonZero(items as ITimeTrackingMetricsItem[], 'LegalIntakeSubmitterHours'),
+          legalReviewAttorneyHours: countNonZero(items as ITimeTrackingMetricsItem[], 'LegalReviewAttorneyHours'),
+          legalReviewSubmitterHours: countNonZero(items as ITimeTrackingMetricsItem[], 'LegalReviewSubmitterHours'),
+          complianceReviewReviewerHours: countNonZero(items as ITimeTrackingMetricsItem[], 'ComplianceReviewReviewerHours'),
+          complianceReviewSubmitterHours: countNonZero(items as ITimeTrackingMetricsItem[], 'ComplianceReviewSubmitterHours'),
+          closeoutReviewerHours: countNonZero(items as ITimeTrackingMetricsItem[], 'CloseoutReviewerHours'),
+          closeoutSubmitterHours: countNonZero(items as ITimeTrackingMetricsItem[], 'CloseoutSubmitterHours'),
+        },
+        timeTracking: {
+          totalReviewerHours: countNonZero(timeTrackingItems as ITimeTrackingMetricsItem[], 'TotalReviewerHours'),
+          totalSubmitterHours: countNonZero(timeTrackingItems as ITimeTrackingMetricsItem[], 'TotalSubmitterHours'),
+          legalIntakeLegalAdminHours: countNonZero(timeTrackingItems as ITimeTrackingMetricsItem[], 'LegalIntakeLegalAdminHours'),
+          legalIntakeSubmitterHours: countNonZero(timeTrackingItems as ITimeTrackingMetricsItem[], 'LegalIntakeSubmitterHours'),
+          legalReviewAttorneyHours: countNonZero(timeTrackingItems as ITimeTrackingMetricsItem[], 'LegalReviewAttorneyHours'),
+          legalReviewSubmitterHours: countNonZero(timeTrackingItems as ITimeTrackingMetricsItem[], 'LegalReviewSubmitterHours'),
+          complianceReviewReviewerHours: countNonZero(timeTrackingItems as ITimeTrackingMetricsItem[], 'ComplianceReviewReviewerHours'),
+          complianceReviewSubmitterHours: countNonZero(timeTrackingItems as ITimeTrackingMetricsItem[], 'ComplianceReviewSubmitterHours'),
+          closeoutReviewerHours: countNonZero(timeTrackingItems as ITimeTrackingMetricsItem[], 'CloseoutReviewerHours'),
+          closeoutSubmitterHours: countNonZero(timeTrackingItems as ITimeTrackingMetricsItem[], 'CloseoutSubmitterHours'),
+        },
+      },
+    });
 
     // Calculate KPI metrics
     const totalRequests = items.length;
@@ -432,15 +725,9 @@ export const fetchDashboardData = async (
     // Calculate average turnaround for completed requests
     let avgTurnaroundDays = 0;
     if (completedRequests.length > 0) {
-      const turnaroundDays = completedRequests.map((r: { SubmittedOn?: string; CloseoutOn?: string; FINRACompletedOn?: string }) => {
-        const completionDateStr = r.FINRACompletedOn || r.CloseoutOn;
-        if (r.SubmittedOn && completionDateStr) {
-          const submitted = new Date(r.SubmittedOn);
-          const completion = new Date(completionDateStr);
-          return Math.ceil((completion.getTime() - submitted.getTime()) / (1000 * 60 * 60 * 24));
-        }
-        return 0;
-      }).filter((d: number) => d > 0);
+      const turnaroundDays = completedRequests
+        .map((r: ITurnaroundMetricsItem) => getTurnaroundDays(r))
+        .filter((d: number) => d > 0);
 
       if (turnaroundDays.length > 0) {
         avgTurnaroundDays = Math.round(turnaroundDays.reduce((a: number, b: number) => a + b, 0) / turnaroundDays.length);
@@ -486,13 +773,9 @@ export const fetchDashboardData = async (
     let prevAvgTurnaround = 0;
     const prevCompleted = prevItems.filter((i: { Status: string }) => i.Status === 'Completed');
     if (prevCompleted.length > 0) {
-      const prevDays = prevCompleted.map((r: { SubmittedOn?: string; CloseoutOn?: string; FINRACompletedOn?: string }) => {
-        const completionDateStr = r.FINRACompletedOn || r.CloseoutOn;
-        if (r.SubmittedOn && completionDateStr) {
-          return Math.ceil((new Date(completionDateStr).getTime() - new Date(r.SubmittedOn).getTime()) / (1000 * 60 * 60 * 24));
-        }
-        return 0;
-      }).filter((d: number) => d > 0);
+      const prevDays = prevCompleted
+        .map((r: ITurnaroundMetricsItem) => getTurnaroundDays(r))
+        .filter((d: number) => d > 0);
       if (prevDays.length > 0) {
         prevAvgTurnaround = Math.round(prevDays.reduce((a: number, b: number) => a + b, 0) / prevDays.length);
       }
@@ -545,8 +828,13 @@ export const fetchDashboardData = async (
 
     // Calculate volume trends (group by date)
     const volumeByDate: Record<string, IVolumeData> = {};
-    items.forEach((item: { Created: string; Status: string }) => {
-      const dateKey = new Date(item.Created).toISOString().split('T')[0];
+    items.forEach((item: IDateScopedRequestItem & { Status: string }) => {
+      const requestDate = getRequestTimelineDate(item);
+      if (!requestDate || isNaN(requestDate.getTime())) {
+        return;
+      }
+
+      const dateKey = requestDate.toISOString().split('T')[0];
       if (!volumeByDate[dateKey]) {
         volumeByDate[dateKey] = {
           date: new Date(dateKey),
@@ -653,57 +941,46 @@ export const fetchDashboardData = async (
       })
       .slice(0, 15);
 
-    // Calculate time by stage
-    const stageHours: Record<string, { reviewer: number; submitter: number; count: number }> = {
-      'Legal Intake': { reviewer: 0, submitter: 0, count: 0 },
-      'Legal Review': { reviewer: 0, submitter: 0, count: 0 },
-      'Compliance Review': { reviewer: 0, submitter: 0, count: 0 },
-      'Closeout': { reviewer: 0, submitter: 0, count: 0 },
-    };
+    const trackedItemsById = new Map<number, ITimeTrackingMetricsItem>();
+    [
+      ...(items as ITimeTrackingMetricsItem[]),
+      ...(timeTrackingItems as ITimeTrackingMetricsItem[]),
+    ]
+      .filter(hasTrackedHours)
+      .forEach((item) => {
+        if (typeof item.ID === 'number') {
+          trackedItemsById.set(item.ID, {
+            ...trackedItemsById.get(item.ID),
+            ...item,
+          });
+        }
+      });
 
-    items.forEach((item: {
-      LegalIntakeLegalAdminHours?: number;
-      LegalIntakeSubmitterHours?: number;
-      LegalReviewAttorneyHours?: number;
-      LegalReviewSubmitterHours?: number;
-      ComplianceReviewReviewerHours?: number;
-      ComplianceReviewSubmitterHours?: number;
-      CloseoutReviewerHours?: number;
-      CloseoutSubmitterHours?: number;
-    }) => {
-      if (item.LegalIntakeLegalAdminHours || item.LegalIntakeSubmitterHours) {
-        stageHours['Legal Intake'].reviewer += item.LegalIntakeLegalAdminHours || 0;
-        stageHours['Legal Intake'].submitter += item.LegalIntakeSubmitterHours || 0;
-        stageHours['Legal Intake'].count++;
-      }
-      if (item.LegalReviewAttorneyHours || item.LegalReviewSubmitterHours) {
-        stageHours['Legal Review'].reviewer += item.LegalReviewAttorneyHours || 0;
-        stageHours['Legal Review'].submitter += item.LegalReviewSubmitterHours || 0;
-        stageHours['Legal Review'].count++;
-      }
-      if (item.ComplianceReviewReviewerHours || item.ComplianceReviewSubmitterHours) {
-        stageHours['Compliance Review'].reviewer += item.ComplianceReviewReviewerHours || 0;
-        stageHours['Compliance Review'].submitter += item.ComplianceReviewSubmitterHours || 0;
-        stageHours['Compliance Review'].count++;
-      }
-      if (item.CloseoutReviewerHours || item.CloseoutSubmitterHours) {
-        stageHours['Closeout'].reviewer += item.CloseoutReviewerHours || 0;
-        stageHours['Closeout'].submitter += item.CloseoutSubmitterHours || 0;
-        stageHours['Closeout'].count++;
-      }
+    const trackedItems = Array.from(trackedItemsById.values());
+    const trackedItemSample = trackedItems[0];
+
+    SPContext.logger.debug('AnalyticsDataService: Time tracking aggregation inputs', {
+      trackedItemCount: trackedItems.length,
+      trackedItemIds: trackedItems.slice(0, 10).map(item => item.ID),
+      sampleTrackedItem: trackedItemSample ? {
+        ID: trackedItemSample.ID,
+        LegalIntakeLegalAdminHours: trackedItemSample.LegalIntakeLegalAdminHours,
+        LegalIntakeSubmitterHours: trackedItemSample.LegalIntakeSubmitterHours,
+        LegalReviewAttorneyHours: trackedItemSample.LegalReviewAttorneyHours,
+        LegalReviewSubmitterHours: trackedItemSample.LegalReviewSubmitterHours,
+        ComplianceReviewReviewerHours: trackedItemSample.ComplianceReviewReviewerHours,
+        ComplianceReviewSubmitterHours: trackedItemSample.ComplianceReviewSubmitterHours,
+        CloseoutReviewerHours: trackedItemSample.CloseoutReviewerHours,
+        CloseoutSubmitterHours: trackedItemSample.CloseoutSubmitterHours,
+        TotalReviewerHours: trackedItemSample.TotalReviewerHours,
+        TotalSubmitterHours: trackedItemSample.TotalSubmitterHours,
+      } : undefined,
     });
 
-    // Build timeByStage in consistent order
-    const stageOrder = ['Legal Intake', 'Legal Review', 'Compliance Review', 'Closeout'];
-    const timeByStage: ITimeByStage[] = stageOrder.map(stage => {
-      const data = stageHours[stage];
-      return {
-        stage,
-        avgReviewerHours: data.count > 0 ? Math.round((data.reviewer / data.count) * 10) / 10 : 0,
-        avgSubmitterHours: data.count > 0 ? Math.round((data.submitter / data.count) * 10) / 10 : 0,
-        totalHours: data.count > 0 ? Math.round(((data.reviewer + data.submitter) / data.count) * 10) / 10 : 0,
-        color: STAGE_COLORS[stage] || '#8a8886',
-      };
+    const timeByStage = buildTimeByStageMetrics(trackedItems);
+
+    SPContext.logger.debug('AnalyticsDataService: Time tracking aggregation result', {
+      timeByStage,
     });
 
     // Calculate review outcomes

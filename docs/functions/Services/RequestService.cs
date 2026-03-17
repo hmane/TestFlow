@@ -25,16 +25,19 @@ namespace LegalWorkflow.Functions.Services
     {
         private readonly IPnPContextFactory _contextFactory;
         private readonly Logger _logger;
+        private readonly SharePointListConfig _listConfig;
 
         /// <summary>
         /// Creates a new RequestService instance.
         /// </summary>
         /// <param name="contextFactory">PnP Core context factory for SharePoint access</param>
         /// <param name="logger">Logger instance for logging operations</param>
-        public RequestService(IPnPContextFactory contextFactory, Logger logger)
+        /// <param name="listConfig">SharePoint list name configuration (optional)</param>
+        public RequestService(IPnPContextFactory contextFactory, Logger logger, SharePointListConfig? listConfig = null)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _listConfig = listConfig ?? new SharePointListConfig();
         }
 
         /// <summary>
@@ -52,7 +55,7 @@ namespace LegalWorkflow.Functions.Services
                 using var context = await _contextFactory.CreateAsync("Default");
 
                 // Get the Requests list
-                var list = await context.Web.Lists.GetByTitleAsync(SharePointLists.Requests);
+                var list = await context.Web.Lists.GetByTitleAsync(_listConfig.RequestsListName);
 
                 // Load the item with all required fields
                 var item = await list.Items.GetByIdAsync(requestId,
@@ -98,7 +101,7 @@ namespace LegalWorkflow.Functions.Services
             {
                 using var context = await _contextFactory.CreateAsync("Default");
 
-                var list = await context.Web.Lists.GetByTitleAsync(SharePointLists.Requests);
+                var list = await context.Web.Lists.GetByTitleAsync(_listConfig.RequestsListName);
                 var item = await list.Items.GetByIdAsync(requestId);
 
                 // Load version history
@@ -169,16 +172,17 @@ namespace LegalWorkflow.Functions.Services
             {
                 using var context = await _contextFactory.CreateAsync("Default");
 
-                var list = await context.Web.Lists.GetByTitleAsync(SharePointLists.Notifications);
+                var list = await context.Web.Lists.GetByTitleAsync(_listConfig.NotificationsListName);
+
+                // Load all templates matching notificationId in a single query
+                var allItems = await list.Items
+                    .Where(i => i.Title == notificationId)
+                    .ToListAsync();
 
                 // Step 1: Try type-specific template when a requestType is provided
                 if (!string.IsNullOrEmpty(requestType))
                 {
-                    var specificItems = await list.Items
-                        .Where(i => i.Title == notificationId)
-                        .ToListAsync();
-
-                    var specificItem = specificItems.FirstOrDefault(i =>
+                    var specificItem = allItems.FirstOrDefault(i =>
                         string.Equals(
                             GetFieldValue<string>(i, NotificationsFields.RequestType),
                             requestType,
@@ -195,10 +199,6 @@ namespace LegalWorkflow.Functions.Services
                 }
 
                 // Step 2: Fall back to generic template (RequestType = "All")
-                var allItems = await list.Items
-                    .Where(i => i.Title == notificationId)
-                    .ToListAsync();
-
                 var genericItem = allItems.FirstOrDefault(i =>
                     string.Equals(
                         GetFieldValue<string>(i, NotificationsFields.RequestType),
@@ -407,6 +407,7 @@ namespace LegalWorkflow.Functions.Services
 
         /// <summary>
         /// Gets a field value from a version history entry.
+        /// Handles SharePoint version history quirks, e.g. booleans stored as "Yes"/"No" strings.
         /// </summary>
         private T GetVersionFieldValue<T>(IListItemVersion version, string fieldName)
         {
@@ -415,6 +416,15 @@ namespace LegalWorkflow.Functions.Services
                 if (value is T typedValue)
                 {
                     return typedValue;
+                }
+
+                // SharePoint version history stores boolean fields as "Yes"/"No" strings
+                if (typeof(T) == typeof(bool) && value is string boolString)
+                {
+                    var result = boolString.Equals("Yes", StringComparison.OrdinalIgnoreCase) ||
+                                 boolString.Equals("True", StringComparison.OrdinalIgnoreCase) ||
+                                 boolString.Equals("1", StringComparison.Ordinal);
+                    return (T)(object)result;
                 }
 
                 try

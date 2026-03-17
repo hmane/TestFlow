@@ -16,8 +16,9 @@
 import * as React from 'react';
 
 // Fluent UI - tree-shaken imports
-import { IconButton } from '@fluentui/react/lib/Button';
+import { IconButton, MessageBarButton } from '@fluentui/react/lib/Button';
 import { Icon } from '@fluentui/react/lib/Icon';
+import { MessageBar, MessageBarType } from '@fluentui/react/lib/MessageBar';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
 import { TooltipHost } from '@fluentui/react/lib/Tooltip';
@@ -27,6 +28,9 @@ import { ListItemComments } from '@pnp/spfx-controls-react/lib/controls/listItem
 import type { ServiceScope } from '@microsoft/sp-core-library';
 
 // spfx-toolkit - tree-shaken imports
+import {
+  useConflictDetection,
+} from 'spfx-toolkit/lib/components/ConflictDetector';
 import { ErrorBoundary } from 'spfx-toolkit/lib/components/ErrorBoundary';
 import { LazyManageAccessComponent } from 'spfx-toolkit/lib/components/lazy';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
@@ -37,7 +41,8 @@ import { RequestStatus } from '@appTypes/workflowTypes';
 import { LoadingFallback } from '@components/LoadingFallback';
 import { StatusBanner } from '@components/StatusBanner';
 import { useWorkflowStepper } from '@components/WorkflowStepper/useWorkflowStepper';
-import { useRequestStore } from '@stores/requestStore';
+import { useDocumentsStore } from '@stores/documentsStore';
+import { useRequestActions, useRequestStore } from '@stores/requestStore';
 import { handleManageAccessChange, type IPermissionPrincipal } from '@services/azureFunctionService';
 import { RequestActions } from '../RequestActions';
 import { RequestApprovals } from '../RequestApprovals';
@@ -64,6 +69,8 @@ const ComplianceReviewForm = React.lazy(
 const CloseoutForm = React.lazy(
   () => import(/* webpackChunkName: "closeout-form" */ '../CloseoutForm/CloseoutForm')
 );
+
+const REQUEST_CONFLICT_CHECK_INTERVAL_MS = 10000;
 
 /**
  * Error handler for lazy loaded form errors
@@ -158,11 +165,275 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
   onRequestTypeSelected,
   requestFormComponent: RequestFormComponent,
 }) => {
-  const currentRequest = useRequestStore((s) => s.currentRequest);
+  const { currentRequest, storeItemId } = useRequestStore((s) => ({
+    currentRequest: s.currentRequest,
+    storeItemId: s.itemId,
+  }));
+  const { loadRequest } = useRequestActions();
+  const loadDocuments = useDocumentsStore((s) => s.loadDocuments);
   const [isCommentsOpen, setIsCommentsOpen] = React.useState<boolean>(true);
   const [showTypeSelector, setShowTypeSelector] = React.useState<boolean>(false);
   const [isTypeLocked, setIsTypeLocked] = React.useState<boolean>(false);
   const [isEditingRequestInfo, setIsEditingRequestInfo] = React.useState<boolean>(false);
+  const [isConflictMonitorReady, setIsConflictMonitorReady] = React.useState<boolean>(false);
+  const effectiveItemId = storeItemId ?? itemId;
+  const conflictDetectionSp = React.useMemo(
+    () => SPContext.tryGetFreshSP() || SPContext.spPessimistic || SPContext.sp,
+    []
+  );
+  const conflictDetectionOptions = React.useMemo(
+    () => ({
+      showNotification: false,
+      blockSave: true,
+      logConflicts: false,
+    }),
+    []
+  );
+  const requestModifiedToken = React.useMemo((): string => {
+    if (!currentRequest?.modified) {
+      return '';
+    }
+
+    const modifiedValue = currentRequest.modified;
+    if (modifiedValue instanceof Date) {
+      return modifiedValue.toISOString();
+    }
+
+    return String(modifiedValue);
+  }, [currentRequest?.modified]);
+  const conflictDetectionEnabled = !!effectiveItemId && !!listId;
+  const {
+    hasConflict,
+    conflictInfo,
+    error: conflictError,
+    checkForConflicts,
+    initialize,
+    updateSnapshot,
+  } = useConflictDetection({
+    sp: conflictDetectionSp,
+    listId,
+    itemId: effectiveItemId || 0,
+    enabled: conflictDetectionEnabled,
+    options: conflictDetectionOptions,
+  });
+  const currentUserId = SPContext.currentUser?.id ? String(SPContext.currentUser.id) : '';
+  const currentUserEmail = SPContext.currentUser?.email?.toLowerCase() ?? '';
+  const currentUserTitle = SPContext.currentUser?.title?.toLowerCase() ?? '';
+  const isConflictOwnedByCurrentUser = React.useMemo((): boolean => {
+    if (!hasConflict || !conflictInfo) {
+      return false;
+    }
+
+    const modifiedByEmail = conflictInfo.lastModifiedByEmail?.toLowerCase() ?? '';
+    const modifiedByName = conflictInfo.lastModifiedBy?.toLowerCase() ?? '';
+
+    return (
+      (!!currentUserEmail && modifiedByEmail === currentUserEmail) ||
+      (!!currentUserTitle && modifiedByName === currentUserTitle)
+    );
+  }, [conflictInfo, currentUserEmail, currentUserTitle, hasConflict]);
+  const isConflictLocked = conflictDetectionEnabled && hasConflict && !isConflictOwnedByCurrentUser;
+  const lastConflictSnapshotTokenRef = React.useRef<string>('');
+  const lastSelfConflictResolutionRef = React.useRef<string>('');
+  const previousConflictRef = React.useRef<boolean>(false);
+
+  React.useEffect(() => {
+    SPContext.logger.debug('RequestContainer: Conflict monitor dependency state', {
+      itemId: effectiveItemId,
+      listId,
+      conflictDetectionEnabled,
+      hasSpInstance: !!conflictDetectionSp,
+      requestModifiedToken,
+    });
+
+    if (!conflictDetectionEnabled) {
+      SPContext.logger.debug('RequestContainer: Conflict monitor disabled', {
+        itemId: effectiveItemId,
+        listId,
+      });
+      setIsConflictMonitorReady(false);
+      return;
+    }
+
+    let isCancelled = false;
+
+    SPContext.logger.debug('RequestContainer: Initializing conflict monitor', {
+      itemId: effectiveItemId,
+      listId,
+    });
+
+    initialize()
+      .then((initialized) => {
+        SPContext.logger.debug('RequestContainer: Conflict monitor initialization result', {
+          itemId: effectiveItemId,
+          initialized,
+          listId,
+        });
+        if (!isCancelled) {
+          setIsConflictMonitorReady(initialized);
+        }
+      })
+      .catch((error: unknown) => {
+        SPContext.logger.warn('RequestContainer: Failed to initialize conflict monitor', {
+          itemId: effectiveItemId,
+          listId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        if (!isCancelled) {
+          setIsConflictMonitorReady(false);
+        }
+      });
+
+    return () => {
+      SPContext.logger.debug('RequestContainer: Conflict monitor init effect cleanup', {
+        itemId: effectiveItemId,
+        listId,
+      });
+      isCancelled = true;
+      setIsConflictMonitorReady(false);
+    };
+  }, [conflictDetectionEnabled, conflictDetectionSp, effectiveItemId, initialize, listId, requestModifiedToken]);
+
+  React.useEffect(() => {
+    if (!conflictDetectionEnabled || !isConflictMonitorReady) {
+      SPContext.logger.debug('RequestContainer: Conflict polling not started', {
+        itemId: effectiveItemId,
+        listId,
+        conflictDetectionEnabled,
+        isConflictMonitorReady,
+      });
+      return;
+    }
+
+    SPContext.logger.debug('RequestContainer: Starting conflict polling interval', {
+      itemId: effectiveItemId,
+      listId,
+      intervalMs: REQUEST_CONFLICT_CHECK_INTERVAL_MS,
+    });
+
+    const intervalId = window.setInterval(() => {
+      SPContext.logger.debug('RequestContainer: Conflict polling tick', {
+        itemId: effectiveItemId,
+        listId,
+      });
+      checkForConflicts().catch((error: unknown) => {
+        SPContext.logger.warn('RequestContainer: Conflict polling tick failed', {
+          itemId: effectiveItemId,
+          listId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    }, REQUEST_CONFLICT_CHECK_INTERVAL_MS);
+
+    return () => {
+      SPContext.logger.debug('RequestContainer: Clearing conflict polling interval', {
+        itemId: effectiveItemId,
+        listId,
+      });
+      window.clearInterval(intervalId);
+    };
+  }, [checkForConflicts, conflictDetectionEnabled, effectiveItemId, isConflictMonitorReady, listId]);
+
+  React.useEffect(() => {
+    if (!hasConflict || !isConflictOwnedByCurrentUser || !conflictInfo) {
+      return;
+    }
+
+    const conflictKey = `${conflictInfo.currentVersion}|${conflictInfo.lastModified.toISOString()}`;
+    if (lastSelfConflictResolutionRef.current === conflictKey) {
+      return;
+    }
+
+    lastSelfConflictResolutionRef.current = conflictKey;
+
+    SPContext.logger.debug('RequestContainer: Auto-resolving self-conflict snapshot', {
+      itemId: effectiveItemId,
+      listId,
+      lastModifiedBy: conflictInfo.lastModifiedBy,
+      lastModifiedByEmail: conflictInfo.lastModifiedByEmail,
+      conflictKey,
+    });
+
+    updateSnapshot().catch((error: unknown) => {
+      SPContext.logger.warn('RequestContainer: Failed to auto-resolve self-conflict snapshot', {
+        itemId: effectiveItemId,
+        listId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }, [conflictInfo, effectiveItemId, hasConflict, isConflictOwnedByCurrentUser, listId, updateSnapshot]);
+
+  React.useEffect(() => {
+    const hadConflict = previousConflictRef.current;
+    previousConflictRef.current = isConflictLocked;
+
+    if (!isConflictLocked || hadConflict) {
+      return;
+    }
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+  }, [isConflictLocked]);
+
+  React.useEffect(() => {
+    if (!conflictDetectionEnabled || !requestModifiedToken) {
+      return;
+    }
+
+    if (!lastConflictSnapshotTokenRef.current) {
+      lastConflictSnapshotTokenRef.current = requestModifiedToken;
+      return;
+    }
+
+    if (lastConflictSnapshotTokenRef.current === requestModifiedToken) {
+      return;
+    }
+
+    lastConflictSnapshotTokenRef.current = requestModifiedToken;
+
+    const editor = currentRequest?.editor;
+    const editorId = editor?.id !== undefined ? String(editor.id) : '';
+    const editorEmail = editor?.email?.toLowerCase() ?? '';
+    const editorTitle = editor?.title?.toLowerCase() ?? '';
+    const wasUpdatedByCurrentUser =
+      (!!currentUserId && editorId === currentUserId) ||
+      (!!currentUserEmail && editorEmail === currentUserEmail) ||
+      (!!currentUserTitle && editorTitle === currentUserTitle);
+
+    if (!wasUpdatedByCurrentUser) {
+      return;
+    }
+
+    updateSnapshot().catch((error: unknown) => {
+      SPContext.logger.warn('RequestContainer: Failed to update conflict snapshot after save', {
+        itemId: effectiveItemId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+  }, [
+    conflictDetectionEnabled,
+    currentRequest?.editor?.email,
+    currentRequest?.editor?.id,
+    currentRequest?.editor?.title,
+    currentUserEmail,
+    currentUserId,
+    currentUserTitle,
+    effectiveItemId,
+    requestModifiedToken,
+    updateSnapshot,
+  ]);
+
+  const handleConflictRefresh = React.useCallback(async (): Promise<void> => {
+    if (!effectiveItemId) {
+      return;
+    }
+
+    await loadRequest(effectiveItemId);
+    await loadDocuments(effectiveItemId, true);
+    setIsConflictMonitorReady(await initialize());
+  }, [effectiveItemId, initialize, loadRequest, loadDocuments]);
 
   // Determine if current user is the submitter (for contextual stepper coloring)
   const isCurrentUserSubmitter = React.useMemo((): boolean => {
@@ -285,22 +556,22 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
    * Comments are hidden for Draft status only
    */
   const shouldShowComments = React.useMemo((): boolean => {
-    if (!itemId) return false;
+    if (!effectiveItemId) return false;
     if (!currentRequest) return false;
     if (currentRequest.status === RequestStatus.Draft) return false;
     return true;
-  }, [itemId, currentRequest]);
+  }, [effectiveItemId, currentRequest]);
 
   /**
    * Determine if we should show the request type selector
    */
   React.useEffect(() => {
-    if (!itemId && !isTypeLocked) {
+    if (!effectiveItemId && !isTypeLocked) {
       setShowTypeSelector(true);
     } else {
       setShowTypeSelector(false);
     }
-  }, [itemId, isTypeLocked]);
+  }, [effectiveItemId, isTypeLocked]);
 
   // Ref for comments area to enable auto-scroll on mobile
   const commentsAreaRef = React.useRef<HTMLDivElement>(null);
@@ -407,7 +678,7 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
       operation: 'add' | 'remove',
       principals: IPermissionPrincipal[]
     ): Promise<boolean> => {
-      if (!itemId || !currentRequest?.requestId) {
+    if (!effectiveItemId || !currentRequest?.requestId) {
         SPContext.logger.warn('RequestContainer: Cannot change permissions - missing itemId or requestId');
         return false;
       }
@@ -415,7 +686,7 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
       try {
         SPContext.logger.info('RequestContainer: Permission change requested', {
           operation,
-          itemId,
+          itemId: effectiveItemId,
           requestId: currentRequest.requestId,
           principalCount: principals.length,
         });
@@ -423,7 +694,7 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
         // Call Azure Function via APIM
         const success = await handleManageAccessChange(
           operation,
-          itemId,
+          effectiveItemId,
           currentRequest.requestId,
           principals
         );
@@ -431,12 +702,12 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
         if (success) {
           SPContext.logger.success('RequestContainer: Permission change completed', {
             operation,
-            itemId,
+            itemId: effectiveItemId,
           });
         } else {
           SPContext.logger.warn('RequestContainer: Permission change failed', {
             operation,
-            itemId,
+            itemId: effectiveItemId,
           });
         }
 
@@ -445,13 +716,13 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
         const message = error instanceof Error ? error.message : String(error);
         SPContext.logger.error('RequestContainer: Permission change error', error, {
           operation,
-          itemId,
+          itemId: effectiveItemId,
           error: message,
         });
         return false;
       }
     },
-    [itemId, currentRequest?.requestId]
+    [effectiveItemId, currentRequest?.requestId]
   );
 
   /**
@@ -480,7 +751,7 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
 
     const typeInfo = getRequestTypeInfo(currentRequest?.requestType);
     const isDraft = !currentRequest?.status || currentRequest.status === RequestStatus.Draft;
-    const isNewRequest = !itemId;
+    const isNewRequest = !effectiveItemId;
 
     return (
       <div className='request-container__header'>
@@ -503,10 +774,10 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
           </Stack>
           <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 16 }}>
             {/* Manage Access Component - only for existing non-draft requests */}
-            {itemId && !isDraft && (
+            {effectiveItemId && !isDraft && (
               <div className='request-container__manage-access'>
                 <LazyManageAccessComponent
-                  itemId={itemId}
+                  itemId={effectiveItemId}
                   listId={listId}
                   permissionTypes='both'
                   maxAvatars={5}
@@ -536,7 +807,7 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
    * Render comments panel using PnP ListItemComments control
    */
   const renderCommentsPanel = (): React.ReactElement => {
-    if (!itemId) return <div />;
+    if (!effectiveItemId) return <div />;
 
 
     // Get serviceScope from SPFx context for ListItemComments
@@ -587,7 +858,7 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
         <div className='request-container__comments-content'>
           <ListItemComments
             listId={listId}
-            itemId={String(itemId)}
+            itemId={String(effectiveItemId)}
             serviceScope={serviceScope}
             webUrl={SPContext.webAbsoluteUrl}
             numberCommentsPerPage={10}
@@ -641,9 +912,9 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
     if (!status || status === RequestStatus.Draft) {
       if (RequestFormComponent) {
         return (
-          <RequestFormComponent itemId={itemId} renderApprovalsAndActions={false}>
+          <RequestFormComponent itemId={effectiveItemId} renderApprovalsAndActions={false}>
             <RequestApprovals />
-            <RequestDocuments itemId={itemId} />
+            <RequestDocuments itemId={effectiveItemId} />
             <RequestActions />
           </RequestFormComponent>
         );
@@ -655,9 +926,9 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
     // Pass isEditMode=true and onSaveComplete callback so RequestInfo handles the save
     if (isEditingRequestInfo && RequestFormComponent) {
       return (
-        <WorkflowFormWrapper itemId={itemId}>
+        <WorkflowFormWrapper itemId={effectiveItemId}>
           <RequestFormComponent
-            itemId={itemId}
+            itemId={effectiveItemId}
             renderApprovalsAndActions={false}
             isEditMode={true}
             onSaveComplete={handleCloseEditRequestInfo}
@@ -671,7 +942,7 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
     // Submitted requests: Show collapsible cards based on status
     // Note: Approvals are now shown within RequestSummary with DocumentLink for attachments
     return (
-      <WorkflowFormWrapper itemId={itemId}>
+      <WorkflowFormWrapper itemId={effectiveItemId}>
         <Stack tokens={{ childrenGap: 16 }}>
           {/* Status Banner for Cancelled/OnHold - shown above Request Summary */}
           {isTerminalState && (
@@ -743,7 +1014,7 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
               maxRetriesReached: 'Maximum retry attempts reached. Please refresh the page.',
             }}
           >
-            <RequestDocuments itemId={itemId} />
+            <RequestDocuments itemId={effectiveItemId} />
           </ErrorBoundary>
 
           {/* FINRA Documents - shows when workflow reached Awaiting FINRA Documents stage */}
@@ -763,7 +1034,7 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
                 maxRetriesReached: 'Maximum retry attempts reached. Please refresh the page.',
               }}
             >
-              <FINRADocuments itemId={itemId} readOnly={status === RequestStatus.Completed || isTerminalState} />
+              <FINRADocuments itemId={effectiveItemId} readOnly={status === RequestStatus.Completed || isTerminalState} />
             </ErrorBoundary>
           )}
 
@@ -790,6 +1061,50 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
     );
   };
 
+  const renderConflictBanner = (): React.ReactNode => {
+    if (!conflictDetectionEnabled || (!isConflictLocked && !conflictError)) {
+      return undefined;
+    }
+
+    const conflictMessage = isConflictLocked
+      ? `This request was modified by ${conflictInfo?.lastModifiedBy || 'another user'} on ${
+          conflictInfo?.lastModified ? conflictInfo.lastModified.toLocaleString() : 'a different session'
+        }. Refresh & Reload to continue editing without overwriting their changes.`
+      : `Unable to monitor request conflicts: ${conflictError}`;
+
+    return (
+      <MessageBar
+        messageBarType={hasConflict ? MessageBarType.warning : MessageBarType.error}
+        isMultiline={true}
+        actions={
+          hasConflict ? (
+            <div>
+              <MessageBarButton onClick={() => void handleConflictRefresh()}>
+                Refresh & Reload
+              </MessageBarButton>
+            </div>
+          ) : undefined
+        }
+      >
+        {conflictMessage}
+      </MessageBar>
+    );
+  };
+
+  const renderConflictProtectedFormContent = (): React.ReactElement => {
+    return (
+      <div className='request-container__conflict-shell'>
+        {renderConflictBanner()}
+        <div className={`request-container__conflict-body${isConflictLocked ? ' request-container__conflict-body--locked' : ''}`}>
+          {renderFormContent()}
+          {isConflictLocked && (
+            <div className='request-container__conflict-overlay' role='presentation' />
+          )}
+        </div>
+      </div>
+    );
+  };
+
   /**
    * Render main content based on request state
    */
@@ -809,7 +1124,7 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
     if (!currentRequest?.status || currentRequest.status === RequestStatus.Draft) {
       return (
         <div className='request-container__draft-layout'>
-          {renderFormContent()}
+          {renderConflictProtectedFormContent()}
         </div>
       );
     }
@@ -819,7 +1134,7 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
       return (
         <div className='request-container__split-layout'>
           <div className='request-container__form-area'>
-            {renderFormContent()}
+            {renderConflictProtectedFormContent()}
           </div>
           <div ref={commentsAreaRef} className='request-container__comments-area'>
             {renderCommentsPanel()}
@@ -831,7 +1146,7 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
     // Comments collapsed - full width form
     return (
       <div className='request-container__full-layout'>
-        {renderFormContent()}
+        {renderConflictProtectedFormContent()}
       </div>
     );
   };

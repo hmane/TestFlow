@@ -2573,7 +2573,7 @@ FUNCTION assignPermissions(requestId, status, submitterId, attorneyId, reviewAud
   clearAllPermissions(requestId)
 
   // Add Admin group - always full control
-  addPermission(requestId, "LW - Admin", "Full Control")
+  addPermission(requestId, "LW - Admins", "Full Control")
 
   // Add submitter - read only after submission
   IF status != "Draft":
@@ -2581,11 +2581,11 @@ FUNCTION assignPermissions(requestId, status, submitterId, attorneyId, reviewAud
 
   // Add Legal Admin - edit access during Legal Intake
   IF status = "Legal Intake":
-    addPermission(requestId, "LW - Legal Admin", "Edit")
+    addPermission(requestId, "LW - Legal Admins", "Edit")
 
   // Add Attorney Assigner - edit access during Assign Attorney
   IF status = "Assign Attorney":
-    addPermission(requestId, "LW - Attorney Assigner", "Edit")
+    addPermission(requestId, "LW - Attorney Assigners", "Edit")
 
   // Add Attorney - edit access during In Review (if legal review needed)
   IF status = "In Review" AND (reviewAudience = "Legal" OR reviewAudience = "Both"):
@@ -2594,7 +2594,7 @@ FUNCTION assignPermissions(requestId, status, submitterId, attorneyId, reviewAud
 
   // Add Compliance Users - edit access during In Review (if compliance review needed)
   IF status = "In Review" AND (reviewAudience = "Compliance" OR reviewAudience = "Both"):
-    addPermission(requestId, "LW - Compliance Users", "Edit")
+    addPermission(requestId, "LW - Compliance Reviewers", "Edit")
 
   // Add Submitter - edit access during Closeout
   IF status = "Closeout":

@@ -35,8 +35,10 @@ export interface IRequestDocument {
   timeLastModified: Date;
   uploadedBy: IPrincipal;
   checkOutType?: number;
+  checkedOutById?: string;
   checkedOutByName?: string;
   checkedOutByEmail?: string;
+  checkedOutByLoginName?: string;
   checkedOutDate?: string;
   version?: string;
   contentType?: string;
@@ -69,6 +71,7 @@ export interface IDocumentListItem {
   Modified: string;
   EditorId: number;
   CheckOutType: number;
+  CheckedOutUserId?: string;
   CheckedOutByUser?: {
     Title: string;
     EMail: string;

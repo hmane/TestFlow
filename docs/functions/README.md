@@ -111,12 +111,12 @@ Authorization is based on SharePoint site group membership (NOT Azure AD groups)
 
 | Group | Role |
 |-------|------|
-| LW - Admin | Full system administration |
+| LW - Admins | Full system administration |
 | LW - Submitters | Create and view requests |
-| LW - Legal Admin | Triage and assign attorneys |
-| LW - Attorney Assigner | Committee members who assign attorneys |
+| LW - Legal Admins | Triage and assign attorneys |
+| LW - Attorney Assigners | Committee members who assign attorneys |
 | LW - Attorneys | Review assigned requests |
-| LW - Compliance Users | Review compliance requests |
+| LW - Compliance Reviewers | Review compliance requests |
 
 ### APIM Setup
 
@@ -146,11 +146,11 @@ Required API Permissions:
   "Notifications:EnableDebugLogging": "false",
 
   "Permissions:SubmittersGroup": "LW - Submitters",
-  "Permissions:LegalAdminGroup": "LW - Legal Admin",
-  "Permissions:AttorneyAssignerGroup": "LW - Attorney Assigner",
+  "Permissions:LegalAdminGroup": "LW - Legal Admins",
+  "Permissions:AttorneyAssignerGroup": "LW - Attorney Assigners",
   "Permissions:AttorneysGroup": "LW - Attorneys",
-  "Permissions:ComplianceGroup": "LW - Compliance Users",
-  "Permissions:AdminGroup": "LW - Admin",
+  "Permissions:ComplianceGroup": "LW - Compliance Reviewers",
+  "Permissions:AdminGroup": "LW - Admins",
   "Permissions:ServiceAccountUpn": "svc-powerautomate@company.com"
 }
 ```
@@ -331,12 +331,12 @@ Notifications are triggered based on specific field value transitions:
 
 | Principal | Request Item | Documents Folder |
 |-----------|--------------|------------------|
-| LW - Admin | Full Control | Full Control |
+| LW - Admins | Full Control | Full Control |
 | LW - Submitters | Contribute Without Delete | Contribute |
-| LW - Legal Admin | Contribute Without Delete | Contribute |
-| LW - Attorney Assigner | Contribute Without Delete | Contribute |
+| LW - Legal Admins | Contribute Without Delete | Contribute |
+| LW - Attorney Assigners | Contribute Without Delete | Contribute |
 | LW - Attorneys | Contribute Without Delete | Contribute |
-| LW - Compliance Users | Contribute Without Delete | Contribute |
+| LW - Compliance Reviewers | Contribute Without Delete | Contribute |
 | Additional Parties | Read | Read |
 | Approvers | Read | Read |
 
@@ -350,7 +350,7 @@ Documents folder note:
 
 | Principal | Permission |
 |-----------|------------|
-| LW - Admin | Full Control (unchanged) |
+| LW - Admins | Full Control (unchanged) |
 | Everyone else | Read |
 
 ## Troubleshooting

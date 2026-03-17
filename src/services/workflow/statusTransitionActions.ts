@@ -24,7 +24,7 @@ import { calculateAndUpdateStageTime } from '../timeTrackingService';
 import type { ILegalRequest } from '@appTypes/requestTypes';
 import { RequestStatus, LegalReviewStatus, ReviewAudience } from '@appTypes/workflowTypes';
 
-import { getCurrentUserPrincipal, updateItem } from './workflowHelpers';
+import { calculateTurnaroundDays, getCurrentUserPrincipal, updateItem } from './workflowHelpers';
 import type {
   IWorkflowActionResult,
   ISubmitRequestPayload,
@@ -583,6 +583,11 @@ export async function closeoutRequest(
   // If routing to Awaiting FINRA Documents, set the timestamp
   if (shouldAwaitFinra) {
     updater.set(RequestsFields.AwaitingFINRASince, now.toISOString());
+  } else {
+    const turnaroundDays = calculateTurnaroundDays(currentRequest.submittedOn, now);
+    if (turnaroundDays !== undefined) {
+      updater.set(RequestsFields.TotalTurnaroundDays, turnaroundDays);
+    }
   }
 
   // Add time tracking fields to update

@@ -467,8 +467,23 @@ export const DocumentCard: React.FC<IDocumentCardProps> = React.memo(({
 
     // Being reviewed by someone else: only Open View Only
     if (isCheckedOut) {
+      const reviewerName = checkoutStatus?.checkedOutByName || 'another user';
+      const duration = formatCheckoutDuration(checkoutStatus?.checkedOutDate);
+      const lockTooltip = duration
+        ? `Checked out by ${reviewerName} (${duration})`
+        : `Checked out by ${reviewerName}`;
+
       return (
         <div className="review-actions">
+          <TooltipHost content={lockTooltip} directionalHint={DirectionalHint.topCenter}>
+            <IconButton
+              iconProps={{ iconName: 'Lock' }}
+              disabled={true}
+              className="review-icon-btn"
+              ariaLabel={lockTooltip}
+              styles={iconBtnStyles}
+            />
+          </TooltipHost>
           <TooltipHost content="Open View Only" directionalHint={DirectionalHint.topCenter}>
             <IconButton
               iconProps={{ iconName: 'View' }}
@@ -482,15 +497,15 @@ export const DocumentCard: React.FC<IDocumentCardProps> = React.memo(({
       );
     }
 
-    // Available: Start Reviewing & Open + Open View Only
+    // Available: Review & Open + Open View Only
     return (
       <div className="review-actions">
-        <TooltipHost content="Start Reviewing & Open" directionalHint={DirectionalHint.topCenter}>
+        <TooltipHost content="Review & Open" directionalHint={DirectionalHint.topCenter}>
           <IconButton
-            iconProps={{ iconName: 'LockSolid' }}
+            iconProps={{ iconName: 'Edit' }}
             onClick={() => onStartReviewing?.()}
             className="review-icon-btn review-icon-btn--start"
-            ariaLabel={`Start reviewing ${document.name}`}
+            ariaLabel={`Review ${document.name} and open it`}
             styles={iconBtnStyles}
           />
         </TooltipHost>
@@ -551,15 +566,33 @@ export const DocumentCard: React.FC<IDocumentCardProps> = React.memo(({
                   {displayName}
                 </Text>
               ) : hasReviewTracking && supportsReviewTracking(document.name) ? (
-                // Non-Office file with review tracking: render as plain text
-                // Users must use review action buttons to open, preventing bypass
-                <Text
-                  className="file-name"
-                  title={displayName}
-                  styles={{ root: { fontWeight: 600 } }}
-                >
-                  {displayName}
-                </Text>
+                isReadOnly && onOpenViewOnly ? (
+                  // Read-only tracked files should still be previewable from the filename.
+                  <Link
+                    className="file-name-link"
+                    onClick={(event) => {
+                      event.preventDefault();
+                      onOpenViewOnly();
+                    }}
+                    styles={{
+                      root: {
+                        fontWeight: 600,
+                      },
+                    }}
+                  >
+                    {displayName}
+                  </Link>
+                ) : (
+                  // Non-Office file with review tracking: render as plain text
+                  // Users must use review action buttons to open, preventing bypass
+                  <Text
+                    className="file-name"
+                    title={displayName}
+                    styles={{ root: { fontWeight: 600 } }}
+                  >
+                    {displayName}
+                  </Text>
+                )
               ) : (
                 // Office file or no review tracking: show as clickable DocumentLink
                 // Prefer uniqueId over URL to avoid URL encoding issues
