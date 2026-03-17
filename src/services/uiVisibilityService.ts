@@ -489,6 +489,8 @@ export function getFieldVisibility(ctx: IVisibilityContext): IFieldVisibility {
     attachments: {
       canView: true,
       canAdd: !isTerminal && (
+        // Submitter/Admin can add attachments on an unsaved new request
+        (isNewRequest && (permissions.isSubmitter || isAdmin)) ||
         // Owner can add in Draft
         (status === RequestStatus.Draft && (isOwner || isAdmin)) ||
         // Owner can respond to reviewer comments while waiting on submitter
@@ -497,6 +499,8 @@ export function getFieldVisibility(ctx: IVisibilityContext): IFieldVisibility {
         (isBeforeCloseout && (isAdmin || isLegalAdmin || isAttorney || isComplianceUser))
       ),
       canDelete: !isTerminal && (
+        // Submitter/Admin can remove staged attachments on an unsaved new request
+        (isNewRequest && (permissions.isSubmitter || isAdmin)) ||
         // Owner can delete in Draft
         (status === RequestStatus.Draft && (isOwner || isAdmin)) ||
         // Owner can update attachments while responding to reviewer comments

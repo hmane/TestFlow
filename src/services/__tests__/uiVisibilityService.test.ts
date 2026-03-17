@@ -102,6 +102,20 @@ describe('uiVisibilityService', () => {
       expect(visibility.attachments.canDelete).toBe(true);
     });
 
+    it('should allow a submitter to manage attachments on an unsaved new request', () => {
+      const ctx = createVisibilityContext(
+        RequestStatus.Draft,
+        { ...basePermissions, isSubmitter: true },
+        '10',
+        undefined,
+        { isNewRequest: true }
+      );
+
+      const visibility = getFieldVisibility(ctx);
+      expect(visibility.attachments.canAdd).toBe(true);
+      expect(visibility.attachments.canDelete).toBe(true);
+    });
+
     it('should allow the owner to edit closeout fields during Closeout', () => {
       const ctx = createVisibilityContext(
         RequestStatus.Closeout,
