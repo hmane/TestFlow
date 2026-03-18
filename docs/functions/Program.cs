@@ -187,6 +187,10 @@ namespace LegalWorkflow.Functions
                 .Configure<IAuthenticationProvider>((options, provider) =>
                 {
                     options.DefaultAuthenticationProvider = provider;
+                    if (options.Sites.TryGetValue("Default", out var defaultSite))
+                    {
+                        defaultSite.AuthenticationProvider = provider;
+                    }
                 });
             services.AddOptions<PnPContextFactoryOptions>()
                 .Configure<IAuthenticationProvider>((options, provider) =>
