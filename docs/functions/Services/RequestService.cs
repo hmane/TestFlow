@@ -566,54 +566,54 @@ namespace LegalWorkflow.Functions.Services
 
         /// <summary>
         /// Parses a user lookup field from a list item.
-        /// Uses LookupValue (always loaded) for the display name instead of IFieldUserValue.Title,
-        /// which is a lazy-loaded model property that throws "Property Title was not yet loaded"
-        /// unless the user profile is explicitly expanded.
+        ///
+        /// All IFieldUserValue properties (LookupId, LookupValue, Email, Principal) go through
+        /// PnP Core SDK's GetValue&lt;T&gt;() and throw "Property X was not yet loaded" when the
+        /// sub-object was not explicitly expanded. We therefore:
+        ///   1. Prefer FieldValuesAsText for the display name (it is pre-loaded in GetByIdAsync).
+        ///   2. Wrap every IFieldUserValue property access in its own try/catch as a fallback.
         /// </summary>
-        private UserInfo? ParseUserField(IListItem item, string fieldName)
+        private static UserInfo? ParseUserField(IListItem item, string fieldName)
         {
             if (!item.Values.TryGetValue(fieldName, out var value) || value == null)
             {
                 return null;
             }
 
+            var userId = 0;
+            var title = string.Empty;
+            var email = string.Empty;
+            var loginName = string.Empty;
+
             if (value is IFieldUserValue userValue)
             {
-                // LookupValue == display name, always present in the field value response
-                var title = userValue.LookupValue ?? string.Empty;
-
-                // FieldValuesAsText gives the display name when LookupValue is unexpectedly empty
-                if (string.IsNullOrEmpty(title))
-                {
-                    TryGetFieldValueAsText(item, fieldName, out title);
-                }
-
-                // Email and Principal.LoginName require the user profile to be loaded;
-                // access them safely so a missing load never crashes the mapping.
-                var email = string.Empty;
-                var loginName = string.Empty;
+                try { userId = userValue.LookupId; } catch { }
+                try { title = userValue.LookupValue ?? string.Empty; } catch { }
                 try { email = userValue.Email ?? string.Empty; } catch { }
                 try { loginName = userValue.Principal?.LoginName ?? string.Empty; } catch { }
-
-                return new UserInfo { Id = userValue.LookupId, Title = title, Email = email, LoginName = loginName };
             }
-
-            if (value is IDictionary<string, object> lookupDict)
+            else if (value is IDictionary<string, object> lookupDict)
             {
-                return new UserInfo
-                {
-                    Id = lookupDict.ContainsKey("LookupId") ? Convert.ToInt32(lookupDict["LookupId"]) : 0,
-                    Title = lookupDict.ContainsKey("LookupValue") ? lookupDict["LookupValue"]?.ToString() ?? string.Empty : string.Empty,
-                    Email = lookupDict.ContainsKey("Email") ? lookupDict["Email"]?.ToString() ?? string.Empty : string.Empty
-                };
+                if (lookupDict.TryGetValue("LookupId", out var rawId)) userId = Convert.ToInt32(rawId);
+                if (lookupDict.TryGetValue("LookupValue", out var rawTitle)) title = rawTitle?.ToString() ?? string.Empty;
+                if (lookupDict.TryGetValue("Email", out var rawEmail)) email = rawEmail?.ToString() ?? string.Empty;
             }
 
-            return null;
+            // FieldValuesAsText is the most reliable source for the display name — use it
+            // as primary when populated; fall back only when it is also absent.
+            if (TryGetFieldValueAsText(item, fieldName, out var textTitle) && !string.IsNullOrEmpty(textTitle))
+            {
+                title = textTitle;
+            }
+
+            return (userId == 0 && string.IsNullOrEmpty(title))
+                ? null
+                : new UserInfo { Id = userId, Title = title, Email = email, LoginName = loginName };
         }
 
         /// <summary>
         /// Parses a multi-user lookup field from a list item.
-        /// Uses LookupValue for the display name — see ParseUserField for rationale.
+        /// All IFieldUserValue property accesses are wrapped in try/catch — see ParseUserField.
         /// </summary>
         private List<UserInfo> ParseMultiUserField(IListItem item, string fieldName)
         {
@@ -628,18 +628,17 @@ namespace LegalWorkflow.Functions.Services
             {
                 foreach (var userValue in userValues)
                 {
+                    var userId = 0;
+                    var title = string.Empty;
                     var email = string.Empty;
                     var loginName = string.Empty;
+
+                    try { userId = userValue.LookupId; } catch { }
+                    try { title = userValue.LookupValue ?? string.Empty; } catch { }
                     try { email = userValue.Email ?? string.Empty; } catch { }
                     try { loginName = userValue.Principal?.LoginName ?? string.Empty; } catch { }
 
-                    users.Add(new UserInfo
-                    {
-                        Id = userValue.LookupId,
-                        Title = userValue.LookupValue ?? string.Empty,
-                        Email = email,
-                        LoginName = loginName
-                    });
+                    users.Add(new UserInfo { Id = userId, Title = title, Email = email, LoginName = loginName });
                 }
             }
 
