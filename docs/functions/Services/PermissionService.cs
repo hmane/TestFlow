@@ -493,7 +493,7 @@ namespace LegalWorkflow.Functions.Services
             var readRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.Read);
 
             // Add Admin group with Full Control
-            await AddGroupPermissionToFolderAsync(docsFolder, GetGroupOrThrow(siteGroups, _groupConfig.AdminGroup), fullControlRole, response, $"RequestDocuments/{requestId}");
+            await AddGroupPermissionToFolderAsync(docsFolderItem, GetGroupOrThrow(siteGroups, _groupConfig.AdminGroup), fullControlRole, response, $"RequestDocuments/{requestId}");
 
             // Add operational groups with Contribute (they need to upload/modify documents)
             var operationalGroups = new[]
@@ -507,7 +507,7 @@ namespace LegalWorkflow.Functions.Services
 
             foreach (var groupName in operationalGroups)
             {
-                await AddGroupPermissionToFolderAsync(docsFolder, GetGroupOrThrow(siteGroups, groupName), contributeRole, response, $"RequestDocuments/{requestId}");
+                await AddGroupPermissionToFolderAsync(docsFolderItem, GetGroupOrThrow(siteGroups, groupName), contributeRole, response, $"RequestDocuments/{requestId}");
             }
 
             await AddReadPermissionsForParticipantsAsync(
@@ -552,11 +552,11 @@ namespace LegalWorkflow.Functions.Services
         }
 
         /// <summary>
-        /// Adds a permission for a pre-loaded group to a folder.
-        /// Caller is responsible for resolving the group from the pre-loaded cache.
+        /// Adds a permission for a pre-loaded group to a folder's list item.
+        /// Caller is responsible for resolving the group and list item from pre-loaded data.
         /// </summary>
         private async Task AddGroupPermissionToFolderAsync(
-            IFolder folder,
+            IListItem folderItem,
             ISharePointGroup group,
             IRoleDefinition? roleDefinition,
             PermissionResponse response,
@@ -567,7 +567,6 @@ namespace LegalWorkflow.Functions.Services
                 throw new InvalidOperationException($"Role definition not found for group '{group.Title}'");
             }
 
-            var folderItem = await GetFolderListItemAsync(folder);
             await EnsureRoleDefinitionAsync(folderItem, group.Id, roleDefinition);
 
             var permLevel = MapRoleToPermissionLevel(roleDefinition.Name);
@@ -773,7 +772,7 @@ namespace LegalWorkflow.Functions.Services
         /// <summary>
         /// Maps SharePoint role definition name to PermissionLevel enum.
         /// </summary>
-        private PermissionLevel MapRoleToPermissionLevel(string roleName)
+        private static PermissionLevel MapRoleToPermissionLevel(string roleName)
         {
             if (roleName == RoleDefinitions.FullControl)
                 return PermissionLevel.FullControl;
@@ -791,12 +790,10 @@ namespace LegalWorkflow.Functions.Services
         /// </summary>
         private async Task<PnP.Core.Model.SharePoint.IList> GetDocumentsLibraryAsync(PnPContext context)
         {
-            var docsLibrary = await context.Web.Lists.GetByTitleAsync(
+            // Expanding RootFolder includes ServerRelativeUrl in PnP Core's default folder properties
+            return await context.Web.Lists.GetByTitleAsync(
                 _listConfig.DocumentsLibraryName,
                 l => l.RootFolder);
-
-            await docsLibrary.RootFolder.LoadAsync(f => f.ServerRelativeUrl);
-            return docsLibrary;
         }
 
         /// <summary>
@@ -915,12 +912,24 @@ namespace LegalWorkflow.Functions.Services
 
         /// <summary>
         /// Adds a participant entry if the user field contains enough identity data to resolve later.
+        /// All IFieldUserValue properties (Email, Principal, LookupValue) are lazy-loaded by PnP Core
+        /// SDK and will throw "Property X was not yet loaded" if the sub-object was not explicitly
+        /// expanded. Wrap every access so a single missing property never aborts the whole batch.
         /// </summary>
         private static void AddParticipant(IDictionary<string, RequestParticipant> participants, IFieldUserValue userValue)
         {
-            var email = userValue.Email?.Trim() ?? string.Empty;
-            var loginName = userValue.Principal?.LoginName?.Trim() ?? string.Empty;
-            var displayName = userValue.LookupValue?.Trim() ?? email;
+            var email = string.Empty;
+            var loginName = string.Empty;
+            var displayName = string.Empty;
+
+            try { email = userValue.Email?.Trim() ?? string.Empty; } catch { }
+            try { loginName = userValue.Principal?.LoginName?.Trim() ?? string.Empty; } catch { }
+            try { displayName = userValue.LookupValue?.Trim() ?? string.Empty; } catch { }
+
+            if (string.IsNullOrEmpty(displayName))
+            {
+                displayName = email;
+            }
 
             if (string.IsNullOrWhiteSpace(loginName) && string.IsNullOrWhiteSpace(email))
             {

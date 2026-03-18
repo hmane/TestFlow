@@ -799,12 +799,16 @@ namespace LegalWorkflow.Functions.Services
                     return new List<string>();
                 }
 
-                // Load group members
-                await group.LoadAsync(g => g.Users);
+                // Load group members with explicit Mail property to avoid lazy-load exceptions
+                await group.LoadAsync(g => g.Users.QueryProperties(u => u.Mail, u => u.LoginName));
 
                 var memberEmails = group.Users.AsRequested()
-                    .Where(u => !string.IsNullOrEmpty(u.Mail))
-                    .Select(u => u.Mail)
+                    .Select(u =>
+                    {
+                        try { return u.Mail; } catch { return null; }
+                    })
+                    .Where(mail => !string.IsNullOrEmpty(mail))
+                    .Select(mail => mail!)
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
 

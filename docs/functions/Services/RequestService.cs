@@ -4,6 +4,7 @@
 // =============================================================================
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -28,6 +29,9 @@ namespace LegalWorkflow.Functions.Services
         private readonly Logger _logger;
         private readonly SharePointListConfig _listConfig;
         private readonly Uri _siteUri;
+
+        // Cache normalized enum name → value maps per enum type to avoid repeated Enum.GetValues<T>() allocations
+        private static readonly ConcurrentDictionary<Type, Dictionary<string, object>> _enumNormalizedCache = new();
 
         /// <summary>
         /// Creates a new RequestService instance.
@@ -106,12 +110,9 @@ namespace LegalWorkflow.Functions.Services
                 using var context = await CreateContextAsync();
 
                 var list = await context.Web.Lists.GetByTitleAsync(_listConfig.RequestsListName);
-                var item = await list.Items.GetByIdAsync(requestId);
+                var item = await list.Items.GetByIdAsync(requestId, i => i.Versions);
 
-                // Load version history
-                await item.LoadAsync(i => i.Versions);
-
-                if (item.Versions == null || item.Versions.Length < 2)
+                if (item.Versions == null || item.Versions.AsRequested().Count() < 2)
                 {
                     _logger.Info("No previous version found - this may be a new item");
                     tracker.Complete(true, "No previous version");
@@ -227,7 +228,7 @@ namespace LegalWorkflow.Functions.Services
         /// <summary>
         /// Maps a SharePoint list item to a NotificationTemplate.
         /// </summary>
-        private NotificationTemplate MapToNotificationTemplate(string notificationId, IListItem item)
+        private static NotificationTemplate MapToNotificationTemplate(string notificationId, IListItem item)
         {
             return new NotificationTemplate
             {
@@ -251,7 +252,7 @@ namespace LegalWorkflow.Functions.Services
         /// <summary>
         /// Maps a SharePoint list item to RequestModel.
         /// </summary>
-        private RequestModel MapItemToRequest(IListItem item)
+        private static RequestModel MapItemToRequest(IListItem item)
         {
             var created = GetFieldValue<DateTime>(item, RequestsFields.Created);
             var submittedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.SubmittedOn);
@@ -262,8 +263,8 @@ namespace LegalWorkflow.Functions.Services
                 Id = item.Id,
                 Title = GetFieldTextValue(item, RequestsFields.Title),
                 RequestTitle = GetFieldTextValue(item, RequestsFields.RequestTitle),
-                Version = item.Values.ContainsKey(RequestsFields.UIVersionString)
-                    ? item.Values[RequestsFields.UIVersionString]?.ToString() ?? "1.0"
+                Version = item.Values.TryGetValue(RequestsFields.UIVersionString, out var versionRaw)
+                    ? versionRaw?.ToString() ?? "1.0"
                     : "1.0",
                 Created = created,
                 Modified = GetFieldValue<DateTime>(item, RequestsFields.Modified),
@@ -344,7 +345,7 @@ namespace LegalWorkflow.Functions.Services
         /// <summary>
         /// Maps version history entry to RequestVersionInfo for change detection.
         /// </summary>
-        private RequestVersionInfo MapVersionToVersionInfo(IListItemVersion version, int requestId)
+        private static RequestVersionInfo MapVersionToVersionInfo(IListItemVersion version, int requestId)
         {
             return new RequestVersionInfo
             {
@@ -363,7 +364,7 @@ namespace LegalWorkflow.Functions.Services
         /// <summary>
         /// Gets a field value from a list item with type conversion.
         /// </summary>
-        private T GetFieldValue<T>(IListItem item, string fieldName)
+        private static T GetFieldValue<T>(IListItem item, string fieldName)
         {
             if (item.Values.TryGetValue(fieldName, out var value) && value != null)
             {
@@ -388,7 +389,7 @@ namespace LegalWorkflow.Functions.Services
         /// <summary>
         /// Gets a nullable field value from a list item.
         /// </summary>
-        private T? GetFieldValueNullable<T>(IListItem item, string fieldName) where T : struct
+        private static T? GetFieldValueNullable<T>(IListItem item, string fieldName) where T : struct
         {
             if (item.Values.TryGetValue(fieldName, out var value) && value != null)
             {
@@ -414,7 +415,7 @@ namespace LegalWorkflow.Functions.Services
         /// Gets a field value from a version history entry.
         /// Handles SharePoint version history quirks, e.g. booleans stored as "Yes"/"No" strings.
         /// </summary>
-        private T GetVersionFieldValue<T>(IListItemVersion version, string fieldName)
+        private static T GetVersionFieldValue<T>(IListItemVersion version, string fieldName)
         {
             if (version.Values.TryGetValue(fieldName, out var value) && value != null)
             {
@@ -448,7 +449,7 @@ namespace LegalWorkflow.Functions.Services
         /// <summary>
         /// Parses an enum value from a string, with a default fallback.
         /// </summary>
-        private TEnum ParseEnum<TEnum>(string? value, TEnum defaultValue) where TEnum : struct, Enum
+        private static TEnum ParseEnum<TEnum>(string? value, TEnum defaultValue) where TEnum : struct, Enum
         {
             if (string.IsNullOrEmpty(value))
             {
@@ -466,7 +467,7 @@ namespace LegalWorkflow.Functions.Services
         /// <summary>
         /// Parses a nullable enum value from a string.
         /// </summary>
-        private TEnum? ParseNullableEnum<TEnum>(string? value) where TEnum : struct, Enum
+        private static TEnum? ParseNullableEnum<TEnum>(string? value) where TEnum : struct, Enum
         {
             if (string.IsNullOrWhiteSpace(value))
             {
@@ -485,7 +486,7 @@ namespace LegalWorkflow.Functions.Services
         /// Gets the text representation of a field, including lookup-backed fields.
         /// Prefers FieldValuesAsText to avoid touching lazy-loaded SharePoint lookup properties.
         /// </summary>
-        private string GetFieldTextValue(IListItem item, string fieldName)
+        private static string GetFieldTextValue(IListItem item, string fieldName)
         {
             if (TryGetFieldValueAsText(item, fieldName, out var fieldTextValue))
             {
@@ -615,7 +616,7 @@ namespace LegalWorkflow.Functions.Services
         /// Parses a multi-user lookup field from a list item.
         /// All IFieldUserValue property accesses are wrapped in try/catch — see ParseUserField.
         /// </summary>
-        private List<UserInfo> ParseMultiUserField(IListItem item, string fieldName)
+        private static List<UserInfo> ParseMultiUserField(IListItem item, string fieldName)
         {
             var users = new List<UserInfo>();
 
@@ -678,18 +679,17 @@ namespace LegalWorkflow.Functions.Services
             {
                 foreach (var userValue in userValues)
                 {
+                    var userId = 0;
+                    var title = string.Empty;
                     var email = string.Empty;
                     var loginName = string.Empty;
+
+                    try { userId = userValue.LookupId; } catch { }
+                    try { title = userValue.LookupValue ?? string.Empty; } catch { }
                     try { email = userValue.Email ?? string.Empty; } catch { }
                     try { loginName = userValue.Principal?.LoginName ?? string.Empty; } catch { }
 
-                    users.Add(new UserInfo
-                    {
-                        Id = userValue.LookupId,
-                        Title = userValue.LookupValue ?? string.Empty,
-                        Email = email,
-                        LoginName = loginName
-                    });
+                    users.Add(new UserInfo { Id = userId, Title = title, Email = email, LoginName = loginName });
                 }
             }
 
@@ -699,7 +699,7 @@ namespace LegalWorkflow.Functions.Services
         /// <summary>
         /// Parses a multi-choice field value.
         /// </summary>
-        private List<string> ParseMultiChoice(object? value)
+        private static List<string> ParseMultiChoice(object? value)
         {
             if (value == null)
             {
@@ -725,7 +725,7 @@ namespace LegalWorkflow.Functions.Services
         /// <summary>
         /// Parses distribution methods from a multi-choice field.
         /// </summary>
-        private List<DistributionMethod> ParseDistributionMethods(object? value)
+        private static List<DistributionMethod> ParseDistributionMethods(object? value)
         {
             var choices = ParseMultiChoice(value);
             var methods = new List<DistributionMethod>();
@@ -782,17 +782,22 @@ namespace LegalWorkflow.Functions.Services
                 return false;
             }
 
-            var normalizedValue = NormalizeEnumValue(value);
-            foreach (var enumValue in Enum.GetValues<TEnum>())
+            var map = _enumNormalizedCache.GetOrAdd(typeof(TEnum), static t =>
             {
-                if (string.Equals(
-                    normalizedValue,
-                    NormalizeEnumValue(enumValue.ToString()),
-                    StringComparison.OrdinalIgnoreCase))
+                var dict = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+                foreach (var enumValue in Enum.GetValues(t))
                 {
-                    result = enumValue;
-                    return true;
+                    var normalized = NormalizeEnumValue(enumValue.ToString() ?? string.Empty);
+                    dict.TryAdd(normalized, enumValue);
                 }
+                return dict;
+            });
+
+            var normalizedValue = NormalizeEnumValue(value);
+            if (map.TryGetValue(normalizedValue, out var cached))
+            {
+                result = (TEnum)cached;
+                return true;
             }
 
             return false;
@@ -801,7 +806,7 @@ namespace LegalWorkflow.Functions.Services
         /// <summary>
         /// Parses Communications approval information.
         /// </summary>
-        private ApprovalInfo? ParseApprovalCommunications(IListItem item)
+        private static ApprovalInfo? ParseApprovalCommunications(IListItem item)
         {
             var approvedBy = ParseUserField(item, RequestsFields.CommunicationsApprover);
             var approvedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.CommunicationsApprovalDate);
@@ -823,7 +828,7 @@ namespace LegalWorkflow.Functions.Services
         /// <summary>
         /// Parses Portfolio Manager approval information.
         /// </summary>
-        private ApprovalInfo? ParseApprovalPortfolioManager(IListItem item)
+        private static ApprovalInfo? ParseApprovalPortfolioManager(IListItem item)
         {
             var approvedBy = ParseUserField(item, RequestsFields.PortfolioManager);
             var approvedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.PortfolioManagerApprovalDate);
@@ -845,7 +850,7 @@ namespace LegalWorkflow.Functions.Services
         /// <summary>
         /// Parses Research Analyst approval information.
         /// </summary>
-        private ApprovalInfo? ParseApprovalResearchAnalyst(IListItem item)
+        private static ApprovalInfo? ParseApprovalResearchAnalyst(IListItem item)
         {
             var approvedBy = ParseUserField(item, RequestsFields.ResearchAnalyst);
             var approvedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.ResearchAnalystApprovalDate);
@@ -867,7 +872,7 @@ namespace LegalWorkflow.Functions.Services
         /// <summary>
         /// Parses Subject Matter Expert approval information.
         /// </summary>
-        private ApprovalInfo? ParseApprovalSME(IListItem item)
+        private static ApprovalInfo? ParseApprovalSME(IListItem item)
         {
             var approvedBy = ParseUserField(item, RequestsFields.SubjectMatterExpert);
             var approvedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.SMEApprovalDate);
@@ -889,7 +894,7 @@ namespace LegalWorkflow.Functions.Services
         /// <summary>
         /// Parses Performance approval information.
         /// </summary>
-        private ApprovalInfo? ParseApprovalPerformance(IListItem item)
+        private static ApprovalInfo? ParseApprovalPerformance(IListItem item)
         {
             var approvedBy = ParseUserField(item, RequestsFields.PerformanceApprover);
             var approvedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.PerformanceApprovalDate);
@@ -911,7 +916,7 @@ namespace LegalWorkflow.Functions.Services
         /// <summary>
         /// Parses Other approval information.
         /// </summary>
-        private ApprovalInfo? ParseApprovalOther(IListItem item)
+        private static ApprovalInfo? ParseApprovalOther(IListItem item)
         {
             var approvedBy = ParseUserField(item, RequestsFields.OtherApproval);
             var approvedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.OtherApprovalDate);
