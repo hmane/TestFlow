@@ -36,7 +36,7 @@ namespace LegalWorkflow.Functions.Models
         OnHold,
 
         /// <summary>Request is awaiting FINRA documents upload</summary>
-        AwaitingFINRA
+        AwaitingFINRADocuments
     }
 
     /// <summary>

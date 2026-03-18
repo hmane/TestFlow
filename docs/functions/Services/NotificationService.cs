@@ -172,7 +172,7 @@ namespace LegalWorkflow.Functions.Services
                 _logger.Info($"Notification trigger detected: {notificationId}");
 
                 // Load the notification template - try type-specific first, fall back to generic
-                var requestTypeName = currentRequest.RequestType.ToString();
+                var requestTypeName = GetTemplateRequestType(currentRequest.RequestType);
                 var template = await _requestService.GetNotificationTemplateAsync(notificationId, requestTypeName);
                 if (template == null || !template.IsActive)
                 {
@@ -926,8 +926,19 @@ namespace LegalWorkflow.Functions.Services
                 RequestStatus.Completed => "Completed",
                 RequestStatus.Cancelled => "Cancelled",
                 RequestStatus.OnHold => "On Hold",
-                RequestStatus.AwaitingFINRA => "Awaiting FINRA",
+                RequestStatus.AwaitingFINRADocuments => "Awaiting FINRA Documents",
                 _ => status.ToString()
+            };
+        }
+
+        private static string GetTemplateRequestType(RequestType type)
+        {
+            return type switch
+            {
+                RequestType.Communication => "Communication",
+                RequestType.GeneralReview => "General Review",
+                RequestType.IMAReview => "IMA Review",
+                _ => type.ToString()
             };
         }
 

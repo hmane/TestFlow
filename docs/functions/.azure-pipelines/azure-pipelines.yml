@@ -8,6 +8,15 @@
 # 1. Azure Service Connection named 'AzureServiceConnection' in ADO
 # 2. Variable groups: 'LegalWorkflow-Dev', 'LegalWorkflow-Staging', 'LegalWorkflow-Prod'
 # 3. Azure Function App already provisioned in each environment
+# 4. Optional APIM variables per environment:
+#    - apimServiceName
+#    - apimResourceGroupName
+#    - apimApiId
+#    - apimApiPath
+#    - apimApiDisplayName
+#    - apimOpenApiSpecPath
+#    - apimPolicyPath
+#    - apimSubscriptionRequired
 # =============================================================================
 
 trigger:
@@ -131,6 +140,14 @@ stages:
                     azureSubscription: $(azureSubscription)
                     functionAppName: $(functionAppName)
                     resourceGroupName: $(resourceGroupName)
+                    apimServiceName: $(apimServiceName)
+                    apimResourceGroupName: $(apimResourceGroupName)
+                    apimApiId: $(apimApiId)
+                    apimApiPath: $(apimApiPath)
+                    apimApiDisplayName: $(apimApiDisplayName)
+                    apimOpenApiSpecPath: $(apimOpenApiSpecPath)
+                    apimPolicyPath: $(apimPolicyPath)
+                    apimSubscriptionRequired: $(apimSubscriptionRequired)
 
   # =============================================================================
   # Deploy to Staging
@@ -156,6 +173,14 @@ stages:
                     azureSubscription: $(azureSubscription)
                     functionAppName: $(functionAppName)
                     resourceGroupName: $(resourceGroupName)
+                    apimServiceName: $(apimServiceName)
+                    apimResourceGroupName: $(apimResourceGroupName)
+                    apimApiId: $(apimApiId)
+                    apimApiPath: $(apimApiPath)
+                    apimApiDisplayName: $(apimApiDisplayName)
+                    apimOpenApiSpecPath: $(apimOpenApiSpecPath)
+                    apimPolicyPath: $(apimPolicyPath)
+                    apimSubscriptionRequired: $(apimSubscriptionRequired)
 
   # =============================================================================
   # Deploy to Production
@@ -181,6 +206,14 @@ stages:
                     azureSubscription: $(azureSubscription)
                     functionAppName: $(functionAppName)
                     resourceGroupName: $(resourceGroupName)
+                    apimServiceName: $(apimServiceName)
+                    apimResourceGroupName: $(apimResourceGroupName)
+                    apimApiId: $(apimApiId)
+                    apimApiPath: $(apimApiPath)
+                    apimApiDisplayName: $(apimApiDisplayName)
+                    apimOpenApiSpecPath: $(apimOpenApiSpecPath)
+                    apimPolicyPath: $(apimPolicyPath)
+                    apimSubscriptionRequired: $(apimSubscriptionRequired)
 
   # =============================================================================
   # Deploy Main to Production (Direct)
@@ -206,3 +239,11 @@ stages:
                     azureSubscription: $(azureSubscription)
                     functionAppName: $(functionAppName)
                     resourceGroupName: $(resourceGroupName)
+                    apimServiceName: $(apimServiceName)
+                    apimResourceGroupName: $(apimResourceGroupName)
+                    apimApiId: $(apimApiId)
+                    apimApiPath: $(apimApiPath)
+                    apimApiDisplayName: $(apimApiDisplayName)
+                    apimOpenApiSpecPath: $(apimOpenApiSpecPath)
+                    apimPolicyPath: $(apimPolicyPath)
+                    apimSubscriptionRequired: $(apimSubscriptionRequired)

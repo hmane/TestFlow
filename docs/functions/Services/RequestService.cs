@@ -183,10 +183,9 @@ namespace LegalWorkflow.Functions.Services
                 if (!string.IsNullOrEmpty(requestType))
                 {
                     var specificItem = allItems.FirstOrDefault(i =>
-                        string.Equals(
+                        RequestTypeMatchesTemplate(
                             GetFieldValue<string>(i, NotificationsFields.RequestType),
-                            requestType,
-                            StringComparison.OrdinalIgnoreCase));
+                            requestType));
 
                     if (specificItem != null)
                     {
@@ -198,12 +197,9 @@ namespace LegalWorkflow.Functions.Services
                     _logger.Debug($"No type-specific template for '{notificationId}' / '{requestType}', falling back to generic");
                 }
 
-                // Step 2: Fall back to generic template (RequestType = "All")
+                // Step 2: Fall back to generic template (RequestType = blank or "All")
                 var genericItem = allItems.FirstOrDefault(i =>
-                    string.Equals(
-                        GetFieldValue<string>(i, NotificationsFields.RequestType),
-                        "All",
-                        StringComparison.OrdinalIgnoreCase));
+                    IsGenericTemplateRequestType(GetFieldValue<string>(i, NotificationsFields.RequestType)));
 
                 if (genericItem == null)
                 {
@@ -450,10 +446,7 @@ namespace LegalWorkflow.Functions.Services
                 return defaultValue;
             }
 
-            // Remove spaces for matching (e.g., "Legal Intake" -> "LegalIntake")
-            var normalizedValue = value.Replace(" ", "");
-
-            if (Enum.TryParse<TEnum>(normalizedValue, ignoreCase: true, out var result))
+            if (TryParseEnum(value, out TEnum result))
             {
                 return result;
             }
@@ -630,13 +623,70 @@ namespace LegalWorkflow.Functions.Services
 
             foreach (var choice in choices)
             {
-                if (Enum.TryParse<DistributionMethod>(choice.Replace(" ", ""), ignoreCase: true, out var method))
+                if (TryParseEnum<DistributionMethod>(choice, out var method))
                 {
                     methods.Add(method);
                 }
             }
 
             return methods;
+        }
+
+        private static bool RequestTypeMatchesTemplate(string? templateRequestType, string requestType)
+        {
+            if (string.IsNullOrWhiteSpace(templateRequestType))
+            {
+                return false;
+            }
+
+            return string.Equals(
+                NormalizeEnumValue(templateRequestType),
+                NormalizeEnumValue(requestType),
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsGenericTemplateRequestType(string? templateRequestType)
+        {
+            return string.IsNullOrWhiteSpace(templateRequestType) ||
+                   string.Equals(templateRequestType.Trim(), "All", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string NormalizeEnumValue(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            return new string(value
+                .Where(char.IsLetterOrDigit)
+                .Select(char.ToLowerInvariant)
+                .ToArray());
+        }
+
+        private static bool TryParseEnum<TEnum>(string? value, out TEnum result) where TEnum : struct, Enum
+        {
+            result = default;
+
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return false;
+            }
+
+            var normalizedValue = NormalizeEnumValue(value);
+            foreach (var enumValue in Enum.GetValues<TEnum>())
+            {
+                if (string.Equals(
+                    normalizedValue,
+                    NormalizeEnumValue(enumValue.ToString()),
+                    StringComparison.OrdinalIgnoreCase))
+                {
+                    result = enumValue;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>

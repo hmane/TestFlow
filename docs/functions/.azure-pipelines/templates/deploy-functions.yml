@@ -24,6 +24,46 @@ parameters:
     default: ''
     displayName: 'Deployment Slot (optional)'
 
+  - name: apimServiceName
+    type: string
+    default: ''
+    displayName: 'API Management Service Name (optional)'
+
+  - name: apimResourceGroupName
+    type: string
+    default: ''
+    displayName: 'API Management Resource Group Name (optional)'
+
+  - name: apimApiId
+    type: string
+    default: ''
+    displayName: 'APIM API Id (optional)'
+
+  - name: apimApiPath
+    type: string
+    default: ''
+    displayName: 'APIM API Path (optional)'
+
+  - name: apimApiDisplayName
+    type: string
+    default: ''
+    displayName: 'APIM API Display Name (optional)'
+
+  - name: apimOpenApiSpecPath
+    type: string
+    default: ''
+    displayName: 'OpenAPI spec path relative to repo root (optional)'
+
+  - name: apimPolicyPath
+    type: string
+    default: 'docs/functions/.apim/api-policy.xml'
+    displayName: 'APIM policy file path relative to repo root (optional)'
+
+  - name: apimSubscriptionRequired
+    type: string
+    default: 'false'
+    displayName: 'Whether APIM requires subscriptions'
+
 steps:
   # Download build artifacts
   - download: current
@@ -78,6 +118,85 @@ steps:
         fi
 
         echo "Deployment completed successfully!"
+
+  # Sync APIM API definition and policy when APIM settings are provided.
+  # This step intentionally skips itself when the APIM variables/spec are not configured.
+  - task: AzureCLI@2
+    displayName: 'Sync API Management'
+    inputs:
+      azureSubscription: ${{ parameters.azureSubscription }}
+      scriptType: bash
+      scriptLocation: inlineScript
+      inlineScript: |
+        set -euo pipefail
+
+        is_unset() {
+          local value="${1:-}"
+          [ -z "$value" ] || [[ "$value" =~ ^\$\(.+\)$ ]]
+        }
+
+        APIM_NAME='${{ parameters.apimServiceName }}'
+        APIM_RESOURCE_GROUP='${{ parameters.apimResourceGroupName }}'
+        APIM_API_ID='${{ parameters.apimApiId }}'
+        APIM_API_PATH='${{ parameters.apimApiPath }}'
+        APIM_API_DISPLAY_NAME='${{ parameters.apimApiDisplayName }}'
+        APIM_OPENAPI_SPEC='${{ parameters.apimOpenApiSpecPath }}'
+        APIM_POLICY_PATH='${{ parameters.apimPolicyPath }}'
+        APIM_SUBSCRIPTION_REQUIRED='${{ parameters.apimSubscriptionRequired }}'
+
+        if is_unset "$APIM_NAME" || is_unset "$APIM_RESOURCE_GROUP" || is_unset "$APIM_API_ID" || is_unset "$APIM_API_PATH"; then
+          echo "APIM configuration not provided; skipping APIM sync."
+          exit 0
+        fi
+
+        if is_unset "$APIM_OPENAPI_SPEC"; then
+          echo "OpenAPI spec path not provided; skipping APIM import."
+          exit 0
+        fi
+
+        SPEC_PATH="$(Build.SourcesDirectory)/$APIM_OPENAPI_SPEC"
+        if [ ! -f "$SPEC_PATH" ]; then
+          echo "OpenAPI spec not found at $SPEC_PATH; skipping APIM import."
+          exit 0
+        fi
+
+        if is_unset "$APIM_API_DISPLAY_NAME"; then
+          APIM_API_DISPLAY_NAME='${{ parameters.functionAppName }}'
+        fi
+
+        FUNCTION_HOSTNAME=$(az functionapp show \
+          --name "${{ parameters.functionAppName }}" \
+          --resource-group "${{ parameters.resourceGroupName }}" \
+          --query "defaultHostName" \
+          -o tsv)
+
+        BACKEND_URL="https://$FUNCTION_HOSTNAME"
+
+        echo "Importing APIM API '$APIM_API_ID' from $SPEC_PATH"
+        az apim api import \
+          --resource-group "$APIM_RESOURCE_GROUP" \
+          --service-name "$APIM_NAME" \
+          --api-id "$APIM_API_ID" \
+          --path "$APIM_API_PATH" \
+          --display-name "$APIM_API_DISPLAY_NAME" \
+          --specification-format OpenApiJson \
+          --specification-path "$SPEC_PATH" \
+          --service-url "$BACKEND_URL" \
+          --subscription-required "$APIM_SUBSCRIPTION_REQUIRED"
+
+        if ! is_unset "$APIM_POLICY_PATH"; then
+          POLICY_PATH="$(Build.SourcesDirectory)/$APIM_POLICY_PATH"
+          if [ -f "$POLICY_PATH" ]; then
+            echo "Applying APIM policy from $POLICY_PATH"
+            az apim api policy create \
+              --resource-group "$APIM_RESOURCE_GROUP" \
+              --service-name "$APIM_NAME" \
+              --api-id "$APIM_API_ID" \
+              --xml-file "$POLICY_PATH"
+          else
+            echo "APIM policy file not found at $POLICY_PATH; skipping policy update."
+          fi
+        fi
 
   # Update Application Settings (optional - use Azure Key Vault references)
   - task: AzureAppServiceSettings@1

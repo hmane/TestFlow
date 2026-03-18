@@ -13,7 +13,10 @@
 // =============================================================================
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using PnP.Core.Model.Security;
 using PnP.Core.Model.SharePoint;
 using PnP.Core.Services;
 using LegalWorkflow.Functions.Constants;
@@ -149,34 +152,42 @@ namespace LegalWorkflow.Functions.Services
             {
                 using var context = await _contextFactory.CreateAsync("Default");
 
-                // Reject early if there is no login name to check against.
-                // This can only happen if token validation missed an empty-claims token —
-                // the extra guard here prevents a confusing SharePoint error further down.
-                if (string.IsNullOrWhiteSpace(userInfo.SharePointLoginName))
+                var resolvedUser = await ResolveUserAsync(context, userInfo);
+                if (resolvedUser == null)
                 {
-                    _logger.Warning("Cannot check permissions — user has no SharePoint login name");
-                    tracker.Complete(false, "Empty login name");
+                    _logger.Warning($"Cannot check permissions — unable to resolve SharePoint user for {userInfo.Email}");
+                    tracker.Complete(false, "User resolution failed");
                     return false;
                 }
 
-                // Get the request item — CheckIfUserHasPermissionsAsync resolves the login
-                // name itself; a preceding EnsureUserAsync call is redundant and wastes a REST round-trip.
+                if (resolvedUser.IsSiteAdmin)
+                {
+                    _logger.Info($"User {userInfo.Email} is a site collection administrator");
+                    tracker.Complete(true, "Site collection administrator");
+                    return true;
+                }
+
                 var list = await context.Web.Lists.GetByTitleAsync(_listConfig.RequestsListName);
                 var item = await list.Items.GetByIdAsync(requestId);
 
                 var hasWritePermission = await item.CheckIfUserHasPermissionsAsync(
-                    userInfo.SharePointLoginName,
+                    resolvedUser.LoginName,
                     PermissionKind.EditListItems);
 
                 if (hasWritePermission)
                 {
                     _logger.Info($"User {userInfo.Email} has write permission on request {requestId}",
-                        new { PermissionKind = PermissionKind.EditListItems.ToString() });
+                        new
+                        {
+                            PermissionKind = PermissionKind.EditListItems.ToString(),
+                            ResolvedLoginName = resolvedUser.LoginName,
+                        });
                     tracker.Complete(true, "Effective permission");
                     return true;
                 }
 
-                _logger.Info($"User {userInfo.Email} does not have write permission on request {requestId}");
+                _logger.Info($"User {userInfo.Email} does not have write permission on request {requestId}",
+                    new { ResolvedLoginName = resolvedUser.LoginName });
                 tracker.Complete(false, "No write permission found");
                 return false;
             }
@@ -186,6 +197,59 @@ namespace LegalWorkflow.Functions.Services
                 tracker.Complete(false, ex.Message);
                 return false;
             }
+        }
+
+        private async Task<ISharePointUser?> ResolveUserAsync(IPnPContext context, UserAuthInfo userInfo)
+        {
+            var candidates = new List<string>
+            {
+                userInfo.SharePointLoginName,
+                userInfo.UserPrincipalName,
+                userInfo.Email,
+            }
+            .Where(candidate => !string.IsNullOrWhiteSpace(candidate))
+            .Distinct(StringComparer.OrdinalIgnoreCase);
+
+            Exception? lastException = null;
+
+            foreach (var candidate in candidates)
+            {
+                try
+                {
+                    var user = await context.Web.EnsureUserAsync(candidate);
+                    if (user != null && !string.IsNullOrWhiteSpace(user.LoginName))
+                    {
+                        _logger.Info($"Resolved SharePoint user for {userInfo.Email}",
+                            new
+                            {
+                                Candidate = candidate,
+                                ResolvedLoginName = user.LoginName,
+                                user.IsSiteAdmin,
+                            });
+                        return user;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    lastException = ex;
+                    _logger.Warning($"Failed to resolve SharePoint user using candidate '{candidate}'",
+                        new { userInfo.Email, Error = ex.Message });
+                }
+            }
+
+            if (lastException != null)
+            {
+                _logger.Warning($"Unable to resolve SharePoint user for {userInfo.Email} after trying all candidates",
+                    new
+                    {
+                        userInfo.Email,
+                        userInfo.UserPrincipalName,
+                        userInfo.SharePointLoginName,
+                        Error = lastException.Message,
+                    });
+            }
+
+            return null;
         }
     }
 
