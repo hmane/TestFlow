@@ -499,6 +499,12 @@ namespace LegalWorkflow.Functions.Services
                     return textValue;
                 }
 
+                // IFieldUserValue / IFieldLookupValue — LookupValue is always loaded
+                if (value is IFieldLookupValue lookupValue && lookupValue.LookupValue != null)
+                {
+                    return lookupValue.LookupValue;
+                }
+
                 if (value is IDictionary<string, object> lookupDict &&
                     lookupDict.TryGetValue("LookupValue", out var lookupText) &&
                     lookupText != null)
@@ -510,38 +516,42 @@ namespace LegalWorkflow.Functions.Services
             return string.Empty;
         }
 
+        /// <summary>
+        /// Reads a field's text value from FieldValuesAsText, which is pre-loaded in
+        /// GetByIdAsync / QueryProperties calls. Returns true when a non-null value is found.
+        /// Uses the IReadOnlyDictionary indexer directly to avoid fragile reflection.
+        /// </summary>
         private static bool TryGetFieldValueAsText(IListItem item, string fieldName, out string value)
         {
             value = string.Empty;
 
-            var fieldValuesAsText = item.FieldValuesAsText;
-            if (fieldValuesAsText == null)
+            try
             {
-                return false;
-            }
+                var fieldValuesAsText = item.FieldValuesAsText;
+                if (fieldValuesAsText == null)
+                {
+                    return false;
+                }
 
-            var valuesProperty = fieldValuesAsText.GetType().GetProperty("Values");
-            if (valuesProperty?.GetValue(fieldValuesAsText) is IDictionary<string, string> stringValues &&
-                stringValues.TryGetValue(fieldName, out var stringValue))
-            {
-                value = stringValue ?? string.Empty;
-                return true;
+                // IFieldStringValues exposes a string indexer; access it in a nested try
+                // so a missing key doesn't fall through as an unhandled exception.
+                try
+                {
+                    var textValue = fieldValuesAsText[fieldName]?.ToString();
+                    if (textValue != null)
+                    {
+                        value = textValue;
+                        return true;
+                    }
+                }
+                catch (KeyNotFoundException)
+                {
+                    // Field absent from FieldValuesAsText — fall back to Values dictionary
+                }
             }
-
-            if (valuesProperty?.GetValue(fieldValuesAsText) is IDictionary<string, object> objectValues &&
-                objectValues.TryGetValue(fieldName, out var objectValue) &&
-                objectValue != null)
+            catch (Exception)
             {
-                value = objectValue.ToString() ?? string.Empty;
-                return true;
-            }
-
-            var indexerProperty = fieldValuesAsText.GetType().GetProperty("Item", new[] { typeof(string) });
-            var indexedValue = indexerProperty?.GetValue(fieldValuesAsText, new object[] { fieldName });
-            if (indexedValue != null)
-            {
-                value = indexedValue.ToString() ?? string.Empty;
-                return true;
+                // FieldValuesAsText not loaded or field absent — caller falls back to Values dictionary
             }
 
             return false;
@@ -556,28 +566,38 @@ namespace LegalWorkflow.Functions.Services
 
         /// <summary>
         /// Parses a user lookup field from a list item.
+        /// Uses LookupValue (always loaded) for the display name instead of IFieldUserValue.Title,
+        /// which is a lazy-loaded model property that throws "Property Title was not yet loaded"
+        /// unless the user profile is explicitly expanded.
         /// </summary>
         private UserInfo? ParseUserField(IListItem item, string fieldName)
         {
-            // Try to get the user lookup value
             if (!item.Values.TryGetValue(fieldName, out var value) || value == null)
             {
                 return null;
             }
 
-            // Handle IFieldUserValue
             if (value is IFieldUserValue userValue)
             {
-                return new UserInfo
+                // LookupValue == display name, always present in the field value response
+                var title = userValue.LookupValue ?? string.Empty;
+
+                // FieldValuesAsText gives the display name when LookupValue is unexpectedly empty
+                if (string.IsNullOrEmpty(title))
                 {
-                    Id = userValue.LookupId,
-                    Title = userValue.Title ?? string.Empty,
-                    Email = userValue.Email ?? string.Empty,
-                    LoginName = userValue.Principal?.LoginName ?? string.Empty
-                };
+                    TryGetFieldValueAsText(item, fieldName, out title);
+                }
+
+                // Email and Principal.LoginName require the user profile to be loaded;
+                // access them safely so a missing load never crashes the mapping.
+                var email = string.Empty;
+                var loginName = string.Empty;
+                try { email = userValue.Email ?? string.Empty; } catch { }
+                try { loginName = userValue.Principal?.LoginName ?? string.Empty; } catch { }
+
+                return new UserInfo { Id = userValue.LookupId, Title = title, Email = email, LoginName = loginName };
             }
 
-            // Handle lookup value dictionary
             if (value is IDictionary<string, object> lookupDict)
             {
                 return new UserInfo
@@ -593,6 +613,7 @@ namespace LegalWorkflow.Functions.Services
 
         /// <summary>
         /// Parses a multi-user lookup field from a list item.
+        /// Uses LookupValue for the display name — see ParseUserField for rationale.
         /// </summary>
         private List<UserInfo> ParseMultiUserField(IListItem item, string fieldName)
         {
@@ -603,17 +624,21 @@ namespace LegalWorkflow.Functions.Services
                 return users;
             }
 
-            // Handle array of user values
             if (value is IEnumerable<IFieldUserValue> userValues)
             {
                 foreach (var userValue in userValues)
                 {
+                    var email = string.Empty;
+                    var loginName = string.Empty;
+                    try { email = userValue.Email ?? string.Empty; } catch { }
+                    try { loginName = userValue.Principal?.LoginName ?? string.Empty; } catch { }
+
                     users.Add(new UserInfo
                     {
                         Id = userValue.LookupId,
-                        Title = userValue.Title ?? string.Empty,
-                        Email = userValue.Email ?? string.Empty,
-                        LoginName = userValue.Principal?.LoginName ?? string.Empty
+                        Title = userValue.LookupValue ?? string.Empty,
+                        Email = email,
+                        LoginName = loginName
                     });
                 }
             }
@@ -622,31 +647,11 @@ namespace LegalWorkflow.Functions.Services
         }
 
         /// <summary>
-        /// Parses a user field from version history.
-        /// </summary>
-        private UserInfo? ParseVersionUserField(IListItemVersion version, string fieldName)
-        {
-            if (!version.Values.TryGetValue(fieldName, out var value) || value == null)
-            {
-                return null;
-            }
-
-            // Version history may have limited user info
-            if (value is string stringValue && !string.IsNullOrEmpty(stringValue))
-            {
-                return new UserInfo
-                {
-                    Title = stringValue
-                };
-            }
-
-            return null;
-        }
-
-        /// <summary>
         /// Parses a multi-user field from version history.
+        /// Version history may store multi-user values as semicolon-separated strings or
+        /// as IFieldUserValue objects — handles both. Uses LookupValue for display name.
         /// </summary>
-        private List<UserInfo> ParseVersionMultiUserField(IListItemVersion version, string fieldName)
+        private static List<UserInfo> ParseVersionMultiUserField(IListItemVersion version, string fieldName)
         {
             var users = new List<UserInfo>();
 
@@ -658,28 +663,33 @@ namespace LegalWorkflow.Functions.Services
             // Version history may store multi-user as semicolon-separated string
             if (value is string stringValue && !string.IsNullOrEmpty(stringValue))
             {
-                var parts = stringValue.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+                var parts = stringValue.Split(';', StringSplitOptions.RemoveEmptyEntries);
                 foreach (var part in parts)
                 {
                     var trimmed = part.Trim();
-                    if (!string.IsNullOrEmpty(trimmed) && !trimmed.StartsWith("#"))
+                    if (!string.IsNullOrEmpty(trimmed) && !trimmed.StartsWith('#'))
                     {
                         users.Add(new UserInfo { Title = trimmed });
                     }
                 }
+                return users;
             }
 
-            // Handle array of user values
             if (value is IEnumerable<IFieldUserValue> userValues)
             {
                 foreach (var userValue in userValues)
                 {
+                    var email = string.Empty;
+                    var loginName = string.Empty;
+                    try { email = userValue.Email ?? string.Empty; } catch { }
+                    try { loginName = userValue.Principal?.LoginName ?? string.Empty; } catch { }
+
                     users.Add(new UserInfo
                     {
                         Id = userValue.LookupId,
-                        Title = userValue.Title ?? string.Empty,
-                        Email = userValue.Email ?? string.Empty,
-                        LoginName = userValue.Principal?.LoginName ?? string.Empty
+                        Title = userValue.LookupValue ?? string.Empty,
+                        Email = email,
+                        LoginName = loginName
                     });
                 }
             }
