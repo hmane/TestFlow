@@ -483,25 +483,20 @@ namespace LegalWorkflow.Functions.Services
 
         /// <summary>
         /// Gets the text representation of a field, including lookup-backed fields.
-        /// Falls back to FieldValuesAsText when the raw value is a complex SharePoint type.
+        /// Prefers FieldValuesAsText to avoid touching lazy-loaded SharePoint lookup properties.
         /// </summary>
         private string GetFieldTextValue(IListItem item, string fieldName)
         {
+            if (TryGetFieldValueAsText(item, fieldName, out var fieldTextValue))
+            {
+                return fieldTextValue;
+            }
+
             if (item.Values.TryGetValue(fieldName, out var value) && value != null)
             {
                 if (value is string textValue)
                 {
                     return textValue;
-                }
-
-                if (value is IFieldLookupValue lookupValue && !string.IsNullOrWhiteSpace(lookupValue.LookupValue))
-                {
-                    return lookupValue.LookupValue;
-                }
-
-                if (value is IFieldUserValue userValue && !string.IsNullOrWhiteSpace(userValue.LookupValue))
-                {
-                    return userValue.LookupValue;
                 }
 
                 if (value is IDictionary<string, object> lookupDict &&
@@ -510,16 +505,9 @@ namespace LegalWorkflow.Functions.Services
                 {
                     return lookupText.ToString() ?? string.Empty;
                 }
-
-                if (TryGetFieldValueAsText(item, fieldName, out var fieldTextValue))
-                {
-                    return fieldTextValue;
-                }
             }
 
-            return TryGetFieldValueAsText(item, fieldName, out var fallbackValue)
-                ? fallbackValue
-                : string.Empty;
+            return string.Empty;
         }
 
         private static bool TryGetFieldValueAsText(IListItem item, string fieldName, out string value)
@@ -583,7 +571,7 @@ namespace LegalWorkflow.Functions.Services
                 return new UserInfo
                 {
                     Id = userValue.LookupId,
-                    Title = userValue.LookupValue ?? string.Empty,
+                    Title = userValue.Title ?? string.Empty,
                     Email = userValue.Email ?? string.Empty,
                     LoginName = userValue.Principal?.LoginName ?? string.Empty
                 };
@@ -623,7 +611,7 @@ namespace LegalWorkflow.Functions.Services
                     users.Add(new UserInfo
                     {
                         Id = userValue.LookupId,
-                        Title = userValue.LookupValue ?? string.Empty,
+                        Title = userValue.Title ?? string.Empty,
                         Email = userValue.Email ?? string.Empty,
                         LoginName = userValue.Principal?.LoginName ?? string.Empty
                     });
@@ -689,7 +677,7 @@ namespace LegalWorkflow.Functions.Services
                     users.Add(new UserInfo
                     {
                         Id = userValue.LookupId,
-                        Title = userValue.LookupValue ?? string.Empty,
+                        Title = userValue.Title ?? string.Empty,
                         Email = userValue.Email ?? string.Empty,
                         LoginName = userValue.Principal?.LoginName ?? string.Empty
                     });
