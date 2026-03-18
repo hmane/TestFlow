@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using PnP.Core.Services;
 using PnP.Core.Services.Builder.Configuration;
 using LegalWorkflow.Functions.Helpers;
 using LegalWorkflow.Functions.Models;
@@ -115,7 +116,7 @@ namespace LegalWorkflow.Functions
             var certificateName = configuration["AzureAd:CertificateName"];
             var siteUrl = configuration["SharePoint:SiteUrl"];
 
-            services.AddSingleton(sp =>
+            services.AddSingleton<ReloadableX509AuthenticationProvider>(sp =>
             {
                 var logger = sp.GetRequiredService<ILogger<ReloadableX509AuthenticationProvider>>();
                 return new ReloadableX509AuthenticationProvider(
@@ -125,6 +126,8 @@ namespace LegalWorkflow.Functions
                     certificateName!,
                     logger);
             });
+            services.AddSingleton<IAuthenticationProvider>(sp =>
+                sp.GetRequiredService<ReloadableX509AuthenticationProvider>());
 
             // Configure PnP Core with retry/resilience settings
             services.AddPnPCore(options =>
@@ -181,7 +184,12 @@ namespace LegalWorkflow.Functions
 
             // Wire up the auth provider after DI is fully configured — avoids BuildServiceProvider() anti-pattern
             services.AddOptions<PnPCoreOptions>()
-                .PostConfigure<ReloadableX509AuthenticationProvider>((options, provider) =>
+                .Configure<IAuthenticationProvider>((options, provider) =>
+                {
+                    options.DefaultAuthenticationProvider = provider;
+                });
+            services.AddOptions<PnPContextFactoryOptions>()
+                .Configure<IAuthenticationProvider>((options, provider) =>
                 {
                     options.DefaultAuthenticationProvider = provider;
                 });
