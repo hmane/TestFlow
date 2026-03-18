@@ -12,7 +12,9 @@ using System;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Linq;
+using System.Net.Http;
 using System.Security.Claims;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
@@ -41,6 +43,7 @@ namespace LegalWorkflow.Functions.Helpers
         private readonly string _clientId;
         private readonly string _audience;
         private readonly ConfigurationManager<OpenIdConnectConfiguration> _configManager;
+        private static readonly TimeSpan OpenIdMetadataTimeout = TimeSpan.FromSeconds(15);
 
         /// <summary>
         /// Creates a new AuthorizationHelper instance.
@@ -62,10 +65,14 @@ namespace LegalWorkflow.Functions.Helpers
 
             // Configure OpenID Connect metadata endpoint for token validation
             var metadataAddress = $"https://login.microsoftonline.com/{_tenantId}/v2.0/.well-known/openid-configuration";
+            var metadataHttpClient = new HttpClient
+            {
+                Timeout = OpenIdMetadataTimeout
+            };
             _configManager = new ConfigurationManager<OpenIdConnectConfiguration>(
                 metadataAddress,
                 new OpenIdConnectConfigurationRetriever(),
-                new HttpDocumentRetriever());
+                new HttpDocumentRetriever(metadataHttpClient));
         }
 
         /// <summary>
@@ -89,7 +96,8 @@ namespace LegalWorkflow.Functions.Helpers
                 var token = authHeader.Substring("Bearer ".Length).Trim();
 
                 // Get the OpenID Connect configuration (signing keys)
-                var config = await _configManager.GetConfigurationAsync();
+                using var metadataTimeoutCts = new CancellationTokenSource(OpenIdMetadataTimeout);
+                var config = await _configManager.GetConfigurationAsync(metadataTimeoutCts.Token);
 
                 // Configure token validation parameters
                 var validationParameters = new TokenValidationParameters
@@ -149,6 +157,11 @@ namespace LegalWorkflow.Functions.Helpers
                 // in the response — it may contain clues useful for token-forgery attacks.
                 _logger.LogWarning("Token validation failed: {Message}", ex.Message);
                 return AuthorizationResult.Unauthorized("Token validation failed");
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogError("Token validation timed out while retrieving Azure AD metadata");
+                return AuthorizationResult.Unauthorized("Token validation timed out");
             }
             catch (Exception ex)
             {

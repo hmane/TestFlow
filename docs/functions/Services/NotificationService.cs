@@ -453,7 +453,7 @@ namespace LegalWorkflow.Functions.Services
                 Bcc = bccRecipients,
                 Importance = template.Importance,
                 RequestId = request.Id,
-                RequestTitle = request.Title,
+                RequestTitle = GetDisplayRequestTitle(request),
                 Category = template.Category,
                 Trigger = MapNotificationToTrigger(notificationId)
             };
@@ -475,7 +475,7 @@ namespace LegalWorkflow.Functions.Services
 
             // System fields
             result = result.Replace("{{RequestId}}", request.Title);
-            result = result.Replace("{{RequestTitle}}", request.Title);
+            result = result.Replace("{{RequestTitle}}", GetDisplayRequestTitle(request));
             result = result.Replace("{{Status}}", FormatStatus(request.Status));
             result = result.Replace("{{SubmittedBy}}", request.SubmittedBy?.Title ?? "Unknown");
             result = result.Replace("{{SubmitterName}}", request.SubmittedBy?.Title ?? "Unknown"); // Template alias
@@ -1094,6 +1094,13 @@ namespace LegalWorkflow.Functions.Services
         private async Task<PnPContext> CreateContextAsync()
         {
             return await SharePointContextHelper.CreateContextAsync(_contextFactory, _siteUri, _authenticationProvider);
+        }
+
+        private static string GetDisplayRequestTitle(RequestModel request)
+        {
+            return !string.IsNullOrWhiteSpace(request.RequestTitle)
+                ? request.RequestTitle
+                : request.Title;
         }
 
         [GeneratedRegex(@"\{\{#if\s+(\w+)\}\}(.*?)\{\{/if\}\}", RegexOptions.Singleline)]

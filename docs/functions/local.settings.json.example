@@ -16,6 +16,9 @@
     "SharePoint:RequestsListName": "Requests",
     "SharePoint:NotificationsListName": "Notifications",
     "SharePoint:DocumentsLibraryName": "RequestDocuments",
+    "SharePoint:RequestTimeoutSeconds": "30",
+    "SharePoint:MaxRetries": "3",
+    "SharePoint:RetryDelaySeconds": "2",
 
     "_comment_notifications": "Notification settings (group recipients resolved from SharePoint groups)",
     "Notifications:EnableDebugLogging": "false",

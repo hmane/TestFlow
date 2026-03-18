@@ -23,6 +23,9 @@ namespace LegalWorkflow.Functions.Models
         /// <summary>Request ID (auto-generated, e.g., "LRQ-2024-001234")</summary>
         public string Title { get; set; } = string.Empty;
 
+        /// <summary>Human-readable request title/name entered by the submitter</summary>
+        public string RequestTitle { get; set; } = string.Empty;
+
         /// <summary>SharePoint item version number for concurrency</summary>
         public string Version { get; set; } = string.Empty;
 

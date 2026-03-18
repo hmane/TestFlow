@@ -28,6 +28,7 @@ namespace LegalWorkflow.Functions.Services
         private readonly CertificateClient _certificateClient;
         private readonly ILogger<ReloadableX509AuthenticationProvider> _logger;
         private readonly SemaphoreSlim _refreshLock = new(1, 1);
+        private static readonly TimeSpan CertificateDownloadTimeout = TimeSpan.FromSeconds(30);
 
         private volatile IAuthenticationProvider? _innerProvider;
         private volatile CertificateLoadInfo? _currentCertificate;
@@ -162,7 +163,8 @@ namespace LegalWorkflow.Functions.Services
 
         private async Task<X509Certificate2> DownloadCertificateAsync()
         {
-            var response = await _certificateClient.DownloadCertificateAsync(_certificateName);
+            using var timeoutCts = new CancellationTokenSource(CertificateDownloadTimeout);
+            var response = await _certificateClient.DownloadCertificateAsync(_certificateName, version: null, cancellationToken: timeoutCts.Token);
             return response.Value;
         }
     }

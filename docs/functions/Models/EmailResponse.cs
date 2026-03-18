@@ -63,8 +63,8 @@ namespace LegalWorkflow.Functions.Models
         public int RequestId { get; set; }
 
         /// <summary>
-        /// The Request ID (Title) for display purposes.
-        /// Example: "LRQ-2024-001234"
+        /// The human-readable request title for display purposes.
+        /// Falls back to the request ID when no separate title is available.
         /// </summary>
         public string RequestTitle { get; set; } = string.Empty;
 

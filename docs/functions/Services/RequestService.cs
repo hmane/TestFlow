@@ -77,7 +77,7 @@ namespace LegalWorkflow.Functions.Services
                 // Map SharePoint item to RequestModel
                 var request = MapItemToRequest(item);
 
-                _logger.SetRequestContext(request.Id, request.Title);
+                _logger.SetRequestContext(request.Id, GetRequestContextTitle(request));
                 _logger.Info("Request loaded successfully", new { FieldCount = item.Values.Count });
 
                 tracker.Complete(true);
@@ -253,35 +253,39 @@ namespace LegalWorkflow.Functions.Services
         /// </summary>
         private RequestModel MapItemToRequest(IListItem item)
         {
+            var created = GetFieldValue<DateTime>(item, RequestsFields.Created);
+            var submittedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.SubmittedOn);
+
             return new RequestModel
             {
                 // System fields
                 Id = item.Id,
-                Title = GetFieldValue<string>(item, RequestsFields.Title) ?? string.Empty,
+                Title = GetFieldTextValue(item, RequestsFields.Title),
+                RequestTitle = GetFieldTextValue(item, RequestsFields.RequestTitle),
                 Version = item.Values.ContainsKey(RequestsFields.UIVersionString)
                     ? item.Values[RequestsFields.UIVersionString]?.ToString() ?? "1.0"
                     : "1.0",
-                Created = GetFieldValue<DateTime>(item, RequestsFields.Created),
+                Created = created,
                 Modified = GetFieldValue<DateTime>(item, RequestsFields.Modified),
 
                 // Request Information
-                RequestType = ParseEnum<RequestType>(GetFieldValue<string>(item, RequestsFields.RequestType), RequestType.Communication),
-                SubmissionType = ParseEnum<SubmissionType>(GetFieldValue<string>(item, RequestsFields.SubmissionType), SubmissionType.New),
-                SubmissionItem = GetFieldValue<string>(item, RequestsFields.SubmissionItem) ?? string.Empty,
-                Purpose = GetFieldValue<string>(item, RequestsFields.Purpose) ?? string.Empty,
+                RequestType = ParseEnum<RequestType>(GetFieldTextValue(item, RequestsFields.RequestType), RequestType.Communication),
+                SubmissionType = ParseEnum<SubmissionType>(GetFieldTextValue(item, RequestsFields.SubmissionType), SubmissionType.New),
+                SubmissionItem = GetFieldTextValue(item, RequestsFields.SubmissionItem),
+                Purpose = GetFieldTextValue(item, RequestsFields.Purpose),
                 TargetReturnDate = GetFieldValueNullable<DateTime>(item, RequestsFields.TargetReturnDate),
-                RequestedDate = GetFieldValueNullable<DateTime>(item, RequestsFields.SubmittedOn), // RequestedDate maps to SubmittedOn
+                RequestedDate = submittedOn ?? created,
                 IsRushRequest = GetFieldValue<bool>(item, RequestsFields.IsRushRequest),
-                RushRationale = GetFieldValue<string>(item, RequestsFields.RushRationale) ?? string.Empty,
-                ReviewAudience = ParseEnum<ReviewAudience>(GetFieldValue<string>(item, RequestsFields.ReviewAudience), ReviewAudience.Both),
+                RushRationale = GetFieldTextValue(item, RequestsFields.RushRationale),
+                ReviewAudience = ParseEnum<ReviewAudience>(GetFieldTextValue(item, RequestsFields.ReviewAudience), ReviewAudience.Both),
 
                 // FINRA & Audience
-                FINRAAudienceCategory = GetFieldValue<string>(item, RequestsFields.FINRAAudienceCategory) ?? string.Empty,
-                Audience = GetFieldValue<string>(item, RequestsFields.Audience) ?? string.Empty,
+                FINRAAudienceCategory = GetFieldTextValue(item, RequestsFields.FINRAAudienceCategory),
+                Audience = GetFieldTextValue(item, RequestsFields.Audience),
                 USFunds = ParseMultiChoice(GetFieldValue<object>(item, RequestsFields.USFunds)),
                 UCITS = ParseMultiChoice(GetFieldValue<object>(item, RequestsFields.UCITS)),
-                SeparateAccountStrategies = GetFieldValue<string>(item, RequestsFields.SeparateAcctStrategies) ?? string.Empty,
-                SeparateAccountStrategiesIncludes = GetFieldValue<string>(item, RequestsFields.SeparateAcctStrategiesIncl) ?? string.Empty,
+                SeparateAccountStrategies = GetFieldTextValue(item, RequestsFields.SeparateAcctStrategies),
+                SeparateAccountStrategiesIncludes = GetFieldTextValue(item, RequestsFields.SeparateAcctStrategiesIncl),
 
                 // Distribution
                 DistributionMethods = ParseDistributionMethods(GetFieldValue<object>(item, RequestsFields.DistributionMethod)),
@@ -290,19 +294,19 @@ namespace LegalWorkflow.Functions.Services
 
                 // Legal Intake
                 Attorneys = ParseMultiUserField(item, RequestsFields.Attorney),
-                AttorneyAssignNotes = GetFieldValue<string>(item, RequestsFields.AttorneyAssignNotes) ?? string.Empty,
+                AttorneyAssignNotes = GetFieldTextValue(item, RequestsFields.AttorneyAssignNotes),
 
                 // Legal Review
-                LegalReviewStatus = ParseEnum<ReviewStatus>(GetFieldValue<string>(item, RequestsFields.LegalReviewStatus), ReviewStatus.NotStarted),
-                LegalReviewOutcome = ParseEnum<ReviewOutcome>(GetFieldValue<string>(item, RequestsFields.LegalReviewOutcome), ReviewOutcome.None),
-                LegalReviewNotes = GetFieldValue<string>(item, RequestsFields.LegalReviewNotes) ?? string.Empty,
+                LegalReviewStatus = ParseEnum<ReviewStatus>(GetFieldTextValue(item, RequestsFields.LegalReviewStatus), ReviewStatus.NotStarted),
+                LegalReviewOutcome = ParseEnum<ReviewOutcome>(GetFieldTextValue(item, RequestsFields.LegalReviewOutcome), ReviewOutcome.None),
+                LegalReviewNotes = GetFieldTextValue(item, RequestsFields.LegalReviewNotes),
                 LegalStatusUpdatedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.LegalStatusUpdatedOn),
                 LegalReviewTime = GetFieldValueNullable<double>(item, RequestsFields.LegalReviewAttorneyHours),
 
                 // Compliance Review
-                ComplianceReviewStatus = ParseEnum<ReviewStatus>(GetFieldValue<string>(item, RequestsFields.ComplianceReviewStatus), ReviewStatus.NotStarted),
-                ComplianceReviewOutcome = ParseEnum<ReviewOutcome>(GetFieldValue<string>(item, RequestsFields.ComplianceReviewOutcome), ReviewOutcome.None),
-                ComplianceReviewNotes = GetFieldValue<string>(item, RequestsFields.ComplianceReviewNotes) ?? string.Empty,
+                ComplianceReviewStatus = ParseEnum<ReviewStatus>(GetFieldTextValue(item, RequestsFields.ComplianceReviewStatus), ReviewStatus.NotStarted),
+                ComplianceReviewOutcome = ParseEnum<ReviewOutcome>(GetFieldTextValue(item, RequestsFields.ComplianceReviewOutcome), ReviewOutcome.None),
+                ComplianceReviewNotes = GetFieldTextValue(item, RequestsFields.ComplianceReviewNotes),
                 ComplianceStatusUpdatedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.ComplianceStatusUpdatedOn),
                 ComplianceReviewTime = GetFieldValueNullable<double>(item, RequestsFields.ComplianceReviewReviewerHours),
                 IsForesideReviewRequired = GetFieldValue<bool>(item, RequestsFields.IsForesideReviewRequired),
@@ -310,18 +314,19 @@ namespace LegalWorkflow.Functions.Services
                 IsRetailUse = GetFieldValue<bool>(item, RequestsFields.IsRetailUse),
 
                 // Closeout
-                TrackingId = GetFieldValue<string>(item, RequestsFields.TrackingId) ?? string.Empty,
+                TrackingId = GetFieldTextValue(item, RequestsFields.TrackingId),
 
                 // System Tracking
-                Status = ParseEnum<RequestStatus>(GetFieldValue<string>(item, RequestsFields.Status), RequestStatus.Draft),
+                Status = ParseEnum<RequestStatus>(GetFieldTextValue(item, RequestsFields.Status), RequestStatus.Draft),
+                PreviousStatus = ParseNullableEnum<RequestStatus>(GetFieldTextValue(item, RequestsFields.PreviousStatus)),
                 SubmittedBy = ParseUserField(item, RequestsFields.SubmittedBy),
-                SubmittedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.SubmittedOn),
+                SubmittedOn = submittedOn,
                 IsOnHold = GetFieldValue<bool>(item, RequestsFields.IsOnHold),
-                HoldReason = GetFieldValue<string>(item, RequestsFields.OnHoldReason) ?? string.Empty,
+                HoldReason = GetFieldTextValue(item, RequestsFields.OnHoldReason),
                 HoldDate = GetFieldValueNullable<DateTime>(item, RequestsFields.OnHoldSince),
                 CompletedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.CloseoutOn),
                 CancelledOn = GetFieldValueNullable<DateTime>(item, RequestsFields.CancelledOn),
-                CancellationReason = GetFieldValue<string>(item, RequestsFields.CancelReason) ?? string.Empty,
+                CancellationReason = GetFieldTextValue(item, RequestsFields.CancelReason),
 
                 // Additional Parties
                 AdditionalParties = ParseMultiUserField(item, RequestsFields.AdditionalParty),
@@ -456,6 +461,109 @@ namespace LegalWorkflow.Functions.Services
             }
 
             return defaultValue;
+        }
+
+        /// <summary>
+        /// Parses a nullable enum value from a string.
+        /// </summary>
+        private TEnum? ParseNullableEnum<TEnum>(string? value) where TEnum : struct, Enum
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            if (TryParseEnum(value, out TEnum result))
+            {
+                return result;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Gets the text representation of a field, including lookup-backed fields.
+        /// Falls back to FieldValuesAsText when the raw value is a complex SharePoint type.
+        /// </summary>
+        private string GetFieldTextValue(IListItem item, string fieldName)
+        {
+            if (item.Values.TryGetValue(fieldName, out var value) && value != null)
+            {
+                if (value is string textValue)
+                {
+                    return textValue;
+                }
+
+                if (value is IFieldLookupValue lookupValue && !string.IsNullOrWhiteSpace(lookupValue.LookupValue))
+                {
+                    return lookupValue.LookupValue;
+                }
+
+                if (value is IFieldUserValue userValue && !string.IsNullOrWhiteSpace(userValue.LookupValue))
+                {
+                    return userValue.LookupValue;
+                }
+
+                if (value is IDictionary<string, object> lookupDict &&
+                    lookupDict.TryGetValue("LookupValue", out var lookupText) &&
+                    lookupText != null)
+                {
+                    return lookupText.ToString() ?? string.Empty;
+                }
+
+                if (TryGetFieldValueAsText(item, fieldName, out var fieldTextValue))
+                {
+                    return fieldTextValue;
+                }
+            }
+
+            return TryGetFieldValueAsText(item, fieldName, out var fallbackValue)
+                ? fallbackValue
+                : string.Empty;
+        }
+
+        private static bool TryGetFieldValueAsText(IListItem item, string fieldName, out string value)
+        {
+            value = string.Empty;
+
+            var fieldValuesAsText = item.FieldValuesAsText;
+            if (fieldValuesAsText == null)
+            {
+                return false;
+            }
+
+            var valuesProperty = fieldValuesAsText.GetType().GetProperty("Values");
+            if (valuesProperty?.GetValue(fieldValuesAsText) is IDictionary<string, string> stringValues &&
+                stringValues.TryGetValue(fieldName, out var stringValue))
+            {
+                value = stringValue ?? string.Empty;
+                return true;
+            }
+
+            if (valuesProperty?.GetValue(fieldValuesAsText) is IDictionary<string, object> objectValues &&
+                objectValues.TryGetValue(fieldName, out var objectValue) &&
+                objectValue != null)
+            {
+                value = objectValue.ToString() ?? string.Empty;
+                return true;
+            }
+
+            var indexerProperty = fieldValuesAsText.GetType().GetProperty("Item", new[] { typeof(string) });
+            var indexedValue = indexerProperty?.GetValue(fieldValuesAsText, new object[] { fieldName });
+            if (indexedValue != null)
+            {
+                value = indexedValue.ToString() ?? string.Empty;
+                return true;
+            }
+
+            return false;
+        }
+
+        private static string GetRequestContextTitle(RequestModel request)
+        {
+            return !string.IsNullOrWhiteSpace(request.RequestTitle)
+                ? request.RequestTitle
+                : request.Title;
         }
 
         /// <summary>

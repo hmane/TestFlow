@@ -59,7 +59,7 @@ namespace LegalWorkflow.Functions
         /// </summary>
         [Function("FlushCertificateCache")]
         public async Task<IActionResult> FlushCertificateCache(
-            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "admin/certificate-cache/flush")] HttpRequest req)
+            [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "management/certificate-cache/flush")] HttpRequest req)
         {
             var logger = new Logger(_logger, "FlushCertificateCache");
             logger.Info("Certificate cache flush request received");

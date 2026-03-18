@@ -116,6 +116,9 @@ namespace LegalWorkflow.Functions
             var keyVaultUrl = configuration["AzureAd:KeyVaultUrl"];
             var certificateName = configuration["AzureAd:CertificateName"];
             var siteUrl = configuration["SharePoint:SiteUrl"];
+            var sharePointRequestTimeoutSeconds = GetIntSetting(configuration, "SharePoint:RequestTimeoutSeconds", defaultValue: 30, minValue: 5, maxValue: 300);
+            var sharePointMaxRetries = GetIntSetting(configuration, "SharePoint:MaxRetries", defaultValue: 3, minValue: 0, maxValue: 10);
+            var sharePointRetryDelaySeconds = GetIntSetting(configuration, "SharePoint:RetryDelaySeconds", defaultValue: 2, minValue: 1, maxValue: 30);
 
             services.AddSingleton<ReloadableX509AuthenticationProvider>(sp =>
             {
@@ -152,8 +155,10 @@ namespace LegalWorkflow.Functions
                 // Configure HTTP retry settings for SharePoint REST API
                 options.HttpRequests = new PnPCoreHttpRequestsOptions
                 {
-                    // Timeout for individual HTTP requests (2 minutes)
-                    Timeout = 120,
+                    // Timeout for individual HTTP requests.
+                    // Keep this bounded so API callers get a fast failure instead of waiting
+                    // for a long SharePoint/PnP timeout when the upstream dependency is unhealthy.
+                    Timeout = sharePointRequestTimeoutSeconds,
                     // User agent for tracking
                     UserAgent = "LegalWorkflow/1.0",
                     // SharePoint REST API throttling settings
@@ -162,9 +167,9 @@ namespace LegalWorkflow.Functions
                         // Use retry-after header when throttled
                         UseRetryAfterHeader = true,
                         // Maximum retries for throttled requests (429, 503)
-                        MaxRetries = 10,
+                        MaxRetries = sharePointMaxRetries,
                         // Delay between retries (in seconds) - uses exponential backoff
-                        DelayInSeconds = 3,
+                        DelayInSeconds = sharePointRetryDelaySeconds,
                         // Use incremental delay (exponential backoff)
                         UseIncrementalDelay = true
                     },
@@ -174,9 +179,9 @@ namespace LegalWorkflow.Functions
                         // Use retry-after header when throttled
                         UseRetryAfterHeader = true,
                         // Maximum retries for throttled requests
-                        MaxRetries = 10,
+                        MaxRetries = sharePointMaxRetries,
                         // Delay between retries (in seconds)
-                        DelayInSeconds = 3,
+                        DelayInSeconds = sharePointRetryDelaySeconds,
                         // Use incremental delay (exponential backoff)
                         UseIncrementalDelay = true
                     }
@@ -198,6 +203,21 @@ namespace LegalWorkflow.Functions
                 {
                     options.DefaultAuthenticationProvider = provider;
                 });
+        }
+
+        private static int GetIntSetting(
+            IConfiguration configuration,
+            string key,
+            int defaultValue,
+            int minValue,
+            int maxValue)
+        {
+            if (!int.TryParse(configuration[key], out var parsedValue))
+            {
+                return defaultValue;
+            }
+
+            return Math.Clamp(parsedValue, minValue, maxValue);
         }
     }
 }
