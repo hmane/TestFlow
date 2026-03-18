@@ -21,6 +21,12 @@ namespace LegalWorkflow.Functions.Models
     public class SharePointListConfig
     {
         /// <summary>
+        /// Absolute URL of the target SharePoint site.
+        /// Config key: SharePoint:SiteUrl
+        /// </summary>
+        public string SiteUrl { get; set; } = string.Empty;
+
+        /// <summary>
         /// Title of the Requests list.
         /// Config key: SharePoint:RequestsListName
         /// </summary>

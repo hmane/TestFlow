@@ -35,9 +35,11 @@ namespace LegalWorkflow.Functions.Services
     public class SharePointAuthorizationService
     {
         private readonly IPnPContextFactory _contextFactory;
+        private readonly IAuthenticationProvider _authenticationProvider;
         private readonly Logger _logger;
         private readonly PermissionGroupConfig _groupConfig;
         private readonly SharePointListConfig _listConfig;
+        private readonly Uri _siteUri;
 
         /// <summary>
         /// Creates a new SharePointAuthorizationService instance.
@@ -48,14 +50,17 @@ namespace LegalWorkflow.Functions.Services
         /// <param name="listConfig">SharePoint list name configuration (optional)</param>
         public SharePointAuthorizationService(
             IPnPContextFactory contextFactory,
+            IAuthenticationProvider authenticationProvider,
             Logger logger,
             PermissionGroupConfig groupConfig,
             SharePointListConfig? listConfig = null)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
+            _authenticationProvider = authenticationProvider ?? throw new ArgumentNullException(nameof(authenticationProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _groupConfig = groupConfig ?? throw new ArgumentNullException(nameof(groupConfig));
             _listConfig = listConfig ?? new SharePointListConfig();
+            _siteUri = SharePointContextHelper.GetRequiredSiteUri(_listConfig);
         }
 
         /// <summary>
@@ -150,7 +155,7 @@ namespace LegalWorkflow.Functions.Services
 
             try
             {
-                using var context = await _contextFactory.CreateAsync("Default");
+                using var context = await CreateContextAsync();
 
                 var resolvedUser = await ResolveUserAsync(context, userInfo);
                 if (resolvedUser == null)
@@ -250,6 +255,11 @@ namespace LegalWorkflow.Functions.Services
             }
 
             return null;
+        }
+
+        private async Task<PnPContext> CreateContextAsync()
+        {
+            return await SharePointContextHelper.CreateContextAsync(_contextFactory, _siteUri, _authenticationProvider);
         }
     }
 

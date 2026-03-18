@@ -48,6 +48,7 @@ namespace LegalWorkflow.Functions
         private readonly PermissionGroupConfig _groupConfig;
         private readonly SharePointListConfig _listConfig;
         private readonly AuthorizationHelper _authorizationHelper;
+        private readonly IAuthenticationProvider _authenticationProvider;
         private readonly JsonSerializerOptions _jsonOptions;
 
         public PermissionFunctions(
@@ -55,13 +56,15 @@ namespace LegalWorkflow.Functions
             ILogger<PermissionFunctions> logger,
             PermissionGroupConfig groupConfig,
             SharePointListConfig listConfig,
-            AuthorizationHelper authorizationHelper)
+            AuthorizationHelper authorizationHelper,
+            IAuthenticationProvider authenticationProvider)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _groupConfig = groupConfig ?? throw new ArgumentNullException(nameof(groupConfig));
             _listConfig = listConfig ?? throw new ArgumentNullException(nameof(listConfig));
             _authorizationHelper = authorizationHelper ?? throw new ArgumentNullException(nameof(authorizationHelper));
+            _authenticationProvider = authenticationProvider ?? throw new ArgumentNullException(nameof(authenticationProvider));
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
@@ -89,7 +92,7 @@ namespace LegalWorkflow.Functions
             try
             {
                 // Step 1: Authenticate
-                var authResult = await AuthenticateAsync(req, logger);
+                var authResult = await AuthenticateAsync(req);
                 if (!authResult.IsAuthorized)
                 {
                     logger.LogAuditSummary("InitializePermissions", "Unauthorized", authResult.ErrorMessage ?? "Token validation failed");
@@ -141,7 +144,7 @@ namespace LegalWorkflow.Functions
                 });
 
                 // Step 4: Execute
-                var permissionService = new PermissionService(_contextFactory, logger, _groupConfig, _listConfig);
+                var permissionService = new PermissionService(_contextFactory, _authenticationProvider, logger, _groupConfig, _listConfig);
                 var result = await permissionService.InitializePermissionsAsync(request);
 
                 if (result.Success)
@@ -184,7 +187,7 @@ namespace LegalWorkflow.Functions
             try
             {
                 // Step 1: Authenticate
-                var authResult = await AuthenticateAsync(req, logger);
+                var authResult = await AuthenticateAsync(req);
                 if (!authResult.IsAuthorized)
                 {
                     logger.LogAuditSummary("AddUserPermission", "Unauthorized", authResult.ErrorMessage ?? "Token validation failed");
@@ -237,7 +240,7 @@ namespace LegalWorkflow.Functions
                 });
 
                 // Step 4: Execute
-                var permissionService = new PermissionService(_contextFactory, logger, _groupConfig, _listConfig);
+                var permissionService = new PermissionService(_contextFactory, _authenticationProvider, logger, _groupConfig, _listConfig);
                 var result = await permissionService.AddUserPermissionAsync(request);
 
                 if (result.Success)
@@ -280,7 +283,7 @@ namespace LegalWorkflow.Functions
             try
             {
                 // Step 1: Authenticate
-                var authResult = await AuthenticateAsync(req, logger);
+                var authResult = await AuthenticateAsync(req);
                 if (!authResult.IsAuthorized)
                 {
                     logger.LogAuditSummary("RemoveUserPermission", "Unauthorized", authResult.ErrorMessage ?? "Token validation failed");
@@ -333,7 +336,7 @@ namespace LegalWorkflow.Functions
                 });
 
                 // Step 4: Execute
-                var permissionService = new PermissionService(_contextFactory, logger, _groupConfig, _listConfig);
+                var permissionService = new PermissionService(_contextFactory, _authenticationProvider, logger, _groupConfig, _listConfig);
                 var result = await permissionService.RemoveUserPermissionAsync(request);
 
                 if (result.Success)
@@ -375,7 +378,7 @@ namespace LegalWorkflow.Functions
             try
             {
                 // Step 1: Authenticate
-                var authResult = await AuthenticateAsync(req, logger);
+                var authResult = await AuthenticateAsync(req);
                 if (!authResult.IsAuthorized)
                 {
                     logger.LogAuditSummary("CompletePermissions", "Unauthorized", authResult.ErrorMessage ?? "Token validation failed");
@@ -426,7 +429,7 @@ namespace LegalWorkflow.Functions
                 });
 
                 // Step 4: Execute
-                var permissionService = new PermissionService(_contextFactory, logger, _groupConfig, _listConfig);
+                var permissionService = new PermissionService(_contextFactory, _authenticationProvider, logger, _groupConfig, _listConfig);
                 var result = await permissionService.CompletePermissionsAsync(request);
 
                 if (result.Success)
@@ -452,7 +455,7 @@ namespace LegalWorkflow.Functions
 
         #region Private Helper Methods
 
-        private async Task<AuthorizationResult> AuthenticateAsync(HttpRequest request, Logger logger)
+        private async Task<AuthorizationResult> AuthenticateAsync(HttpRequest request)
         {
             return await _authorizationHelper.ValidateTokenAsync(request);
         }
@@ -462,7 +465,7 @@ namespace LegalWorkflow.Functions
             int requestId,
             Logger logger)
         {
-            var authzService = new SharePointAuthorizationService(_contextFactory, logger, _groupConfig, _listConfig);
+            var authzService = new SharePointAuthorizationService(_contextFactory, _authenticationProvider, logger, _groupConfig, _listConfig);
             return await authzService.AuthorizeAsync(userInfo, requestId);
         }
 

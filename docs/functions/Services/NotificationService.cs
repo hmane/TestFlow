@@ -43,39 +43,22 @@ namespace LegalWorkflow.Functions.Services
     /// - ReadyForCloseout: Status → Closeout
     /// - RequestCompleted: Status → Completed
     /// </summary>
-    public class NotificationService
+    public partial class NotificationService
     {
         private readonly RequestService _requestService;
         private readonly IPnPContextFactory _contextFactory;
+        private readonly IAuthenticationProvider _authenticationProvider;
         private readonly PermissionGroupConfig _groupConfig;
         private readonly IMemoryCache _groupMembersCache;
         private readonly Logger _logger;
         private readonly NotificationConfig _config;
         private readonly SharePointListConfig _listConfig;
+        private readonly Uri _siteUri;
 
         /// <summary>
         /// Cache expiration time for group member emails (5 minutes).
         /// </summary>
         private static readonly TimeSpan GroupMembersCacheExpiration = TimeSpan.FromMinutes(5);
-
-        /// <summary>
-        /// Known group recipient aliases mapped to configuration values.
-        /// </summary>
-        private IEnumerable<KeyValuePair<string, string>> GroupRecipientMappings => new[]
-        {
-            new KeyValuePair<string, string>("SubmittersGroup", _groupConfig.SubmittersGroup),
-            new KeyValuePair<string, string>("Submitters", _groupConfig.SubmittersGroup),
-            new KeyValuePair<string, string>("LegalAdminGroup", _groupConfig.LegalAdminGroup),
-            new KeyValuePair<string, string>("LegalAdmin", _groupConfig.LegalAdminGroup),
-            new KeyValuePair<string, string>("AttorneyAssignerGroup", _groupConfig.AttorneyAssignerGroup),
-            new KeyValuePair<string, string>("AttorneyAssigner", _groupConfig.AttorneyAssignerGroup),
-            new KeyValuePair<string, string>("ComplianceGroup", _groupConfig.ComplianceGroup),
-            new KeyValuePair<string, string>("Compliance", _groupConfig.ComplianceGroup),
-            new KeyValuePair<string, string>("AdminGroup", _groupConfig.AdminGroup),
-            new KeyValuePair<string, string>("Admin", _groupConfig.AdminGroup),
-            new KeyValuePair<string, string>("AttorneysGroup", _groupConfig.AttorneysGroup),
-            new KeyValuePair<string, string>("Attorneys", _groupConfig.AttorneysGroup)
-        };
 
         /// <summary>
         /// Creates a new NotificationService instance.
@@ -90,6 +73,7 @@ namespace LegalWorkflow.Functions.Services
         public NotificationService(
             RequestService requestService,
             IPnPContextFactory contextFactory,
+            IAuthenticationProvider authenticationProvider,
             PermissionGroupConfig groupConfig,
             Logger logger,
             NotificationConfig? config = null,
@@ -98,11 +82,13 @@ namespace LegalWorkflow.Functions.Services
         {
             _requestService = requestService ?? throw new ArgumentNullException(nameof(requestService));
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
+            _authenticationProvider = authenticationProvider ?? throw new ArgumentNullException(nameof(authenticationProvider));
             _groupConfig = groupConfig ?? throw new ArgumentNullException(nameof(groupConfig));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _config = config ?? new NotificationConfig();
             _groupMembersCache = memoryCache ?? new MemoryCache(new MemoryCacheOptions());
             _listConfig = listConfig ?? new SharePointListConfig();
+            _siteUri = SharePointContextHelper.GetRequiredSiteUri(_listConfig);
         }
 
         /// <summary>
@@ -611,8 +597,7 @@ namespace LegalWorkflow.Functions.Services
             var result = ReplaceTokens(template, request);
 
             // Process conditionals: {{#if FieldName}}...{{/if}}
-            var conditionalPattern = @"\{\{#if\s+(\w+)\}\}(.*?)\{\{/if\}\}";
-            result = Regex.Replace(result, conditionalPattern, match =>
+            result = IfConditionalRegex().Replace(result, match =>
             {
                 var fieldName = match.Groups[1].Value;
                 var content = match.Groups[2].Value;
@@ -622,11 +607,10 @@ namespace LegalWorkflow.Functions.Services
                     return content;
                 }
                 return string.Empty;
-            }, RegexOptions.Singleline);
+            });
 
             // Process negative conditionals: {{#unless FieldName}}...{{/unless}}
-            var unlessPattern = @"\{\{#unless\s+(\w+)\}\}(.*?)\{\{/unless\}\}";
-            result = Regex.Replace(result, unlessPattern, match =>
+            result = UnlessConditionalRegex().Replace(result, match =>
             {
                 var fieldName = match.Groups[1].Value;
                 var content = match.Groups[2].Value;
@@ -636,7 +620,7 @@ namespace LegalWorkflow.Functions.Services
                     return content;
                 }
                 return string.Empty;
-            }, RegexOptions.Singleline);
+            });
 
             return result;
         }
@@ -721,13 +705,12 @@ namespace LegalWorkflow.Functions.Services
         /// </summary>
         private async Task<List<string>> ResolveRecipientsAsync(string recipientConfig, RequestModel request)
         {
-            var emails = new List<string>();
-
             if (string.IsNullOrEmpty(recipientConfig))
             {
-                return emails;
+                return new List<string>();
             }
 
+            var emails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var recipients = recipientConfig.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
 
             foreach (var recipient in recipients.Select(r => r.Trim()))
@@ -740,16 +723,13 @@ namespace LegalWorkflow.Functions.Services
                     // Email-based tokens (resolve from request data)
                     case "SubmitterEmail":
                     case "Submitter":
-                        if (!string.IsNullOrEmpty(request.SubmittedBy?.Email))
-                        {
-                            emails.Add(request.SubmittedBy.Email);
-                        }
+                        AddEmail(emails, request.SubmittedBy?.Email);
                         break;
 
                     case "AttorneyEmail":
                     case "AssignedAttorneyEmail":
                     case "Attorney":
-                        emails.AddRange(request.Attorneys
+                        AddEmails(emails, request.Attorneys
                             .Where(a => !string.IsNullOrEmpty(a.Email))
                             .Select(a => a.Email));
                         break;
@@ -757,7 +737,7 @@ namespace LegalWorkflow.Functions.Services
                     // Multi-value tokens
                     case "AdditionalPartyEmails":
                     case "AdditionalParties":
-                        emails.AddRange(request.AdditionalParties
+                        AddEmails(emails, request.AdditionalParties
                             .Where(u => !string.IsNullOrEmpty(u.Email))
                             .Select(u => u.Email));
                         break;
@@ -765,14 +745,14 @@ namespace LegalWorkflow.Functions.Services
                     default:
                         if (TryResolveConfiguredGroupName(resolvedRecipient, out var configuredGroupName))
                         {
-                            emails.AddRange(await GetGroupMemberEmailsAsync(configuredGroupName));
+                            AddEmails(emails, await GetGroupMemberEmailsAsync(configuredGroupName));
                             break;
                         }
 
                         // Assume it's a direct email address if it contains @
                         if (recipient.Contains("@"))
                         {
-                            emails.Add(recipient);
+                            AddEmail(emails, recipient);
                             break;
                         }
 
@@ -781,7 +761,7 @@ namespace LegalWorkflow.Functions.Services
                 }
             }
 
-            return emails.Distinct().ToList();
+            return emails.ToList();
         }
 
         /// <summary>
@@ -809,7 +789,7 @@ namespace LegalWorkflow.Functions.Services
 
             try
             {
-                using var context = await _contextFactory.CreateAsync("Default");
+                using var context = await CreateContextAsync();
 
                 var group = await context.Web.SiteGroups.FirstOrDefaultAsync(g => g.Title == normalizedGroupName);
 
@@ -825,7 +805,7 @@ namespace LegalWorkflow.Functions.Services
                 var memberEmails = group.Users.AsRequested()
                     .Where(u => !string.IsNullOrEmpty(u.Mail))
                     .Select(u => u.Mail)
-                    .Distinct()
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList();
 
                 _logger.Info($"Resolved {memberEmails.Count} email(s) from SharePoint group '{group.Title}'");
@@ -852,23 +832,67 @@ namespace LegalWorkflow.Functions.Services
         {
             var normalizedToken = NormalizeKey(token);
 
-            foreach (var mapping in GroupRecipientMappings)
+            groupName = GetConfiguredGroupNameByAlias(normalizedToken);
+            if (!string.IsNullOrWhiteSpace(groupName))
             {
-                if (NormalizeKey(mapping.Key) == normalizedToken)
-                {
-                    groupName = mapping.Value;
-                    return !string.IsNullOrWhiteSpace(groupName);
-                }
+                return true;
+            }
 
-                if (!string.IsNullOrWhiteSpace(mapping.Value) && NormalizeKey(mapping.Value) == normalizedToken)
-                {
-                    groupName = mapping.Value;
-                    return true;
-                }
+            if (MatchesConfiguredGroup(normalizedToken, _groupConfig.SubmittersGroup, out groupName) ||
+                MatchesConfiguredGroup(normalizedToken, _groupConfig.LegalAdminGroup, out groupName) ||
+                MatchesConfiguredGroup(normalizedToken, _groupConfig.AttorneyAssignerGroup, out groupName) ||
+                MatchesConfiguredGroup(normalizedToken, _groupConfig.ComplianceGroup, out groupName) ||
+                MatchesConfiguredGroup(normalizedToken, _groupConfig.AdminGroup, out groupName) ||
+                MatchesConfiguredGroup(normalizedToken, _groupConfig.AttorneysGroup, out groupName))
+            {
+                return true;
             }
 
             groupName = string.Empty;
             return false;
+        }
+
+        private string GetConfiguredGroupNameByAlias(string normalizedToken)
+        {
+            return normalizedToken switch
+            {
+                "submittersgroup" or "submitters" => _groupConfig.SubmittersGroup,
+                "legaladmingroup" or "legaladmin" => _groupConfig.LegalAdminGroup,
+                "attorneyassignergroup" or "attorneyassigner" => _groupConfig.AttorneyAssignerGroup,
+                "compliancegroup" or "compliance" => _groupConfig.ComplianceGroup,
+                "admingroup" or "admin" => _groupConfig.AdminGroup,
+                "attorneysgroup" or "attorneys" => _groupConfig.AttorneysGroup,
+                _ => string.Empty
+            };
+        }
+
+        private static bool MatchesConfiguredGroup(string normalizedToken, string configuredGroupName, out string groupName)
+        {
+            if (!string.IsNullOrWhiteSpace(configuredGroupName) &&
+                NormalizeKey(configuredGroupName) == normalizedToken)
+            {
+                groupName = configuredGroupName;
+                return true;
+            }
+
+            groupName = string.Empty;
+            return false;
+        }
+
+        private static void AddEmail(ISet<string> emails, string? email)
+        {
+            if (!string.IsNullOrWhiteSpace(email))
+            {
+                emails.Add(email);
+            }
+        }
+
+        private static void AddEmails(ISet<string> emails, IEnumerable<string> candidates)
+        {
+            foreach (var candidate in candidates)
+            {
+                AddEmail(emails, candidate);
+            }
         }
 
         /// <summary>
@@ -1066,6 +1090,17 @@ namespace LegalWorkflow.Functions.Services
                 _ => $"Status changed from {previousStatus} to {currentStatus}"
             };
         }
+
+        private async Task<PnPContext> CreateContextAsync()
+        {
+            return await SharePointContextHelper.CreateContextAsync(_contextFactory, _siteUri, _authenticationProvider);
+        }
+
+        [GeneratedRegex(@"\{\{#if\s+(\w+)\}\}(.*?)\{\{/if\}\}", RegexOptions.Singleline)]
+        private static partial Regex IfConditionalRegex();
+
+        [GeneratedRegex(@"\{\{#unless\s+(\w+)\}\}(.*?)\{\{/unless\}\}", RegexOptions.Singleline)]
+        private static partial Regex UnlessConditionalRegex();
 
         #endregion
     }

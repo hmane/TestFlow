@@ -65,6 +65,7 @@ namespace LegalWorkflow.Functions
                     {
                         return new SharePointListConfig
                         {
+                            SiteUrl = configuration["SharePoint:SiteUrl"] ?? string.Empty,
                             RequestsListName = configuration["SharePoint:RequestsListName"] ?? "Requests",
                             NotificationsListName = configuration["SharePoint:NotificationsListName"] ?? "Notifications",
                             DocumentsLibraryName = configuration["SharePoint:DocumentsLibraryName"] ?? "RequestDocuments"

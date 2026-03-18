@@ -56,6 +56,7 @@ namespace LegalWorkflow.Functions
         private readonly SharePointListConfig _listConfig;
         private readonly IMemoryCache _memoryCache;
         private readonly AuthorizationHelper _authorizationHelper;
+        private readonly IAuthenticationProvider _authenticationProvider;
         private readonly JsonSerializerOptions _jsonOptions;
 
         public NotificationFunctions(
@@ -65,7 +66,8 @@ namespace LegalWorkflow.Functions
             NotificationConfig notificationConfig,
             SharePointListConfig listConfig,
             IMemoryCache memoryCache,
-            AuthorizationHelper authorizationHelper)
+            AuthorizationHelper authorizationHelper,
+            IAuthenticationProvider authenticationProvider)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -74,6 +76,7 @@ namespace LegalWorkflow.Functions
             _listConfig = listConfig ?? throw new ArgumentNullException(nameof(listConfig));
             _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
             _authorizationHelper = authorizationHelper ?? throw new ArgumentNullException(nameof(authorizationHelper));
+            _authenticationProvider = authenticationProvider ?? throw new ArgumentNullException(nameof(authenticationProvider));
             _jsonOptions = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
@@ -97,7 +100,7 @@ namespace LegalWorkflow.Functions
             try
             {
                 // Step 1: Authenticate
-                var authResult = await AuthenticateAsync(req, logger);
+                var authResult = await AuthenticateAsync(req);
                 if (!authResult.IsAuthorized)
                 {
                     logger.LogAuditSummary("SendNotification", "Unauthorized", authResult.ErrorMessage ?? "Token validation failed");
@@ -142,9 +145,9 @@ namespace LegalWorkflow.Functions
 
                 // Step 4: Execute
                 var requestServiceLogger = new Logger(_logger, "RequestService");
-                var requestService = new RequestService(_contextFactory, requestServiceLogger, _listConfig);
+                var requestService = new RequestService(_contextFactory, _authenticationProvider, requestServiceLogger, _listConfig);
                 var notificationService = new NotificationService(
-                    requestService, _contextFactory, _groupConfig, logger, _notificationConfig, _memoryCache, _listConfig);
+                    requestService, _contextFactory, _authenticationProvider, _groupConfig, logger, _notificationConfig, _memoryCache, _listConfig);
 
                 var result = await notificationService.ProcessNotificationAsync(request);
 
@@ -200,7 +203,7 @@ namespace LegalWorkflow.Functions
 
         #region Private Helper Methods
 
-        private async Task<AuthorizationResult> AuthenticateAsync(HttpRequest request, Logger logger)
+        private async Task<AuthorizationResult> AuthenticateAsync(HttpRequest request)
         {
             return await _authorizationHelper.ValidateTokenAsync(request);
         }
@@ -210,7 +213,7 @@ namespace LegalWorkflow.Functions
             int requestId,
             Logger logger)
         {
-            var authzService = new SharePointAuthorizationService(_contextFactory, logger, _groupConfig, _listConfig);
+            var authzService = new SharePointAuthorizationService(_contextFactory, _authenticationProvider, logger, _groupConfig, _listConfig);
             return await authzService.AuthorizeAsync(userInfo, requestId);
         }
 

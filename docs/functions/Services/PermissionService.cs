@@ -46,9 +46,11 @@ namespace LegalWorkflow.Functions.Services
     public class PermissionService
     {
         private readonly IPnPContextFactory _contextFactory;
+        private readonly IAuthenticationProvider _authenticationProvider;
         private readonly Logger _logger;
         private readonly PermissionGroupConfig _groupConfig;
         private readonly SharePointListConfig _listConfig;
+        private readonly Uri _siteUri;
 
         /// <summary>
         /// Creates a new PermissionService instance.
@@ -57,12 +59,14 @@ namespace LegalWorkflow.Functions.Services
         /// <param name="logger">Logger instance for logging operations</param>
         /// <param name="groupConfig">Configuration for SharePoint group names</param>
         /// <param name="listConfig">SharePoint list name configuration (optional)</param>
-        public PermissionService(IPnPContextFactory contextFactory, Logger logger, PermissionGroupConfig? groupConfig = null, SharePointListConfig? listConfig = null)
+        public PermissionService(IPnPContextFactory contextFactory, IAuthenticationProvider authenticationProvider, Logger logger, PermissionGroupConfig? groupConfig = null, SharePointListConfig? listConfig = null)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
+            _authenticationProvider = authenticationProvider ?? throw new ArgumentNullException(nameof(authenticationProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _groupConfig = groupConfig ?? new PermissionGroupConfig();
             _listConfig = listConfig ?? new SharePointListConfig();
+            _siteUri = SharePointContextHelper.GetRequiredSiteUri(_listConfig);
         }
 
         /// <summary>
@@ -86,7 +90,7 @@ namespace LegalWorkflow.Functions.Services
 
             try
             {
-                using var context = await _contextFactory.CreateAsync("Default");
+                using var context = await CreateContextAsync();
 
                 // Load the request item once with all fields (used for both participant extraction
                 // and permission initialization — avoids a duplicate REST call).
@@ -143,7 +147,7 @@ namespace LegalWorkflow.Functions.Services
 
             try
             {
-                using var context = await _contextFactory.CreateAsync("Default");
+                using var context = await CreateContextAsync();
 
                 // Get Read role definition
                 var readRole = await context.Web.RoleDefinitions.FirstOrDefaultAsync(r => r.Name == RoleDefinitions.Read);
@@ -229,7 +233,7 @@ namespace LegalWorkflow.Functions.Services
 
             try
             {
-                using var context = await _contextFactory.CreateAsync("Default");
+                using var context = await CreateContextAsync();
 
                 // Get the user
                 var user = await context.Web.EnsureUserAsync(request.UserLoginName);
@@ -306,7 +310,7 @@ namespace LegalWorkflow.Functions.Services
 
             try
             {
-                using var context = await _contextFactory.CreateAsync("Default");
+                using var context = await CreateContextAsync();
 
                 // Get role definitions
                 var readRole = await context.Web.RoleDefinitions.FirstOrDefaultAsync(r => r.Name == RoleDefinitions.Read);
@@ -963,6 +967,11 @@ namespace LegalWorkflow.Functions.Services
             public string Email { get; init; } = string.Empty;
 
             public string LoginName { get; init; } = string.Empty;
+        }
+
+        private async Task<PnPContext> CreateContextAsync()
+        {
+            return await SharePointContextHelper.CreateContextAsync(_contextFactory, _siteUri, _authenticationProvider);
         }
 
         #endregion

@@ -24,8 +24,10 @@ namespace LegalWorkflow.Functions.Services
     public class RequestService
     {
         private readonly IPnPContextFactory _contextFactory;
+        private readonly IAuthenticationProvider _authenticationProvider;
         private readonly Logger _logger;
         private readonly SharePointListConfig _listConfig;
+        private readonly Uri _siteUri;
 
         /// <summary>
         /// Creates a new RequestService instance.
@@ -33,11 +35,13 @@ namespace LegalWorkflow.Functions.Services
         /// <param name="contextFactory">PnP Core context factory for SharePoint access</param>
         /// <param name="logger">Logger instance for logging operations</param>
         /// <param name="listConfig">SharePoint list name configuration (optional)</param>
-        public RequestService(IPnPContextFactory contextFactory, Logger logger, SharePointListConfig? listConfig = null)
+        public RequestService(IPnPContextFactory contextFactory, IAuthenticationProvider authenticationProvider, Logger logger, SharePointListConfig? listConfig = null)
         {
             _contextFactory = contextFactory ?? throw new ArgumentNullException(nameof(contextFactory));
+            _authenticationProvider = authenticationProvider ?? throw new ArgumentNullException(nameof(authenticationProvider));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _listConfig = listConfig ?? new SharePointListConfig();
+            _siteUri = SharePointContextHelper.GetRequiredSiteUri(_listConfig);
         }
 
         /// <summary>
@@ -52,7 +56,7 @@ namespace LegalWorkflow.Functions.Services
 
             try
             {
-                using var context = await _contextFactory.CreateAsync("Default");
+                using var context = await CreateContextAsync();
 
                 // Get the Requests list
                 var list = await context.Web.Lists.GetByTitleAsync(_listConfig.RequestsListName);
@@ -99,7 +103,7 @@ namespace LegalWorkflow.Functions.Services
 
             try
             {
-                using var context = await _contextFactory.CreateAsync("Default");
+                using var context = await CreateContextAsync();
 
                 var list = await context.Web.Lists.GetByTitleAsync(_listConfig.RequestsListName);
                 var item = await list.Items.GetByIdAsync(requestId);
@@ -170,7 +174,7 @@ namespace LegalWorkflow.Functions.Services
 
             try
             {
-                using var context = await _contextFactory.CreateAsync("Default");
+                using var context = await CreateContextAsync();
 
                 var list = await context.Web.Lists.GetByTitleAsync(_listConfig.NotificationsListName);
 
@@ -819,6 +823,11 @@ namespace LegalWorkflow.Functions.Services
                 ApprovedOn = approvedOn,
                 HasDocument = GetFieldValue<bool>(item, RequestsFields.HasOtherApproval)
             };
+        }
+
+        private async Task<PnPContext> CreateContextAsync()
+        {
+            return await SharePointContextHelper.CreateContextAsync(_contextFactory, _siteUri, _authenticationProvider);
         }
 
         #endregion
