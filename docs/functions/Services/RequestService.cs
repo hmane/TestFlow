@@ -208,7 +208,7 @@ namespace LegalWorkflow.Functions.Services
                 using var context = await CreateContextAsync();
 
                 var list = await context.Web.Lists.GetByTitleAsync(_listConfig.RequestsListName);
-                var item = await list.Items.GetByIdAsync(requestId, i => i.Versions);
+                var item = await list.Items.GetByIdAsync(requestId, i => i.Versions, i => i.All);
 
                 if (item.Versions == null || item.Versions.AsRequested().Count() < 2)
                 {
