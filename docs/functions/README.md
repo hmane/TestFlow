@@ -65,7 +65,7 @@ LegalWorkflow.Functions/
 | `/api/notifications/send` | POST | Process notification request | Power Automate |
 | `/api/notifications/health` | GET | Health check endpoint | Monitoring |
 | `/api/health` | GET | Application health check endpoint | Monitoring |
-| `/api/admin/certificate-cache/flush` | POST | Reload certificate from Key Vault without restart | Operations |
+| `/api/management/certificate-cache/flush` | POST | Reload certificate from Key Vault without restart | Operations |
 
 Note:
 
@@ -103,7 +103,7 @@ Note:
 | `remove-user` | Configured service account or authorized user with effective item edit permission | Bearer token required |
 | `complete` | Configured service account or authorized user with effective item edit permission | Bearer token required |
 | `notifications/send` | Configured service account or authorized user with effective item edit permission | Bearer token required |
-| `admin/certificate-cache/flush` | Configured service account only | Bearer token required |
+| `management/certificate-cache/flush` | Configured service account only | Bearer token required |
 
 ### SharePoint Groups
 
@@ -258,14 +258,14 @@ Recommended rotation procedure:
 
 1. Upload the new certificate version to Azure Key Vault using the same certificate name.
 2. Keep the old certificate valid during the overlap window.
-3. Option A: call `POST /api/admin/certificate-cache/flush` as the configured service account to reload the in-memory certificate on the worker instance that handles that request.
+3. Option A: call `POST /api/management/certificate-cache/flush` as the configured service account to reload the in-memory certificate on the worker instance that handles that request.
 4. Option B: restart the Azure Function App so all running instances reload the certificate from Key Vault.
 5. Verify the health endpoint and one authenticated SharePoint operation.
 6. Retire the old certificate after verification.
 
 Flush endpoint notes:
 
-- route: `/api/admin/certificate-cache/flush`
+- route: `/api/management/certificate-cache/flush`
 - method: `POST`
 - authentication: bearer token required
 - authorization: only the configured service account is allowed

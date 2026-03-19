@@ -27,7 +27,7 @@ Fill in these values in the environment editor:
 | `tenantId` | Azure AD Tenant ID (GUID) |
 | `clientId` | App Registration Client ID (GUID) |
 | `clientSecret` | Client secret — mark as **Secret** type, never commit |
-| `scope` | `api://<clientId>/.default` |
+| `scope` | Delegated scope exposed by your app registration, e.g. `api://<clientId>/access_as_user`. Must be a delegated scope — `.default` alone produces an app-only token that lacks `email`/`upn` claims and will 401. |
 
 ## Authentication
 

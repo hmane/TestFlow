@@ -5,8 +5,10 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections;
 using System.Linq;
 using System.Net;
+using System.Text.Json;
 using PnP.Core.Model.SharePoint;
 using PnP.Core.QueryModel;
 using PnP.Core.Services;
@@ -700,35 +702,19 @@ namespace LegalWorkflow.Functions.Services
                 return null;
             }
 
-            var userId = 0;
-            var title = string.Empty;
-            var email = string.Empty;
-            var loginName = string.Empty;
-
-            if (value is IFieldUserValue userValue)
-            {
-                try { userId = userValue.LookupId; } catch { }
-                try { title = userValue.LookupValue ?? string.Empty; } catch { }
-                try { email = userValue.Email ?? string.Empty; } catch { }
-                try { loginName = userValue.Principal?.LoginName ?? string.Empty; } catch { }
-            }
-            else if (value is IDictionary<string, object> lookupDict)
-            {
-                if (lookupDict.TryGetValue("LookupId", out var rawId)) userId = Convert.ToInt32(rawId);
-                if (lookupDict.TryGetValue("LookupValue", out var rawTitle)) title = rawTitle?.ToString() ?? string.Empty;
-                if (lookupDict.TryGetValue("Email", out var rawEmail)) email = rawEmail?.ToString() ?? string.Empty;
-            }
+            var user = ExtractUserInfos(value).FirstOrDefault();
 
             // FieldValuesAsText is the most reliable source for the display name — use it
             // as primary when populated; fall back only when it is also absent.
-            if (TryGetFieldValueAsText(item, fieldName, out var textTitle) && !string.IsNullOrEmpty(textTitle))
+            if (user != null &&
+                TryGetFieldValueAsText(item, fieldName, out var textTitle) &&
+                !string.IsNullOrEmpty(textTitle) &&
+                string.IsNullOrWhiteSpace(user.Title))
             {
-                title = textTitle;
+                user.Title = textTitle;
             }
 
-            return (userId == 0 && string.IsNullOrEmpty(title))
-                ? null
-                : new UserInfo { Id = userId, Title = title, Email = email, LoginName = loginName };
+            return IsMeaningfulUser(user) ? user : null;
         }
 
         /// <summary>
@@ -738,95 +724,70 @@ namespace LegalWorkflow.Functions.Services
         /// </summary>
         private static List<UserInfo> ParseMultiUserField(IListItem item, string fieldName)
         {
-            var users = new List<UserInfo>();
-
             if (!item.Values.TryGetValue(fieldName, out var value) || value == null)
             {
-                return users;
+                return new List<UserInfo>();
             }
 
-            if (value is IEnumerable<IFieldUserValue> userValues)
-            {
-                foreach (var userValue in userValues)
-                {
-                    var userId = 0;
-                    var title = string.Empty;
-                    var email = string.Empty;
-                    var loginName = string.Empty;
+            var users = ExtractUserInfos(value);
 
-                    try { userId = userValue.LookupId; } catch { }
-                    try { title = userValue.LookupValue ?? string.Empty; } catch { }
-                    try { email = userValue.Email ?? string.Empty; } catch { }
-                    try { loginName = userValue.Principal?.LoginName ?? string.Empty; } catch { }
-
-                    users.Add(new UserInfo { Id = userId, Title = title, Email = email, LoginName = loginName });
-                }
-            }
-            else if (value is IEnumerable<object> objectValues)
+            if (users.Count == 0 &&
+                TryGetFieldValueAsText(item, fieldName, out var textValue) &&
+                !string.IsNullOrWhiteSpace(textValue))
             {
-                foreach (var objectValue in objectValues)
-                {
-                    if (TryParseUserInfo(objectValue, out var user))
-                    {
-                        users.Add(user);
-                    }
-                }
+                users = ParseDelimitedUserTitles(textValue);
             }
 
             return users;
         }
 
-        private static bool TryParseUserInfo(object? value, out UserInfo user)
+        private static List<UserInfo> ExtractUserInfos(object? value)
         {
-            user = new UserInfo();
-
-            if (value == null)
+            if (value == null || value is string { Length: 0 })
             {
-                return false;
+                return new List<UserInfo>();
             }
 
             if (value is IFieldUserValue userValue)
             {
-                try { user.Id = userValue.LookupId; } catch { }
-                try { user.Title = userValue.LookupValue ?? string.Empty; } catch { }
-                try { user.Email = userValue.Email ?? string.Empty; } catch { }
-                try { user.LoginName = userValue.Principal?.LoginName ?? string.Empty; } catch { }
+                var typedUser = new UserInfo();
+                try { typedUser.Id = userValue.LookupId; } catch { }
+                try { typedUser.Title = userValue.LookupValue ?? string.Empty; } catch { }
+                try { typedUser.Email = userValue.Email ?? string.Empty; } catch { }
+                try { typedUser.LoginName = userValue.Principal?.LoginName ?? string.Empty; } catch { }
 
-                return user.Id != 0 ||
-                       !string.IsNullOrWhiteSpace(user.Title) ||
-                       !string.IsNullOrWhiteSpace(user.Email) ||
-                       !string.IsNullOrWhiteSpace(user.LoginName);
+                return IsMeaningfulUser(typedUser)
+                    ? new List<UserInfo> { typedUser }
+                    : new List<UserInfo>();
             }
 
             if (value is IDictionary<string, object> lookupDict)
             {
-                if (lookupDict.TryGetValue("LookupId", out var rawId) && rawId != null)
-                {
-                    try { user.Id = Convert.ToInt32(rawId); } catch { }
-                }
-
-                if (lookupDict.TryGetValue("LookupValue", out var rawTitle) && rawTitle != null)
-                {
-                    user.Title = rawTitle.ToString() ?? string.Empty;
-                }
-
-                if (lookupDict.TryGetValue("Email", out var rawEmail) && rawEmail != null)
-                {
-                    user.Email = rawEmail.ToString() ?? string.Empty;
-                }
-
-                if (lookupDict.TryGetValue("Name", out var rawLoginName) && rawLoginName != null)
-                {
-                    user.LoginName = rawLoginName.ToString() ?? string.Empty;
-                }
-
-                return user.Id != 0 ||
-                       !string.IsNullOrWhiteSpace(user.Title) ||
-                       !string.IsNullOrWhiteSpace(user.Email) ||
-                       !string.IsNullOrWhiteSpace(user.LoginName);
+                return ExtractUserInfosFromDictionary(lookupDict);
             }
 
-            return false;
+            if (value is JsonElement jsonElement)
+            {
+                return ExtractUserInfosFromJsonElement(jsonElement);
+            }
+
+            if (value is IEnumerable enumerable && value is not string)
+            {
+                var users = new List<UserInfo>();
+                foreach (var entry in enumerable)
+                {
+                    users.AddRange(ExtractUserInfos(entry));
+                }
+
+                return DeduplicateUsers(users);
+            }
+
+            if (value is string stringValue)
+            {
+                return ExtractUserInfosFromString(stringValue);
+            }
+
+            return new List<UserInfo>();
         }
 
         /// <summary>
@@ -836,47 +797,260 @@ namespace LegalWorkflow.Functions.Services
         /// </summary>
         private static List<UserInfo> ParseVersionMultiUserField(IListItemVersion version, string fieldName)
         {
-            var users = new List<UserInfo>();
-
             if (!version.Values.TryGetValue(fieldName, out var value) || value == null)
             {
-                return users;
+                return new List<UserInfo>();
             }
 
-            // Version history may store multi-user as semicolon-separated string
-            if (value is string stringValue && !string.IsNullOrEmpty(stringValue))
+            return ExtractUserInfos(value);
+        }
+
+        private static List<UserInfo> ExtractUserInfosFromDictionary(IDictionary<string, object> lookupDict)
+        {
+            if (TryParseUserFromDictionary(lookupDict, out var singleUser))
             {
-                var parts = stringValue.Split(';', StringSplitOptions.RemoveEmptyEntries);
-                foreach (var part in parts)
-                {
-                    var trimmed = part.Trim();
-                    if (!string.IsNullOrEmpty(trimmed) && !trimmed.StartsWith('#'))
-                    {
-                        users.Add(new UserInfo { Title = trimmed });
-                    }
-                }
-                return users;
+                return new List<UserInfo> { singleUser };
             }
 
-            if (value is IEnumerable<IFieldUserValue> userValues)
+            foreach (var collectionKey in new[] { "results", "Results", "value", "Value", "items", "Items" })
             {
-                foreach (var userValue in userValues)
+                if (lookupDict.TryGetValue(collectionKey, out var nested) && nested != null)
                 {
-                    var userId = 0;
-                    var title = string.Empty;
-                    var email = string.Empty;
-                    var loginName = string.Empty;
-
-                    try { userId = userValue.LookupId; } catch { }
-                    try { title = userValue.LookupValue ?? string.Empty; } catch { }
-                    try { email = userValue.Email ?? string.Empty; } catch { }
-                    try { loginName = userValue.Principal?.LoginName ?? string.Empty; } catch { }
-
-                    users.Add(new UserInfo { Id = userId, Title = title, Email = email, LoginName = loginName });
+                    return ExtractUserInfos(nested);
                 }
             }
 
-            return users;
+            return new List<UserInfo>();
+        }
+
+        private static bool TryParseUserFromDictionary(IDictionary<string, object> lookupDict, out UserInfo user)
+        {
+            user = new UserInfo();
+
+            if (TryGetDictionaryValue(lookupDict, "LookupId", out var rawId) ||
+                TryGetDictionaryValue(lookupDict, "Id", out rawId) ||
+                TryGetDictionaryValue(lookupDict, "ID", out rawId))
+            {
+                TryConvertToInt(rawId, out var userId);
+                user.Id = userId;
+            }
+
+            if (TryGetDictionaryValue(lookupDict, "LookupValue", out var rawTitle) ||
+                TryGetDictionaryValue(lookupDict, "Title", out rawTitle) ||
+                TryGetDictionaryValue(lookupDict, "title", out rawTitle) ||
+                TryGetDictionaryValue(lookupDict, "DisplayText", out rawTitle) ||
+                TryGetDictionaryValue(lookupDict, "displayName", out rawTitle))
+            {
+                user.Title = rawTitle?.ToString() ?? string.Empty;
+            }
+
+            if (TryGetDictionaryValue(lookupDict, "Email", out var rawEmail) ||
+                TryGetDictionaryValue(lookupDict, "EMail", out rawEmail) ||
+                TryGetDictionaryValue(lookupDict, "email", out rawEmail))
+            {
+                user.Email = rawEmail?.ToString() ?? string.Empty;
+            }
+
+            if (TryGetDictionaryValue(lookupDict, "Name", out var rawLoginName) ||
+                TryGetDictionaryValue(lookupDict, "LoginName", out rawLoginName) ||
+                TryGetDictionaryValue(lookupDict, "loginName", out rawLoginName) ||
+                TryGetDictionaryValue(lookupDict, "Claims", out rawLoginName))
+            {
+                user.LoginName = rawLoginName?.ToString() ?? string.Empty;
+            }
+
+            return IsMeaningfulUser(user);
+        }
+
+        private static bool TryGetDictionaryValue(IDictionary<string, object> dictionary, string key, out object? value)
+        {
+            foreach (var entry in dictionary)
+            {
+                if (string.Equals(entry.Key, key, StringComparison.OrdinalIgnoreCase))
+                {
+                    value = entry.Value;
+                    return true;
+                }
+            }
+
+            value = null;
+            return false;
+        }
+
+        private static List<UserInfo> ExtractUserInfosFromJsonElement(JsonElement jsonElement)
+        {
+            if (jsonElement.ValueKind == JsonValueKind.Null || jsonElement.ValueKind == JsonValueKind.Undefined)
+            {
+                return new List<UserInfo>();
+            }
+
+            if (jsonElement.ValueKind == JsonValueKind.Array)
+            {
+                var users = new List<UserInfo>();
+                foreach (var arrayEntry in jsonElement.EnumerateArray())
+                {
+                    users.AddRange(ExtractUserInfosFromJsonElement(arrayEntry));
+                }
+
+                return DeduplicateUsers(users);
+            }
+
+            if (jsonElement.ValueKind == JsonValueKind.Object)
+            {
+                var objectMap = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+                foreach (var property in jsonElement.EnumerateObject())
+                {
+                    objectMap[property.Name] = ConvertJsonElementToObject(property.Value) ?? string.Empty;
+                }
+
+                return ExtractUserInfosFromDictionary(objectMap);
+            }
+
+            if (jsonElement.ValueKind == JsonValueKind.String)
+            {
+                return ExtractUserInfosFromString(jsonElement.GetString() ?? string.Empty);
+            }
+
+            return new List<UserInfo>();
+        }
+
+        private static object? ConvertJsonElementToObject(JsonElement jsonElement)
+        {
+            return jsonElement.ValueKind switch
+            {
+                JsonValueKind.Object => jsonElement.EnumerateObject()
+                    .ToDictionary(property => property.Name, property => ConvertJsonElementToObject(property.Value), StringComparer.OrdinalIgnoreCase),
+                JsonValueKind.Array => jsonElement.EnumerateArray().Select(ConvertJsonElementToObject).ToList(),
+                JsonValueKind.String => jsonElement.GetString(),
+                JsonValueKind.Number when jsonElement.TryGetInt32(out var intValue) => intValue,
+                JsonValueKind.Number when jsonElement.TryGetInt64(out var longValue) => longValue,
+                JsonValueKind.Number when jsonElement.TryGetDouble(out var doubleValue) => doubleValue,
+                JsonValueKind.True => true,
+                JsonValueKind.False => false,
+                _ => null
+            };
+        }
+
+        private static List<UserInfo> ExtractUserInfosFromString(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return new List<UserInfo>();
+            }
+
+            var trimmed = value.Trim();
+
+            if ((trimmed.StartsWith("{") && trimmed.EndsWith("}")) ||
+                (trimmed.StartsWith("[") && trimmed.EndsWith("]")))
+            {
+                try
+                {
+                    using var jsonDocument = JsonDocument.Parse(trimmed);
+                    return ExtractUserInfosFromJsonElement(jsonDocument.RootElement);
+                }
+                catch (JsonException)
+                {
+                    // Fall through to string-based parsing
+                }
+            }
+
+            if (trimmed.Contains(";#"))
+            {
+                return ParseSharePointEncodedUsers(trimmed);
+            }
+
+            return ParseDelimitedUserTitles(trimmed);
+        }
+
+        private static List<UserInfo> ParseSharePointEncodedUsers(string value)
+        {
+            var tokens = value.Split(new[] { ";#" }, StringSplitOptions.None);
+            var users = new List<UserInfo>();
+
+            for (var i = 0; i < tokens.Length; i += 2)
+            {
+                var idToken = tokens[i].Trim();
+                var titleToken = i + 1 < tokens.Length ? tokens[i + 1].Trim() : string.Empty;
+
+                if (string.IsNullOrWhiteSpace(idToken) && string.IsNullOrWhiteSpace(titleToken))
+                {
+                    continue;
+                }
+
+                TryConvertToInt(idToken, out var userId);
+                var user = new UserInfo
+                {
+                    Id = userId,
+                    Title = titleToken
+                };
+
+                if (IsMeaningfulUser(user))
+                {
+                    users.Add(user);
+                }
+            }
+
+            return DeduplicateUsers(users);
+        }
+
+        private static List<UserInfo> ParseDelimitedUserTitles(string value)
+        {
+            return value
+                .Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries)
+                .Select(part => part.Trim())
+                .Where(part => !string.IsNullOrWhiteSpace(part) && !part.StartsWith('#'))
+                .Select(part => new UserInfo { Title = part })
+                .ToList();
+        }
+
+        private static bool TryConvertToInt(object? value, out int result)
+        {
+            result = 0;
+
+            if (value == null)
+            {
+                return false;
+            }
+
+            if (value is int intValue)
+            {
+                result = intValue;
+                return true;
+            }
+
+            if (value is long longValue && longValue <= int.MaxValue && longValue >= int.MinValue)
+            {
+                result = (int)longValue;
+                return true;
+            }
+
+            var stringValue = value.ToString();
+            return !string.IsNullOrWhiteSpace(stringValue) &&
+                   int.TryParse(stringValue, out result);
+        }
+
+        private static bool IsMeaningfulUser(UserInfo? user)
+        {
+            return user != null &&
+                   (user.Id != 0 ||
+                    !string.IsNullOrWhiteSpace(user.Title) ||
+                    !string.IsNullOrWhiteSpace(user.Email) ||
+                    !string.IsNullOrWhiteSpace(user.LoginName));
+        }
+
+        private static List<UserInfo> DeduplicateUsers(IEnumerable<UserInfo> users)
+        {
+            return users
+                .Where(IsMeaningfulUser)
+                .GroupBy(user =>
+                {
+                    if (user.Id != 0) return $"id:{user.Id}";
+                    if (!string.IsNullOrWhiteSpace(user.LoginName)) return $"login:{user.LoginName.Trim().ToLowerInvariant()}";
+                    if (!string.IsNullOrWhiteSpace(user.Email)) return $"email:{user.Email.Trim().ToLowerInvariant()}";
+                    return $"title:{user.Title.Trim().ToLowerInvariant()}";
+                })
+                .Select(group => group.First())
+                .ToList();
         }
 
         /// <summary>
