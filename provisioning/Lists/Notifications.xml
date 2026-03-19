@@ -574,7 +574,7 @@
       <pnp:DataValue FieldName="TriggerEvent">StatusChange</pnp:DataValue>
       <pnp:DataValue FieldName="RequestType">All</pnp:DataValue>
       <pnp:DataValue FieldName="ToRecipients">{{AttorneyAssignerGroup}}</pnp:DataValue>
-      <pnp:DataValue FieldName="CcRecipients"></pnp:DataValue>
+      <pnp:DataValue FieldName="CcRecipients">{{SubmitterEmail}}</pnp:DataValue>
       <pnp:DataValue FieldName="Subject">[Action Required] Attorney Assignment Needed: {{RequestId}} - {{RequestTitle}}</pnp:DataValue>
       <pnp:DataValue FieldName="Body"><![CDATA[<!DOCTYPE html>
 <html>
@@ -937,7 +937,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0;">
                 <tr>
                   <td style="background-color:#0078d4;border-radius:4px;">
-                    <a href="{{RequestUrl}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">
+                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">
                       View Request
                     </a>
                   </td>
@@ -1073,7 +1073,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0;">
                 <tr>
                   <td style="background-color:#5c2d91;border-radius:4px;">
-                    <a href="{{RequestUrl}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">
+                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">
                       Start Compliance Review
                     </a>
                   </td>

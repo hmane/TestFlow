@@ -314,6 +314,12 @@ namespace LegalWorkflow.Functions.Services
 
                 // Legal Only or Both - attorney is assigned, notify them
                 // For "Both", compliance team will also see it in their dashboard
+                if (current.Attorneys.Count == 0)
+                {
+                    _logger.Warning("Status moved to In Review but no attorneys are assigned — skipping AttorneyAssigned notification");
+                    return null;
+                }
+
                 _logger.Debug("Attorney assigned - moving to In Review");
                 return NotificationTemplateIds.AttorneyAssigned;
             }
@@ -358,6 +364,10 @@ namespace LegalWorkflow.Functions.Services
                     _logger.Debug("Legal review approved");
                     return NotificationTemplateIds.LegalReviewApproved;
                 }
+
+                // RespondToCommentsAndResubmit or None as a final completed outcome is unexpected
+                _logger.Warning($"Legal review completed with unrecognized outcome '{current.LegalReviewOutcome}' — no notification sent",
+                    new { RequestId = current.Id, Outcome = current.LegalReviewOutcome.ToString() });
             }
 
             // Changes requested (any status → Waiting On Submitter)
@@ -401,6 +411,10 @@ namespace LegalWorkflow.Functions.Services
                     _logger.Debug("Compliance review approved");
                     return NotificationTemplateIds.ComplianceReviewApproved;
                 }
+
+                // RespondToCommentsAndResubmit or None as a final completed outcome is unexpected
+                _logger.Warning($"Compliance review completed with unrecognized outcome '{current.ComplianceReviewOutcome}' — no notification sent",
+                    new { RequestId = current.Id, Outcome = current.ComplianceReviewOutcome.ToString() });
             }
 
             // Changes requested (any status → Waiting On Submitter)
@@ -516,6 +530,10 @@ namespace LegalWorkflow.Functions.Services
             {
                 requestLink = $"{_config.SiteUrl.TrimEnd('/')}/Lists/{_listConfig.RequestsListName}/EditForm.aspx?ID={request.Id}";
             }
+            else
+            {
+                _logger.Warning("NotificationConfig.SiteUrl is not configured — {{requestlink}} token will be empty in all notification emails");
+            }
 
             // Keys are lowercase with no whitespace — see ReplaceTokens normalization
             return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -587,12 +605,18 @@ namespace LegalWorkflow.Functions.Services
                 // Completion
                 ["completedon"]                 = request.CompletedOn?.ToString("MMMM d, yyyy") ?? "N/A",
 
-                // Link
+                // Link (raw URL and HTML anchor variants)
                 ["requestlink"]                 = requestLink,
+                ["requestlinkurl"]              = requestLink,
+                ["requesturl"]                  = requestLink,   // alias for legacy templates
+                ["viewrequestlink"]             = !string.IsNullOrEmpty(requestLink)
+                                                    ? $"<a href=\"{requestLink}\">View Request</a>"
+                                                    : string.Empty,
 
                 // Additional parties
                 ["additionalpartyemails"]       = additionalPartyEmails,
                 ["additionalparties"]           = additionalPartyNames,
+                ["additionalpartynames"]        = additionalPartyNames,
 
                 // Approvals
                 ["approvalcount"]               = approvalCount > 0 ? approvalCount.ToString() : string.Empty,
@@ -651,52 +675,53 @@ namespace LegalWorkflow.Functions.Services
         /// </summary>
         private bool EvaluateCondition(string fieldName, RequestModel request)
         {
-            return fieldName switch
+            // Normalize to lowercase so {{#if isRushRequest}}, {{#if IsRushRequest}},
+            // and {{#if ISRUSHREQUEST}} all resolve correctly.
+            return fieldName.ToLowerInvariant() switch
             {
                 // Boolean flags
-                "IsRushRequest" => request.IsRushRequest,
-                "IsOnHold" => request.IsOnHold,
-                "IsForesideReviewRequired" => request.IsForesideReviewRequired,
-                "RecordRetentionOnly" => request.RecordRetentionOnly,
-                "IsRetailUse" => request.IsRetailUse,
+                "isrushrequest" => request.IsRushRequest,
+                "isonhold" => request.IsOnHold,
+                "isforesidereviewrequired" => request.IsForesideReviewRequired,
+                "recordretentiononly" => request.RecordRetentionOnly,
+                "isretailuse" => request.IsRetailUse,
 
                 // "Has" prefix conditions (explicit)
-                "HasAttorney" => request.Attorneys.Count > 0,
-                "AssignedAttorneyName" => request.Attorneys.Count > 0,
-                "HasTrackingId" => !string.IsNullOrEmpty(request.TrackingId),
-                "HasLegalReviewNotes" => !string.IsNullOrEmpty(request.LegalReviewNotes),
-                "HasComplianceReviewNotes" => !string.IsNullOrEmpty(request.ComplianceReviewNotes),
-                "HasAttorneyAssignNotes" => !string.IsNullOrEmpty(request.AttorneyAssignNotes),
-                "HasHoldReason" => !string.IsNullOrEmpty(request.HoldReason),
-                "HasCancellationReason" => !string.IsNullOrEmpty(request.CancellationReason),
+                "hasattorney" => request.Attorneys.Count > 0,
+                "assignedattorneyname" => request.Attorneys.Count > 0,
+                "hastrackingid" => !string.IsNullOrEmpty(request.TrackingId),
+                "haslegalreviewnotes" => !string.IsNullOrEmpty(request.LegalReviewNotes),
+                "hascompliancereviewnotes" => !string.IsNullOrEmpty(request.ComplianceReviewNotes),
+                "hasattorneyassignnotes" => !string.IsNullOrEmpty(request.AttorneyAssignNotes),
+                "hasholdreason" => !string.IsNullOrEmpty(request.HoldReason),
+                "hascancellationreason" => !string.IsNullOrEmpty(request.CancellationReason),
 
                 // Review conditions
-                "RequiresLegalReview" => request.ReviewAudience == ReviewAudience.Legal || request.ReviewAudience == ReviewAudience.Both,
-                "RequiresComplianceReview" => request.ReviewAudience == ReviewAudience.Compliance || request.ReviewAudience == ReviewAudience.Both,
-                "LegalApproved" => request.LegalReviewOutcome == ReviewOutcome.Approved || request.LegalReviewOutcome == ReviewOutcome.ApprovedWithComments,
-                "ComplianceApproved" => request.ComplianceReviewOutcome == ReviewOutcome.Approved || request.ComplianceReviewOutcome == ReviewOutcome.ApprovedWithComments,
-                "LegalHasComments" => request.LegalReviewOutcome == ReviewOutcome.ApprovedWithComments,
-                "ComplianceHasComments" => request.ComplianceReviewOutcome == ReviewOutcome.ApprovedWithComments,
-                "TrackingIdRequired" => request.IsForesideReviewRequired,
+                "requireslegalreview" => request.ReviewAudience == ReviewAudience.Legal || request.ReviewAudience == ReviewAudience.Both,
+                "requirescompliancereview" => request.ReviewAudience == ReviewAudience.Compliance || request.ReviewAudience == ReviewAudience.Both,
+                "legalapproved" => request.LegalReviewOutcome == ReviewOutcome.Approved || request.LegalReviewOutcome == ReviewOutcome.ApprovedWithComments,
+                "complianceapproved" => request.ComplianceReviewOutcome == ReviewOutcome.Approved || request.ComplianceReviewOutcome == ReviewOutcome.ApprovedWithComments,
+                "legalhascomments" => request.LegalReviewOutcome == ReviewOutcome.ApprovedWithComments,
+                "compliancehascomments" => request.ComplianceReviewOutcome == ReviewOutcome.ApprovedWithComments,
+                "trackingidrequired" => request.IsForesideReviewRequired,
 
                 // Field "has value" conditions (used as {{#if FieldName}})
-                "Purpose" => !string.IsNullOrEmpty(request.Purpose),
-                "RushRationale" => !string.IsNullOrEmpty(request.RushRationale),
-                "FINRAAudienceCategory" => !string.IsNullOrEmpty(request.FINRAAudienceCategory),
-                "Audience" => !string.IsNullOrEmpty(request.Audience),
-                "USFunds" => request.USFunds.Count > 0,
-                "UCITS" => request.UCITS.Count > 0,
-                "SeparateAccountStrategies" => !string.IsNullOrEmpty(request.SeparateAccountStrategies),
-                "DistributionMethod" => request.DistributionMethods.Count > 0,
-                "DistributionMethods" => request.DistributionMethods.Count > 0,
-                "DateOfFirstUse" => request.ProposedFirstUseDate.HasValue,
-                "ApprovalCount" => CountApprovals(request) > 0,
-                "AdditionalParties" => request.AdditionalParties.Count > 0,
-                "AttorneyAssignNotes" => !string.IsNullOrEmpty(request.AttorneyAssignNotes),
-                "LegalReviewNotes" => !string.IsNullOrEmpty(request.LegalReviewNotes),
-                "ComplianceReviewNotes" => !string.IsNullOrEmpty(request.ComplianceReviewNotes),
-                "HoldReason" => !string.IsNullOrEmpty(request.HoldReason),
-                "CancellationReason" => !string.IsNullOrEmpty(request.CancellationReason),
+                "purpose" => !string.IsNullOrEmpty(request.Purpose),
+                "rushrationale" => !string.IsNullOrEmpty(request.RushRationale),
+                "finraaudiencecategory" => !string.IsNullOrEmpty(request.FINRAAudienceCategory),
+                "audience" => !string.IsNullOrEmpty(request.Audience),
+                "usfunds" => request.USFunds.Count > 0,
+                "ucits" => request.UCITS.Count > 0,
+                "separateaccountstrategies" => !string.IsNullOrEmpty(request.SeparateAccountStrategies),
+                "distributionmethod" or "distributionmethods" => request.DistributionMethods.Count > 0,
+                "dateoffirstuse" => request.ProposedFirstUseDate.HasValue,
+                "approvalcount" => CountApprovals(request) > 0,
+                "additionalparties" => request.AdditionalParties.Count > 0,
+                "attorneyassignnotes" => !string.IsNullOrEmpty(request.AttorneyAssignNotes),
+                "legalreviewnotes" => !string.IsNullOrEmpty(request.LegalReviewNotes),
+                "compliancereviewnotes" => !string.IsNullOrEmpty(request.ComplianceReviewNotes),
+                "holdreason" => !string.IsNullOrEmpty(request.HoldReason),
+                "cancellationreason" => !string.IsNullOrEmpty(request.CancellationReason),
 
                 _ => false
             };
@@ -738,27 +763,29 @@ namespace LegalWorkflow.Functions.Services
             foreach (var recipient in recipients.Select(r => r.Trim()))
             {
                 // Handle template token format: {{TokenName}}
-                var resolvedRecipient = NormalizeRecipientToken(recipient);
+                // Normalize to lowercase for case-insensitive matching — template authors
+                // may write "submitterEmail", "SubmitterEmail", or "SUBMITTEREMAIL" etc.
+                var resolvedRecipient = NormalizeRecipientToken(recipient).ToLowerInvariant();
 
                 switch (resolvedRecipient)
                 {
                     // Email-based tokens (resolve from request data)
-                    case "SubmitterEmail":
-                    case "Submitter":
+                    case "submitteremail":
+                    case "submitter":
                         AddEmail(emails, request.SubmittedBy?.Email);
                         break;
 
-                    case "AttorneyEmail":
-                    case "AssignedAttorneyEmail":
-                    case "Attorney":
+                    case "attorneyemail":
+                    case "assignedattorneyemail":
+                    case "attorney":
                         AddEmails(emails, request.Attorneys
                             .Where(a => !string.IsNullOrEmpty(a.Email))
                             .Select(a => a.Email));
                         break;
 
                     // Multi-value tokens
-                    case "AdditionalPartyEmails":
-                    case "AdditionalParties":
+                    case "additionalpartyemails":
+                    case "additionalparties":
                         AddEmails(emails, request.AdditionalParties
                             .Where(u => !string.IsNullOrEmpty(u.Email))
                             .Select(u => u.Email));

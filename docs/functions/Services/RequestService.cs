@@ -191,6 +191,7 @@ namespace LegalWorkflow.Functions.Services
                 if (!string.IsNullOrEmpty(requestType))
                 {
                     var specificItem = allItems.FirstOrDefault(i =>
+                        GetFieldValue<bool>(i, NotificationsFields.IsActive) &&
                         RequestTypeMatchesTemplate(
                             GetFieldValue<string>(i, NotificationsFields.RequestType),
                             requestType));
@@ -207,6 +208,7 @@ namespace LegalWorkflow.Functions.Services
 
                 // Step 2: Fall back to generic template (RequestType = blank or "All")
                 var genericItem = allItems.FirstOrDefault(i =>
+                    GetFieldValue<bool>(i, NotificationsFields.IsActive) &&
                     IsGenericTemplateRequestType(GetFieldValue<string>(i, NotificationsFields.RequestType)));
 
                 if (genericItem == null)
