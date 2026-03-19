@@ -461,7 +461,9 @@ namespace LegalWorkflow.Functions.Services
 
         /// <summary>
         /// Replaces tokens in a template string with request field values.
-        /// Tokens are in the format {{FieldName}}.
+        /// Tokens are in the format {{FieldName}} and matched case-insensitively with
+        /// whitespace trimmed, so {{ Request Id }} and {{requestId}} both resolve.
+        /// Any unrecognized tokens are left empty and logged as warnings.
         /// </summary>
         private string ReplaceTokens(string template, RequestModel request)
         {
@@ -470,117 +472,131 @@ namespace LegalWorkflow.Functions.Services
                 return string.Empty;
             }
 
-            // Token replacements
-            var result = template;
+            var tokens = BuildTokenDictionary(request);
 
-            // System fields
-            result = result.Replace("{{RequestId}}", request.Title);
-            result = result.Replace("{{RequestTitle}}", GetDisplayRequestTitle(request));
-            result = result.Replace("{{Status}}", FormatStatus(request.Status));
-            result = result.Replace("{{SubmittedBy}}", request.SubmittedBy?.Title ?? "Unknown");
-            result = result.Replace("{{SubmitterName}}", request.SubmittedBy?.Title ?? "Unknown"); // Template alias
-            result = result.Replace("{{SubmittedByEmail}}", request.SubmittedBy?.Email ?? string.Empty);
-            result = result.Replace("{{SubmittedOn}}", request.SubmittedOn?.ToString("MMMM d, yyyy") ?? "N/A");
+            return TokenRegex().Replace(template, match =>
+            {
+                // Normalize: collapse internal whitespace and lowercase for lookup
+                var raw = match.Groups[1].Value;
+                var key = WhitespaceRegex().Replace(raw.Trim(), string.Empty).ToLowerInvariant();
 
-            // Request information
-            result = result.Replace("{{RequestType}}", FormatRequestType(request.RequestType));
-            result = result.Replace("{{SubmissionType}}", request.SubmissionType == SubmissionType.New ? "New Submission" : "Material Updates");
-            result = result.Replace("{{SubmissionItem}}", request.SubmissionItem ?? string.Empty); // Submission item name
-            result = result.Replace("{{Purpose}}", request.Purpose);
-            result = result.Replace("{{TargetReturnDate}}", request.TargetReturnDate?.ToString("MMMM d, yyyy") ?? "N/A");
-            result = result.Replace("{{IsRushRequest}}", request.IsRushRequest ? "Yes" : "No");
-            result = result.Replace("{{RushRationale}}", request.RushRationale);
-            result = result.Replace("{{ReviewAudience}}", FormatReviewAudience(request.ReviewAudience));
+                if (tokens.TryGetValue(key, out var value))
+                {
+                    return value;
+                }
 
-            // FINRA & Audience
-            result = result.Replace("{{FINRAAudienceCategory}}", request.FINRAAudienceCategory);
-            result = result.Replace("{{Audience}}", request.Audience);
-            result = result.Replace("{{USFunds}}", string.Join(", ", request.USFunds));
-            result = result.Replace("{{UCITS}}", string.Join(", ", request.UCITS));
-            result = result.Replace("{{SeparateAccountStrategies}}", request.SeparateAccountStrategies);
+                _logger.Warning($"Unrecognized template token '{{{{{raw.Trim()}}}}}' — leaving empty");
+                return string.Empty;
+            });
+        }
 
-            // Distribution
-            var distributionMethodsFormatted = string.Join(", ", request.DistributionMethods.Select(FormatDistributionMethod));
-            result = result.Replace("{{DistributionMethods}}", distributionMethodsFormatted);
-            result = result.Replace("{{DistributionMethod}}", distributionMethodsFormatted); // Template alias (singular)
-            result = result.Replace("{{ProposedFirstUseDate}}", request.ProposedFirstUseDate?.ToString("MMMM d, yyyy") ?? "N/A");
-            result = result.Replace("{{DateOfFirstUse}}", request.ProposedFirstUseDate?.ToString("MMMM d, yyyy") ?? "N/A"); // Template alias
-            result = result.Replace("{{ProposedDiscontinueDate}}", request.ProposedDiscontinueDate?.ToString("MMMM d, yyyy") ?? "N/A");
-
-            // Legal Intake
+        /// <summary>
+        /// Builds a case-insensitive lookup of all supported template tokens for the given request.
+        /// Keys are normalized (lowercase, no whitespace) to match template authors' varying styles.
+        /// </summary>
+        private Dictionary<string, string> BuildTokenDictionary(RequestModel request)
+        {
             var attorneyNames = request.Attorneys.Count > 0
                 ? string.Join(", ", request.Attorneys.Where(a => !string.IsNullOrEmpty(a.Title)).Select(a => a.Title))
                 : "Not Assigned";
             var attorneyEmails = string.Join("; ", request.Attorneys
                 .Where(a => !string.IsNullOrEmpty(a.Email))
                 .Select(a => a.Email));
-            result = result.Replace("{{Attorney}}", attorneyNames);
-            result = result.Replace("{{AttorneyEmail}}", attorneyEmails);
-            result = result.Replace("{{AttorneyAssignNotes}}", request.AttorneyAssignNotes);
-            result = result.Replace("{{AssignmentNotes}}", request.AttorneyAssignNotes); // Template alias
-
-            // Legal Review
-            result = result.Replace("{{LegalReviewStatus}}", FormatReviewStatus(request.LegalReviewStatus));
-            result = result.Replace("{{LegalReviewOutcome}}", FormatReviewOutcome(request.LegalReviewOutcome));
-            result = result.Replace("{{LegalReviewNotes}}", request.LegalReviewNotes);
-
-            // Compliance Review
-            result = result.Replace("{{ComplianceReviewStatus}}", FormatReviewStatus(request.ComplianceReviewStatus));
-            result = result.Replace("{{ComplianceReviewOutcome}}", FormatReviewOutcome(request.ComplianceReviewOutcome));
-            result = result.Replace("{{ComplianceReviewNotes}}", request.ComplianceReviewNotes);
-            result = result.Replace("{{IsForesideReviewRequired}}", request.IsForesideReviewRequired ? "Yes" : "No");
-            result = result.Replace("{{RecordRetentionOnly}}", request.RecordRetentionOnly ? "Yes" : "No");
-            result = result.Replace("{{IsRetailUse}}", request.IsRetailUse ? "Yes" : "No");
-
-            // Closeout
-            result = result.Replace("{{TrackingId}}", request.TrackingId);
-
-            // Hold/Cancel
-            result = result.Replace("{{HoldReason}}", request.HoldReason);
-            result = result.Replace("{{HoldDate}}", request.HoldDate?.ToString("MMMM d, yyyy") ?? "N/A");
-            result = result.Replace("{{CancellationReason}}", request.CancellationReason);
-            result = result.Replace("{{CancelledOn}}", request.CancelledOn?.ToString("MMMM d, yyyy") ?? "N/A");
-
-            // Completion
-            result = result.Replace("{{CompletedOn}}", request.CompletedOn?.ToString("MMMM d, yyyy") ?? "N/A");
-
-            // Request Link - generates full URL to the request
-            // Format: {SiteUrl}/Lists/{ListName}/EditForm.aspx?ID={RequestId}
-            var requestLink = $"{_config.SiteUrl.TrimEnd('/')}/Lists/{_listConfig.RequestsListName}/EditForm.aspx?ID={request.Id}";
-            result = result.Replace("{{RequestLink}}", requestLink);
-
-            // Submitter email for recipient resolution
-            result = result.Replace("{{SubmitterEmail}}", request.SubmittedBy?.Email ?? string.Empty);
-
-            // Attorney name and email (alternative tokens used in templates)
-            result = result.Replace("{{AssignedAttorneyName}}", attorneyNames);
-            result = result.Replace("{{AssignedAttorneyEmail}}", attorneyEmails);
-
-            // Additional party emails (comma-separated list)
             var additionalPartyEmails = string.Join(", ", request.AdditionalParties
                 .Where(u => !string.IsNullOrEmpty(u.Email))
                 .Select(u => u.Email));
-            result = result.Replace("{{AdditionalPartyEmails}}", additionalPartyEmails);
-
-            // Additional party names (comma-separated list for display)
             var additionalPartyNames = string.Join(", ", request.AdditionalParties
                 .Where(u => !string.IsNullOrEmpty(u.Title))
                 .Select(u => u.Title));
-            result = result.Replace("{{AdditionalParties}}", additionalPartyNames);
+            var distributionMethodsFormatted = string.Join(", ", request.DistributionMethods.Select(FormatDistributionMethod));
+            var approvalCount = CountApprovals(request);
 
-            // Approval count - count of non-null approvals
-            var approvalCount = new[]
+            var requestLink = string.Empty;
+            if (!string.IsNullOrEmpty(_config.SiteUrl))
             {
-                request.CommunicationsApproval,
-                request.PortfolioManagerApproval,
-                request.ResearchAnalystApproval,
-                request.SubjectMatterExpertApproval,
-                request.PerformanceApproval,
-                request.OtherApproval
-            }.Count(a => a != null);
-            result = result.Replace("{{ApprovalCount}}", approvalCount > 0 ? approvalCount.ToString() : string.Empty);
+                requestLink = $"{_config.SiteUrl.TrimEnd('/')}/Lists/{_listConfig.RequestsListName}/EditForm.aspx?ID={request.Id}";
+            }
 
-            return result;
+            // Keys are lowercase with no whitespace — see ReplaceTokens normalization
+            return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                // System fields
+                ["requestid"]                   = request.Title,
+                ["requesttitle"]                = GetDisplayRequestTitle(request),
+                ["status"]                      = FormatStatus(request.Status),
+                ["submittedby"]                 = request.SubmittedBy?.Title ?? "Unknown",
+                ["submittername"]               = request.SubmittedBy?.Title ?? "Unknown",
+                ["submittedbyemail"]            = request.SubmittedBy?.Email ?? string.Empty,
+                ["submitteremail"]              = request.SubmittedBy?.Email ?? string.Empty,
+                ["submittedon"]                 = request.SubmittedOn?.ToString("MMMM d, yyyy") ?? "N/A",
+
+                // Request information
+                ["requesttype"]                 = FormatRequestType(request.RequestType),
+                ["submissiontype"]              = request.SubmissionType == SubmissionType.New ? "New Submission" : "Material Updates",
+                ["submissionitem"]              = request.SubmissionItem ?? string.Empty,
+                ["purpose"]                     = request.Purpose,
+                ["targetreturndate"]            = request.TargetReturnDate?.ToString("MMMM d, yyyy") ?? "N/A",
+                ["isrushrequest"]               = request.IsRushRequest ? "Yes" : "No",
+                ["rushrationale"]               = request.RushRationale,
+                ["reviewaudience"]              = FormatReviewAudience(request.ReviewAudience),
+
+                // FINRA & Audience
+                ["finraaudiencecategory"]       = request.FINRAAudienceCategory,
+                ["audience"]                    = request.Audience,
+                ["usfunds"]                     = string.Join(", ", request.USFunds),
+                ["ucits"]                       = string.Join(", ", request.UCITS),
+                ["separateaccountstrategies"]   = request.SeparateAccountStrategies,
+
+                // Distribution
+                ["distributionmethods"]         = distributionMethodsFormatted,
+                ["distributionmethod"]          = distributionMethodsFormatted,
+                ["proposedfirstusedate"]        = request.ProposedFirstUseDate?.ToString("MMMM d, yyyy") ?? "N/A",
+                ["dateoffirstuse"]              = request.ProposedFirstUseDate?.ToString("MMMM d, yyyy") ?? "N/A",
+                ["proposeddiscontinuedate"]     = request.ProposedDiscontinueDate?.ToString("MMMM d, yyyy") ?? "N/A",
+
+                // Legal Intake
+                ["attorney"]                    = attorneyNames,
+                ["assignedattorneyname"]        = attorneyNames,
+                ["attorneyemail"]               = attorneyEmails,
+                ["assignedattorneyemail"]       = attorneyEmails,
+                ["attorneyassignnotes"]         = request.AttorneyAssignNotes,
+                ["assignmentnotes"]             = request.AttorneyAssignNotes,
+
+                // Legal Review
+                ["legalreviewstatus"]           = FormatReviewStatus(request.LegalReviewStatus),
+                ["legalreviewoutcome"]          = FormatReviewOutcome(request.LegalReviewOutcome),
+                ["legalreviewnotes"]            = request.LegalReviewNotes,
+
+                // Compliance Review
+                ["compliancereviewstatus"]      = FormatReviewStatus(request.ComplianceReviewStatus),
+                ["compliancereviewoutcome"]     = FormatReviewOutcome(request.ComplianceReviewOutcome),
+                ["compliancereviewnotes"]       = request.ComplianceReviewNotes,
+                ["isforesidereviewrequired"]    = request.IsForesideReviewRequired ? "Yes" : "No",
+                ["recordretentiononly"]         = request.RecordRetentionOnly ? "Yes" : "No",
+                ["isretailuse"]                 = request.IsRetailUse ? "Yes" : "No",
+
+                // Closeout
+                ["trackingid"]                  = request.TrackingId,
+
+                // Hold/Cancel
+                ["holdreason"]                  = request.HoldReason,
+                ["holddate"]                    = request.HoldDate?.ToString("MMMM d, yyyy") ?? "N/A",
+                ["cancellationreason"]          = request.CancellationReason,
+                ["cancelledon"]                 = request.CancelledOn?.ToString("MMMM d, yyyy") ?? "N/A",
+
+                // Completion
+                ["completedon"]                 = request.CompletedOn?.ToString("MMMM d, yyyy") ?? "N/A",
+
+                // Link
+                ["requestlink"]                 = requestLink,
+
+                // Additional parties
+                ["additionalpartyemails"]       = additionalPartyEmails,
+                ["additionalparties"]           = additionalPartyNames,
+
+                // Approvals
+                ["approvalcount"]               = approvalCount > 0 ? approvalCount.ToString() : string.Empty,
+            };
         }
 
         /// <summary>
@@ -1112,6 +1128,14 @@ namespace LegalWorkflow.Functions.Services
 
         [GeneratedRegex(@"\{\{#unless\s+(\w+)\}\}(.*?)\{\{/unless\}\}", RegexOptions.Singleline)]
         private static partial Regex UnlessConditionalRegex();
+
+        // Matches any {{...}} token that is NOT a conditional opener/closer (i.e. does not start with # or /)
+        [GeneratedRegex(@"\{\{\s*(?!#|/)(\w[\w\s]*?)\s*\}\}")]
+        private static partial Regex TokenRegex();
+
+        // Collapses internal whitespace in a token name for lookup normalization
+        [GeneratedRegex(@"\s+")]
+        private static partial Regex WhitespaceRegex();
 
         #endregion
     }
