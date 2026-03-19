@@ -81,6 +81,10 @@ namespace LegalWorkflow.Functions.Services
                 // Map SharePoint item to RequestModel
                 var request = MapItemToRequest(item);
 
+                // Backfill user emails — SharePoint REST does not include Email in user lookup values;
+                // we resolve them separately using the site user store.
+                await BackfillUserEmailsAsync(context, request);
+
                 _logger.SetRequestContext(request.Id, GetRequestContextTitle(request));
                 _logger.Info("Request loaded successfully", new { FieldCount = item.Values.Count });
 
@@ -563,6 +567,109 @@ namespace LegalWorkflow.Functions.Services
             return !string.IsNullOrWhiteSpace(request.RequestTitle)
                 ? request.RequestTitle
                 : request.Title;
+        }
+
+        /// <summary>
+        /// Backfills Email (and LoginName where missing) on all UserInfo instances in the request.
+        /// SharePoint REST does not include the Email property in user lookup field values — it only
+        /// returns LookupId and LookupValue. We resolve emails in a single pass using GetUserByIdAsync.
+        /// </summary>
+        private async Task BackfillUserEmailsAsync(PnPContext context, RequestModel request)
+        {
+            var allUserInfos = CollectAllUserInfos(request);
+
+            var uniqueIds = allUserInfos
+                .Where(u => u.Id > 0 && string.IsNullOrEmpty(u.Email))
+                .Select(u => u.Id)
+                .Distinct()
+                .ToList();
+
+            if (uniqueIds.Count == 0) return;
+
+            try
+            {
+                // One REST call for all users via the hidden User Information List.
+                // <In> with <Values> fetches every user in a single CAML query.
+                var values = string.Concat(uniqueIds.Select(id => $"<Value Type='Integer'>{id}</Value>"));
+                var caml = $@"<View>
+                    <Query>
+                        <Where>
+                            <In>
+                                <FieldRef Name='ID'/>
+                                <Values>{values}</Values>
+                            </In>
+                        </Where>
+                    </Query>
+                    <ViewFields>
+                        <FieldRef Name='ID'/>
+                        <FieldRef Name='EMail'/>
+                        <FieldRef Name='Name'/>
+                    </ViewFields>
+                </View>";
+
+                var userInfoList = await context.Web.Lists.GetByTitleAsync("User Information List");
+                await userInfoList.LoadItemsByCamlQueryAsync(new CamlQueryOptions { ViewXml = caml });
+                var users = userInfoList.Items.AsRequested();
+
+                var emailById = new Dictionary<int, string>();
+                var loginNameById = new Dictionary<int, string>();
+
+                foreach (var user in users)
+                {
+                    var id = user.Id;
+                    if (user.Values.TryGetValue("EMail", out var rawMail) && rawMail != null)
+                    {
+                        var mail = rawMail.ToString() ?? string.Empty;
+                        if (!string.IsNullOrEmpty(mail)) emailById[id] = mail;
+                    }
+                    if (user.Values.TryGetValue("Name", out var rawLogin) && rawLogin != null)
+                    {
+                        var loginName = rawLogin.ToString() ?? string.Empty;
+                        if (!string.IsNullOrEmpty(loginName)) loginNameById[id] = loginName;
+                    }
+                }
+
+                foreach (var userInfo in allUserInfos.Where(u => u.Id > 0))
+                {
+                    if (string.IsNullOrEmpty(userInfo.Email) && emailById.TryGetValue(userInfo.Id, out var email))
+                        userInfo.Email = email;
+                    if (string.IsNullOrEmpty(userInfo.LoginName) && loginNameById.TryGetValue(userInfo.Id, out var loginName))
+                        userInfo.LoginName = loginName;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning($"Could not resolve user emails from User Information List: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Collects all UserInfo instances from a RequestModel for bulk email resolution.
+        /// </summary>
+        private static List<UserInfo> CollectAllUserInfos(RequestModel request)
+        {
+            var users = new List<UserInfo>();
+
+            if (request.SubmittedBy != null) users.Add(request.SubmittedBy);
+            users.AddRange(request.Attorneys);
+            users.AddRange(request.AdditionalParties);
+
+            var approvals = new ApprovalInfo?[]
+            {
+                request.CommunicationsApproval,
+                request.PortfolioManagerApproval,
+                request.ResearchAnalystApproval,
+                request.SubjectMatterExpertApproval,
+                request.PerformanceApproval,
+                request.OtherApproval
+            };
+
+            foreach (var approval in approvals)
+            {
+                if (approval?.ApprovedBy != null) users.Add(approval.ApprovedBy);
+            }
+
+            return users;
         }
 
         /// <summary>
