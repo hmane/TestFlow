@@ -232,7 +232,7 @@ namespace LegalWorkflow.Functions.Services
                 var docsFolder = await GetDocumentsFolderAsync(context, request.RequestId);
                 if (docsFolder != null)
                 {
-                    var docsFolderItem = await GetFolderListItemAsync(docsFolder);
+                    var docsFolderItem = await GetFolderListItemAsync(context, docsFolder);
                     await EnsureRoleDefinitionAsync(docsFolderItem, user.Id, readRole);
 
                     response.Changes.Add(new PermissionChange
@@ -310,7 +310,7 @@ namespace LegalWorkflow.Functions.Services
                 var docsFolder = await GetDocumentsFolderAsync(context, request.RequestId);
                 if (docsFolder != null)
                 {
-                    var docsFolderItem = await GetFolderListItemAsync(docsFolder);
+                    var docsFolderItem = await GetFolderListItemAsync(context, docsFolder);
                     await RemoveAllRoleDefinitionsAsync(docsFolderItem, user.Id);
 
                     response.Changes.Add(new PermissionChange
@@ -527,7 +527,7 @@ namespace LegalWorkflow.Functions.Services
             }
 
             // Reset then break inheritance (same rationale as item permissions above)
-            var docsFolderItem = await GetFolderListItemAsync(docsFolder);
+            var docsFolderItem = await GetFolderListItemAsync(context, docsFolder);
 
             await docsFolderItem.ResetRoleInheritanceAsync();
             await docsFolderItem.BreakRoleInheritanceAsync(copyRoleAssignments: false, clearSubscopes: true);
@@ -793,7 +793,7 @@ namespace LegalWorkflow.Functions.Services
             }
 
             // Load current role assignments
-            var docsFolderItem = await GetFolderListItemAsync(docsFolder);
+            var docsFolderItem = await GetFolderListItemAsync(context, docsFolder);
             await docsFolderItem.LoadAsync(i => i.RoleAssignments.QueryProperties(ra => ra.PrincipalId));
 
             var roleAssignments = docsFolderItem.RoleAssignments.AsRequested().ToList();
@@ -851,12 +851,18 @@ namespace LegalWorkflow.Functions.Services
         }
 
         /// <summary>
-        /// Gets the list item backing a folder, which is the securable object used for permissions.
+        /// Gets the list item backing a folder, loaded through the list's Items collection
+        /// so PnP Core has full parent context (list ID) for REST API URL resolution.
+        /// Loading via folder.ListItemAllFields returns a detached IListItem that causes
+        /// "Unresolved token" errors on role assignment operations.
         /// </summary>
-        private static async Task<IListItem> GetFolderListItemAsync(IFolder folder)
+        private async Task<IListItem> GetFolderListItemAsync(PnPContext context, IFolder folder)
         {
             await folder.LoadAsync(f => f.ListItemAllFields);
-            return folder.ListItemAllFields;
+            var itemId = folder.ListItemAllFields.Id;
+
+            var docsLibrary = await GetDocumentsLibraryAsync(context);
+            return await docsLibrary.Items.GetByIdAsync(itemId);
         }
 
         /// <summary>
@@ -954,14 +960,17 @@ namespace LegalWorkflow.Functions.Services
         {
             switch (fieldValue)
             {
+                case IFieldValueCollection fieldValueCollection:
+                    foreach (var entry in fieldValueCollection.Values)
+                    {
+                        if (entry is IFieldUserValue collectionUserValue)
+                        {
+                            AddParticipant(participants, collectionUserValue);
+                        }
+                    }
+                    break;
                 case IFieldUserValue userValue:
                     AddParticipant(participants, userValue);
-                    break;
-                case IEnumerable<IFieldUserValue> userValues:
-                    foreach (var value in userValues)
-                    {
-                        AddParticipant(participants, value);
-                    }
                     break;
             }
         }
