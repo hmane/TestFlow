@@ -1,0 +1,357 @@
+{
+  "info": {
+    "name": "Legal Workflow - Azure Functions",
+    "description": "Happy-path requests for all Legal Workflow Azure Function endpoints.\n\n## Auth setup (one-time per environment)\n1. Select an environment (Debug / Dev / UAT / Prod)\n2. Open the collection → Authorization tab → click **Get New Access Token**\n3. Sign in with your user account — Postman stores the token automatically\n\n> **Why delegated auth?** The function checks for `email`/`upn` claims that only appear in user-delegated tokens. App-only `client_credentials` tokens are missing those claims and will always receive 401.\n\n## App registration requirement\nAdd `https://oauth.pstmn.io/v1/callback` as a redirect URI on the Azure AD app registration (Web platform).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "lw-functions-collection-v1"
+  },
+  "auth": {
+    "type": "oauth2",
+    "oauth2": [
+      { "key": "grant_type",        "value": "authorization_code_with_pkce", "type": "string" },
+      { "key": "authUrl",           "value": "https://login.microsoftonline.com/{{tenantId}}/oauth2/v2.0/authorize", "type": "string" },
+      { "key": "accessTokenUrl",    "value": "https://login.microsoftonline.com/{{tenantId}}/oauth2/v2.0/token",    "type": "string" },
+      { "key": "clientId",          "value": "{{clientId}}",     "type": "string" },
+      { "key": "clientSecret",      "value": "{{clientSecret}}", "type": "string" },
+      { "key": "scope",             "value": "{{scope}} openid profile email", "type": "string" },
+      { "key": "tokenName",         "value": "LW_Token",         "type": "string" },
+      { "key": "challengeAlgorithm","value": "S256",             "type": "string" },
+      { "key": "redirect_uri",      "value": "https://oauth.pstmn.io/v1/callback", "type": "string" },
+      { "key": "addTokenTo",        "value": "header",           "type": "string" }
+    ]
+  },
+  "event": [],
+  "item": [
+    {
+      "name": "Health",
+      "description": "Anonymous health check endpoints.",
+      "item": [
+        {
+          "name": "Functions Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Healthy', () => pm.expect(pm.response.json().Status).to.eql('Healthy'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "health"]
+            }
+          }
+        },
+        {
+          "name": "Notification Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Healthy', () => pm.expect(pm.response.json().Status).to.eql('Healthy'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "health"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Permissions",
+      "description": "Item-level permission management endpoints.",
+      "item": [
+        {
+          "name": "Initialize Permissions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Success', () => pm.expect(b.success).to.be.true);",
+                  "pm.test('Has changes', () => pm.expect(b.changes).to.be.an('array'));",
+                  "console.log('Changes:', JSON.stringify(b.changes, null, 2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestId\": {{requestId}},\n  \"requestTitle\": \"{{requestTitle}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/permissions/initialize",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permissions", "initialize"]
+            },
+            "description": "Breaks inheritance on the Requests list item and RequestDocuments/{requestId} folder, then sets role assignments for all SP groups."
+          }
+        },
+        {
+          "name": "Add User Permission",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Success', () => pm.expect(b.success).to.be.true);",
+                  "console.log('Changes:', JSON.stringify(b.changes, null, 2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestId\": {{requestId}},\n  \"requestTitle\": \"{{requestTitle}}\",\n  \"userLoginName\": \"i:0#.f|membership|user@contoso.com\",\n  \"userEmail\": \"user@contoso.com\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/permissions/add-user",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permissions", "add-user"]
+            },
+            "description": "Grants Read permission to a specific user. Replace `userLoginName` (format: `i:0#.f|membership|user@domain.com`) and `userEmail` before running."
+          }
+        },
+        {
+          "name": "Remove User Permission",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Success', () => pm.expect(b.success).to.be.true);",
+                  "console.log('Changes:', JSON.stringify(b.changes, null, 2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestId\": {{requestId}},\n  \"requestTitle\": \"{{requestTitle}}\",\n  \"userLoginName\": \"i:0#.f|membership|user@contoso.com\",\n  \"userEmail\": \"user@contoso.com\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/permissions/remove-user",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permissions", "remove-user"]
+            },
+            "description": "Removes all permissions for a specific user. Replace `userLoginName` and `userEmail` before running."
+          }
+        },
+        {
+          "name": "Complete Permissions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Success', () => pm.expect(b.success).to.be.true);",
+                  "pm.test('Has changes', () => pm.expect(b.changes).to.be.an('array').and.not.be.empty);",
+                  "console.log('Final permission set:', JSON.stringify(b.changes, null, 2));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestId\": {{requestId}},\n  \"requestTitle\": \"{{requestTitle}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/permissions/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permissions", "complete"]
+            },
+            "description": "Called when the request reaches Completed status. Locks down to read-only for all parties; Admins retain Full Control."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "description": "Notification generation — called by Power Automate after a request item changes.",
+      "item": [
+        {
+          "name": "Send Notification",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has shouldSendNotification', () => pm.expect(b).to.have.property('shouldSendNotification'));",
+                  "",
+                  "if (b.shouldSendNotification) {",
+                  "  pm.test('Subject is not empty', () => pm.expect(b.email.subject).to.be.a('string').and.not.be.empty);",
+                  "  pm.test('Has To recipients', () => pm.expect(b.email.to).to.be.an('array').and.not.be.empty);",
+                  "  console.log('Notification ID :', b.email.notificationId);",
+                  "  console.log('Subject         :', b.email.subject);",
+                  "  console.log('To              :', b.email.to.join(', '));",
+                  "  console.log('CC              :', (b.email.cc || []).join(', '));",
+                  "  console.log('Trigger         :', b.reason);",
+                  "} else {",
+                  "  console.log('No notification sent. Reason:', b.reason);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestId\": {{requestId}},\n  \"previousVersion\": {{previousVersion}}\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/send",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "send"]
+            },
+            "description": "Compares the current request state against `previousVersion` to determine which notification (if any) to generate.\n\nSet `previousVersion` to the SP item version string before the status change (e.g. `2.0`). Set to `null` to simulate a brand-new submission."
+          }
+        },
+        {
+          "name": "Send Notification — new submission",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Has shouldSendNotification', () => pm.expect(b).to.have.property('shouldSendNotification'));",
+                  "",
+                  "if (b.shouldSendNotification) {",
+                  "  console.log('Notification ID :', b.email.notificationId);",
+                  "  console.log('Subject         :', b.email.subject);",
+                  "  console.log('To              :', b.email.to.join(', '));",
+                  "  console.log('CC              :', (b.email.cc || []).join(', '));",
+                  "} else {",
+                  "  console.log('No notification. Reason:', b.reason);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"requestId\": {{requestId}},\n  \"previousVersion\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/send",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "send"]
+            },
+            "description": "Simulates a brand-new submission (no previousVersion). Triggers RequestSubmitted or RushRequestAlert if the request is already in Legal Intake."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Management",
+      "description": "Operational endpoints restricted to the configured service account.",
+      "item": [
+        {
+          "name": "Flush Certificate Cache",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test('Success', () => pm.expect(b.success).to.be.true);",
+                  "console.log('Previous thumbprint:', b.previousCertificate?.thumbprintSuffix);",
+                  "console.log('Current thumbprint :', b.currentCertificate?.thumbprintSuffix);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": { "mode": "raw", "raw": "" },
+            "url": {
+              "raw": "{{baseUrl}}/api/management/certificate-cache/flush",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "management", "certificate-cache", "flush"]
+            },
+            "description": "Reloads the SharePoint auth certificate from Azure Key Vault. Use after a certificate rotation — only the configured service account can call this."
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "requestId",
+      "value": "1",
+      "description": "SharePoint list item ID (numeric)"
+    },
+    {
+      "key": "requestTitle",
+      "value": "CRR-26-1",
+      "description": "Request ID string (e.g. CRR-26-1) — used for logging only, does not affect logic"
+    },
+    {
+      "key": "previousVersion",
+      "value": "null",
+      "description": "SharePoint item version label (e.g. '2.0', '3.0') of the snapshot BEFORE the status change. Pass null to let the function auto-select the second-to-last version."
+    }
+  ]
+}

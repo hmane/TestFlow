@@ -388,7 +388,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td style="border-radius:4px;background-color:#0078d4;">
-                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">View Request</a>
+                    {{RequestLinkButton|View Request}}
                   </td>
                 </tr>
               </table>
@@ -539,7 +539,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td style="border-radius:4px;background-color:#d13438;">
-                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">View Rush Request</a>
+                    {{RequestLinkButton|View Rush Request}}
                   </td>
                 </tr>
               </table>
@@ -634,7 +634,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td style="border-radius:4px;background-color:#8764b8;">
-                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">Assign Attorney</a>
+                    {{RequestLinkButton|Assign Attorney}}
                   </td>
                 </tr>
               </table>
@@ -829,7 +829,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td style="border-radius:4px;background-color:#0078d4;">
-                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">Begin Review</a>
+                    {{RequestLinkButton|Begin Review}}
                   </td>
                 </tr>
               </table>
@@ -937,9 +937,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0;">
                 <tr>
                   <td style="background-color:#0078d4;border-radius:4px;">
-                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">
-                      View Request
-                    </a>
+                    {{RequestLinkButton|View Request}}
                   </td>
                 </tr>
               </table>
@@ -1073,9 +1071,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:24px 0;">
                 <tr>
                   <td style="background-color:#5c2d91;border-radius:4px;">
-                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">
-                      Start Compliance Review
-                    </a>
+                    {{RequestLinkButton|Start Compliance Review}}
                   </td>
                 </tr>
               </table>
@@ -1171,7 +1167,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td style="border-radius:4px;background-color:#107c10;">
-                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">View Request</a>
+                    {{RequestLinkButton|View Request}}
                   </td>
                 </tr>
               </table>
@@ -1257,7 +1253,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td style="border-radius:4px;background-color:#0078d4;">
-                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">Address Comments &amp; Resubmit</a>
+                    {{RequestLinkButton|Address Comments &amp; Resubmit}}
                   </td>
                 </tr>
               </table>
@@ -1345,7 +1341,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td style="border-radius:4px;background-color:#605e5c;">
-                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">View Request</a>
+                    {{RequestLinkButton|View Request}}
                   </td>
                 </tr>
               </table>
@@ -1431,7 +1427,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td style="border-radius:4px;background-color:#107c10;">
-                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">View Request</a>
+                    {{RequestLinkButton|View Request}}
                   </td>
                 </tr>
               </table>
@@ -1513,7 +1509,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td style="border-radius:4px;background-color:#0078d4;">
-                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">Address Comments &amp; Resubmit</a>
+                    {{RequestLinkButton|Address Comments &amp; Resubmit}}
                   </td>
                 </tr>
               </table>
@@ -1611,7 +1607,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td style="border-radius:4px;background-color:#605e5c;">
-                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">View Request</a>
+                    {{RequestLinkButton|View Request}}
                   </td>
                 </tr>
               </table>
@@ -1701,7 +1697,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td style="border-radius:4px;background-color:#0078d4;">
-                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">Continue Review</a>
+                    {{RequestLinkButton|Continue Review}}
                   </td>
                 </tr>
               </table>
@@ -1791,7 +1787,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td style="border-radius:4px;background-color:#0078d4;">
-                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">Continue Review</a>
+                    {{RequestLinkButton|Continue Review}}
                   </td>
                 </tr>
               </table>
@@ -1883,7 +1879,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td style="border-radius:4px;background-color:#605e5c;">
-                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">View Request</a>
+                    {{RequestLinkButton|View Request}}
                   </td>
                 </tr>
               </table>
@@ -1962,7 +1958,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td style="border-radius:4px;background-color:#0078d4;">
-                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">View Request</a>
+                    {{RequestLinkButton|View Request}}
                   </td>
                 </tr>
               </table>
@@ -2050,7 +2046,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td style="border-radius:4px;background-color:#605e5c;">
-                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">View Request</a>
+                    {{RequestLinkButton|View Request}}
                   </td>
                 </tr>
               </table>
@@ -2193,7 +2189,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td style="border-radius:4px;background-color:#107c10;">
-                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">Complete Closeout</a>
+                    {{RequestLinkButton|Complete Closeout}}
                   </td>
                 </tr>
               </table>
@@ -2319,7 +2315,7 @@
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td style="border-radius:4px;background-color:#107c10;">
-                    <a href="{{RequestLink}}" target="_blank" style="display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;">View Completed Request</a>
+                    {{RequestLinkButton|View Completed Request}}
                   </td>
                 </tr>
               </table>

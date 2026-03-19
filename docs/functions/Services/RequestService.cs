@@ -32,6 +32,77 @@ namespace LegalWorkflow.Functions.Services
         // Cache normalized enum name → value maps per enum type to avoid repeated Enum.GetValues<T>() allocations
         private static readonly ConcurrentDictionary<Type, Dictionary<string, object>> _enumNormalizedCache = new();
 
+        private static readonly string[] _requestReadFieldInternalNames =
+        {
+            RequestsFields.ID,
+            RequestsFields.Title,
+            RequestsFields.RequestTitle,
+            RequestsFields.UIVersionString,
+            RequestsFields.Created,
+            RequestsFields.Modified,
+            RequestsFields.RequestType,
+            RequestsFields.SubmissionType,
+            RequestsFields.SubmissionItem,
+            RequestsFields.Purpose,
+            RequestsFields.TargetReturnDate,
+            RequestsFields.IsRushRequest,
+            RequestsFields.RushRationale,
+            RequestsFields.ReviewAudience,
+            RequestsFields.FINRAAudienceCategory,
+            RequestsFields.Audience,
+            RequestsFields.USFunds,
+            RequestsFields.UCITS,
+            RequestsFields.SeparateAcctStrategies,
+            RequestsFields.SeparateAcctStrategiesIncl,
+            RequestsFields.DistributionMethod,
+            RequestsFields.DateOfFirstUse,
+            RequestsFields.Attorney,
+            RequestsFields.AttorneyAssignNotes,
+            RequestsFields.LegalReviewStatus,
+            RequestsFields.LegalReviewOutcome,
+            RequestsFields.LegalReviewNotes,
+            RequestsFields.LegalStatusUpdatedOn,
+            RequestsFields.LegalReviewAttorneyHours,
+            RequestsFields.ComplianceReviewStatus,
+            RequestsFields.ComplianceReviewOutcome,
+            RequestsFields.ComplianceReviewNotes,
+            RequestsFields.ComplianceStatusUpdatedOn,
+            RequestsFields.ComplianceReviewReviewerHours,
+            RequestsFields.IsForesideReviewRequired,
+            RequestsFields.RecordRetentionOnly,
+            RequestsFields.IsRetailUse,
+            RequestsFields.TrackingId,
+            RequestsFields.Status,
+            RequestsFields.PreviousStatus,
+            RequestsFields.SubmittedBy,
+            RequestsFields.SubmittedOn,
+            RequestsFields.IsOnHold,
+            RequestsFields.OnHoldReason,
+            RequestsFields.OnHoldSince,
+            RequestsFields.CloseoutOn,
+            RequestsFields.CancelledOn,
+            RequestsFields.CancelReason,
+            RequestsFields.AdditionalParty,
+            RequestsFields.CommunicationsApprover,
+            RequestsFields.CommunicationsApprovalDate,
+            RequestsFields.HasCommunicationsApproval,
+            RequestsFields.PortfolioManager,
+            RequestsFields.PortfolioManagerApprovalDate,
+            RequestsFields.HasPortfolioManagerApproval,
+            RequestsFields.ResearchAnalyst,
+            RequestsFields.ResearchAnalystApprovalDate,
+            RequestsFields.HasResearchAnalystApproval,
+            RequestsFields.SubjectMatterExpert,
+            RequestsFields.SMEApprovalDate,
+            RequestsFields.HasSMEApproval,
+            RequestsFields.PerformanceApprover,
+            RequestsFields.PerformanceApprovalDate,
+            RequestsFields.HasPerformanceApproval,
+            RequestsFields.OtherApproval,
+            RequestsFields.OtherApprovalDate,
+            RequestsFields.HasOtherApproval
+        };
+
         /// <summary>
         /// Creates a new RequestService instance.
         /// </summary>
@@ -61,14 +132,40 @@ namespace LegalWorkflow.Functions.Services
             {
                 using var context = await CreateContextAsync();
 
-                // Get the Requests list
-                var list = await context.Web.Lists.GetByTitleAsync(_listConfig.RequestsListName);
-
-                // Load the item with all required fields
-                var item = await list.Items.GetByIdAsync(requestId,
-                    i => i.All,  // Load all fields
-                    i => i.FieldValuesAsText  // Also get text values for lookups
+                // Load field metadata so PnP Core can translate complex field types
+                // when using RenderListDataAsStream.
+                var list = await context.Web.Lists.GetByTitleAsync(
+                    _listConfig.RequestsListName,
+                    l => l.Fields.QueryProperties(
+                        f => f.InternalName,
+                        f => f.FieldTypeKind,
+                        f => f.TypeAsString,
+                        f => f.Title)
                 );
+
+                var viewFieldsXml = string.Concat(
+                    _requestReadFieldInternalNames.Select(fieldName => $"<FieldRef Name='{fieldName}'/>"));
+
+                var viewXml = $@"<View>
+                    <ViewFields>{viewFieldsXml}</ViewFields>
+                    <Query>
+                        <Where>
+                            <Eq>
+                                <FieldRef Name='ID'/>
+                                <Value Type='Counter'>{requestId}</Value>
+                            </Eq>
+                        </Where>
+                    </Query>
+                    <RowLimit>1</RowLimit>
+                </View>";
+
+                await list.LoadListDataAsStreamAsync(new RenderListDataOptions
+                {
+                    ViewXml = viewXml,
+                    RenderOptions = RenderListDataOptionsFlags.ListData
+                });
+
+                var item = list.Items.AsRequested().FirstOrDefault();
 
                 if (item == null)
                 {
@@ -79,10 +176,6 @@ namespace LegalWorkflow.Functions.Services
 
                 // Map SharePoint item to RequestModel
                 var request = MapItemToRequest(item);
-
-                // Backfill user emails — SharePoint REST does not include Email in user lookup values;
-                // we resolve them separately using the site user store.
-                await BackfillUserEmailsAsync(context, request);
 
                 _logger.SetRequestContext(request.Id, GetRequestContextTitle(request));
                 _logger.Info("Request loaded successfully", new { FieldCount = item.Values.Count });
@@ -591,116 +684,14 @@ namespace LegalWorkflow.Functions.Services
         }
 
         /// <summary>
-        /// Backfills Email (and LoginName where missing) on all UserInfo instances in the request.
-        /// SharePoint REST does not include the Email property in user lookup field values — it only
-        /// returns LookupId and LookupValue. We resolve emails in a single pass using GetUserByIdAsync.
-        /// </summary>
-        private async Task BackfillUserEmailsAsync(PnPContext context, RequestModel request)
-        {
-            var allUserInfos = CollectAllUserInfos(request);
-
-            var uniqueIds = allUserInfos
-                .Where(u => u.Id > 0 && string.IsNullOrEmpty(u.Email))
-                .Select(u => u.Id)
-                .Distinct()
-                .ToList();
-
-            if (uniqueIds.Count == 0) return;
-
-            try
-            {
-                // One REST call for all users via the hidden User Information List.
-                // <In> with <Values> fetches every user in a single CAML query.
-                var values = string.Concat(uniqueIds.Select(id => $"<Value Type='Integer'>{id}</Value>"));
-                var caml = $@"<View>
-                    <Query>
-                        <Where>
-                            <In>
-                                <FieldRef Name='ID'/>
-                                <Values>{values}</Values>
-                            </In>
-                        </Where>
-                    </Query>
-                    <ViewFields>
-                        <FieldRef Name='ID'/>
-                        <FieldRef Name='EMail'/>
-                        <FieldRef Name='Name'/>
-                    </ViewFields>
-                </View>";
-
-                var userInfoList = await context.Web.Lists.GetByTitleAsync("User Information List");
-                await userInfoList.LoadItemsByCamlQueryAsync(new CamlQueryOptions { ViewXml = caml });
-                var users = userInfoList.Items.AsRequested();
-
-                var emailById = new Dictionary<int, string>();
-                var loginNameById = new Dictionary<int, string>();
-
-                foreach (var user in users)
-                {
-                    var id = user.Id;
-                    if (user.Values.TryGetValue("EMail", out var rawMail) && rawMail != null)
-                    {
-                        var mail = rawMail.ToString() ?? string.Empty;
-                        if (!string.IsNullOrEmpty(mail)) emailById[id] = mail;
-                    }
-                    if (user.Values.TryGetValue("Name", out var rawLogin) && rawLogin != null)
-                    {
-                        var loginName = rawLogin.ToString() ?? string.Empty;
-                        if (!string.IsNullOrEmpty(loginName)) loginNameById[id] = loginName;
-                    }
-                }
-
-                foreach (var userInfo in allUserInfos.Where(u => u.Id > 0))
-                {
-                    if (string.IsNullOrEmpty(userInfo.Email) && emailById.TryGetValue(userInfo.Id, out var email))
-                        userInfo.Email = email;
-                    if (string.IsNullOrEmpty(userInfo.LoginName) && loginNameById.TryGetValue(userInfo.Id, out var loginName))
-                        userInfo.LoginName = loginName;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.Warning($"Could not resolve user emails from User Information List: {ex.Message}");
-            }
-        }
-
-        /// <summary>
-        /// Collects all UserInfo instances from a RequestModel for bulk email resolution.
-        /// </summary>
-        private static List<UserInfo> CollectAllUserInfos(RequestModel request)
-        {
-            var users = new List<UserInfo>();
-
-            if (request.SubmittedBy != null) users.Add(request.SubmittedBy);
-            users.AddRange(request.Attorneys);
-            users.AddRange(request.AdditionalParties);
-
-            var approvals = new ApprovalInfo?[]
-            {
-                request.CommunicationsApproval,
-                request.PortfolioManagerApproval,
-                request.ResearchAnalystApproval,
-                request.SubjectMatterExpertApproval,
-                request.PerformanceApproval,
-                request.OtherApproval
-            };
-
-            foreach (var approval in approvals)
-            {
-                if (approval?.ApprovedBy != null) users.Add(approval.ApprovedBy);
-            }
-
-            return users;
-        }
-
-        /// <summary>
         /// Parses a user lookup field from a list item.
         ///
         /// All IFieldUserValue properties (LookupId, LookupValue, Email, Principal) go through
         /// PnP Core SDK's GetValue&lt;T&gt;() and throw "Property X was not yet loaded" when the
         /// sub-object was not explicitly expanded. We therefore:
-        ///   1. Prefer FieldValuesAsText for the display name (it is pre-loaded in GetByIdAsync).
-        ///   2. Wrap every IFieldUserValue property access in its own try/catch as a fallback.
+        ///   1. Prefer the richer RenderListDataAsStream payload used by request reads.
+        ///   2. Fall back to FieldValuesAsText when it is available for the display name.
+        ///   3. Wrap every IFieldUserValue property access in its own try/catch as a final fallback.
         /// </summary>
         private static UserInfo? ParseUserField(IListItem item, string fieldName)
         {
@@ -742,7 +733,8 @@ namespace LegalWorkflow.Functions.Services
 
         /// <summary>
         /// Parses a multi-user lookup field from a list item.
-        /// All IFieldUserValue property accesses are wrapped in try/catch — see ParseUserField.
+        /// Handles both strongly typed user values and dictionary-backed values returned by
+        /// RenderListDataAsStream.
         /// </summary>
         private static List<UserInfo> ParseMultiUserField(IListItem item, string fieldName)
         {
@@ -770,8 +762,71 @@ namespace LegalWorkflow.Functions.Services
                     users.Add(new UserInfo { Id = userId, Title = title, Email = email, LoginName = loginName });
                 }
             }
+            else if (value is IEnumerable<object> objectValues)
+            {
+                foreach (var objectValue in objectValues)
+                {
+                    if (TryParseUserInfo(objectValue, out var user))
+                    {
+                        users.Add(user);
+                    }
+                }
+            }
 
             return users;
+        }
+
+        private static bool TryParseUserInfo(object? value, out UserInfo user)
+        {
+            user = new UserInfo();
+
+            if (value == null)
+            {
+                return false;
+            }
+
+            if (value is IFieldUserValue userValue)
+            {
+                try { user.Id = userValue.LookupId; } catch { }
+                try { user.Title = userValue.LookupValue ?? string.Empty; } catch { }
+                try { user.Email = userValue.Email ?? string.Empty; } catch { }
+                try { user.LoginName = userValue.Principal?.LoginName ?? string.Empty; } catch { }
+
+                return user.Id != 0 ||
+                       !string.IsNullOrWhiteSpace(user.Title) ||
+                       !string.IsNullOrWhiteSpace(user.Email) ||
+                       !string.IsNullOrWhiteSpace(user.LoginName);
+            }
+
+            if (value is IDictionary<string, object> lookupDict)
+            {
+                if (lookupDict.TryGetValue("LookupId", out var rawId) && rawId != null)
+                {
+                    try { user.Id = Convert.ToInt32(rawId); } catch { }
+                }
+
+                if (lookupDict.TryGetValue("LookupValue", out var rawTitle) && rawTitle != null)
+                {
+                    user.Title = rawTitle.ToString() ?? string.Empty;
+                }
+
+                if (lookupDict.TryGetValue("Email", out var rawEmail) && rawEmail != null)
+                {
+                    user.Email = rawEmail.ToString() ?? string.Empty;
+                }
+
+                if (lookupDict.TryGetValue("Name", out var rawLoginName) && rawLoginName != null)
+                {
+                    user.LoginName = rawLoginName.ToString() ?? string.Empty;
+                }
+
+                return user.Id != 0 ||
+                       !string.IsNullOrWhiteSpace(user.Title) ||
+                       !string.IsNullOrWhiteSpace(user.Email) ||
+                       !string.IsNullOrWhiteSpace(user.LoginName);
+            }
+
+            return false;
         }
 
         /// <summary>

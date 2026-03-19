@@ -6,6 +6,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Caching.Memory;
@@ -490,9 +491,14 @@ namespace LegalWorkflow.Functions.Services
 
             return TokenRegex().Replace(template, match =>
             {
-                // Normalize: collapse internal whitespace and lowercase for lookup
                 var raw = match.Groups[1].Value;
-                var key = WhitespaceRegex().Replace(raw.Trim(), string.Empty).ToLowerInvariant();
+                var (tokenName, tokenArgument) = ParseParameterizedToken(raw);
+                var key = WhitespaceRegex().Replace(tokenName, string.Empty).ToLowerInvariant();
+
+                if (key is "requestlinkbutton" or "requestlinkanchor")
+                {
+                    return BuildRequestLinkAnchor(request, tokenArgument);
+                }
 
                 if (tokens.TryGetValue(key, out var value))
                 {
@@ -525,101 +531,91 @@ namespace LegalWorkflow.Functions.Services
             var distributionMethodsFormatted = string.Join(", ", request.DistributionMethods.Select(FormatDistributionMethod));
             var approvalCount = CountApprovals(request);
 
-            var requestLink = string.Empty;
-            if (!string.IsNullOrEmpty(_config.SiteUrl))
-            {
-                requestLink = $"{_config.SiteUrl.TrimEnd('/')}/Lists/{_listConfig.RequestsListName}/EditForm.aspx?ID={request.Id}";
-            }
-            else
-            {
-                _logger.Warning("NotificationConfig.SiteUrl is not configured — {{requestlink}} token will be empty in all notification emails");
-            }
+            var requestLink = BuildRequestLink(request);
 
             // Keys are lowercase with no whitespace — see ReplaceTokens normalization
             return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 // System fields
-                ["requestid"]                   = request.Title,
-                ["requesttitle"]                = GetDisplayRequestTitle(request),
-                ["status"]                      = FormatStatus(request.Status),
-                ["submittedby"]                 = request.SubmittedBy?.Title ?? "Unknown",
-                ["submittername"]               = request.SubmittedBy?.Title ?? "Unknown",
-                ["submittedbyemail"]            = request.SubmittedBy?.Email ?? string.Empty,
-                ["submitteremail"]              = request.SubmittedBy?.Email ?? string.Empty,
-                ["submittedon"]                 = request.SubmittedOn?.ToString("MMMM d, yyyy") ?? "N/A",
+                ["requestid"] = request.Title,
+                ["requesttitle"] = GetDisplayRequestTitle(request),
+                ["status"] = FormatStatus(request.Status),
+                ["submittedby"] = request.SubmittedBy?.Title ?? "Unknown",
+                ["submittername"] = request.SubmittedBy?.Title ?? "Unknown",
+                ["submittedbyemail"] = request.SubmittedBy?.Email ?? string.Empty,
+                ["submitteremail"] = request.SubmittedBy?.Email ?? string.Empty,
+                ["submittedon"] = request.SubmittedOn?.ToString("MMMM d, yyyy") ?? "N/A",
 
                 // Request information
-                ["requesttype"]                 = FormatRequestType(request.RequestType),
-                ["submissiontype"]              = request.SubmissionType == SubmissionType.New ? "New Submission" : "Material Updates",
-                ["submissionitem"]              = request.SubmissionItem ?? string.Empty,
-                ["purpose"]                     = request.Purpose,
-                ["targetreturndate"]            = request.TargetReturnDate?.ToString("MMMM d, yyyy") ?? "N/A",
-                ["isrushrequest"]               = request.IsRushRequest ? "Yes" : "No",
-                ["rushrationale"]               = request.RushRationale,
-                ["reviewaudience"]              = FormatReviewAudience(request.ReviewAudience),
+                ["requesttype"] = FormatRequestType(request.RequestType),
+                ["submissiontype"] = request.SubmissionType == SubmissionType.New ? "New Submission" : "Material Updates",
+                ["submissionitem"] = request.SubmissionItem ?? string.Empty,
+                ["purpose"] = request.Purpose,
+                ["targetreturndate"] = request.TargetReturnDate?.ToString("MMMM d, yyyy") ?? "N/A",
+                ["isrushrequest"] = request.IsRushRequest ? "Yes" : "No",
+                ["rushrationale"] = request.RushRationale,
+                ["reviewaudience"] = FormatReviewAudience(request.ReviewAudience),
 
                 // FINRA & Audience
-                ["finraaudiencecategory"]       = request.FINRAAudienceCategory,
-                ["audience"]                    = request.Audience,
-                ["usfunds"]                     = string.Join(", ", request.USFunds),
-                ["ucits"]                       = string.Join(", ", request.UCITS),
-                ["separateaccountstrategies"]   = request.SeparateAccountStrategies,
+                ["finraaudiencecategory"] = request.FINRAAudienceCategory,
+                ["audience"] = request.Audience,
+                ["usfunds"] = string.Join(", ", request.USFunds),
+                ["ucits"] = string.Join(", ", request.UCITS),
+                ["separateaccountstrategies"] = request.SeparateAccountStrategies,
 
                 // Distribution
-                ["distributionmethods"]         = distributionMethodsFormatted,
-                ["distributionmethod"]          = distributionMethodsFormatted,
-                ["proposedfirstusedate"]        = request.ProposedFirstUseDate?.ToString("MMMM d, yyyy") ?? "N/A",
-                ["dateoffirstuse"]              = request.ProposedFirstUseDate?.ToString("MMMM d, yyyy") ?? "N/A",
-                ["proposeddiscontinuedate"]     = request.ProposedDiscontinueDate?.ToString("MMMM d, yyyy") ?? "N/A",
+                ["distributionmethods"] = distributionMethodsFormatted,
+                ["distributionmethod"] = distributionMethodsFormatted,
+                ["proposedfirstusedate"] = request.ProposedFirstUseDate?.ToString("MMMM d, yyyy") ?? "N/A",
+                ["dateoffirstuse"] = request.ProposedFirstUseDate?.ToString("MMMM d, yyyy") ?? "N/A",
+                ["proposeddiscontinuedate"] = request.ProposedDiscontinueDate?.ToString("MMMM d, yyyy") ?? "N/A",
 
                 // Legal Intake
-                ["attorney"]                    = attorneyNames,
-                ["assignedattorneyname"]        = attorneyNames,
-                ["attorneyemail"]               = attorneyEmails,
-                ["assignedattorneyemail"]       = attorneyEmails,
-                ["attorneyassignnotes"]         = request.AttorneyAssignNotes,
-                ["assignmentnotes"]             = request.AttorneyAssignNotes,
+                ["attorney"] = attorneyNames,
+                ["assignedattorneyname"] = attorneyNames,
+                ["attorneyemail"] = attorneyEmails,
+                ["assignedattorneyemail"] = attorneyEmails,
+                ["attorneyassignnotes"] = request.AttorneyAssignNotes,
+                ["assignmentnotes"] = request.AttorneyAssignNotes,
 
                 // Legal Review
-                ["legalreviewstatus"]           = FormatReviewStatus(request.LegalReviewStatus),
-                ["legalreviewoutcome"]          = FormatReviewOutcome(request.LegalReviewOutcome),
-                ["legalreviewnotes"]            = request.LegalReviewNotes,
+                ["legalreviewstatus"] = FormatReviewStatus(request.LegalReviewStatus),
+                ["legalreviewoutcome"] = FormatReviewOutcome(request.LegalReviewOutcome),
+                ["legalreviewnotes"] = request.LegalReviewNotes,
 
                 // Compliance Review
-                ["compliancereviewstatus"]      = FormatReviewStatus(request.ComplianceReviewStatus),
-                ["compliancereviewoutcome"]     = FormatReviewOutcome(request.ComplianceReviewOutcome),
-                ["compliancereviewnotes"]       = request.ComplianceReviewNotes,
-                ["isforesidereviewrequired"]    = request.IsForesideReviewRequired ? "Yes" : "No",
-                ["recordretentiononly"]         = request.RecordRetentionOnly ? "Yes" : "No",
-                ["isretailuse"]                 = request.IsRetailUse ? "Yes" : "No",
+                ["compliancereviewstatus"] = FormatReviewStatus(request.ComplianceReviewStatus),
+                ["compliancereviewoutcome"] = FormatReviewOutcome(request.ComplianceReviewOutcome),
+                ["compliancereviewnotes"] = request.ComplianceReviewNotes,
+                ["isforesidereviewrequired"] = request.IsForesideReviewRequired ? "Yes" : "No",
+                ["recordretentiononly"] = request.RecordRetentionOnly ? "Yes" : "No",
+                ["isretailuse"] = request.IsRetailUse ? "Yes" : "No",
 
                 // Closeout
-                ["trackingid"]                  = request.TrackingId,
+                ["trackingid"] = request.TrackingId,
 
                 // Hold/Cancel
-                ["holdreason"]                  = request.HoldReason,
-                ["holddate"]                    = request.HoldDate?.ToString("MMMM d, yyyy") ?? "N/A",
-                ["cancellationreason"]          = request.CancellationReason,
-                ["cancelledon"]                 = request.CancelledOn?.ToString("MMMM d, yyyy") ?? "N/A",
+                ["holdreason"] = request.HoldReason,
+                ["holddate"] = request.HoldDate?.ToString("MMMM d, yyyy") ?? "N/A",
+                ["cancellationreason"] = request.CancellationReason,
+                ["cancelledon"] = request.CancelledOn?.ToString("MMMM d, yyyy") ?? "N/A",
 
                 // Completion
-                ["completedon"]                 = request.CompletedOn?.ToString("MMMM d, yyyy") ?? "N/A",
+                ["completedon"] = request.CompletedOn?.ToString("MMMM d, yyyy") ?? "N/A",
 
                 // Link (raw URL and HTML anchor variants)
-                ["requestlink"]                 = requestLink,
-                ["requestlinkurl"]              = requestLink,
-                ["requesturl"]                  = requestLink,   // alias for legacy templates
-                ["viewrequestlink"]             = !string.IsNullOrEmpty(requestLink)
-                                                    ? $"<a href=\"{requestLink}\">View Request</a>"
-                                                    : string.Empty,
+                ["requestlink"] = requestLink,
+                ["requestlinkurl"] = requestLink,
+                ["requesturl"] = requestLink,   // alias for legacy templates
+                ["viewrequestlink"] = BuildRequestLinkAnchor(request, "View Request"),
 
                 // Additional parties
-                ["additionalpartyemails"]       = additionalPartyEmails,
-                ["additionalparties"]           = additionalPartyNames,
-                ["additionalpartynames"]        = additionalPartyNames,
+                ["additionalpartyemails"] = additionalPartyEmails,
+                ["additionalparties"] = additionalPartyNames,
+                ["additionalpartynames"] = additionalPartyNames,
 
                 // Approvals
-                ["approvalcount"]               = approvalCount > 0 ? approvalCount.ToString() : string.Empty,
+                ["approvalcount"] = approvalCount > 0 ? approvalCount.ToString() : string.Empty,
             };
         }
 
@@ -1149,6 +1145,49 @@ namespace LegalWorkflow.Functions.Services
             return await SharePointContextHelper.CreateContextAsync(_contextFactory, _siteUri, _authenticationProvider);
         }
 
+        private static (string TokenName, string? Argument) ParseParameterizedToken(string rawToken)
+        {
+            var trimmedToken = rawToken.Trim();
+            var separatorIndex = trimmedToken.IndexOf('|');
+
+            if (separatorIndex < 0)
+            {
+                return (trimmedToken, null);
+            }
+
+            var tokenName = trimmedToken[..separatorIndex].Trim();
+            var tokenArgument = trimmedToken[(separatorIndex + 1)..].Trim();
+
+            return (tokenName, string.IsNullOrWhiteSpace(tokenArgument) ? null : tokenArgument);
+        }
+
+        private string BuildRequestLinkAnchor(RequestModel request, string? label)
+        {
+            var requestLink = BuildRequestLink(request);
+            if (string.IsNullOrEmpty(requestLink))
+            {
+                return string.Empty;
+            }
+
+            var decodedLabel = WebUtility.HtmlDecode(label ?? string.Empty);
+            var anchorLabel = string.IsNullOrWhiteSpace(decodedLabel) ? "View Request" : decodedLabel;
+            var encodedHref = WebUtility.HtmlEncode(requestLink);
+            var encodedLabel = WebUtility.HtmlEncode(anchorLabel);
+
+            return $"<a href=\"{encodedHref}\" target=\"_blank\" rel=\"noopener noreferrer\" style=\"display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;\">{encodedLabel}</a>";
+        }
+
+        private string BuildRequestLink(RequestModel request)
+        {
+            if (!string.IsNullOrEmpty(_config.SiteUrl))
+            {
+                return $"{_config.SiteUrl.TrimEnd('/')}/Lists/{_listConfig.RequestsListName}/EditForm.aspx?ID={request.Id}";
+            }
+
+            _logger.Warning("NotificationConfig.SiteUrl is not configured — request link tokens will be empty in notification emails");
+            return string.Empty;
+        }
+
         private static string GetDisplayRequestTitle(RequestModel request)
         {
             return !string.IsNullOrWhiteSpace(request.RequestTitle)
@@ -1169,7 +1208,7 @@ namespace LegalWorkflow.Functions.Services
         private static partial Regex OrphanConditionalTagRegex();
 
         // Matches any {{...}} token that is NOT a conditional opener/closer (i.e. does not start with # or /)
-        [GeneratedRegex(@"\{\{\s*(?!#|/)(\w[\w\s]*?)\s*\}\}")]
+        [GeneratedRegex(@"\{\{\s*(?!#|/)([^{}]+?)\s*\}\}")]
         private static partial Regex TokenRegex();
 
         // Collapses internal whitespace in a token name for lookup normalization

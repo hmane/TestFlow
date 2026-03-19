@@ -667,7 +667,8 @@ Templates use Handlebars syntax (`{{variable}}`):
 |----------|-------------|
 | `{{RequestId}}` | Request ID (e.g., CRR-26-1) |
 | `{{RequestTitle}}` | Request title |
-| `{{RequestLink}}` | URL to open the request |
+| `{{RequestLink}}` | Raw URL to open the request |
+| `{{RequestLinkButton\|View Request}}` | Full HTML anchor/button for the request link with custom label text |
 | `{{SubmitterName}}` | Request creator display name |
 | `{{SubmitterEmail}}` | Request creator email |
 | `{{AssignedAttorneyName}}` | Assigned attorney display name |

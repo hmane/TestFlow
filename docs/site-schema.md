@@ -505,6 +505,7 @@ Email notification templates for the Legal Review System. Each row defines a not
 | `{{RequestId}}` | Request ID (e.g., CRR-25-1) |
 | `{{RequestTitle}}` | Request title |
 | `{{RequestLink}}` | Direct URL to the request |
+| `{{RequestLinkButton\|View Request}}` | Full HTML anchor/button for the request link with custom label text |
 | `{{SubmitterName}}` | Name of the person who submitted the request |
 | `{{Submitter}}` | Email of the submitter (for recipients) |
 | `{{Attorney}}` | Email of the assigned attorney |
