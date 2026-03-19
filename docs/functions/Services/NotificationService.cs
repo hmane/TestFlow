@@ -638,6 +638,10 @@ namespace LegalWorkflow.Functions.Services
                 return string.Empty;
             });
 
+            // Remove any orphan {{#if}}, {{/if}}, {{#unless}}, {{/unless}} tags that had no
+            // matching closer (e.g. unclosed blocks or unknown field names left by the regex).
+            result = OrphanConditionalTagRegex().Replace(result, string.Empty);
+
             return result;
         }
 
@@ -1123,11 +1127,17 @@ namespace LegalWorkflow.Functions.Services
                 : request.Title;
         }
 
-        [GeneratedRegex(@"\{\{#if\s+(\w+)\}\}(.*?)\{\{/if\}\}", RegexOptions.Singleline)]
+        // \s* before }} allows optional trailing whitespace inside the tag (e.g. {{#if Field }})
+        // IgnoreCase so {{#IF}} and {{#if}} both match
+        [GeneratedRegex(@"\{\{#if\s+([\w]+)\s*\}\}(.*?)\{\{/if\s*\}\}", RegexOptions.Singleline | RegexOptions.IgnoreCase)]
         private static partial Regex IfConditionalRegex();
 
-        [GeneratedRegex(@"\{\{#unless\s+(\w+)\}\}(.*?)\{\{/unless\}\}", RegexOptions.Singleline)]
+        [GeneratedRegex(@"\{\{#unless\s+([\w]+)\s*\}\}(.*?)\{\{/unless\s*\}\}", RegexOptions.Singleline | RegexOptions.IgnoreCase)]
         private static partial Regex UnlessConditionalRegex();
+
+        // Removes any leftover {{#if...}} or {{/if}} tags that had no matching closer (false-branch cleanup)
+        [GeneratedRegex(@"\{\{/?#?\s*(if|unless)\b[^}]*\}\}", RegexOptions.IgnoreCase)]
+        private static partial Regex OrphanConditionalTagRegex();
 
         // Matches any {{...}} token that is NOT a conditional opener/closer (i.e. does not start with # or /)
         [GeneratedRegex(@"\{\{\s*(?!#|/)(\w[\w\s]*?)\s*\}\}")]

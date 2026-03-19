@@ -238,8 +238,10 @@ namespace LegalWorkflow.Functions.Services
                 Id = notificationId,
                 // HtmlDecode restores {{ }} from &#123;&#123; &#125;&#125; — SharePoint's RTE
                 // encodes curly braces when saving rich text fields.
-                Subject = WebUtility.HtmlDecode(GetFieldValue<string>(item, NotificationsFields.Subject) ?? string.Empty),
-                Body = WebUtility.HtmlDecode(GetFieldValue<string>(item, NotificationsFields.Body) ?? string.Empty),
+                // UnescapeTemplate also converts literal \n / \r / \\ sequences written by
+                // template authors in plain-text fields into actual characters.
+                Subject = UnescapeTemplate(WebUtility.HtmlDecode(GetFieldValue<string>(item, NotificationsFields.Subject) ?? string.Empty)),
+                Body = UnescapeTemplate(WebUtility.HtmlDecode(GetFieldValue<string>(item, NotificationsFields.Body) ?? string.Empty)),
                 ToRecipients = GetFieldValue<string>(item, NotificationsFields.ToRecipients) ?? string.Empty,
                 CcRecipients = GetFieldValue<string>(item, NotificationsFields.CcRecipients) ?? string.Empty,
                 BccRecipients = GetFieldValue<string>(item, NotificationsFields.BccRecipients) ?? string.Empty,
@@ -250,6 +252,22 @@ namespace LegalWorkflow.Functions.Services
                 RequestType = GetFieldValue<string>(item, NotificationsFields.RequestType),
                 IsActive = GetFieldValue<bool>(item, NotificationsFields.IsActive)
             };
+        }
+
+        /// <summary>
+        /// Converts literal escape sequences written by template authors (e.g. \n, \r, \\)
+        /// into their actual characters. This handles plain-text fields where authors type
+        /// \n instead of inserting a real newline.
+        /// </summary>
+        private static string UnescapeTemplate(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return value;
+
+            return value
+                .Replace("\\n", "\n")
+                .Replace("\\r", "\r")
+                .Replace("\\t", "\t")
+                .Replace("\\\\", "\\");
         }
 
         #region Private Helper Methods
