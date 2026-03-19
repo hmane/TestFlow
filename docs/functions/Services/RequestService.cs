@@ -748,13 +748,32 @@ namespace LegalWorkflow.Functions.Services
                 return new List<UserInfo>();
             }
 
+            if (value is IFieldValueCollection fieldValueCollection)
+            {
+                var users = new List<UserInfo>();
+                foreach (var fieldValue in fieldValueCollection.Values)
+                {
+                    users.AddRange(ExtractUserInfos(fieldValue));
+                }
+
+                return DeduplicateUsers(users);
+            }
+
             if (value is IFieldUserValue userValue)
             {
                 var typedUser = new UserInfo();
                 try { typedUser.Id = userValue.LookupId; } catch { }
-                try { typedUser.Title = userValue.LookupValue ?? string.Empty; } catch { }
+                try { typedUser.Title = userValue.Title ?? string.Empty; } catch { }
+                if (string.IsNullOrWhiteSpace(typedUser.Title))
+                {
+                    try { typedUser.Title = userValue.LookupValue ?? string.Empty; } catch { }
+                }
                 try { typedUser.Email = userValue.Email ?? string.Empty; } catch { }
                 try { typedUser.LoginName = userValue.Principal?.LoginName ?? string.Empty; } catch { }
+                if (string.IsNullOrWhiteSpace(typedUser.LoginName))
+                {
+                    try { typedUser.LoginName = userValue.Sip ?? string.Empty; } catch { }
+                }
 
                 return IsMeaningfulUser(typedUser)
                     ? new List<UserInfo> { typedUser }
