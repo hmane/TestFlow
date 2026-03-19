@@ -5,9 +5,8 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
+using System.Net;
 using PnP.Core.Model.SharePoint;
 using PnP.Core.QueryModel;
 using PnP.Core.Services;
@@ -237,8 +236,10 @@ namespace LegalWorkflow.Functions.Services
             return new NotificationTemplate
             {
                 Id = notificationId,
-                Subject = GetFieldValue<string>(item, NotificationsFields.Subject) ?? string.Empty,
-                Body = GetFieldValue<string>(item, NotificationsFields.Body) ?? string.Empty,
+                // HtmlDecode restores {{ }} from &#123;&#123; &#125;&#125; — SharePoint's RTE
+                // encodes curly braces when saving rich text fields.
+                Subject = WebUtility.HtmlDecode(GetFieldValue<string>(item, NotificationsFields.Subject) ?? string.Empty),
+                Body = WebUtility.HtmlDecode(GetFieldValue<string>(item, NotificationsFields.Body) ?? string.Empty),
                 ToRecipients = GetFieldValue<string>(item, NotificationsFields.ToRecipients) ?? string.Empty,
                 CcRecipients = GetFieldValue<string>(item, NotificationsFields.CcRecipients) ?? string.Empty,
                 BccRecipients = GetFieldValue<string>(item, NotificationsFields.BccRecipients) ?? string.Empty,
