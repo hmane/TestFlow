@@ -947,7 +947,7 @@ namespace LegalWorkflow.Functions.Services
                 Type = ApprovalType.Communications,
                 ApprovedBy = approvedBy,
                 ApprovedOn = approvedOn,
-                HasDocument = GetFieldValue<bool>(item, RequestsFields.RequiresCommunicationsApproval)
+                HasDocument = GetFieldValue<bool>(item, RequestsFields.HasCommunicationsApproval)
             };
         }
 

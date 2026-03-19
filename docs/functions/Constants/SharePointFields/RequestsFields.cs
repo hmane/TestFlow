@@ -253,6 +253,9 @@ namespace LegalWorkflow.Functions.Constants.SharePointFields
         /// <summary>Whether Communications approval is required</summary>
         public const string RequiresCommunicationsApproval = "RequiresCommunicationsApproval";
 
+        /// <summary>Whether Communications approval document exists (uploaded by submitter)</summary>
+        public const string HasCommunicationsApproval = "HasCommunicationsApproval";
+
         /// <summary>Communications approver (user lookup)</summary>
         public const string CommunicationsApprover = "CommunicationsApprover";
 

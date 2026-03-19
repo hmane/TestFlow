@@ -703,7 +703,9 @@ namespace LegalWorkflow.Functions.Services
         }
 
         /// <summary>
-        /// Counts the number of non-null approvals on a request.
+        /// Counts the number of approvals with a document attached (HasDocument == true).
+        /// An ApprovalInfo may exist with only a name/date but no uploaded document —
+        /// only documents-attached count toward the approval count shown in notifications.
         /// </summary>
         private static int CountApprovals(RequestModel request)
         {
@@ -715,7 +717,7 @@ namespace LegalWorkflow.Functions.Services
                 request.SubjectMatterExpertApproval,
                 request.PerformanceApproval,
                 request.OtherApproval
-            }.Count(a => a != null);
+            }.Count(a => a != null && a.HasDocument);
         }
 
         /// <summary>
