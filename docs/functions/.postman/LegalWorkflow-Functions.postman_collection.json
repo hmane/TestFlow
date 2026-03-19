@@ -258,46 +258,6 @@
             },
             "description": "Compares the current request state against `previousVersion` to determine which notification (if any) to generate.\n\nSet `previousVersion` to the SP item version string before the status change (e.g. `2.0`). Set to `null` to simulate a brand-new submission."
           }
-        },
-        {
-          "name": "Send Notification — new submission",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
-                  "const b = pm.response.json();",
-                  "pm.test('Has shouldSendNotification', () => pm.expect(b).to.have.property('shouldSendNotification'));",
-                  "",
-                  "if (b.shouldSendNotification) {",
-                  "  console.log('Notification ID :', b.email.notificationId);",
-                  "  console.log('Subject         :', b.email.subject);",
-                  "  console.log('To              :', b.email.to.join(', '));",
-                  "  console.log('CC              :', (b.email.cc || []).join(', '));",
-                  "} else {",
-                  "  console.log('No notification. Reason:', b.reason);",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"requestId\": {{requestId}},\n  \"previousVersion\": null\n}",
-              "options": { "raw": { "language": "json" } }
-            },
-            "url": {
-              "raw": "{{baseUrl}}/api/notifications/send",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "notifications", "send"]
-            },
-            "description": "Simulates a brand-new submission (no previousVersion). Triggers RequestSubmitted or RushRequestAlert if the request is already in Legal Intake."
-          }
         }
       ]
     },

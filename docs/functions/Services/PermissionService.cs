@@ -405,7 +405,11 @@ namespace LegalWorkflow.Functions.Services
         {
             _logger.Info($"Initializing item permissions for request {requestId}");
 
-            // Break inheritance (copy existing = false to start fresh)
+            // Reset then break inheritance to guarantee a clean slate.
+            // If inheritance is already broken, BreakRoleInheritanceAsync alone is a no-op
+            // and stale role assignments survive. Resetting first restores the inherited set,
+            // then breaking with copyRoleAssignments: false clears everything.
+            await requestItem.ResetRoleInheritanceAsync();
             await requestItem.BreakRoleInheritanceAsync(copyRoleAssignments: false, clearSubscopes: true);
 
             response.Changes.Add(new PermissionChange
@@ -473,9 +477,10 @@ namespace LegalWorkflow.Functions.Services
                 return;
             }
 
-            // Break inheritance
+            // Reset then break inheritance (same rationale as item permissions above)
             var docsFolderItem = await GetFolderListItemAsync(docsFolder);
 
+            await docsFolderItem.ResetRoleInheritanceAsync();
             await docsFolderItem.BreakRoleInheritanceAsync(copyRoleAssignments: false, clearSubscopes: true);
 
             response.Changes.Add(new PermissionChange
@@ -813,8 +818,10 @@ namespace LegalWorkflow.Functions.Services
             int principalId,
             IRoleDefinition roleDefinition)
         {
+            // GetRoleDefinitionsAsync returns null when the principal has no role assignments
+            // (e.g. right after BreakRoleInheritanceAsync with copyRoleAssignments: false).
             var existingRoleDefinitions = await securableObject.GetRoleDefinitionsAsync(principalId);
-            var alreadyAssigned = existingRoleDefinitions.Any(r =>
+            var alreadyAssigned = existingRoleDefinitions != null && existingRoleDefinitions.Any(r =>
                 string.Equals(r.Name, roleDefinition.Name, StringComparison.OrdinalIgnoreCase));
 
             if (!alreadyAssigned)
