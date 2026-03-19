@@ -92,10 +92,59 @@ namespace LegalWorkflow.Functions.Services
             {
                 using var context = await CreateContextAsync();
 
-                // Load the request item once with all fields (used for both participant extraction
-                // and permission initialization — avoids a duplicate REST call).
-                var requestsList = await context.Web.Lists.GetByTitleAsync(_listConfig.RequestsListName);
-                var requestItem = await requestsList.Items.GetByIdAsync(request.RequestId, i => i.All);
+                // Load field metadata so PnP Core can translate complex field types
+                // (user fields, lookups) when using RenderListDataAsStream.
+                var requestsList = await context.Web.Lists.GetByTitleAsync(
+                    _listConfig.RequestsListName,
+                    l => l.Fields.QueryProperties(
+                        f => f.InternalName,
+                        f => f.FieldTypeKind,
+                        f => f.TypeAsString,
+                        f => f.Title)
+                );
+
+                // Use RenderListDataAsStream (CAML query) instead of GetByIdAsync so that
+                // user fields (AdditionalParty, approvers) are auto-expanded with full details
+                // (Email, LoginName, Title). GetByIdAsync returns lazy-loaded user sub-objects
+                // that throw "Property was not yet loaded" on access.
+                var participantFieldNames = new[]
+                {
+                    RequestsFields.AdditionalParty,
+                    RequestsFields.CommunicationsApprover,
+                    RequestsFields.PortfolioManager,
+                    RequestsFields.ResearchAnalyst,
+                    RequestsFields.SubjectMatterExpert,
+                    RequestsFields.PerformanceApprover,
+                    RequestsFields.OtherApproval
+                };
+
+                var viewFieldsXml = string.Concat(
+                    participantFieldNames.Select(fieldName => $"<FieldRef Name='{fieldName}'/>"));
+
+                var viewXml = $@"<View>
+                    <ViewFields>{viewFieldsXml}</ViewFields>
+                    <Query>
+                        <Where>
+                            <Eq>
+                                <FieldRef Name='ID'/>
+                                <Value Type='Counter'>{request.RequestId}</Value>
+                            </Eq>
+                        </Where>
+                    </Query>
+                    <RowLimit>1</RowLimit>
+                </View>";
+
+                await requestsList.LoadListDataAsStreamAsync(new RenderListDataOptions
+                {
+                    ViewXml = viewXml,
+                    RenderOptions = RenderListDataOptionsFlags.ListData
+                });
+
+                var requestItem = requestsList.Items.AsRequested().FirstOrDefault();
+                if (requestItem == null)
+                {
+                    throw new InvalidOperationException($"Request {request.RequestId} not found in SharePoint");
+                }
 
                 // Pre-load site groups, role definitions, and participants sequentially.
                 // PnPContext is not thread-safe — all operations must run on the same context serially.
