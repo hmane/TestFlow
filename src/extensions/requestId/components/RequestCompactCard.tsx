@@ -19,7 +19,13 @@ import { DirectionalHint } from '@fluentui/react/lib/Callout';
 
 // spfx-toolkit - tree-shaken imports
 import { UserPersona } from 'spfx-toolkit/lib/components/UserPersona';
-import { LazyManageAccessComponent } from 'spfx-toolkit/lib/components/lazy';
+
+// Direct lazy import instead of barrel (avoids pulling in VersionHistory,
+// ConflictDetector, WorkflowStepper, and ManageAccessPanel wrappers)
+const LazyManageAccessComponent = React.lazy(() =>
+  import(/* webpackChunkName: "manage-access" */ 'spfx-toolkit/lib/components/ManageAccess')
+    .then(m => ({ default: m.ManageAccessComponent }))
+);
 
 // App imports using path aliases
 import type { IRequestCompactCardProps, IRequestFullData } from '../types';
@@ -646,14 +652,16 @@ export const RequestCompactCard: React.FC<IRequestCompactCardProps> = ({
         {/* Right side: ManageAccess (read-only) - Lazy loaded */}
         {listId && (
           <div className={styles.manageAccessSection}>
-            <LazyManageAccessComponent
-              itemId={itemData.id}
-              listId={listId}
-              permissionTypes="view"
-              maxAvatars={5}
-              enabled={false}
-              onPermissionChanged={handlePermissionChanged}
-            />
+            <React.Suspense fallback={null}>
+              <LazyManageAccessComponent
+                itemId={itemData.id}
+                listId={listId}
+                permissionTypes="view"
+                maxAvatars={5}
+                enabled={false}
+                onPermissionChanged={handlePermissionChanged}
+              />
+            </React.Suspense>
           </div>
         )}
       </div>

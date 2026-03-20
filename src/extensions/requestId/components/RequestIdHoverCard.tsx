@@ -10,9 +10,15 @@
 import * as React from 'react';
 import { HoverCard, HoverCardType, type IPlainCardProps } from '@fluentui/react/lib/HoverCard';
 import { DirectionalHint } from 'spfx-toolkit/lib/types/fluentui-types';
-import { RequestCompactCard } from './RequestCompactCard';
 import type { IRequestIdHoverCardProps } from '../types';
 import styles from './RequestIdHoverCard.module.scss';
+
+// Lazy-load the compact card — defers Fluent UI, UserPersona, PnP, and
+// data-service dependencies until the user actually hovers over a request ID.
+const LazyRequestCompactCard = React.lazy(() =>
+  import(/* webpackChunkName: "request-compact-card" */ './RequestCompactCard')
+    .then(m => ({ default: m.RequestCompactCard }))
+);
 
 /** Number of hours within which an item is considered "new" (SharePoint uses ~48 hours) */
 const NEW_ITEM_THRESHOLD_HOURS = 48;
@@ -49,10 +55,18 @@ export const RequestIdHoverCard: React.FC<IRequestIdHoverCardProps> = ({
   const onRenderPlainCard = React.useCallback(
     (): JSX.Element => {
       return (
-        <RequestCompactCard
-          itemData={itemData}
-          listId={listId}
-        />
+        <React.Suspense
+          fallback={
+            <div style={{ padding: 16, minWidth: 320, textAlign: 'center', color: '#605e5c' }}>
+              Loading...
+            </div>
+          }
+        >
+          <LazyRequestCompactCard
+            itemData={itemData}
+            listId={listId}
+          />
+        </React.Suspense>
       );
     },
     [itemData, listId]

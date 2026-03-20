@@ -121,6 +121,7 @@ build.configureWebpack.mergeConfig({
       })
     );
 
+
     if (isProduction) {
       // Production optimizations
       generatedConfiguration.optimization = {
