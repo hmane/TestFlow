@@ -890,7 +890,13 @@ namespace LegalWorkflow.Functions.Services
         /// </summary>
         private static async Task RemoveAllRoleDefinitionsAsync(ISecurableObject securableObject, int principalId)
         {
+            // GetRoleDefinitionsAsync returns null when the principal has no role assignments.
             var existingRoleDefinitions = await securableObject.GetRoleDefinitionsAsync(principalId);
+            if (existingRoleDefinitions == null)
+            {
+                return;
+            }
+
             var roleNames = existingRoleDefinitions
                 .Select(roleDefinition => roleDefinition.Name)
                 .Where(name => !string.IsNullOrWhiteSpace(name))
