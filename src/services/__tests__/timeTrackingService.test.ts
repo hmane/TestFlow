@@ -287,15 +287,79 @@ describe('Time Tracking Service', () => {
   });
 
   describe('resumeTimeTracking', () => {
-    it('should return empty updates (time tracking resumes via status fields)', async () => {
+    it('should reset the legal review handoff timestamp when resuming in review', async () => {
       const request = createBaseRequest({
+        status: 'On Hold',
         legalReviewStatus: LegalReviewStatus.InProgress,
       });
+      const now = new Date('2025-02-03T13:00:00');
+      jest.useFakeTimers();
+      jest.setSystemTime(now);
 
       const updates = await resumeTimeTracking(request, 'In Review');
 
-      // Function returns empty updates since status fields handle resume
-      expect(Object.keys(updates).length).toBe(0);
+      expect(updates.legalStatusUpdatedOn).toEqual(now);
+
+      jest.useRealTimers();
+    });
+
+    it('should reset the legal intake and closeout entry timestamps when those stages resume', async () => {
+      const intakeRequest = createBaseRequest({
+        status: 'On Hold',
+      });
+      const closeoutRequest = createBaseRequest({
+        status: 'On Hold',
+        legalReviewCompletedOn: new Date('2025-02-03T09:00:00'),
+        complianceReviewCompletedOn: new Date('2025-02-03T10:00:00'),
+      });
+      const now = new Date('2025-02-03T13:00:00');
+      jest.useFakeTimers();
+      jest.setSystemTime(now);
+
+      const intakeUpdates = await resumeTimeTracking(intakeRequest, 'Legal Intake');
+      const closeoutUpdates = await resumeTimeTracking(closeoutRequest, 'Closeout');
+
+      expect(intakeUpdates.legalIntakeEnteredOn).toEqual(now);
+      expect(closeoutUpdates.closeoutEnteredOn).toEqual(now);
+
+      jest.useRealTimers();
+    });
+
+    it('should avoid double counting legal review hours across hold and resume', async () => {
+      const startedOn = new Date('2025-02-03T10:00:00');
+      let request = createBaseRequest({
+        status: 'In Review',
+        legalReviewStatus: LegalReviewStatus.InProgress,
+        legalStatusUpdatedOn: startedOn,
+        legalReviewAttorneyHours: 0,
+      });
+
+      jest.useFakeTimers();
+      jest.setSystemTime(new Date('2025-02-03T12:00:00'));
+      const holdUpdates = await pauseTimeTracking(request);
+
+      request = {
+        ...request,
+        ...holdUpdates,
+        status: 'On Hold',
+      };
+
+      jest.setSystemTime(new Date('2025-02-03T13:00:00'));
+      const resumeUpdates = await resumeTimeTracking(request, 'In Review');
+
+      request = {
+        ...request,
+        ...resumeUpdates,
+        status: 'In Review',
+      };
+
+      jest.setSystemTime(new Date('2025-02-03T15:00:00'));
+      const completionUpdates = await calculateAndUpdateStageTime(request, 'LegalReview', 'Submitter');
+
+      expect(holdUpdates.legalReviewAttorneyHours).toBe(2);
+      expect(completionUpdates.legalReviewAttorneyHours).toBe(4);
+
+      jest.useRealTimers();
     });
   });
 

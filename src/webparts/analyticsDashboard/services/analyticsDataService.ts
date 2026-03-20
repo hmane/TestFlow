@@ -537,12 +537,6 @@ export const fetchDashboardData = async (
     // Snapshot filter — active items only (no date range), excludes On Hold
     const snapshotFilter = `${RequestsFields.Status} ne 'Draft' and ${RequestsFields.Status} ne 'Completed' and ${RequestsFields.Status} ne 'Cancelled' and ${RequestsFields.Status} ne 'On Hold'${segmentationFilter}`;
 
-    const timeTrackingFilter =
-      `${RequestsFields.Modified} ge datetime'${startDate.toISOString()}' and ` +
-      `${RequestsFields.Modified} le datetime'${endDate.toISOString()}' and ` +
-      `(${RequestsFields.TotalReviewerHours} gt 0 or ${RequestsFields.TotalSubmitterHours} gt 0)` +
-      `${segmentationFilter}`;
-
     SPContext.logger.debug('AnalyticsDataService: Query definitions', {
       dateRange,
       startDate: startDate.toISOString(),
@@ -551,12 +545,11 @@ export const fetchDashboardData = async (
       periodFilter: dateFilter,
       previousPeriodFilter: prevDateFilter,
       snapshotFilter,
-      timeTrackingFilter,
       top: 5000,
     });
 
     // Run all queries in parallel
-    const [items, snapshotItems, prevItems, timeTrackingItems] = await Promise.all([
+    const [items, snapshotItems, prevItems] = await Promise.all([
       // 1. Period query — items created within date range
       SPContext.sp.web.lists
         .getByTitle(Lists.Requests.Title)
@@ -636,25 +629,6 @@ export const fetchDashboardData = async (
         .filter(prevDateFilter)
         .top(5000)(),
 
-      // 4. Time tracking query — requests with tracked hours updated within period
-      SPContext.sp.web.lists
-        .getByTitle(Lists.Requests.Title)
-        .items
-        .select(
-          RequestsFields.ID,
-          RequestsFields.LegalIntakeLegalAdminHours,
-          RequestsFields.LegalIntakeSubmitterHours,
-          RequestsFields.LegalReviewAttorneyHours,
-          RequestsFields.LegalReviewSubmitterHours,
-          RequestsFields.ComplianceReviewReviewerHours,
-          RequestsFields.ComplianceReviewSubmitterHours,
-          RequestsFields.CloseoutReviewerHours,
-          RequestsFields.CloseoutSubmitterHours,
-          RequestsFields.TotalReviewerHours,
-          RequestsFields.TotalSubmitterHours
-        )
-        .filter(timeTrackingFilter)
-        .top(5000)(),
     ]);
 
     SPContext.logger.debug('AnalyticsDataService: Query results received', {
@@ -664,22 +638,18 @@ export const fetchDashboardData = async (
       itemCount: items.length,
       snapshotCount: snapshotItems.length,
       previousPeriodCount: prevItems.length,
-      timeTrackingCount: timeTrackingItems.length,
     });
 
     SPContext.logger.debug('AnalyticsDataService: Query sample payloads', {
       periodItemIds: (items as IAnalyticsRequestDebugItem[]).slice(0, 10).map((item) => item.ID),
       snapshotItemIds: (snapshotItems as IAnalyticsRequestDebugItem[]).slice(0, 10).map((item) => item.ID),
       previousPeriodItemIds: (prevItems as IAnalyticsRequestDebugItem[]).slice(0, 10).map((item) => item.ID),
-      timeTrackingItemIds: (timeTrackingItems as IAnalyticsRequestDebugItem[]).slice(0, 10).map((item) => item.ID),
       firstPeriodItem: summarizeAnalyticsItem((items as IAnalyticsRequestDebugItem[])[0]),
       firstSnapshotItem: summarizeAnalyticsItem((snapshotItems as IAnalyticsRequestDebugItem[])[0]),
       firstPreviousPeriodItem: summarizeAnalyticsItem((prevItems as IAnalyticsRequestDebugItem[])[0]),
-      firstTimeTrackingItem: summarizeAnalyticsItem((timeTrackingItems as IAnalyticsRequestDebugItem[])[0]),
     });
 
     const firstPeriodItem = (items as ITimeTrackingMetricsItem[])[0];
-    const firstTimeTrackingItem = (timeTrackingItems as ITimeTrackingMetricsItem[])[0];
 
     const countNonZero = (
       sourceItems: ITimeTrackingMetricsItem[],
@@ -688,32 +658,17 @@ export const fetchDashboardData = async (
 
     SPContext.logger.debug('AnalyticsDataService: Raw time field sample', {
       firstPeriodItem,
-      firstTimeTrackingItem,
       nonZeroCounts: {
-        period: {
-          totalReviewerHours: countNonZero(items as ITimeTrackingMetricsItem[], 'TotalReviewerHours'),
-          totalSubmitterHours: countNonZero(items as ITimeTrackingMetricsItem[], 'TotalSubmitterHours'),
-          legalIntakeLegalAdminHours: countNonZero(items as ITimeTrackingMetricsItem[], 'LegalIntakeLegalAdminHours'),
-          legalIntakeSubmitterHours: countNonZero(items as ITimeTrackingMetricsItem[], 'LegalIntakeSubmitterHours'),
-          legalReviewAttorneyHours: countNonZero(items as ITimeTrackingMetricsItem[], 'LegalReviewAttorneyHours'),
-          legalReviewSubmitterHours: countNonZero(items as ITimeTrackingMetricsItem[], 'LegalReviewSubmitterHours'),
-          complianceReviewReviewerHours: countNonZero(items as ITimeTrackingMetricsItem[], 'ComplianceReviewReviewerHours'),
-          complianceReviewSubmitterHours: countNonZero(items as ITimeTrackingMetricsItem[], 'ComplianceReviewSubmitterHours'),
-          closeoutReviewerHours: countNonZero(items as ITimeTrackingMetricsItem[], 'CloseoutReviewerHours'),
-          closeoutSubmitterHours: countNonZero(items as ITimeTrackingMetricsItem[], 'CloseoutSubmitterHours'),
-        },
-        timeTracking: {
-          totalReviewerHours: countNonZero(timeTrackingItems as ITimeTrackingMetricsItem[], 'TotalReviewerHours'),
-          totalSubmitterHours: countNonZero(timeTrackingItems as ITimeTrackingMetricsItem[], 'TotalSubmitterHours'),
-          legalIntakeLegalAdminHours: countNonZero(timeTrackingItems as ITimeTrackingMetricsItem[], 'LegalIntakeLegalAdminHours'),
-          legalIntakeSubmitterHours: countNonZero(timeTrackingItems as ITimeTrackingMetricsItem[], 'LegalIntakeSubmitterHours'),
-          legalReviewAttorneyHours: countNonZero(timeTrackingItems as ITimeTrackingMetricsItem[], 'LegalReviewAttorneyHours'),
-          legalReviewSubmitterHours: countNonZero(timeTrackingItems as ITimeTrackingMetricsItem[], 'LegalReviewSubmitterHours'),
-          complianceReviewReviewerHours: countNonZero(timeTrackingItems as ITimeTrackingMetricsItem[], 'ComplianceReviewReviewerHours'),
-          complianceReviewSubmitterHours: countNonZero(timeTrackingItems as ITimeTrackingMetricsItem[], 'ComplianceReviewSubmitterHours'),
-          closeoutReviewerHours: countNonZero(timeTrackingItems as ITimeTrackingMetricsItem[], 'CloseoutReviewerHours'),
-          closeoutSubmitterHours: countNonZero(timeTrackingItems as ITimeTrackingMetricsItem[], 'CloseoutSubmitterHours'),
-        },
+        totalReviewerHours: countNonZero(items as ITimeTrackingMetricsItem[], 'TotalReviewerHours'),
+        totalSubmitterHours: countNonZero(items as ITimeTrackingMetricsItem[], 'TotalSubmitterHours'),
+        legalIntakeLegalAdminHours: countNonZero(items as ITimeTrackingMetricsItem[], 'LegalIntakeLegalAdminHours'),
+        legalIntakeSubmitterHours: countNonZero(items as ITimeTrackingMetricsItem[], 'LegalIntakeSubmitterHours'),
+        legalReviewAttorneyHours: countNonZero(items as ITimeTrackingMetricsItem[], 'LegalReviewAttorneyHours'),
+        legalReviewSubmitterHours: countNonZero(items as ITimeTrackingMetricsItem[], 'LegalReviewSubmitterHours'),
+        complianceReviewReviewerHours: countNonZero(items as ITimeTrackingMetricsItem[], 'ComplianceReviewReviewerHours'),
+        complianceReviewSubmitterHours: countNonZero(items as ITimeTrackingMetricsItem[], 'ComplianceReviewSubmitterHours'),
+        closeoutReviewerHours: countNonZero(items as ITimeTrackingMetricsItem[], 'CloseoutReviewerHours'),
+        closeoutSubmitterHours: countNonZero(items as ITimeTrackingMetricsItem[], 'CloseoutSubmitterHours'),
       },
     });
 
@@ -941,22 +896,7 @@ export const fetchDashboardData = async (
       })
       .slice(0, 15);
 
-    const trackedItemsById = new Map<number, ITimeTrackingMetricsItem>();
-    [
-      ...(items as ITimeTrackingMetricsItem[]),
-      ...(timeTrackingItems as ITimeTrackingMetricsItem[]),
-    ]
-      .filter(hasTrackedHours)
-      .forEach((item) => {
-        if (typeof item.ID === 'number') {
-          trackedItemsById.set(item.ID, {
-            ...trackedItemsById.get(item.ID),
-            ...item,
-          });
-        }
-      });
-
-    const trackedItems = Array.from(trackedItemsById.values());
+    const trackedItems = (items as ITimeTrackingMetricsItem[]).filter(hasTrackedHours);
     const trackedItemSample = trackedItems[0];
 
     SPContext.logger.debug('AnalyticsDataService: Time tracking aggregation inputs', {

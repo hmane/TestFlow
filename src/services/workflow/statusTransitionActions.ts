@@ -91,6 +91,7 @@ export async function submitRequest(
       Status: newStatus,
       SubmittedById: userId,
       SubmittedOn: now.toISOString(),
+      LegalIntakeEnteredOn: now.toISOString(),
     };
 
     const fieldsUpdated = Object.keys(payload);
@@ -455,6 +456,7 @@ export async function moveToCloseout(
   // Build update payload - ONLY status
   const updater = createSPUpdater();
   updater.set(RequestsFields.Status, RequestStatus.Closeout);
+  updater.setDate(RequestsFields.CloseoutEnteredOn, new Date());
 
   const updatePayload = updater.getUpdates();
   const fieldsUpdated = Object.keys(updatePayload);

@@ -222,15 +222,34 @@ export async function resumeTimeTracking(
   try {
     SPContext.logger.info('Resuming time tracking', { requestId: request.id, resumedStatus });
 
+    const now = new Date();
     const updates: Partial<ILegalRequest> = {};
+    const resumedRequest: ILegalRequest = {
+      ...request,
+      status: resumedStatus as RequestStatus,
+    };
+    const stages: TimeTrackingStage[] = ['LegalIntake', 'LegalReview', 'ComplianceReview', 'Closeout'];
 
-    // NOTE: Time tracking resumes automatically when status fields are updated by the caller.
-    // When the caller updates the review status (e.g., legalReviewStatus = "In Progress")
-    // and sets the status update timestamp (e.g., legalStatusUpdatedOn = now), the
-    // getStageCurrentOwner() and getStageLastHandoffDate() functions will automatically
-    // derive the correct owner and handoff date from those status values.
-    //
-    // No explicit tracking fields need to be set here.
+    for (const stage of stages) {
+      if (!getStageCurrentOwner(resumedRequest, stage)) {
+        continue;
+      }
+
+      switch (stage) {
+        case 'LegalIntake':
+          updates.legalIntakeEnteredOn = now;
+          break;
+        case 'LegalReview':
+          updates.legalStatusUpdatedOn = now;
+          break;
+        case 'ComplianceReview':
+          updates.complianceStatusUpdatedOn = now;
+          break;
+        case 'Closeout':
+          updates.closeoutEnteredOn = now;
+          break;
+      }
+    }
 
     SPContext.logger.info('Time tracking resumed', { requestId: request.id, updates });
 
@@ -310,8 +329,9 @@ function getStageLastHandoffDate(
 ): Date | undefined {
   switch (stage) {
     case 'LegalIntake':
-      // Use submittedOn as start of Legal Intake
-      return request.submittedOn;
+      // Use explicit stage entry timestamp when available. Fall back to initial
+      // submission for existing items created before this field existed.
+      return request.legalIntakeEnteredOn || request.submittedOn;
 
     case 'LegalReview':
       // Track from the most recent ownership handoff. For straight-through reviews
@@ -324,8 +344,11 @@ function getStageLastHandoffDate(
       return request.complianceStatusUpdatedOn || request.submittedForReviewOn;
 
     case 'Closeout':
-      // Use when the last review completed (entry into Closeout stage)
-      // Note: closeoutOn is the completion timestamp, not the entry timestamp
+      // Use explicit closeout-entry timestamp when available. Fall back to the
+      // later review completion for existing items created before this field existed.
+      if (request.closeoutEnteredOn) {
+        return request.closeoutEnteredOn;
+      }
       if (request.complianceReviewCompletedOn && request.legalReviewCompletedOn) {
         return request.complianceReviewCompletedOn > request.legalReviewCompletedOn
           ? request.complianceReviewCompletedOn

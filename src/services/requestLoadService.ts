@@ -108,6 +108,7 @@ const QUERY1_FIELDS = [
   // Submission tracking
   RequestsFields.SubmittedBy,
   RequestsFields.SubmittedOn,
+  RequestsFields.LegalIntakeEnteredOn,
 
   // Approval fields - boolean flags
   RequestsFields.RequiresCommunicationsApproval,
@@ -215,6 +216,7 @@ const QUERY2_FIELDS = [
   RequestsFields.PreviousStatus,
   RequestsFields.SubmittedForReviewBy,
   RequestsFields.SubmittedForReviewOn,
+  RequestsFields.CloseoutEnteredOn,
   RequestsFields.SubmittedToAssignAttorneyBy,
   RequestsFields.SubmittedToAssignAttorneyOn,
 
@@ -479,6 +481,7 @@ export function mapRequestListItemToRequest(item: IRawSharePointItem): ILegalReq
     // Submission tracking
     submittedBy: extractor.user(RequestsFields.SubmittedBy),
     submittedOn: extractor.date(RequestsFields.SubmittedOn),
+    legalIntakeEnteredOn: extractor.date(RequestsFields.LegalIntakeEnteredOn),
 
     // Turnaround time
     totalTurnaroundDays: extractor.number(RequestsFields.TotalTurnaroundDays),
@@ -569,6 +572,7 @@ export function mapRequestListItemToRequest(item: IRawSharePointItem): ILegalReq
     previousStatus: extractor.string(RequestsFields.PreviousStatus) as RequestStatus,
     submittedForReviewBy: extractor.user(RequestsFields.SubmittedForReviewBy),
     submittedForReviewOn: extractor.date(RequestsFields.SubmittedForReviewOn),
+    closeoutEnteredOn: extractor.date(RequestsFields.CloseoutEnteredOn),
     submittedToAssignAttorneyBy: extractor.user(RequestsFields.SubmittedToAssignAttorneyBy),
     submittedToAssignAttorneyOn: extractor.date(RequestsFields.SubmittedToAssignAttorneyOn),
 

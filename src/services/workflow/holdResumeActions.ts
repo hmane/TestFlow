@@ -248,12 +248,14 @@ export async function resumeRequest(
 
   // Resume time tracking - this resets the handoff timestamp to now
   // so that future calculations start from the resume point
+  let timeTrackingUpdates: Partial<ILegalRequest> = {};
   try {
-    await resumeTimeTracking(currentRequest, previousStatus);
+    timeTrackingUpdates = await resumeTimeTracking(currentRequest, previousStatus);
     SPContext.logger.info('WorkflowActionService: Time tracking resumed', {
       correlationId,
       itemId,
       previousStatus,
+      timeTrackingUpdates,
     });
   } catch (timeError) {
     // Log but don't fail - time tracking is secondary
@@ -264,9 +266,7 @@ export async function resumeRequest(
     });
   }
 
-  // Build update payload - resume fields
-  // Note: Time tracking resumes automatically when status fields are updated
-  // The status timestamp updates will be used as the new handoff reference point
+  // Build update payload - resume fields + refreshed time-tracking anchors
   const updater = createSPUpdater();
   updater.set(RequestsFields.Status, previousStatus);
   updater.set(RequestsFields.PreviousStatus, RequestStatus.OnHold);
@@ -274,6 +274,19 @@ export async function resumeRequest(
   updater.set(RequestsFields.OnHoldReason, null);
   updater.set(RequestsFields.OnHoldBy, null);
   updater.set(RequestsFields.OnHoldSince, null);
+
+  if (timeTrackingUpdates.legalIntakeEnteredOn !== undefined) {
+    updater.setDate(RequestsFields.LegalIntakeEnteredOn, timeTrackingUpdates.legalIntakeEnteredOn);
+  }
+  if (timeTrackingUpdates.legalStatusUpdatedOn !== undefined) {
+    updater.setDate(RequestsFields.LegalStatusUpdatedOn, timeTrackingUpdates.legalStatusUpdatedOn);
+  }
+  if (timeTrackingUpdates.complianceStatusUpdatedOn !== undefined) {
+    updater.setDate(RequestsFields.ComplianceStatusUpdatedOn, timeTrackingUpdates.complianceStatusUpdatedOn);
+  }
+  if (timeTrackingUpdates.closeoutEnteredOn !== undefined) {
+    updater.setDate(RequestsFields.CloseoutEnteredOn, timeTrackingUpdates.closeoutEnteredOn);
+  }
 
   const updatePayload = updater.getUpdates();
   const fieldsUpdated = Object.keys(updatePayload);

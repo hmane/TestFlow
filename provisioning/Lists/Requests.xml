@@ -194,17 +194,19 @@
       <Field Type="Boolean" Name="FINRACommentsReceived" DisplayName="Comments Received" Group="FINRA Documents" ID="{E4F5A6B7-BBBB-4C9D-3E5F-6A7B8C9D0E1F}"><Default>0</Default></Field>
       <Field Type="Note" Name="FINRAComment" DisplayName="FINRA Comment" RichText="FALSE" NumLines="6" Group="FINRA Documents" ID="{F5A6B7C8-CCCC-4D0E-4F6A-7B8C9D0E1F2A}" />
 
-      <!-- System Tracking (18) -->
+      <!-- System Tracking (20) -->
       <Field Type="Choice" Name="Status" DisplayName="Status" Required="TRUE" Group="System Tracking" ID="{9E390E5D-9D57-472F-B470-EDE7F1D5EB89}" Indexed="TRUE" ClientSideComponentId="e55dcdea-8fa3-4708-9fbe-35c866026289">
         <CHOICES><CHOICE>Draft</CHOICE><CHOICE>Legal Intake</CHOICE><CHOICE>Assign Attorney</CHOICE><CHOICE>In Review</CHOICE><CHOICE>Closeout</CHOICE><CHOICE>Awaiting FINRA Documents</CHOICE><CHOICE>Completed</CHOICE><CHOICE>Cancelled</CHOICE><CHOICE>On Hold</CHOICE></CHOICES>
         <Default>Draft</Default>
       </Field>
       <Field Type="User" Name="SubmittedBy" DisplayName="Submitted By" UserSelectionMode="PeopleOnly" Group="System Tracking" ID="{DDA3A20E-6CBC-46E8-8AB2-5AAB744A46D8}" />
       <Field Type="DateTime" Name="SubmittedOn" DisplayName="Submitted On" Format="DateTime" Group="System Tracking" ID="{040BB170-DEC0-468F-B9E1-C150DF30C4AC}" />
+      <Field Type="DateTime" Name="LegalIntakeEnteredOn" DisplayName="Legal Intake Entered On" Format="DateTime" Group="System Tracking" ID="{B3C4D5E6-1F2A-4B7C-8D9E-0F1A2B3C4D5E}" />
       <Field Type="User" Name="SubmittedToAssignAttorneyBy" DisplayName="Submitted To Assign Attorney By" UserSelectionMode="PeopleOnly" Group="System Tracking" ID="{1FDC4AED-A5CE-49C0-820D-AEF7F6C156A0}" />
       <Field Type="DateTime" Name="SubmittedToAssignAttorneyOn" DisplayName="Submitted To Assign Attorney On" Format="DateTime" Group="System Tracking" ID="{880D4463-6821-4A0D-8266-00EE042A871C}" />
       <Field Type="User" Name="SubmittedForReviewBy" DisplayName="Submitted For Review By" UserSelectionMode="PeopleOnly" Group="System Tracking" ID="{0ACBB1A2-400A-4CB9-B8F6-BD408E01DEFF}" />
       <Field Type="DateTime" Name="SubmittedForReviewOn" DisplayName="Submitted For Review On" Format="DateTime" Group="System Tracking" ID="{D6581BE1-78E2-4D28-9629-E10FA50F33B6}" />
+      <Field Type="DateTime" Name="CloseoutEnteredOn" DisplayName="Closeout Entered On" Format="DateTime" Group="System Tracking" ID="{C4D5E6F7-2A3B-4C8D-9E0F-1A2B3C4D5E6F}" />
       <Field Type="User" Name="CloseoutBy" DisplayName="Closeout By" UserSelectionMode="PeopleOnly" Group="System Tracking" ID="{2547CB9B-5C09-40AA-A388-0F1E7A385621}" />
       <Field Type="DateTime" Name="CloseoutOn" DisplayName="Closeout On" Format="DateTime" Group="System Tracking" ID="{4A03C8CF-1175-4C9D-A1E7-14684422DDCC}" />
       <Field Type="User" Name="CancelledBy" DisplayName="Cancelled By" UserSelectionMode="PeopleOnly" Group="System Tracking" ID="{8107D727-4F98-41A7-9917-7256545FDB03}" />
@@ -832,4 +834,3 @@
     </pnp:Views>
 
   </pnp:ListInstance>
-

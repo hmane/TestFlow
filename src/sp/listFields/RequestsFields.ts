@@ -18,6 +18,7 @@ export const RequestsFields = {
   RequestType: 'RequestType',
   SubmittedBy: 'SubmittedBy',
   SubmittedOn: 'SubmittedOn',
+  LegalIntakeEnteredOn: 'LegalIntakeEnteredOn',
   CancelReason: 'CancelReason',
   IsRetailUse: 'IsRetailUse',
   OnHoldSince: 'OnHoldSince',
@@ -74,6 +75,7 @@ export const RequestsFields = {
   LegalStatusUpdatedOn: 'LegalStatusUpdatedOn',
   SubmittedForReviewBy: 'SubmittedForReviewBy',
   SubmittedForReviewOn: 'SubmittedForReviewOn',
+  CloseoutEnteredOn: 'CloseoutEnteredOn',
   ComplianceReviewStatus: 'ComplianceReviewStatus',
   ExpectedTurnaroundDate: 'ExpectedTurnaroundDate',
   HasPerformanceApproval: 'HasPerformanceApproval',
@@ -126,4 +128,3 @@ export const RequestsFields = {
   FINRACommentsReceived: 'FINRACommentsReceived',
   FINRAComment: 'FINRAComment'
 } as const;
-

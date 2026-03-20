@@ -222,6 +222,8 @@ export function buildRequestUpdatePayload(
 
     // Admin override and previous status tracking (for audit trail)
     updater.set(RequestsFields.PreviousStatus, request.previousStatus, originalRequest.previousStatus);
+    updater.set(RequestsFields.LegalIntakeEnteredOn, request.legalIntakeEnteredOn, originalRequest.legalIntakeEnteredOn);
+    updater.set(RequestsFields.CloseoutEnteredOn, request.closeoutEnteredOn, originalRequest.closeoutEnteredOn);
     updater.set(RequestsFields.AdminOverrideNotes, request.adminOverrideNotes, originalRequest.adminOverrideNotes);
 
     // Map approvals array to individual SharePoint fields
@@ -412,10 +414,12 @@ export function buildPartialUpdatePayload(data: Partial<ILegalRequest>): Record<
 
   // Submission tracking fields
   setIfDefined(RequestsFields.SubmittedOn, data.submittedOn);
+  setIfDefined(RequestsFields.LegalIntakeEnteredOn, data.legalIntakeEnteredOn);
   if (data.submittedBy !== undefined) {
     updater.set(RequestsFields.SubmittedBy, data.submittedBy, undefined);
   }
   setIfDefined(RequestsFields.SubmittedForReviewOn, data.submittedForReviewOn);
+  setIfDefined(RequestsFields.CloseoutEnteredOn, data.closeoutEnteredOn);
   if (data.submittedForReviewBy !== undefined) {
     updater.set(RequestsFields.SubmittedForReviewBy, data.submittedForReviewBy, undefined);
   }

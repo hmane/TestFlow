@@ -351,6 +351,16 @@ describe('Workflow Action Service - Time Tracking Integration', () => {
       expect(result.success).toBe(true);
       expect(result.newStatus).toBe(RequestStatus.InReview);
     });
+
+    it('should persist refreshed time-tracking anchor fields returned by resume logic', async () => {
+      mockResumeTimeTracking.mockResolvedValue({
+        legalStatusUpdatedOn: new Date('2025-02-03T13:00:00Z'),
+      });
+
+      const result = await resumeRequest(1, RequestStatus.InReview);
+
+      expect(result.fieldsUpdated).toContain('LegalStatusUpdatedOn');
+    });
   });
 
   describe('Time tracking data accuracy', () => {

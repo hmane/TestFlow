@@ -164,6 +164,7 @@ export async function submitLegalReview(
     }
 
     updater.set(RequestsFields.Status, RequestStatus.Closeout);
+    updater.set(RequestsFields.CloseoutEnteredOn, now.toISOString());
     SPContext.logger.info('WorkflowActionService: All reviews complete, progressing to Closeout', {
       correlationId,
       itemId,
@@ -358,6 +359,7 @@ export async function submitComplianceReview(
     }
 
     updater.set(RequestsFields.Status, RequestStatus.Closeout);
+    updater.set(RequestsFields.CloseoutEnteredOn, now.toISOString());
     SPContext.logger.info('WorkflowActionService: All reviews complete, progressing to Closeout', {
       correlationId,
       itemId,

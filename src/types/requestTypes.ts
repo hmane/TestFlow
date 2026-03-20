@@ -272,10 +272,12 @@ additionalParty?: IPrincipal[];
   previousStatus?: RequestStatus;
   submittedBy?: IPrincipal;
   submittedOn?: Date;
+  legalIntakeEnteredOn?: Date;
   submittedToAssignAttorneyBy?: IPrincipal;
   submittedToAssignAttorneyOn?: Date;
   submittedForReviewBy?: IPrincipal;
   submittedForReviewOn?: Date;
+  closeoutEnteredOn?: Date;
 
   // Time Tracking - Legal Intake
   /** Business hours spent by legal admin during legal intake stage */
@@ -448,10 +450,12 @@ export interface IRequestListItem {
   // System tracking
   SubmittedById?: number;
   SubmittedOn?: string;
+  LegalIntakeEnteredOn?: string;
   SubmittedToAssignAttorneyById?: number;
   SubmittedToAssignAttorneyOn?: string;
   SubmittedForReviewById?: number;
   SubmittedForReviewOn?: string;
+  CloseoutEnteredOn?: string;
   CloseoutById?: number;
   CloseoutOn?: string;
   CancelledById?: number;
