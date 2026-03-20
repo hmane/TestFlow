@@ -245,6 +245,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
   const othersHaveCheckouts = (requestCheckoutStatus?.checkedOutByOthers?.length ?? 0) > 0;
 
   const [isDoneReviewingAll, setIsDoneReviewingAll] = React.useState(false);
+  const [autoReleaseOnSubmit, setAutoReleaseOnSubmit] = React.useState(true);
 
   const handleDoneReviewingAll = React.useCallback(async (): Promise<void> => {
     if (!itemId || !requestCheckoutStatus?.currentUserHasCheckouts) return;
@@ -395,6 +396,28 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
       setIsSaving(true);
       setError(undefined);
 
+      // Auto-release checked-out documents before submitting if checkbox is checked
+      if (autoReleaseOnSubmit && currentUserHasCheckouts) {
+        SPContext.logger.info('ComplianceReviewForm: Auto-releasing checked-out documents before submit');
+        try {
+          const releaseResults = await doneReviewingAll(allDocumentsFlat);
+          const failCount = releaseResults.filter(function(r) { return !r.success; }).length;
+          if (failCount > 0) {
+            setError(failCount + ' file(s) could not be released. Please release them manually before submitting.');
+            setIsSaving(false);
+            return;
+          }
+          if (itemId) {
+            await loadDocuments(itemId, true);
+          }
+        } catch (releaseError: unknown) {
+          const msg = releaseError instanceof Error ? releaseError.message : 'Failed to release documents';
+          setError('Could not release documents: ' + msg);
+          setIsSaving(false);
+          return;
+        }
+      }
+
       SPContext.logger.info('ComplianceReviewForm: Submitting review', {
         outcome: data.complianceReviewOutcome,
         isForesideReviewRequired: data.isForesideReviewRequired,
@@ -451,7 +474,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
     } finally {
       setIsSaving(false);
     }
-  }, [itemId, scrollToFirstError, reset, loadRequest]);
+  }, [itemId, scrollToFirstError, reset, loadRequest, autoReleaseOnSubmit, currentUserHasCheckouts, allDocumentsFlat, loadDocuments]);
 
   /**
    * Pre-submit checkout validation.
@@ -1148,25 +1171,40 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
       <Footer borderTop padding='comfortable'>
           <Stack tokens={{ childrenGap: 12 }}>
             {/* Checkout warnings */}
+            {/* Checkout: auto-release checkbox + manual release option */}
             {checkoutEnabled && currentUserHasCheckouts && (
               <MessageBar
-                messageBarType={MessageBarType.warning}
-                isMultiline={false}
+                messageBarType={MessageBarType.info}
+                isMultiline
                 styles={{ root: { borderRadius: '4px' } }}
-                actions={
-                  <DefaultButton
-                    text={isDoneReviewingAll ? 'Completing...' : 'Mark All as Done'}
-                    onClick={handleDoneReviewingAll}
-                    disabled={isDoneReviewingAll}
-                    styles={{ root: { minHeight: '32px' } }}
-                  />
-                }
               >
-                <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 6 }}>
-                  <Icon iconName='Lock' />
-                  <Text>
-                    You&apos;re reviewing {requestCheckoutStatus!.checkedOutByCurrentUser.length} file{requestCheckoutStatus!.checkedOutByCurrentUser.length !== 1 ? 's' : ''}. Finish reviewing before submitting.
-                  </Text>
+                <Stack tokens={{ childrenGap: 8 }}>
+                  <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 6 }}>
+                    <Icon iconName='Lock' />
+                    <Text>
+                      You have {requestCheckoutStatus!.checkedOutByCurrentUser.length} file{requestCheckoutStatus!.checkedOutByCurrentUser.length !== 1 ? 's' : ''} checked out for review.
+                    </Text>
+                  </Stack>
+                  <Checkbox
+                    label='Release all my checked-out documents when I submit my review decision'
+                    checked={autoReleaseOnSubmit}
+                    onChange={(_, checked) => setAutoReleaseOnSubmit(!!checked)}
+                    styles={{ root: { marginLeft: 4 }, label: { fontWeight: 400 } }}
+                  />
+                  {!autoReleaseOnSubmit && (
+                    <Stack horizontal verticalAlign='center' tokens={{ childrenGap: 8 }}>
+                      <DefaultButton
+                        text={isDoneReviewingAll ? 'Releasing...' : 'Release Files Now'}
+                        iconProps={{ iconName: 'Unlock' }}
+                        onClick={handleDoneReviewingAll}
+                        disabled={isDoneReviewingAll}
+                        styles={{ root: { minHeight: '32px' } }}
+                      />
+                      <Text variant='small' styles={{ root: { color: '#605e5c' } }}>
+                        You must release files before submitting if the checkbox above is unchecked.
+                      </Text>
+                    </Stack>
+                  )}
                 </Stack>
               </MessageBar>
             )}
@@ -1229,7 +1267,7 @@ export const ComplianceReviewForm: React.FC<IComplianceReviewFormProps> = ({
                   text='Submit Review'
                   iconProps={{ iconName: 'CheckMark' }}
                   onClick={handleSubmit(handlePreSubmit)}
-                  disabled={isLoading || isSaving || !selectedOutcome || !canReview || currentUserHasCheckouts}
+                  disabled={isLoading || isSaving || !selectedOutcome || !canReview || (currentUserHasCheckouts && !autoReleaseOnSubmit)}
                   styles={{
                     root: { minWidth: '140px', height: '40px', borderRadius: '4px' },
                   }}

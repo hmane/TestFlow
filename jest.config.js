@@ -30,7 +30,6 @@ module.exports = {
       'ts-jest',
       {
         tsconfig: 'tsconfig.json',
-        isolatedModules: true,
       },
     ],
   },
@@ -39,7 +38,7 @@ module.exports = {
   moduleNameMapper: {
     // Path aliases from tsconfig
     '^@appTypes/(.*)$': '<rootDir>/src/types/$1',
-    '^@components/(.*)$': '<rootDir>/src/extensions/legalWorkflow/components/$1',
+    '^@components/(.*)$': '<rootDir>/src/components/$1',
     '^@hooks/(.*)$': '<rootDir>/src/hooks/$1',
     '^@services/(.*)$': '<rootDir>/src/services/$1',
     '^@stores/(.*)$': '<rootDir>/src/stores/$1',

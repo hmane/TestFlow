@@ -5,7 +5,7 @@ import { Spinner, SpinnerSize } from '@fluentui/react/lib/Spinner';
 import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
 import { SelectBox } from 'devextreme-react/select-box';
-import { Controller, FieldErrors, useFormContext } from 'react-hook-form';
+import { Controller, FieldErrors, useFormContext, useWatch } from 'react-hook-form';
 
 import { FormContainer, FormItem, FormLabel, FormValue } from 'spfx-toolkit/lib/components/spForm';
 import {
@@ -364,6 +364,18 @@ export const DistributionSection: React.FC<DistributionSectionProps> = ({
   const requestListIdentifier = Lists.Requests.Title;
   const distributionChoices = React.useMemo(() => DISTRIBUTION_METHOD_CHOICES, []);
 
+  // Watch targetReturnDate to use as min date for dateOfFirstUse
+  const { control } = useFormContext<ILegalRequest>();
+  const targetReturnDate = useWatch({ control, name: 'targetReturnDate' });
+
+  // Date of first use cannot be before target return date (material can't be used before review)
+  const dateOfFirstUseMinDate = React.useMemo(() => {
+    if (targetReturnDate instanceof Date && !isNaN(targetReturnDate.getTime())) {
+      return targetReturnDate;
+    }
+    return new Date();
+  }, [targetReturnDate]);
+
   // Determine if section should be visible
   const isVisible = requestType === RequestType.Communication;
 
@@ -410,7 +422,7 @@ export const DistributionSection: React.FC<DistributionSectionProps> = ({
             dateTimeFormat={SPDateTimeFormat.DateOnly}
             displayFormat='MM/dd/yyyy'
             showClearButton
-            minDate={new Date()}
+            minDate={dateOfFirstUseMinDate}
             calendarButtonPosition='before'
             rules={{
               required: isRequired ? 'Date of first use is required' : false,

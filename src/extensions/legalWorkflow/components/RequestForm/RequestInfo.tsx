@@ -46,6 +46,7 @@ import {
   ProductAudienceSection,
   ReviewAudienceSection,
 } from './RequestInfoSections';
+import { calculateIsRushRequest } from './requestInfoUtils';
 import { useRequestInfoActions } from './useRequestInfoActions';
 
 /**
@@ -382,53 +383,16 @@ export const RequestInfo: React.FC<IRequestFormProps> = ({
   );
 
   /**
-   * Calculate business days between two dates (excluding weekends)
-   */
-  const calculateBusinessDays = React.useCallback((start: Date, end: Date): number => {
-    let count = 0;
-    const currentDate = new Date(start.getTime());
-
-    while (currentDate < end) {
-      const dayOfWeek = currentDate.getDay();
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Not Sunday (0) or Saturday (6)
-        count++;
-      }
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    return count;
-  }, []);
-
-  /**
    * Calculate if request is rush based on target return date and submission item turnaround time
    */
   const calculatedIsRush = React.useMemo((): boolean => {
-    if (!targetReturnDate || !submissionItemSelection) {
-      return false;
-    }
-
-    // Find submission item by title (submissionItemSelection is now a string)
-    const filteredItems = submissionItems.filter((item: any) => item.title === submissionItemSelection);
-    const selectedSubmissionItem = filteredItems.length > 0 ? filteredItems[0] : undefined;
-
-    if (!selectedSubmissionItem || !selectedSubmissionItem.turnAroundTimeInDays) {
-      return false;
-    }
-
-    // Create new Date objects to avoid mutating
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Always create a new Date object to avoid mutations
-    const targetDate = new Date(typeof targetReturnDate === 'string' ? targetReturnDate : targetReturnDate.getTime());
-    targetDate.setHours(0, 0, 0, 0);
-
-    const businessDaysAvailable = calculateBusinessDays(today, targetDate);
-    const requiredBusinessDays = selectedSubmissionItem.turnAroundTimeInDays;
-
-    // Rush if available time is less than required turnaround time
-    return businessDaysAvailable < requiredBusinessDays;
-  }, [targetReturnDate, submissionItemSelection, submissionItems, calculateBusinessDays]);
+    return calculateIsRushRequest({
+      targetReturnDate,
+      submissionItemSelection,
+      submissionItems,
+      requestCreated: currentRequest?.created,
+    });
+  }, [targetReturnDate, submissionItemSelection, submissionItems, currentRequest?.created]);
 
   /**
    * Update isRushRequest field when calculated value changes

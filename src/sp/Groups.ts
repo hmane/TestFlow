@@ -22,6 +22,10 @@ export const Groups = {
     Title: 'LW - Legal Admins',
     Description: 'Legal administrators who can manage all requests',
   },
+  LwSelfApprovers: {
+    Title: 'LW - Self Approvers',
+    Description: 'Users who can self-approve without requiring approval date and attachment',
+  },
   LwSubmitters: {
     Title: 'LW - Submitters',
     Description: 'Users who can submit legal review requests',

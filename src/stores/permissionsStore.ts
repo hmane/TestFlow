@@ -49,6 +49,7 @@ interface IPermissionsState {
   isAttorney: boolean;
   isComplianceUser: boolean;
   isAdmin: boolean;
+  isSelfApprover: boolean;
   roles: AppRole[];
 
   // Derived permissions
@@ -83,6 +84,7 @@ const initialState = {
   isAttorney: false,
   isComplianceUser: false,
   isAdmin: false,
+  isSelfApprover: false,
   roles: [] as AppRole[],
   canCreateRequest: false,
   canViewAllRequests: false,
@@ -163,7 +165,7 @@ export const usePermissionsStore = create<IPermissionsState>()(
             const helper = getPermissionHelper();
 
             // Check all role memberships in parallel - SINGLE set of API calls
-            const [submitter, legalAdmin, attorneyAssigner, attorneys, complianceUsers, admin] =
+            const [submitter, legalAdmin, attorneyAssigner, attorneys, complianceUsers, admin, selfApprover] =
               await Promise.all([
                 helper.userHasRole(AppRole.Submitters),
                 helper.userHasRole(AppRole.LegalAdmin),
@@ -171,6 +173,7 @@ export const usePermissionsStore = create<IPermissionsState>()(
                 helper.userHasRole(AppRole.Attorneys),
                 helper.userHasRole(AppRole.ComplianceUsers),
                 helper.userHasRole(AppRole.Admin),
+                helper.userHasRole(AppRole.SelfApprovers),
               ]);
 
             // Build roles array
@@ -181,6 +184,7 @@ export const usePermissionsStore = create<IPermissionsState>()(
             if (attorneys.hasPermission) roles.push(AppRole.Attorneys);
             if (complianceUsers.hasPermission) roles.push(AppRole.ComplianceUsers);
             if (admin.hasPermission) roles.push(AppRole.Admin);
+            if (selfApprover.hasPermission) roles.push(AppRole.SelfApprovers);
 
             // Update store with permissions
             set({
@@ -190,6 +194,7 @@ export const usePermissionsStore = create<IPermissionsState>()(
               isAttorney: attorneys.hasPermission,
               isComplianceUser: complianceUsers.hasPermission,
               isAdmin: admin.hasPermission,
+              isSelfApprover: selfApprover.hasPermission || admin.hasPermission,
               roles,
               // Derived permissions
               canCreateRequest: submitter.hasPermission || admin.hasPermission,
@@ -356,6 +361,7 @@ export const useUserRoles = (): {
   isAttorney: boolean;
   isComplianceUser: boolean;
   isAdmin: boolean;
+  isSelfApprover: boolean;
   roles: AppRole[];
 } =>
   usePermissionsStore(
@@ -366,6 +372,7 @@ export const useUserRoles = (): {
       isAttorney: state.isAttorney,
       isComplianceUser: state.isComplianceUser,
       isAdmin: state.isAdmin,
+      isSelfApprover: state.isSelfApprover,
       roles: state.roles,
     }))
   );

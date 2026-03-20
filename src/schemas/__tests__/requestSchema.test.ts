@@ -248,6 +248,68 @@ describe('Request Schema Validation', () => {
       }
     });
 
+    it('should reject date of first use before target return date', () => {
+      const data = {
+        ...createValidSubmitData(),
+        targetReturnDate: new Date('2026-03-20T00:00:00Z'),
+        dateOfFirstUse: new Date('2026-03-19T00:00:00Z'),
+      };
+
+      const result = submitRequestSchema.safeParse(data);
+      expect(result.success).toBe(false);
+
+      if (!result.success) {
+        const firstUseError = result.error.issues.find(
+          issue => issue.path[0] === 'dateOfFirstUse' && issue.message.includes('cannot be before')
+        );
+        expect(firstUseError).toBeDefined();
+      }
+    });
+
+    it('should allow self-approval without date or document when approver matches self-approver user id', () => {
+      const data = {
+        ...createValidSubmitData(),
+        approvals: [
+          {
+            type: ApprovalType.PortfolioManager,
+            approver: { id: '42', email: 'pm@test.com', title: 'Portfolio Manager' },
+            approvalDate: undefined,
+            _hasDocumentInStore: false,
+          },
+        ],
+        _selfApproverUserId: '42',
+      };
+
+      const result = submitRequestSchema.safeParse(data);
+      expect(result.success).toBe(true);
+    });
+
+    it('should still require approval date and document when self-approver user id does not match', () => {
+      const data = {
+        ...createValidSubmitData(),
+        approvals: [
+          {
+            type: ApprovalType.PortfolioManager,
+            approver: { id: '42', email: 'pm@test.com', title: 'Portfolio Manager' },
+            approvalDate: undefined,
+            _hasDocumentInStore: false,
+          },
+        ],
+        _selfApproverUserId: '99',
+      };
+
+      const result = submitRequestSchema.safeParse(data);
+      expect(result.success).toBe(false);
+
+      if (!result.success) {
+        const errorMessages = result.error.issues.map(issue => issue.message);
+        expect(errorMessages).toEqual(expect.arrayContaining([
+          'Approval date is required for Portfolio Manager approval',
+          'Approval document is required for Portfolio Manager approval',
+        ]));
+      }
+    });
+
     it('should require attachments for submission', () => {
       const data = {
         ...createValidSubmitData(),

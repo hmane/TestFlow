@@ -320,6 +320,9 @@ export const submitRequestSchema = z
     separateAcctStrategiesIncl: z.array(z.any()).optional(),
     // Marker for attachments validation - injected by validation hook
     _hasAttachments: z.boolean().optional(),
+    // Self-approver user ID - injected by validation hook when user is in Self Approvers group
+    // When set, approvals where approver.id matches this value skip date/document requirements
+    _selfApproverUserId: z.string().optional(),
   })
   .superRefine((data, ctx) => {
     // Helper function to check if an approval has a document
@@ -343,6 +346,16 @@ export const submitRequestSchema = z
     };
 
     const getApprovalTypeName = (type: string): string => type;
+
+    // Self-approval check: user is in Self Approvers group AND approver is themselves
+    // _selfApproverUserId is injected by the validation hook when the current user is a self-approver
+    const selfApproverUserId = data._selfApproverUserId;
+    const isSelfApproval = (approval: any): boolean => {
+      if (!selfApproverUserId) return false;
+      const approverId = approval?.approver?.id;
+      if (!approverId) return false;
+      return String(approverId) === selfApproverUserId;
+    };
 
     // Safe approvals array (default to empty if undefined)
     const approvals = data.approvals || [];
@@ -485,6 +498,22 @@ export const submitRequestSchema = z
       });
     }
 
+    // Date of First Use must be on or after Target Return Date
+    if (!isRFPSubmission && data.dateOfFirstUse instanceof Date && data.targetReturnDate instanceof Date &&
+        !isNaN(data.dateOfFirstUse.getTime()) && !isNaN(data.targetReturnDate.getTime())) {
+      const firstUse = new Date(data.dateOfFirstUse.getTime());
+      firstUse.setHours(0, 0, 0, 0);
+      const targetReturn = new Date(data.targetReturnDate.getTime());
+      targetReturn.setHours(0, 0, 0, 0);
+      if (firstUse < targetReturn) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Date of first use cannot be before the target return date',
+          path: ['dateOfFirstUse'],
+        });
+      }
+    }
+
     // ========================================
     // APPROVAL VALIDATIONS
     // ========================================
@@ -553,19 +582,22 @@ export const submitRequestSchema = z
               path: ['approvals', commApprovalIndex, 'approver'],
             });
           }
-          if (!commApproval.approvalDate) {
-            ctx.addIssue({
-              code: 'custom',
-              message: 'Approval date is required for Communications approval',
-              path: ['approvals', commApprovalIndex, 'approvalDate'],
-            });
-          }
-          if (!hasDocument(commApproval)) {
-            ctx.addIssue({
-              code: 'custom',
-              message: 'Approval document is required for Communications approval',
-              path: ['approvals', commApprovalIndex, '_document'],
-            });
+          // Skip date and document validation for self-approvals
+          if (!isSelfApproval(commApproval)) {
+            if (!commApproval.approvalDate) {
+              ctx.addIssue({
+                code: 'custom',
+                message: 'Approval date is required for Communications approval',
+                path: ['approvals', commApprovalIndex, 'approvalDate'],
+              });
+            }
+            if (!hasDocument(commApproval)) {
+              ctx.addIssue({
+                code: 'custom',
+                message: 'Approval document is required for Communications approval',
+                path: ['approvals', commApprovalIndex, '_document'],
+              });
+            }
           }
         }
       }
@@ -586,30 +618,38 @@ export const submitRequestSchema = z
             path: ['approvals', i, 'approver'],
           });
         }
-        if (!approval.approvalDate) {
-          ctx.addIssue({
-            code: 'custom',
-            message: `Approval date is required for ${approvalName} approval`,
-            path: ['approvals', i, 'approvalDate'],
-          });
-        }
-        if (!hasDocument(approval)) {
-          ctx.addIssue({
-            code: 'custom',
-            message: `Approval document is required for ${approvalName} approval`,
-            path: ['approvals', i, '_document'],
-          });
+        // Skip date and document validation for self-approvals
+        if (!isSelfApproval(approval)) {
+          if (!approval.approvalDate) {
+            ctx.addIssue({
+              code: 'custom',
+              message: `Approval date is required for ${approvalName} approval`,
+              path: ['approvals', i, 'approvalDate'],
+            });
+          }
+          if (!hasDocument(approval)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: `Approval document is required for ${approvalName} approval`,
+              path: ['approvals', i, '_document'],
+            });
+          }
         }
       }
 
       // At least 1 approval document is required for the entire request
+      // (unless all approvals are self-approvals, in which case documents are not needed)
       let totalApprovalDocuments = 0;
+      let allSelfApprovals = true;
       for (let i = 0; i < approvals.length; i++) {
         if (hasDocument(approvals[i])) {
           totalApprovalDocuments++;
         }
+        if (!isSelfApproval(approvals[i])) {
+          allSelfApprovals = false;
+        }
       }
-      if (totalApprovalDocuments < 1 && approvals.length > 0) {
+      if (totalApprovalDocuments < 1 && approvals.length > 0 && !allSelfApprovals) {
         ctx.addIssue({
           code: 'custom',
           message: 'At least one approval document is required',

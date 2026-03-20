@@ -71,6 +71,7 @@ import {
 // App imports using path aliases
 import { Lists } from '@sp/Lists';
 import { DocumentUpload } from '@components/DocumentUpload';
+import { usePermissions } from '@hooks/usePermissions';
 import type { ILegalRequest } from '@appTypes/index';
 import { ApprovalType } from '@appTypes/approvalTypes';
 import { DocumentType } from '@appTypes/documentTypes';
@@ -182,6 +183,8 @@ interface IAdditionalApprovalItemProps {
   disabled?: boolean;
   isNewRequest: boolean;
   requestId?: string;
+  /** When true, approval date and document upload are hidden (self-approval) */
+  isSelfApproval?: boolean;
 }
 
 /**
@@ -195,6 +198,7 @@ const AdditionalApprovalItem: React.FC<IAdditionalApprovalItemProps> = ({
   disabled = false,
   isNewRequest,
   requestId,
+  isSelfApproval = false,
 }) => {
   // Type-safe control for SPField components
   const formControl = control as any;
@@ -334,42 +338,59 @@ const AdditionalApprovalItem: React.FC<IAdditionalApprovalItemProps> = ({
           />
         </FormItem>
 
-        {/* Approval Date */}
-        <FormItem>
-          <FormLabel isRequired infoText='Date when the approval was granted'>
-            Approval Date
-          </FormLabel>
-          <SPDateField
-            name={`approvals.${index}.approvalDate` as const}
-            control={formControl}
-            placeholder='Select approval date'
-            dateTimeFormat={SPDateTimeFormat.DateOnly}
-            displayFormat='MM/dd/yyyy'
-            maxDate={TODAY}
-            showClearButton
-            calendarButtonPosition='before'
-            disabled={disabled}
-          />
-        </FormItem>
+        {/* Approval Date - hidden for self-approvals */}
+        {!isSelfApproval && (
+          <FormItem>
+            <FormLabel isRequired infoText='Date when the approval was granted'>
+              Approval Date
+            </FormLabel>
+            <SPDateField
+              name={`approvals.${index}.approvalDate` as const}
+              control={formControl}
+              placeholder='Select approval date'
+              dateTimeFormat={SPDateTimeFormat.DateOnly}
+              displayFormat='MM/dd/yyyy'
+              maxDate={TODAY}
+              showClearButton
+              calendarButtonPosition='before'
+              disabled={disabled}
+            />
+          </FormItem>
+        )}
 
-        {/* Approval Document Upload */}
-        <FormItem>
-          <FormLabel isRequired>Approval Documents</FormLabel>
-          <DocumentUpload
-            documentType={getDocumentTypeFromApprovalType(approvalType)}
-            itemId={requestId ? parseInt(requestId, 10) : undefined}
-            siteUrl={SPContext.webAbsoluteUrl}
-            documentLibraryTitle={Lists.RequestDocuments.Title}
-            maxFiles={MAX_APPROVAL_DOCUMENTS}
-            maxFileSize={250 * 1024 * 1024}
-            required={true}
-            isReadOnly={disabled}
-            hasError={hasDocumentError}
-            onFilesChange={handleFilesChange}
-            label=""
-            description={`Upload up to ${MAX_APPROVAL_DOCUMENTS} approval documents (PDF, Word, Excel, PowerPoint, images, emails, etc.)`}
-          />
-        </FormItem>
+        {/* Approval Document Upload - hidden for self-approvals */}
+        {!isSelfApproval && (
+          <FormItem>
+            <FormLabel isRequired>Approval Documents</FormLabel>
+            <DocumentUpload
+              documentType={getDocumentTypeFromApprovalType(approvalType)}
+              itemId={requestId ? parseInt(requestId, 10) : undefined}
+              siteUrl={SPContext.webAbsoluteUrl}
+              documentLibraryTitle={Lists.RequestDocuments.Title}
+              maxFiles={MAX_APPROVAL_DOCUMENTS}
+              maxFileSize={250 * 1024 * 1024}
+              required={true}
+              isReadOnly={disabled}
+              hasError={hasDocumentError}
+              onFilesChange={handleFilesChange}
+              label=""
+              description={`Upload up to ${MAX_APPROVAL_DOCUMENTS} approval documents (PDF, Word, Excel, PowerPoint, images, emails, etc.)`}
+            />
+          </FormItem>
+        )}
+
+        {/* Self-approval notice */}
+        {isSelfApproval && (
+          <FormItem>
+            <MessageBar
+              messageBarType={MessageBarType.info}
+              isMultiline={false}
+              styles={{ root: { borderRadius: '4px' } }}
+            >
+              Self-approval: Approval date and document upload are not required.
+            </MessageBar>
+          </FormItem>
+        )}
 
         {/* Notes */}
         <FormItem fieldName={`approvals.${index}.notes`}>
@@ -442,6 +463,27 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
 
   const isRFPSubmission = typeof submissionItem === 'string' &&
     submissionItem.indexOf('RFP Related Review') === 0;
+
+  // Self-approval detection: check if current user is in Self Approvers group
+  const { isSelfApprover } = usePermissions();
+  const currentUserId = React.useMemo(() => String(SPContext.currentUser?.id ?? ''), []);
+
+  /**
+   * Check if a specific approval is a self-approval.
+   * Returns true when user is in the Self Approvers group AND the approver
+   * they selected is themselves (matched by user ID).
+   */
+  const isApprovalSelfApproved = React.useCallback(
+    (approvalIndex: number): boolean => {
+      if (!isSelfApprover || !currentUserId) return false;
+      const approval = approvals?.[approvalIndex];
+      if (!approval) return false;
+      const approver = (approval as any).approver;
+      if (!approver?.id) return false;
+      return String(approver.id) === currentUserId;
+    },
+    [isSelfApprover, currentUserId, approvals]
+  );
 
   // Count additional (non-Communications) approvals
   const additionalApprovalsCount = React.useMemo(() => {
@@ -934,42 +976,59 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
               />
             </FormItem>
 
-            {/* Approval Date */}
-            <FormItem>
-              <FormLabel isRequired infoText='Date when the approval was granted'>
-                Approval Date
-              </FormLabel>
-              <SPDateField
-                name={`approvals.${communicationsApprovalIndex}.approvalDate` as const}
-                control={formControl}
-                placeholder='Select approval date'
-                dateTimeFormat={SPDateTimeFormat.DateOnly}
-                displayFormat='MM/dd/yyyy'
-                maxDate={TODAY}
-                showClearButton
-                calendarButtonPosition='before'
-                disabled={disabled}
-              />
-            </FormItem>
+            {/* Approval Date - hidden for self-approvals */}
+            {!isApprovalSelfApproved(communicationsApprovalIndex) && (
+              <FormItem>
+                <FormLabel isRequired infoText='Date when the approval was granted'>
+                  Approval Date
+                </FormLabel>
+                <SPDateField
+                  name={`approvals.${communicationsApprovalIndex}.approvalDate` as const}
+                  control={formControl}
+                  placeholder='Select approval date'
+                  dateTimeFormat={SPDateTimeFormat.DateOnly}
+                  displayFormat='MM/dd/yyyy'
+                  maxDate={TODAY}
+                  showClearButton
+                  calendarButtonPosition='before'
+                  disabled={disabled}
+                />
+              </FormItem>
+            )}
 
-            {/* Approval Document Upload */}
-            <FormItem>
-              <FormLabel isRequired>Approval Documents</FormLabel>
-              <DocumentUpload
-                documentType={DocumentType.CommunicationApproval}
-                itemId={requestId ? parseInt(requestId, 10) : undefined}
-                siteUrl={SPContext.webAbsoluteUrl}
-                documentLibraryTitle={Lists.RequestDocuments.Title}
-                maxFiles={MAX_APPROVAL_DOCUMENTS}
-                maxFileSize={250 * 1024 * 1024}
-                required={true}
-                isReadOnly={disabled}
-                hasError={hasCommDocumentError}
-                onFilesChange={handleCommFilesChange}
-                label=""
-                description={`Upload up to ${MAX_APPROVAL_DOCUMENTS} approval documents (PDF, Word, Excel, PowerPoint, images, emails, etc.)`}
-              />
-            </FormItem>
+            {/* Approval Document Upload - hidden for self-approvals */}
+            {!isApprovalSelfApproved(communicationsApprovalIndex) && (
+              <FormItem>
+                <FormLabel isRequired>Approval Documents</FormLabel>
+                <DocumentUpload
+                  documentType={DocumentType.CommunicationApproval}
+                  itemId={requestId ? parseInt(requestId, 10) : undefined}
+                  siteUrl={SPContext.webAbsoluteUrl}
+                  documentLibraryTitle={Lists.RequestDocuments.Title}
+                  maxFiles={MAX_APPROVAL_DOCUMENTS}
+                  maxFileSize={250 * 1024 * 1024}
+                  required={true}
+                  isReadOnly={disabled}
+                  hasError={hasCommDocumentError}
+                  onFilesChange={handleCommFilesChange}
+                  label=""
+                  description={`Upload up to ${MAX_APPROVAL_DOCUMENTS} approval documents (PDF, Word, Excel, PowerPoint, images, emails, etc.)`}
+                />
+              </FormItem>
+            )}
+
+            {/* Self-approval notice */}
+            {isApprovalSelfApproved(communicationsApprovalIndex) && (
+              <FormItem>
+                <MessageBar
+                  messageBarType={MessageBarType.info}
+                  isMultiline={false}
+                  styles={{ root: { borderRadius: '4px' } }}
+                >
+                  Self-approval: Approval date and document upload are not required.
+                </MessageBar>
+              </FormItem>
+            )}
 
             {/* Notes */}
             <FormItem fieldName={`approvals.${communicationsApprovalIndex}.notes`}>
@@ -1024,6 +1083,7 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
                 disabled={disabled}
                 isNewRequest={isNewRequest}
                 requestId={requestId}
+                isSelfApproval={isApprovalSelfApproved(index)}
               />
             );
           })}

@@ -48,6 +48,7 @@ export const AppRole = {
   Attorneys: Groups.LwAttorneys.Title,
   ComplianceUsers: Groups.LwComplianceReviewers.Title,
   Admin: Groups.LwAdmins.Title,
+  SelfApprovers: Groups.LwSelfApprovers.Title,
 } as const;
 
 export type AppRole = typeof AppRole[keyof typeof AppRole];

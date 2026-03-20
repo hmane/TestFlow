@@ -26,6 +26,7 @@ export interface IUserPermissions {
   isAttorney: boolean;
   isComplianceUser: boolean;
   isAdmin: boolean;
+  isSelfApprover: boolean;
   roles: AppRole[];
   canCreateRequest: boolean;
   canViewAllRequests: boolean;
@@ -59,6 +60,7 @@ export function usePermissions(): IUserPermissions & { isLoading: boolean; error
     isAttorney: state.isAttorney,
     isComplianceUser: state.isComplianceUser,
     isAdmin: state.isAdmin,
+    isSelfApprover: state.isSelfApprover,
     roles: state.roles,
     canCreateRequest: state.canCreateRequest,
     canViewAllRequests: state.canViewAllRequests,

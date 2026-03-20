@@ -29,6 +29,7 @@ export function buildActionContext(request: ILegalRequest): IActionContext {
     isAttorney: permState.isAttorney,
     isComplianceUser: permState.isComplianceUser,
     isAdmin: permState.isAdmin,
+    isSelfApprover: permState.isSelfApprover,
     roles: permState.roles,
     canCreateRequest: permState.canCreateRequest,
     canViewAllRequests: permState.canViewAllRequests,

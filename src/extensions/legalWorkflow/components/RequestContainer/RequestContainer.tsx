@@ -44,6 +44,12 @@ import { useWorkflowStepper } from '@components/WorkflowStepper/useWorkflowStepp
 import { useDocumentsStore } from '@stores/documentsStore';
 import { useRequestActions, useRequestStore } from '@stores/requestStore';
 import { handleManageAccessChange, type IPermissionPrincipal } from '@services/azureFunctionService';
+import { DiagnosticPanel } from '@components/DiagnosticPanel';
+import { usePermissions } from '@hooks/usePermissions';
+import { useUIVisibility } from '@hooks/useUIVisibility';
+import { usePermissionsStore } from '@stores/permissionsStore';
+import { useConfigStore } from '@stores/configStore';
+import { getCurrentUserGroupTitles } from '@services/userGroupsService';
 import { RequestActions } from '../RequestActions';
 import { RequestApprovals } from '../RequestApprovals';
 import { RequestDocuments } from '../RequestDocuments';
@@ -171,6 +177,7 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
   }));
   const { loadRequest } = useRequestActions();
   const loadDocuments = useDocumentsStore((s) => s.loadDocuments);
+  const documentsByType = useDocumentsStore((s) => s.documents);
   const [isCommentsOpen, setIsCommentsOpen] = React.useState<boolean>(true);
   const [showTypeSelector, setShowTypeSelector] = React.useState<boolean>(false);
   const [isTypeLocked, setIsTypeLocked] = React.useState<boolean>(false);
@@ -1151,6 +1158,59 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
     );
   };
 
+  // ─────────────────────────────────────────────
+  // Diagnostic Panel - data collection
+  // Only collects data when ?diag=true is present
+  // ─────────────────────────────────────────────
+  const isDiagEnabled = React.useMemo(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('diag') === 'true';
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const permissions = usePermissions();
+  const uiVisibility = useUIVisibility();
+  const [diagUserGroups, setDiagUserGroups] = React.useState<string[]>([]);
+
+  React.useEffect(() => {
+    if (!isDiagEnabled) return;
+    const abortController = new AbortController();
+    getCurrentUserGroupTitles().then(function (groups) {
+      if (!abortController.signal.aborted) {
+        setDiagUserGroups(groups);
+      }
+    }).catch(function () {
+      // ignore
+    });
+    return () => { abortController.abort(); };
+  }, [isDiagEnabled]);
+
+  const diagDocumentsFlat = React.useMemo(() => {
+    if (!isDiagEnabled) return [];
+    const allDocs: any[] = [];
+    documentsByType.forEach(function (docs) {
+      for (let i = 0; i < docs.length; i++) {
+        allDocs.push(docs[i]);
+      }
+    });
+    return allDocs;
+  }, [isDiagEnabled, documentsByType]);
+
+  const diagCurrentUser = React.useMemo(() => {
+    if (!isDiagEnabled) return undefined;
+    const user = SPContext.currentUser;
+    if (!user) return undefined;
+    return {
+      id: typeof user.id === 'number' ? user.id : parseInt(String(user.id), 10) || 0,
+      title: user.title || '',
+      email: user.email || '',
+      loginName: user.loginName || '',
+    };
+  }, [isDiagEnabled]);
+
   return (
     <div className={`request-container ${className || ''}`}>
       {/* Workflow Stepper - Full width at top for all views (including draft/new) */}
@@ -1167,6 +1227,24 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
       <div className='request-container__main'>
         {renderMainContent()}
       </div>
+
+      {/* Diagnostic Panel - only visible with ?diag=true */}
+      {isDiagEnabled && (
+        <DiagnosticPanel
+          request={currentRequest}
+          permissions={permissions}
+          visibility={uiVisibility}
+          documents={diagDocumentsFlat}
+          stores={{
+            request: useRequestStore.getState(),
+            permissions: usePermissionsStore.getState(),
+            config: useConfigStore.getState(),
+          }}
+          userGroups={diagUserGroups}
+          currentUser={diagCurrentUser}
+          itemPermissions={effectiveItemId ? usePermissionsStore.getState().itemPermissions.get(`Requests_${effectiveItemId}`) : undefined}
+        />
+      )}
     </div>
   );
 };

@@ -22,6 +22,7 @@ export const LW_GROUPS = {
   ATTORNEYS: Groups.LwAttorneys.Title,
   REGULATORY_REVIEWERS: Groups.LwComplianceReviewers.Title,
   ADMINS: Groups.LwAdmins.Title,
+  SELF_APPROVERS: Groups.LwSelfApprovers.Title,
 } as const;
 
 /**
@@ -34,6 +35,7 @@ export interface IUserGroupMembership {
   isAttorney: boolean;
   isComplianceUser: boolean;
   isAdmin: boolean;
+  isSelfApprover: boolean;
   /** Raw group titles for custom checks */
   groupTitles: string[];
 }
@@ -160,6 +162,7 @@ export async function getUserGroupMembership(): Promise<IUserGroupMembership> {
     isAttorney: groupTitles.includes(LW_GROUPS.ATTORNEYS) || isAdmin,
     isComplianceUser: groupTitles.includes(LW_GROUPS.REGULATORY_REVIEWERS) || isAdmin,
     isAdmin,
+    isSelfApprover: groupTitles.includes(LW_GROUPS.SELF_APPROVERS) || isAdmin,
     groupTitles,
   };
 }

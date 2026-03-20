@@ -47,6 +47,14 @@
                    AllowRequestToJoinLeave="false"
                    AutoAcceptRequestToJoinLeave="false"
                    OnlyAllowMembersViewMembership="true" />
+
+    <pnp:SiteGroup Title="LW - Self Approvers"
+                   Description="Users who can self-approve without requiring approval date and attachment"
+                   Owner="LW - Admins"
+                   AllowMembersEditMembership="false"
+                   AllowRequestToJoinLeave="false"
+                   AutoAcceptRequestToJoinLeave="false"
+                   OnlyAllowMembersViewMembership="true" />
   </pnp:SiteGroups>
 
   <pnp:Permissions>
@@ -57,6 +65,7 @@
       <pnp:RoleAssignment Principal="LW - Attorney Assigners" RoleDefinition="Read" />
       <pnp:RoleAssignment Principal="LW - Attorneys" RoleDefinition="Read" />
       <pnp:RoleAssignment Principal="LW - Compliance Reviewers" RoleDefinition="Read" />
+      <pnp:RoleAssignment Principal="LW - Self Approvers" RoleDefinition="Read" />
     </pnp:RoleAssignments>
   </pnp:Permissions>
 

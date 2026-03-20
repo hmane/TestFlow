@@ -12,6 +12,7 @@ import { DocumentType } from '@appTypes/documentTypes';
 import { saveRequestSchema, submitRequestSchema } from '@schemas/requestSchema';
 import type { IValidationError } from '@contexts/RequestFormContext';
 import { useDocumentsStore } from '@stores/documentsStore';
+import { usePermissionsStore } from '@stores/permissionsStore';
 import { useRequestStore } from '@stores/requestStore';
 import { useShallow } from 'zustand/react/shallow';
 
@@ -27,6 +28,7 @@ type ApprovalWithValidationMetadata = Approval & {
  */
 type RequestWithValidationMetadata = Partial<ILegalRequest> & {
   _hasAttachments?: boolean;
+  _selfApproverUserId?: string;
   approvals?: ApprovalWithValidationMetadata[];
 };
 
@@ -183,6 +185,23 @@ const normalizeRequestValues = (values: Partial<ILegalRequest>): Partial<ILegalR
   }
 
   return normalized;
+};
+
+const sanitizeValidatedRequest = (values: RequestWithValidationMetadata): Partial<ILegalRequest> => {
+  const sanitized = { ...values } as RequestWithValidationMetadata;
+
+  delete sanitized._hasAttachments;
+  delete sanitized._selfApproverUserId;
+
+  if (sanitized.approvals && Array.isArray(sanitized.approvals)) {
+    sanitized.approvals = sanitized.approvals.map((approval): Approval => {
+      const sanitizedApproval = { ...approval } as ApprovalWithValidationMetadata;
+      delete sanitizedApproval._hasDocumentInStore;
+      return sanitizedApproval as Approval;
+    });
+  }
+
+  return sanitized as Partial<ILegalRequest>;
 };
 
 export const useRequestInfoActions = ({
@@ -400,6 +419,12 @@ export const useRequestInfoActions = ({
       });
       normalizedWithMetadata._hasAttachments = hasAttachmentsValue;
 
+      // Inject self-approver user ID for self-approval validation bypass
+      const permState = usePermissionsStore.getState();
+      if (permState.isSelfApprover) {
+        normalizedWithMetadata._selfApproverUserId = String(SPContext.currentUser?.id ?? '');
+      }
+
       const validation = schema.safeParse(normalized);
 
       // Debug: Log validation result
@@ -414,7 +439,7 @@ export const useRequestInfoActions = ({
         clearFormErrors();
         setValidationErrors([]);
         lastValidationSchemaRef.current = null;
-        return { valid: true, normalized: validation.data as Partial<ILegalRequest> };
+        return { valid: true, normalized: sanitizeValidatedRequest(validation.data as RequestWithValidationMetadata) };
       }
 
       const errors: IValidationError[] = validation.error.issues.map(issue => ({
@@ -598,6 +623,12 @@ export const useRequestInfoActions = ({
 
       // Inject attachments availability
       normalizedWithMetadata._hasAttachments = hasAttachments();
+
+      // Inject self-approver user ID for self-approval validation bypass
+      const savePermState = usePermissionsStore.getState();
+      if (savePermState.isSelfApprover) {
+        normalizedWithMetadata._selfApproverUserId = String(SPContext.currentUser?.id ?? '');
+      }
 
       // Use the same schema that was originally used for validation
       const schema = lastValidationSchemaRef.current === 'submit' ? submitRequestSchema : saveRequestSchema;
