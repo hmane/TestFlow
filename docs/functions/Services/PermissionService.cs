@@ -898,6 +898,7 @@ namespace LegalWorkflow.Functions.Services
             }
 
             var roleNames = existingRoleDefinitions
+                .AsRequested()
                 .Select(roleDefinition => roleDefinition.Name)
                 .Where(name => !string.IsNullOrWhiteSpace(name))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
