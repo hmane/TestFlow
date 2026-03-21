@@ -179,6 +179,11 @@ namespace LegalWorkflow.Functions.Services
                 // Map SharePoint item to RequestModel
                 var request = MapItemToRequest(item);
 
+                // renderListDataAsStream returns "View Entries" for append-only Note fields
+                // instead of the actual text content. Load these fields via a direct REST call
+                // which returns the latest entry value.
+                await LoadAppendOnlyNoteFieldsAsync(context, requestId, request);
+
                 _logger.SetRequestContext(request.Id, GetRequestContextTitle(request));
                 _logger.Info("Request loaded successfully", new { FieldCount = item.Values.Count });
 
@@ -518,6 +523,26 @@ namespace LegalWorkflow.Functions.Services
                     return typedValue;
                 }
 
+                // renderListDataAsStream returns dates as strings in various formats.
+                // Convert.ChangeType is culture-sensitive and silently fails for many
+                // SharePoint date formats. Use DateTime.TryParse with InvariantCulture
+                // for reliable parsing.
+                if (typeof(T) == typeof(DateTime) && value is string dateString && !string.IsNullOrWhiteSpace(dateString))
+                {
+                    if (DateTime.TryParse(dateString, System.Globalization.CultureInfo.InvariantCulture,
+                            System.Globalization.DateTimeStyles.None, out var parsedDate))
+                    {
+                        return (T)(object)parsedDate;
+                    }
+                    // Fall back to US culture format (e.g., "1/15/2024 10:30 AM")
+                    if (DateTime.TryParse(dateString, new System.Globalization.CultureInfo("en-US"),
+                            System.Globalization.DateTimeStyles.None, out var parsedDateUs))
+                    {
+                        return (T)(object)parsedDateUs;
+                    }
+                    return null;
+                }
+
                 try
                 {
                     return (T)Convert.ChangeType(value, typeof(T));
@@ -676,6 +701,64 @@ namespace LegalWorkflow.Functions.Services
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Loads append-only Note field values via a direct REST API call.
+        /// renderListDataAsStream returns "View Entries" for append-only fields;
+        /// the REST API (GetByIdAsync) returns the latest entry text.
+        /// </summary>
+        private async Task LoadAppendOnlyNoteFieldsAsync(PnPContext context, int requestId, RequestModel request)
+        {
+            try
+            {
+                var list = await context.Web.Lists.GetByTitleAsync(_listConfig.RequestsListName);
+                var noteItem = await list.Items.GetByIdAsync(requestId);
+
+                request.LegalReviewNotes = GetNoteFieldValue(noteItem, RequestsFields.LegalReviewNotes);
+                request.ComplianceReviewNotes = GetNoteFieldValue(noteItem, RequestsFields.ComplianceReviewNotes);
+                request.AttorneyAssignNotes = GetNoteFieldValue(noteItem, RequestsFields.AttorneyAssignNotes);
+                request.HoldReason = GetNoteFieldValue(noteItem, RequestsFields.OnHoldReason);
+                request.CancellationReason = GetNoteFieldValue(noteItem, RequestsFields.CancelReason);
+            }
+            catch (Exception ex)
+            {
+                // Non-fatal: the main item data was already loaded, notes just won't
+                // have the latest entry text in notifications.
+                _logger.Warning("Failed to load append-only note fields via REST — notifications may show 'View Entries'", ex);
+            }
+        }
+
+        /// <summary>
+        /// Extracts a Note field value from a list item loaded via REST API.
+        /// Strips the outer ExternalClass div wrapper that SharePoint adds.
+        /// </summary>
+        private static string GetNoteFieldValue(IListItem item, string fieldName)
+        {
+            if (!item.Values.TryGetValue(fieldName, out var value) || value == null)
+            {
+                return string.Empty;
+            }
+
+            var text = value.ToString() ?? string.Empty;
+
+            // Strip "View Entries" sentinel that renderListDataAsStream might have left
+            if (text.Contains("View Entries", StringComparison.OrdinalIgnoreCase))
+            {
+                return string.Empty;
+            }
+
+            // Strip outer <div class="ExternalClass...">...</div> wrapper
+            if (text.StartsWith("<div", StringComparison.OrdinalIgnoreCase))
+            {
+                text = System.Text.RegularExpressions.Regex.Replace(
+                    text,
+                    @"^<div[^>]*>(.*)</div>\s*$",
+                    "$1",
+                    System.Text.RegularExpressions.RegexOptions.Singleline | System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            }
+
+            return text.Trim();
         }
 
         private static string GetRequestContextTitle(RequestModel request)

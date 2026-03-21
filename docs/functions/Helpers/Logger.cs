@@ -112,10 +112,21 @@ namespace LegalWorkflow.Functions.Helpers
             {
                 foreach (var prop in data.GetType().GetProperties())
                 {
-                    var value = prop.GetValue(data);
-                    if (value != null)
+                    // Skip indexed properties (e.g. this[string key]) — GetValue
+                    // without an index throws TargetParameterCountException.
+                    if (prop.GetIndexParameters().Length > 0) continue;
+
+                    try
                     {
-                        errorData[prop.Name] = value;
+                        var value = prop.GetValue(data);
+                        if (value != null)
+                        {
+                            errorData[prop.Name] = value;
+                        }
+                    }
+                    catch
+                    {
+                        // Swallow reflection errors for individual properties
                     }
                 }
             }
@@ -269,10 +280,21 @@ namespace LegalWorkflow.Functions.Helpers
             {
                 foreach (var prop in data.GetType().GetProperties())
                 {
-                    var value = prop.GetValue(data);
-                    if (value != null)
+                    // Skip indexed properties (e.g. this[string key]) — GetValue
+                    // without an index throws TargetParameterCountException.
+                    if (prop.GetIndexParameters().Length > 0) continue;
+
+                    try
                     {
-                        logEntry[prop.Name] = value;
+                        var value = prop.GetValue(data);
+                        if (value != null)
+                        {
+                            logEntry[prop.Name] = value;
+                        }
+                    }
+                    catch
+                    {
+                        // Swallow reflection errors for individual properties
                     }
                 }
             }

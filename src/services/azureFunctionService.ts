@@ -24,20 +24,6 @@ import { useConfigStore } from '@stores/configStore';
 import { ConfigKeys } from '@sp/ConfigKeys';
 
 /**
- * Request payload for Azure Function permission management
- */
-export interface IPermissionManagementRequest {
-  /** SharePoint item ID */
-  itemId: number;
-  /** Current status of the request */
-  status: RequestStatus;
-  /** SharePoint site URL */
-  siteUrl: string;
-  /** List title */
-  listTitle: string;
-}
-
-/**
  * Request payload for adding/removing user permissions
  */
 export interface IUserPermissionRequest {
@@ -148,203 +134,47 @@ function getApimConfig(): IApimConfig {
 }
 
 /**
- * Request payload for initialize permissions
- */
-interface IInitializePermissionsRequest {
-  /** SharePoint item ID */
-  requestId: number;
-  /** Request title (e.g., "CRR-25-1") */
-  requestTitle: string;
-  /** SharePoint site URL */
-  siteUrl: string;
-  /** List title */
-  listTitle: string;
-}
-
-/**
- * Initialize permissions for a request via APIM
+ * Initialize permissions for a request.
  *
- * This function calls the Azure Function through APIM to break inheritance
- * and set initial permissions when a request is first submitted.
- *
- * Called when transitioning from Draft → Legal Intake.
- *
- * Uses SPContext.http.callFunction() which provides:
- * - Automatic Azure AD token acquisition
- * - Retry logic with exponential backoff
- * - Timeout handling
+ * Permission initialization (break inheritance + set initial permissions) is
+ * handled by the Power Automate "On Create" flow. This function is a no-op
+ * retained so callers don't need to be changed.
  *
  * @param itemId - SharePoint list item ID
  * @param requestTitle - Request title (e.g., "CRR-25-1")
- * @returns Promise resolving when permissions are initialized
- * @throws Error if initialization fails
  */
 export async function initializePermissions(
   itemId: number,
   requestTitle: string
 ): Promise<void> {
-  // Check feature flag
-  if (!isAzureFunctionsEnabled()) {
-    SPContext.logger.info('AzureFunctionService: initializePermissions SKIPPED (Azure Functions disabled)', {
-      itemId,
-      requestTitle,
-    });
-    return;
-  }
-
-  try {
-    SPContext.logger.info('AzureFunctionService: Initializing permissions via APIM', {
-      itemId,
-      requestTitle,
-    });
-
-    const config = getApimConfig();
-
-    const payload: IInitializePermissionsRequest = {
-      requestId: itemId,
-      requestTitle,
-      siteUrl: SPContext.webAbsoluteUrl,
-      listTitle: 'Requests',
-    };
-
-    const url = `${config.baseUrl}/api/permissions/initialize`;
-
-    // Use SPContext.http.callFunction() for Azure AD authenticated calls
-    // This handles token acquisition, retries, and timeouts automatically
-    const response = await SPContext.http.callFunction<IPermissionManagementResponse>({
-      url,
-      method: 'POST',
-      data: payload,
-      useAuth: true,
-      resourceUri: `api://${config.apiClientId}`,
-      timeout: DEFAULT_TIMEOUT_MS,
-    });
-
-    if (response.ok && response.data.success) {
-      SPContext.logger.success('AzureFunctionService: Permissions initialized successfully', {
-        itemId,
-        requestTitle,
-        duration: response.duration,
-      });
-      return;
-    }
-
-    // Handle failure response
-    const errorMessage = response.data?.error || response.data?.message || `HTTP ${response.status}`;
-    throw new Error(`Permission initialization failed: ${errorMessage}`);
-
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    SPContext.logger.error('AzureFunctionService: Permission initialization error', error, {
-      itemId,
-      requestTitle,
-      error: message,
-    });
-    throw new Error(`Failed to initialize permissions: ${message}`);
-  }
+  // Permissions are initialized by Power Automate "On Create" flow,
+  // not by the SPFx client. Nothing to do here.
+  SPContext.logger.info('AzureFunctionService: initializePermissions — handled by Power Automate flow', {
+    itemId,
+    requestTitle,
+  });
 }
 
 /**
- * Manage request permissions via Azure Function
+ * Manage request permissions after a status transition.
  *
- * This function is called synchronously during workflow transitions to ensure
- * permissions are set before the user continues. This prevents the "item not found"
- * error that occurs when Flow breaks inheritance asynchronously.
- *
- * Uses SPContext.http.callFunction() which provides:
- * - Automatic Azure AD token acquisition
- * - Retry logic with exponential backoff (retries on 5xx, 429)
- * - Timeout handling
+ * All status-based permission changes (initialize, transition, complete) are
+ * handled by Power Automate flows. This function is a no-op retained so
+ * callers don't need to be changed.
  *
  * @param itemId - SharePoint list item ID
  * @param status - New request status
- * @returns Promise resolving when permissions are successfully set
- * @throws Error if permission management fails
- *
- * @example
- * ```typescript
- * try {
- *   // Update SharePoint item
- *   await updateRequest(itemId, { Status: 'InReview' });
- *
- *   // Set permissions synchronously
- *   await manageRequestPermissions(itemId, 'InReview');
- *
- *   // User sees success only after permissions are set
- *   showSuccessMessage('Request submitted successfully');
- * } catch (error) {
- *   // Rollback SharePoint update or show error
- *   showErrorMessage('Failed to submit request');
- * }
- * ```
- *
- * @deprecated Use initializePermissions() for first submit (Draft → Legal Intake).
- * This function is kept for backward compatibility with other status transitions
- * that may still use the legacy flow.
  */
 export async function manageRequestPermissions(
   itemId: number,
   status: RequestStatus
 ): Promise<void> {
-  // Check feature flag
-  if (!isAzureFunctionsEnabled()) {
-    SPContext.logger.info('AzureFunctionService: manageRequestPermissions SKIPPED (Azure Functions disabled)', {
-      itemId,
-      status,
-    });
-    return;
-  }
-
-  try {
-    const config = getApimConfig();
-
-    const payload: IPermissionManagementRequest = {
-      itemId,
-      status,
-      siteUrl: SPContext.webAbsoluteUrl,
-      listTitle: 'Requests',
-    };
-
-    const url = `${config.baseUrl}/api/permissions/manage`;
-
-    SPContext.logger.info('AzureFunctionService: Managing permissions', {
-      itemId,
-      status,
-      url,
-    });
-
-    // Use SPContext.http.callFunction() for Azure AD authenticated calls
-    const response = await SPContext.http.callFunction<IPermissionManagementResponse>({
-      url,
-      method: 'POST',
-      data: payload,
-      useAuth: true,
-      resourceUri: `api://${config.apiClientId}`,
-      timeout: DEFAULT_TIMEOUT_MS,
-    });
-
-    if (response.ok && response.data.success) {
-      SPContext.logger.success('AzureFunctionService: Permissions updated successfully', {
-        itemId,
-        status,
-        duration: response.duration,
-      });
-      return;
-    }
-
-    // Handle failure response
-    const errorMessage = response.data?.error || response.data?.message || `HTTP ${response.status}`;
-    throw new Error(`Permission management failed: ${errorMessage}`);
-
-  } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : String(error);
-    SPContext.logger.error('AzureFunctionService: Permission management error', error, {
-      itemId,
-      status,
-      error: message,
-    });
-    throw new Error(`Failed to manage permissions for request ${itemId}: ${message}`);
-  }
+  // Permissions for status transitions are managed by Power Automate
+  // "On Modify" flow, not by the SPFx client. Nothing to do here.
+  SPContext.logger.info('AzureFunctionService: manageRequestPermissions — handled by Power Automate flow', {
+    itemId,
+    status,
+  });
 }
 
 /**
