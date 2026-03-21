@@ -361,25 +361,21 @@ namespace LegalWorkflow.Functions.Services
             {
                 using var context = await CreateContextAsync();
 
-                // Get role definitions
-                var readRole = await context.Web.RoleDefinitions.FirstOrDefaultAsync(r => r.Name == RoleDefinitions.Read);
-                if (readRole == null)
-                {
-                    throw new InvalidOperationException("Required role definitions not found");
-                }
+                // Batch-load role definitions and groups (2 REST calls instead of N)
+                var roleDefinitions = await GetRoleDefinitionsAsync(context);
+                var siteGroups = await LoadSiteGroupsAsync(context);
 
-                // Get the Admin group
-                var adminGroup = await context.Web.SiteGroups.FirstOrDefaultAsync(g => g.Title == _groupConfig.AdminGroup);
-                if (adminGroup == null)
-                {
-                    throw new InvalidOperationException($"Admin group '{_groupConfig.AdminGroup}' not found");
-                }
+                var readRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.Read)
+                    ?? throw new InvalidOperationException("Read role definition not found");
+                var fullControlRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.FullControl)
+                    ?? throw new InvalidOperationException("Full Control role definition not found");
+                var adminGroup = GetGroupOrThrow(siteGroups, _groupConfig.AdminGroup);
 
                 // 1. Update permissions on request item
-                await UpdateItemToReadOnlyAsync(context, request.RequestId, adminGroup.Id, readRole, response);
+                await ResetToReadOnlyAsync(context, request.RequestId, adminGroup.Id, fullControlRole, readRole, response, isFolder: false);
 
                 // 2. Update permissions on documents folder
-                await UpdateDocumentsFolderToReadOnlyAsync(context, request.RequestId, adminGroup.Id, readRole, response);
+                await ResetToReadOnlyAsync(context, request.RequestId, adminGroup.Id, fullControlRole, readRole, response, isFolder: true);
 
                 response.Message = $"Request completed. All permissions updated to Read (Admin retains Full Control). {response.Changes.Count} changes made.";
                 _logger.Info("Completion permissions set successfully", new { ChangeCount = response.Changes.Count });
@@ -471,13 +467,21 @@ namespace LegalWorkflow.Functions.Services
             _logger.LogPermissionChange("BreakInheritance", $"Requests item {requestId}", "System");
 
             // Get role definitions we need (from pre-loaded snapshot — no extra REST calls)
-            var fullControlRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.FullControl);
+            var fullControlRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.FullControl)
+                ?? throw new InvalidOperationException($"Role definition '{RoleDefinitions.FullControl}' not found");
             var contributeNoDeleteRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.ContributeWithoutDelete)
-                ?? roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.Contribute); // Fallback
-            var readRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.Read);
+                ?? roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.Contribute) // Fallback
+                ?? throw new InvalidOperationException($"Role definition '{RoleDefinitions.ContributeWithoutDelete}' (or '{RoleDefinitions.Contribute}') not found");
+            var readRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.Read)
+                ?? throw new InvalidOperationException($"Role definition '{RoleDefinitions.Read}' not found");
+
+            // After BreakRoleInheritanceAsync(false), there are zero existing role assignments.
+            // Use direct AddRoleDefinitionAsync (skip the read-before-write check in EnsureRoleDefinitionAsync).
 
             // Add Admin group with Full Control
-            await AddGroupPermissionAsync(requestItem, GetGroupOrThrow(siteGroups, _groupConfig.AdminGroup), fullControlRole, response, $"Requests item {requestId}");
+            var adminGroup = GetGroupOrThrow(siteGroups, _groupConfig.AdminGroup);
+            await requestItem.AddRoleDefinitionAsync(adminGroup.Id, fullControlRole);
+            RecordPermissionChange(response, $"Requests item {requestId}", "AddPermission", adminGroup.Title, PermissionLevel.FullControl, fullControlRole.Name);
 
             // Add operational groups with Contribute Without Delete
             var operationalGroups = new[]
@@ -491,10 +495,13 @@ namespace LegalWorkflow.Functions.Services
 
             foreach (var groupName in operationalGroups)
             {
-                await AddGroupPermissionAsync(requestItem, GetGroupOrThrow(siteGroups, groupName), contributeNoDeleteRole, response, $"Requests item {requestId}");
+                var group = GetGroupOrThrow(siteGroups, groupName);
+                await requestItem.AddRoleDefinitionAsync(group.Id, contributeNoDeleteRole);
+                RecordPermissionChange(response, $"Requests item {requestId}", "AddPermission", group.Title, MapRoleToPermissionLevel(contributeNoDeleteRole.Name), contributeNoDeleteRole.Name);
             }
 
-            await AddReadPermissionsForParticipantsAsync(
+            // Add read permissions for additional parties and approvers (no read-before-write needed)
+            await AddReadPermissionsDirectAsync(
                 context,
                 requestItem,
                 readOnlyParticipants,
@@ -542,12 +549,19 @@ namespace LegalWorkflow.Functions.Services
             _logger.LogPermissionChange("BreakInheritance", $"RequestDocuments/{requestId}", "System");
 
             // Get role definitions from pre-loaded snapshot — no extra REST calls
-            var fullControlRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.FullControl);
-            var contributeRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.Contribute);
-            var readRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.Read);
+            var fullControlRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.FullControl)
+                ?? throw new InvalidOperationException($"Role definition '{RoleDefinitions.FullControl}' not found");
+            var contributeRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.Contribute)
+                ?? throw new InvalidOperationException($"Role definition '{RoleDefinitions.Contribute}' not found");
+            var readRole = roleDefinitions.FirstOrDefault(r => r.Name == RoleDefinitions.Read)
+                ?? throw new InvalidOperationException($"Role definition '{RoleDefinitions.Read}' not found");
+
+            // After BreakRoleInheritanceAsync(false), no existing assignments — skip read-before-write.
 
             // Add Admin group with Full Control
-            await AddGroupPermissionToFolderAsync(docsFolderItem, GetGroupOrThrow(siteGroups, _groupConfig.AdminGroup), fullControlRole, response, $"RequestDocuments/{requestId}");
+            var adminGroup = GetGroupOrThrow(siteGroups, _groupConfig.AdminGroup);
+            await docsFolderItem.AddRoleDefinitionAsync(adminGroup.Id, fullControlRole);
+            RecordPermissionChange(response, $"RequestDocuments/{requestId}", "AddPermission", adminGroup.Title, PermissionLevel.FullControl, fullControlRole.Name);
 
             // Add operational groups with Contribute (they need to upload/modify documents)
             var operationalGroups = new[]
@@ -561,10 +575,13 @@ namespace LegalWorkflow.Functions.Services
 
             foreach (var groupName in operationalGroups)
             {
-                await AddGroupPermissionToFolderAsync(docsFolderItem, GetGroupOrThrow(siteGroups, groupName), contributeRole, response, $"RequestDocuments/{requestId}");
+                var group = GetGroupOrThrow(siteGroups, groupName);
+                await docsFolderItem.AddRoleDefinitionAsync(group.Id, contributeRole);
+                RecordPermissionChange(response, $"RequestDocuments/{requestId}", "AddPermission", group.Title, MapRoleToPermissionLevel(contributeRole.Name), contributeRole.Name);
             }
 
-            await AddReadPermissionsForParticipantsAsync(
+            // Add read permissions for additional parties and approvers (no read-before-write needed)
+            await AddReadPermissionsDirectAsync(
                 context,
                 docsFolderItem,
                 readOnlyParticipants,
@@ -573,113 +590,6 @@ namespace LegalWorkflow.Functions.Services
                 $"RequestDocuments/{requestId}");
 
             _logger.Info($"Folder permissions initialized");
-        }
-
-        /// <summary>
-        /// Adds a permission for a pre-loaded group to a list item.
-        /// Caller is responsible for resolving the group from the pre-loaded cache.
-        /// </summary>
-        private async Task AddGroupPermissionAsync(
-            IListItem item,
-            ISharePointGroup group,
-            IRoleDefinition? roleDefinition,
-            PermissionResponse response,
-            string targetDescription)
-        {
-            if (roleDefinition == null)
-            {
-                throw new InvalidOperationException($"Role definition not found for group '{group.Title}'");
-            }
-
-            await EnsureRoleDefinitionAsync(item, group.Id, roleDefinition);
-
-            var permLevel = MapRoleToPermissionLevel(roleDefinition.Name);
-            response.Changes.Add(new PermissionChange
-            {
-                Target = targetDescription,
-                Action = "AddPermission",
-                Principal = group.Title,
-                Level = permLevel
-            });
-
-            _logger.LogPermissionChange("AddPermission", targetDescription, group.Title, roleDefinition.Name);
-        }
-
-        /// <summary>
-        /// Adds a permission for a pre-loaded group to a folder's list item.
-        /// Caller is responsible for resolving the group and list item from pre-loaded data.
-        /// </summary>
-        private async Task AddGroupPermissionToFolderAsync(
-            IListItem folderItem,
-            ISharePointGroup group,
-            IRoleDefinition? roleDefinition,
-            PermissionResponse response,
-            string targetDescription)
-        {
-            if (roleDefinition == null)
-            {
-                throw new InvalidOperationException($"Role definition not found for group '{group.Title}'");
-            }
-
-            await EnsureRoleDefinitionAsync(folderItem, group.Id, roleDefinition);
-
-            var permLevel = MapRoleToPermissionLevel(roleDefinition.Name);
-            response.Changes.Add(new PermissionChange
-            {
-                Target = targetDescription,
-                Action = "AddPermission",
-                Principal = group.Title,
-                Level = permLevel
-            });
-
-            _logger.LogPermissionChange("AddPermission", targetDescription, group.Title, roleDefinition.Name);
-        }
-
-        /// <summary>
-        /// Adds direct read permissions for additional parties and approvers.
-        /// </summary>
-        private async Task AddReadPermissionsForParticipantsAsync(
-            PnPContext context,
-            ISecurableObject securableObject,
-            IReadOnlyCollection<RequestParticipant> participants,
-            IRoleDefinition? readRole,
-            PermissionResponse response,
-            string targetDescription)
-        {
-            if (participants.Count == 0)
-            {
-                return;
-            }
-
-            if (readRole == null)
-            {
-                throw new InvalidOperationException("Read role definition not found for direct participant permissions");
-            }
-
-            foreach (var participant in participants)
-            {
-                var user = await ResolveSharePointUserAsync(context, participant);
-                if (user == null)
-                {
-                    throw new InvalidOperationException($"Could not resolve SharePoint user for '{participant.DisplayName}'");
-                }
-
-                await EnsureRoleDefinitionAsync(securableObject, user.Id, readRole);
-
-                response.Changes.Add(new PermissionChange
-                {
-                    Target = targetDescription,
-                    Action = "AddPermission",
-                    Principal = !string.IsNullOrWhiteSpace(participant.Email) ? participant.Email : participant.DisplayName,
-                    Level = PermissionLevel.Read
-                });
-
-                _logger.LogPermissionChange(
-                    "AddPermission",
-                    targetDescription,
-                    !string.IsNullOrWhiteSpace(participant.Email) ? participant.Email : participant.DisplayName,
-                    readRole.Name);
-            }
         }
 
         /// <summary>
@@ -734,85 +644,76 @@ namespace LegalWorkflow.Functions.Services
         }
 
         /// <summary>
-        /// Updates a list item to read-only (except Admin which keeps Full Control).
+        /// Resets a securable object (item or folder) to read-only for all principals
+        /// except Admin who keeps Full Control.
+        ///
+        /// Strategy: collect current principal IDs, reset + re-break inheritance (clean
+        /// slate), then add back Admin with Full Control and everyone else with Read.
+        /// This is 1 REST call per principal (just add) instead of the old approach of
+        /// 3 calls per principal (read existing → remove → add).
         /// </summary>
-        private async Task UpdateItemToReadOnlyAsync(
+        private async Task ResetToReadOnlyAsync(
             PnPContext context,
             int requestId,
             int adminGroupId,
+            IRoleDefinition fullControlRole,
             IRoleDefinition readRole,
-            PermissionResponse response)
+            PermissionResponse response,
+            bool isFolder)
         {
-            _logger.Info($"Updating item {requestId} to read-only");
+            var targetDescription = isFolder ? $"RequestDocuments/{requestId}" : $"Requests item {requestId}";
+            _logger.Info($"Resetting {targetDescription} to read-only");
 
-            var requestsList = await context.Web.Lists.GetByTitleAsync(_listConfig.RequestsListName);
-            var requestItem = await requestsList.Items.GetByIdAsync(requestId);
-
-            // Load current role assignments
-            await requestItem.LoadAsync(i => i.RoleAssignments.QueryProperties(ra => ra.PrincipalId));
-
-            var roleAssignments = requestItem.RoleAssignments.AsRequested().ToList();
-            foreach (var roleAssignment in roleAssignments)
+            IListItem securableItem;
+            if (isFolder)
             {
-                // Skip Admin group - they keep Full Control
-                if (roleAssignment.PrincipalId == adminGroupId)
+                var docsFolder = await GetDocumentsFolderAsync(context, requestId);
+                if (docsFolder == null)
                 {
-                    continue;
+                    _logger.Warning($"Documents folder not found for {requestId}");
+                    return;
                 }
+                securableItem = await GetFolderListItemAsync(context, docsFolder);
+            }
+            else
+            {
+                var requestsList = await context.Web.Lists.GetByTitleAsync(_listConfig.RequestsListName);
+                securableItem = await requestsList.Items.GetByIdAsync(requestId);
+            }
 
-                // Update others to Read
-                await ReplaceRoleDefinitionsAsync(requestItem, roleAssignment.PrincipalId, readRole);
+            // Load current role assignments to remember who has access
+            await securableItem.LoadAsync(i => i.RoleAssignments.QueryProperties(ra => ra.PrincipalId));
+            var principalIds = securableItem.RoleAssignments.AsRequested()
+                .Select(ra => ra.PrincipalId)
+                .Where(id => id != adminGroupId)
+                .Distinct()
+                .ToList();
+
+            // Reset + re-break = clean slate (no per-principal remove calls needed)
+            await securableItem.ResetRoleInheritanceAsync();
+            await securableItem.BreakRoleInheritanceAsync(copyRoleAssignments: false, clearSubscopes: true);
+
+            // Add Admin with Full Control (1 REST call)
+            await securableItem.AddRoleDefinitionAsync(adminGroupId, fullControlRole);
+
+            response.Changes.Add(new PermissionChange
+            {
+                Target = targetDescription,
+                Action = "UpdatePermission",
+                Principal = _groupConfig.AdminGroup,
+                Level = PermissionLevel.FullControl
+            });
+
+            // Add Read for everyone else (1 REST call per principal — no read/remove needed)
+            foreach (var principalId in principalIds)
+            {
+                await securableItem.AddRoleDefinitionAsync(principalId, readRole);
 
                 response.Changes.Add(new PermissionChange
                 {
-                    Target = $"Requests item {requestId}",
+                    Target = targetDescription,
                     Action = "UpdatePermission",
-                    Principal = $"Principal ID: {roleAssignment.PrincipalId}",
-                    Level = PermissionLevel.Read
-                });
-            }
-        }
-
-        /// <summary>
-        /// Updates documents folder to read-only (except Admin which keeps Full Control).
-        /// </summary>
-        private async Task UpdateDocumentsFolderToReadOnlyAsync(
-            PnPContext context,
-            int requestId,
-            int adminGroupId,
-            IRoleDefinition readRole,
-            PermissionResponse response)
-        {
-            _logger.Info($"Updating folder {requestId} to read-only");
-
-            var docsFolder = await GetDocumentsFolderAsync(context, requestId);
-            if (docsFolder == null)
-            {
-                _logger.Warning($"Documents folder not found for {requestId}");
-                return;
-            }
-
-            // Load current role assignments
-            var docsFolderItem = await GetFolderListItemAsync(context, docsFolder);
-            await docsFolderItem.LoadAsync(i => i.RoleAssignments.QueryProperties(ra => ra.PrincipalId));
-
-            var roleAssignments = docsFolderItem.RoleAssignments.AsRequested().ToList();
-            foreach (var roleAssignment in roleAssignments)
-            {
-                // Skip Admin group - they keep Full Control
-                if (roleAssignment.PrincipalId == adminGroupId)
-                {
-                    continue;
-                }
-
-                // Update others to Read
-                await ReplaceRoleDefinitionsAsync(docsFolderItem, roleAssignment.PrincipalId, readRole);
-
-                response.Changes.Add(new PermissionChange
-                {
-                    Target = $"RequestDocuments/{requestId}",
-                    Action = "UpdatePermission",
-                    Principal = $"Principal ID: {roleAssignment.PrincipalId}",
+                    Principal = $"Principal ID: {principalId}",
                     Level = PermissionLevel.Read
                 });
             }
@@ -886,6 +787,57 @@ namespace LegalWorkflow.Functions.Services
         }
 
         /// <summary>
+        /// Records a permission change in the response and logs it.
+        /// </summary>
+        private void RecordPermissionChange(
+            PermissionResponse response,
+            string target,
+            string action,
+            string principal,
+            PermissionLevel level,
+            string roleName)
+        {
+            response.Changes.Add(new PermissionChange
+            {
+                Target = target,
+                Action = action,
+                Principal = principal,
+                Level = level
+            });
+
+            _logger.LogPermissionChange(action, target, principal, roleName);
+        }
+
+        /// <summary>
+        /// Adds direct read permissions for participants without the read-before-write check.
+        /// Used after BreakRoleInheritanceAsync(false) when we know there are no existing assignments.
+        /// </summary>
+        private async Task AddReadPermissionsDirectAsync(
+            PnPContext context,
+            ISecurableObject securableObject,
+            IReadOnlyCollection<RequestParticipant> participants,
+            IRoleDefinition readRole,
+            PermissionResponse response,
+            string targetDescription)
+        {
+            if (participants.Count == 0) return;
+
+            foreach (var participant in participants)
+            {
+                var user = await ResolveSharePointUserAsync(context, participant);
+                if (user == null)
+                {
+                    throw new InvalidOperationException($"Could not resolve SharePoint user for '{participant.DisplayName}'");
+                }
+
+                await securableObject.AddRoleDefinitionAsync(user.Id, readRole);
+
+                var displayPrincipal = !string.IsNullOrWhiteSpace(participant.Email) ? participant.Email : participant.DisplayName;
+                RecordPermissionChange(response, targetDescription, "AddPermission", displayPrincipal, PermissionLevel.Read, readRole.Name);
+            }
+        }
+
+        /// <summary>
         /// Removes all currently assigned role definitions for the specified principal.
         /// </summary>
         private static async Task RemoveAllRoleDefinitionsAsync(ISecurableObject securableObject, int principalId)
@@ -908,18 +860,6 @@ namespace LegalWorkflow.Functions.Services
             {
                 await securableObject.RemoveRoleDefinitionsAsync(principalId, roleNames);
             }
-        }
-
-        /// <summary>
-        /// Replaces all current role definitions for a principal with the provided role definition.
-        /// </summary>
-        private static async Task ReplaceRoleDefinitionsAsync(
-            ISecurableObject securableObject,
-            int principalId,
-            IRoleDefinition roleDefinition)
-        {
-            await RemoveAllRoleDefinitionsAsync(securableObject, principalId);
-            await securableObject.AddRoleDefinitionAsync(principalId, roleDefinition);
         }
 
         /// <summary>
