@@ -27,11 +27,12 @@ namespace LegalWorkflow.Functions.Services
     /// - Request Creation (Draft/Legal Intake):
     ///   - Break inheritance on request item and documents folder
     ///   - LW - Admins: Full Control on both
-    ///   - LW - Submitters: Contribute Without Delete on item, Contribute on docs
+    ///   - LW - Submitters (group): Read on both
     ///   - LW - Legal Admins: Contribute Without Delete on item, Contribute on docs
     ///   - LW - Attorney Assigners: Contribute Without Delete on item, Contribute on docs
     ///   - LW - Attorneys: Contribute Without Delete on item, Contribute on docs
     ///   - LW - Compliance Reviewers: Contribute Without Delete on item, Contribute on docs
+    ///   - Submitter (individual Author): Contribute Without Delete on item, Contribute on docs
     ///   - Additional Parties: Read only on item and docs
     ///   - Approvers: Read only on item and docs
     ///
@@ -109,6 +110,7 @@ namespace LegalWorkflow.Functions.Services
                 // that throw "Property was not yet loaded" on access.
                 var participantFieldNames = new[]
                 {
+                    RequestsFields.Author,
                     RequestsFields.AdditionalParty,
                     RequestsFields.CommunicationsApprover,
                     RequestsFields.PortfolioManager,
@@ -152,11 +154,14 @@ namespace LegalWorkflow.Functions.Services
                 var roleDefinitions = await GetRoleDefinitionsAsync(context);
                 var readOnlyParticipants = GetReadOnlyParticipantsFromItem(requestItem);
 
+                // Resolve the individual submitter (Author) for Contribute Without Delete access
+                var submitter = GetSubmitterFromItem(requestItem);
+
                 // 1. Initialize permissions on the request list item
-                await InitializeItemPermissionsAsync(context, requestItem, request.RequestId, siteGroups, roleDefinitions, readOnlyParticipants, response);
+                await InitializeItemPermissionsAsync(context, requestItem, request.RequestId, siteGroups, roleDefinitions, readOnlyParticipants, submitter, response);
 
                 // 2. Initialize permissions on the documents folder
-                await InitializeDocumentsFolderPermissionsAsync(context, request.RequestId, siteGroups, roleDefinitions, readOnlyParticipants, response);
+                await InitializeDocumentsFolderPermissionsAsync(context, request.RequestId, siteGroups, roleDefinitions, readOnlyParticipants, submitter, response);
 
                 response.Message = $"Permissions initialized successfully. {response.Changes.Count} changes made.";
                 _logger.Info("Permissions initialized successfully", new { ChangeCount = response.Changes.Count });
@@ -446,6 +451,7 @@ namespace LegalWorkflow.Functions.Services
             Dictionary<string, ISharePointGroup> siteGroups,
             IReadOnlyList<IRoleDefinition> roleDefinitions,
             IReadOnlyCollection<RequestParticipant> readOnlyParticipants,
+            RequestParticipant? submitter,
             PermissionResponse response)
         {
             _logger.Info($"Initializing item permissions for request {requestId}");
@@ -483,10 +489,14 @@ namespace LegalWorkflow.Functions.Services
             await requestItem.AddRoleDefinitionAsync(adminGroup.Id, fullControlRole);
             RecordPermissionChange(response, $"Requests item {requestId}", "AddPermission", adminGroup.Title, PermissionLevel.FullControl, fullControlRole.Name);
 
+            // Add Submitters group with Read (group-level visibility, not edit access)
+            var submittersGroup = GetGroupOrThrow(siteGroups, _groupConfig.SubmittersGroup);
+            await requestItem.AddRoleDefinitionAsync(submittersGroup.Id, readRole);
+            RecordPermissionChange(response, $"Requests item {requestId}", "AddPermission", submittersGroup.Title, PermissionLevel.Read, readRole.Name);
+
             // Add operational groups with Contribute Without Delete
             var operationalGroups = new[]
             {
-                _groupConfig.SubmittersGroup,
                 _groupConfig.LegalAdminGroup,
                 _groupConfig.AttorneyAssignerGroup,
                 _groupConfig.AttorneysGroup,
@@ -498,6 +508,22 @@ namespace LegalWorkflow.Functions.Services
                 var group = GetGroupOrThrow(siteGroups, groupName);
                 await requestItem.AddRoleDefinitionAsync(group.Id, contributeNoDeleteRole);
                 RecordPermissionChange(response, $"Requests item {requestId}", "AddPermission", group.Title, MapRoleToPermissionLevel(contributeNoDeleteRole.Name), contributeNoDeleteRole.Name);
+            }
+
+            // Add individual submitter (Author) with Contribute Without Delete
+            if (submitter != null)
+            {
+                var submitterUser = await ResolveSharePointUserAsync(context, submitter);
+                if (submitterUser != null)
+                {
+                    await requestItem.AddRoleDefinitionAsync(submitterUser.Id, contributeNoDeleteRole);
+                    var displayPrincipal = !string.IsNullOrWhiteSpace(submitter.Email) ? submitter.Email : submitter.DisplayName;
+                    RecordPermissionChange(response, $"Requests item {requestId}", "AddPermission", displayPrincipal, MapRoleToPermissionLevel(contributeNoDeleteRole.Name), contributeNoDeleteRole.Name);
+                }
+                else
+                {
+                    _logger.Warning($"Could not resolve submitter for request {requestId}", new { submitter.Email, submitter.LoginName });
+                }
             }
 
             // Add read permissions for additional parties and approvers (no read-before-write needed)
@@ -522,6 +548,7 @@ namespace LegalWorkflow.Functions.Services
             Dictionary<string, ISharePointGroup> siteGroups,
             IReadOnlyList<IRoleDefinition> roleDefinitions,
             IReadOnlyCollection<RequestParticipant> readOnlyParticipants,
+            RequestParticipant? submitter,
             PermissionResponse response)
         {
             _logger.Info($"Initializing folder permissions for {requestId}");
@@ -563,10 +590,14 @@ namespace LegalWorkflow.Functions.Services
             await docsFolderItem.AddRoleDefinitionAsync(adminGroup.Id, fullControlRole);
             RecordPermissionChange(response, $"RequestDocuments/{requestId}", "AddPermission", adminGroup.Title, PermissionLevel.FullControl, fullControlRole.Name);
 
+            // Add Submitters group with Read (group-level visibility, not edit access)
+            var submittersGroup = GetGroupOrThrow(siteGroups, _groupConfig.SubmittersGroup);
+            await docsFolderItem.AddRoleDefinitionAsync(submittersGroup.Id, readRole);
+            RecordPermissionChange(response, $"RequestDocuments/{requestId}", "AddPermission", submittersGroup.Title, PermissionLevel.Read, readRole.Name);
+
             // Add operational groups with Contribute (they need to upload/modify documents)
             var operationalGroups = new[]
             {
-                _groupConfig.SubmittersGroup,
                 _groupConfig.LegalAdminGroup,
                 _groupConfig.AttorneyAssignerGroup,
                 _groupConfig.AttorneysGroup,
@@ -578,6 +609,22 @@ namespace LegalWorkflow.Functions.Services
                 var group = GetGroupOrThrow(siteGroups, groupName);
                 await docsFolderItem.AddRoleDefinitionAsync(group.Id, contributeRole);
                 RecordPermissionChange(response, $"RequestDocuments/{requestId}", "AddPermission", group.Title, MapRoleToPermissionLevel(contributeRole.Name), contributeRole.Name);
+            }
+
+            // Add individual submitter (Author) with Contribute
+            if (submitter != null)
+            {
+                var submitterUser = await ResolveSharePointUserAsync(context, submitter);
+                if (submitterUser != null)
+                {
+                    await docsFolderItem.AddRoleDefinitionAsync(submitterUser.Id, contributeRole);
+                    var displayPrincipal = !string.IsNullOrWhiteSpace(submitter.Email) ? submitter.Email : submitter.DisplayName;
+                    RecordPermissionChange(response, $"RequestDocuments/{requestId}", "AddPermission", displayPrincipal, MapRoleToPermissionLevel(contributeRole.Name), contributeRole.Name);
+                }
+                else
+                {
+                    _logger.Warning($"Could not resolve submitter for documents folder {requestId}", new { submitter.Email, submitter.LoginName });
+                }
             }
 
             // Add read permissions for additional parties and approvers (no read-before-write needed)
@@ -860,6 +907,20 @@ namespace LegalWorkflow.Functions.Services
             {
                 await securableObject.RemoveRoleDefinitionsAsync(principalId, roleNames);
             }
+        }
+
+        /// <summary>
+        /// Extracts the individual submitter (Author) from an already-loaded request item.
+        /// Returns null if the Author field is missing or cannot be resolved.
+        /// </summary>
+        private static RequestParticipant? GetSubmitterFromItem(IListItem requestItem)
+        {
+            var authorValue = GetFieldValue(requestItem, RequestsFields.Author);
+            if (authorValue == null) return null;
+
+            var participants = new Dictionary<string, RequestParticipant>(StringComparer.OrdinalIgnoreCase);
+            AddParticipantsFromValue(participants, authorValue);
+            return participants.Values.FirstOrDefault();
         }
 
         /// <summary>
