@@ -621,6 +621,8 @@ namespace LegalWorkflow.Functions.Services
 
         /// <summary>
         /// Processes template conditionals like {{#if FieldName}}...{{/if}}.
+        /// Handles nested conditionals by processing innermost blocks first, iterating
+        /// until no more conditional tags remain.
         /// </summary>
         private string ProcessTemplate(string template, RequestModel request)
         {
@@ -632,31 +634,48 @@ namespace LegalWorkflow.Functions.Services
             // First replace all tokens
             var result = ReplaceTokens(template, request);
 
-            // Process conditionals: {{#if FieldName}}...{{/if}}
-            result = IfConditionalRegex().Replace(result, match =>
+            // Process conditionals iteratively, innermost first.
+            // The non-greedy (.*?) regex matches the innermost {{#if}}...{{/if}} pair
+            // (i.e. the first pair whose body contains no nested {{#if}}).
+            // Each pass resolves one nesting level; repeat until stable.
+            const int maxIterations = 20; // safety guard against infinite loops
+
+            for (var i = 0; i < maxIterations; i++)
             {
-                var fieldName = match.Groups[1].Value;
-                var content = match.Groups[2].Value;
+                var previous = result;
 
-                if (EvaluateCondition(fieldName, request))
+                // Process {{#if FieldName}}...{{/if}} (innermost matches first due to non-greedy)
+                result = IfConditionalRegex().Replace(result, match =>
                 {
-                    return content;
-                }
-                return string.Empty;
-            });
+                    var fieldName = match.Groups[1].Value;
+                    var content = match.Groups[2].Value;
 
-            // Process negative conditionals: {{#unless FieldName}}...{{/unless}}
-            result = UnlessConditionalRegex().Replace(result, match =>
-            {
-                var fieldName = match.Groups[1].Value;
-                var content = match.Groups[2].Value;
+                    if (EvaluateCondition(fieldName, request))
+                    {
+                        return content;
+                    }
+                    return string.Empty;
+                });
 
-                if (!EvaluateCondition(fieldName, request))
+                // Process {{#unless FieldName}}...{{/unless}}
+                result = UnlessConditionalRegex().Replace(result, match =>
                 {
-                    return content;
+                    var fieldName = match.Groups[1].Value;
+                    var content = match.Groups[2].Value;
+
+                    if (!EvaluateCondition(fieldName, request))
+                    {
+                        return content;
+                    }
+                    return string.Empty;
+                });
+
+                // If nothing changed, all conditionals are resolved
+                if (result == previous)
+                {
+                    break;
                 }
-                return string.Empty;
-            });
+            }
 
             // Remove any orphan {{#if}}, {{/if}}, {{#unless}}, {{/unless}} tags that had no
             // matching closer (e.g. unclosed blocks or unknown field names left by the regex).

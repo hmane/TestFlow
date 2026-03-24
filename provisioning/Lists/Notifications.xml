@@ -262,7 +262,7 @@
                     <p style="margin:0 0 8px;font-weight:600;color:#323130;">Basic Information</p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;width:35%;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>Request ID:</strong></td>
                         <td style="padding:4px 0;">{{RequestId}}</td>
                       </tr>
                       <tr>
@@ -300,10 +300,14 @@
 
               <!-- Purpose -->
               {{#if Purpose}}
-              <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 16px;">
-                <p style="margin:0 0 8px;font-weight:600;color:#323130;">Purpose</p>
-                <p style="margin:0;color:#605e5c;">{{Purpose}}</p>
-              </div>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 16px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#323130;">Purpose</p>
+                    <p style="margin:0;color:#605e5c;">{{Purpose}}</p>
+                  </td>
+                </tr>
+              </table>
               {{/if}}
 
               <!-- Product & Audience -->
@@ -314,7 +318,7 @@
                     <p style="margin:0 0 8px;font-weight:600;color:#323130;">Product &amp; Audience</p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;width:35%;"><strong>FINRA Audience:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>FINRA Audience:</strong></td>
                         <td style="padding:4px 0;">{{FINRAAudienceCategory}}</td>
                       </tr>
                       {{#if Audience}}
@@ -355,7 +359,7 @@
                     <p style="margin:0 0 8px;font-weight:600;color:#323130;">Distribution</p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;width:35%;"><strong>Distribution Method:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>Distribution Method:</strong></td>
                         <td style="padding:4px 0;">{{DistributionMethod}}</td>
                       </tr>
                       {{#if DateOfFirstUse}}
@@ -379,10 +383,14 @@
 
               <!-- Additional Parties -->
               {{#if AdditionalParties}}
-              <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 24px;">
-                <p style="margin:0 0 8px;font-weight:600;color:#323130;">Additional Parties</p>
-                <p style="margin:0;color:#605e5c;">{{AdditionalParties}}</p>
-              </div>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 24px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#323130;">Additional Parties</p>
+                    <p style="margin:0;color:#605e5c;">{{AdditionalParties}}</p>
+                  </td>
+                </tr>
+              </table>
               {{/if}}
 
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
@@ -454,7 +462,7 @@
                     <p style="margin:0 0 8px;font-weight:600;color:#323130;">Basic Information</p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;width:35%;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>Request ID:</strong></td>
                         <td style="padding:4px 0;">{{RequestId}}</td>
                       </tr>
                       <tr>
@@ -494,10 +502,14 @@
 
               <!-- Purpose -->
               {{#if Purpose}}
-              <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 16px;">
-                <p style="margin:0 0 8px;font-weight:600;color:#323130;">Purpose</p>
-                <p style="margin:0;color:#605e5c;">{{Purpose}}</p>
-              </div>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 16px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#323130;">Purpose</p>
+                    <p style="margin:0;color:#605e5c;">{{Purpose}}</p>
+                  </td>
+                </tr>
+              </table>
               {{/if}}
 
               <!-- Product & Audience -->
@@ -508,7 +520,7 @@
                     <p style="margin:0 0 8px;font-weight:600;color:#323130;">Product &amp; Audience</p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;width:35%;"><strong>FINRA Audience:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>FINRA Audience:</strong></td>
                         <td style="padding:4px 0;">{{FINRAAudienceCategory}}</td>
                       </tr>
                       {{#if Audience}}
@@ -703,7 +715,7 @@
                     <p style="margin:0 0 8px;font-weight:600;color:#323130;">Basic Information</p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;width:35%;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>Request ID:</strong></td>
                         <td style="padding:4px 0;">{{RequestId}}</td>
                       </tr>
                       <tr>
@@ -741,10 +753,14 @@
 
               <!-- Purpose -->
               {{#if Purpose}}
-              <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 16px;">
-                <p style="margin:0 0 8px;font-weight:600;color:#323130;">Purpose</p>
-                <p style="margin:0;color:#605e5c;">{{Purpose}}</p>
-              </div>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 16px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#323130;">Purpose</p>
+                    <p style="margin:0;color:#605e5c;">{{Purpose}}</p>
+                  </td>
+                </tr>
+              </table>
               {{/if}}
 
               <!-- Product & Audience -->
@@ -755,7 +771,7 @@
                     <p style="margin:0 0 8px;font-weight:600;color:#323130;">Product &amp; Audience</p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;width:35%;"><strong>FINRA Audience:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>FINRA Audience:</strong></td>
                         <td style="padding:4px 0;">{{FINRAAudienceCategory}}</td>
                       </tr>
                       {{#if Audience}}
@@ -796,7 +812,7 @@
                     <p style="margin:0 0 8px;font-weight:600;color:#323130;">Distribution</p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;width:35%;"><strong>Distribution Method:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>Distribution Method:</strong></td>
                         <td style="padding:4px 0;">{{DistributionMethod}}</td>
                       </tr>
                       {{#if DateOfFirstUse}}
@@ -898,7 +914,7 @@
                     <p style="margin:0 0 8px;font-weight:600;color:#323130;">Request Details</p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;width:35%;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>Request ID:</strong></td>
                         <td style="padding:4px 0;">{{RequestId}}</td>
                       </tr>
                       <tr>
@@ -1008,7 +1024,7 @@
                     <p style="margin:0 0 8px;font-weight:600;color:#323130;">Request Details</p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;width:35%;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>Request ID:</strong></td>
                         <td style="padding:4px 0;">{{RequestId}}</td>
                       </tr>
                       <tr>
@@ -1038,10 +1054,14 @@
 
               <!-- Purpose -->
               {{#if Purpose}}
-              <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 16px;">
-                <p style="margin:0 0 8px;font-weight:600;color:#323130;">Purpose</p>
-                <p style="margin:0;color:#605e5c;">{{Purpose}}</p>
-              </div>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:4px;margin:0 0 16px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <p style="margin:0 0 8px;font-weight:600;color:#323130;">Purpose</p>
+                    <p style="margin:0;color:#605e5c;">{{Purpose}}</p>
+                  </td>
+                </tr>
+              </table>
               {{/if}}
 
               <!-- Product & Audience -->
@@ -1052,7 +1072,7 @@
                     <p style="margin:0 0 8px;font-weight:600;color:#323130;">Product &amp; Audience</p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;width:35%;"><strong>FINRA Audience:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>FINRA Audience:</strong></td>
                         <td style="padding:4px 0;">{{FINRAAudienceCategory}}</td>
                       </tr>
                       {{#if Audience}}
@@ -2112,7 +2132,7 @@
                     <p style="margin:0 0 8px;font-weight:600;color:#323130;">Request Summary</p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;width:35%;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>Request ID:</strong></td>
                         <td style="padding:4px 0;">{{RequestId}}</td>
                       </tr>
                       <tr>
@@ -2146,7 +2166,7 @@
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       {{#if LegalReviewOutcome}}
                       <tr>
-                        <td style="padding:4px 0;width:35%;"><strong>Legal Review:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>Legal Review:</strong></td>
                         <td style="padding:4px 0;color:#107c10;font-weight:600;">{{LegalReviewOutcome}}</td>
                       </tr>
                       {{/if}}
@@ -2251,7 +2271,7 @@
                     <p style="margin:0 0 8px;font-weight:600;color:#323130;">Request Summary</p>
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;width:35%;"><strong>Request ID:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>Request ID:</strong></td>
                         <td style="padding:4px 0;">{{RequestId}}</td>
                       </tr>
                       <tr>
@@ -2289,7 +2309,7 @@
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       {{#if LegalReviewOutcome}}
                       <tr>
-                        <td style="padding:4px 0;width:35%;"><strong>Legal Review:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>Legal Review:</strong></td>
                         <td style="padding:4px 0;color:#107c10;font-weight:600;">{{LegalReviewOutcome}}</td>
                       </tr>
                       {{#if AssignedAttorneyName}}
