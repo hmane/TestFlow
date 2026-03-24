@@ -1200,7 +1200,7 @@ namespace LegalWorkflow.Functions.Services
         {
             if (!string.IsNullOrEmpty(_config.SiteUrl))
             {
-                return $"{_config.SiteUrl.TrimEnd('/')}/Lists/{_listConfig.RequestsListName}/EditForm.aspx?ID={request.Id}";
+                return $"{_config.SiteUrl.TrimEnd('/')}/Lists/{_listConfig.RequestsListName}/DispForm.aspx?ID={request.Id}";
             }
 
             _logger.Warning("NotificationConfig.SiteUrl is not configured — request link tokens will be empty in notification emails");

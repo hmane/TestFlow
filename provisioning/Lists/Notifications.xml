@@ -321,30 +321,62 @@
                         <td style="padding:4px 0;width:200px;"><strong>FINRA Audience:</strong></td>
                         <td style="padding:4px 0;">{{FINRAAudienceCategory}}</td>
                       </tr>
-                      {{#if Audience}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+              {{#if Audience}}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;margin:0 0 4px;">
+                <tr>
+                  <td style="padding:0 16px 4px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;"><strong>Audience:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>Audience:</strong></td>
                         <td style="padding:4px 0;">{{Audience}}</td>
                       </tr>
-                      {{/if}}
-                      {{#if USFunds}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+              {{#if USFunds}}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;margin:0 0 4px;">
+                <tr>
+                  <td style="padding:0 16px 4px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;"><strong>US Funds:</strong></td>
+                        <td style="padding:4px 0;width:200px;vertical-align:top;"><strong>US Funds:</strong></td>
                         <td style="padding:4px 0;">{{USFunds}}</td>
                       </tr>
-                      {{/if}}
-                      {{#if UCITS}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+              {{#if UCITS}}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;margin:0 0 4px;">
+                <tr>
+                  <td style="padding:0 16px 4px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;"><strong>UCITS:</strong></td>
+                        <td style="padding:4px 0;width:200px;vertical-align:top;"><strong>UCITS:</strong></td>
                         <td style="padding:4px 0;">{{UCITS}}</td>
                       </tr>
-                      {{/if}}
-                      {{#if SeparateAccountStrategies}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+              {{#if SeparateAccountStrategies}}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;margin:0 0 16px;">
+                <tr>
+                  <td style="padding:0 16px 16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;"><strong>Separate Account Strategies:</strong></td>
+                        <td style="padding:4px 0;width:200px;vertical-align:top;"><strong>Separate Account Strategies:</strong></td>
                         <td style="padding:4px 0;">{{SeparateAccountStrategies}}</td>
                       </tr>
-                      {{/if}}
                     </table>
                   </td>
                 </tr>
@@ -362,12 +394,20 @@
                         <td style="padding:4px 0;width:200px;"><strong>Distribution Method:</strong></td>
                         <td style="padding:4px 0;">{{DistributionMethod}}</td>
                       </tr>
-                      {{#if DateOfFirstUse}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+              {{#if DateOfFirstUse}}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:0 0 4px 4px;margin:0 0 16px;">
+                <tr>
+                  <td style="padding:0 16px 16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;"><strong>Date of First Use:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>Date of First Use:</strong></td>
                         <td style="padding:4px 0;">{{DateOfFirstUse}}</td>
                       </tr>
-                      {{/if}}
                     </table>
                   </td>
                 </tr>
@@ -376,9 +416,13 @@
 
               <!-- Approvals Summary -->
               {{#if ApprovalCount}}
-              <div style="background-color:#dff6dd;border-radius:4px;padding:16px;margin:0 0 16px;">
-                <p style="margin:0;color:#107c10;font-weight:600;">{{ApprovalCount}} Approval(s) Attached</p>
-              </div>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#dff6dd;border-radius:4px;margin:0 0 16px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <p style="margin:0;color:#107c10;font-weight:600;">{{ApprovalCount}} Approval(s) Attached</p>
+                  </td>
+                </tr>
+              </table>
               {{/if}}
 
               <!-- Additional Parties -->
@@ -523,18 +567,34 @@
                         <td style="padding:4px 0;width:200px;"><strong>FINRA Audience:</strong></td>
                         <td style="padding:4px 0;">{{FINRAAudienceCategory}}</td>
                       </tr>
-                      {{#if Audience}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+              {{#if Audience}}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;margin:0 0 4px;">
+                <tr>
+                  <td style="padding:0 16px 4px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;"><strong>Audience:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>Audience:</strong></td>
                         <td style="padding:4px 0;">{{Audience}}</td>
                       </tr>
-                      {{/if}}
-                      {{#if USFunds}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+              {{#if USFunds}}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;margin:0 0 16px;">
+                <tr>
+                  <td style="padding:0 16px 16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;"><strong>US Funds:</strong></td>
+                        <td style="padding:4px 0;width:200px;vertical-align:top;"><strong>US Funds:</strong></td>
                         <td style="padding:4px 0;">{{USFunds}}</td>
                       </tr>
-                      {{/if}}
                     </table>
                   </td>
                 </tr>
@@ -543,9 +603,13 @@
 
               <!-- Approvals Summary -->
               {{#if ApprovalCount}}
-              <div style="background-color:#dff6dd;border-radius:4px;padding:16px;margin:0 0 16px;">
-                <p style="margin:0;color:#107c10;font-weight:600;">{{ApprovalCount}} Approval(s) Attached</p>
-              </div>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#dff6dd;border-radius:4px;margin:0 0 16px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <p style="margin:0;color:#107c10;font-weight:600;">{{ApprovalCount}} Approval(s) Attached</p>
+                  </td>
+                </tr>
+              </table>
               {{/if}}
 
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
@@ -774,30 +838,62 @@
                         <td style="padding:4px 0;width:200px;"><strong>FINRA Audience:</strong></td>
                         <td style="padding:4px 0;">{{FINRAAudienceCategory}}</td>
                       </tr>
-                      {{#if Audience}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+              {{#if Audience}}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;margin:0 0 4px;">
+                <tr>
+                  <td style="padding:0 16px 4px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;"><strong>Audience:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>Audience:</strong></td>
                         <td style="padding:4px 0;">{{Audience}}</td>
                       </tr>
-                      {{/if}}
-                      {{#if USFunds}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+              {{#if USFunds}}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;margin:0 0 4px;">
+                <tr>
+                  <td style="padding:0 16px 4px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;"><strong>US Funds:</strong></td>
+                        <td style="padding:4px 0;width:200px;vertical-align:top;"><strong>US Funds:</strong></td>
                         <td style="padding:4px 0;">{{USFunds}}</td>
                       </tr>
-                      {{/if}}
-                      {{#if UCITS}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+              {{#if UCITS}}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;margin:0 0 4px;">
+                <tr>
+                  <td style="padding:0 16px 4px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;"><strong>UCITS:</strong></td>
+                        <td style="padding:4px 0;width:200px;vertical-align:top;"><strong>UCITS:</strong></td>
                         <td style="padding:4px 0;">{{UCITS}}</td>
                       </tr>
-                      {{/if}}
-                      {{#if SeparateAccountStrategies}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+              {{#if SeparateAccountStrategies}}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;margin:0 0 16px;">
+                <tr>
+                  <td style="padding:0 16px 16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;"><strong>Separate Account Strategies:</strong></td>
+                        <td style="padding:4px 0;width:200px;vertical-align:top;"><strong>Separate Account Strategies:</strong></td>
                         <td style="padding:4px 0;">{{SeparateAccountStrategies}}</td>
                       </tr>
-                      {{/if}}
                     </table>
                   </td>
                 </tr>
@@ -815,12 +911,20 @@
                         <td style="padding:4px 0;width:200px;"><strong>Distribution Method:</strong></td>
                         <td style="padding:4px 0;">{{DistributionMethod}}</td>
                       </tr>
-                      {{#if DateOfFirstUse}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+              {{#if DateOfFirstUse}}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;border-radius:0 0 4px 4px;margin:0 0 16px;">
+                <tr>
+                  <td style="padding:0 16px 16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;"><strong>Date of First Use:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>Date of First Use:</strong></td>
                         <td style="padding:4px 0;">{{DateOfFirstUse}}</td>
                       </tr>
-                      {{/if}}
                     </table>
                   </td>
                 </tr>
@@ -829,9 +933,13 @@
 
               <!-- Approvals Summary -->
               {{#if ApprovalCount}}
-              <div style="background-color:#dff6dd;border-radius:4px;padding:16px;margin:0 0 16px;">
-                <p style="margin:0;color:#107c10;font-weight:600;">{{ApprovalCount}} Approval(s) Attached</p>
-              </div>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#dff6dd;border-radius:4px;margin:0 0 16px;">
+                <tr>
+                  <td style="padding:16px;">
+                    <p style="margin:0;color:#107c10;font-weight:600;">{{ApprovalCount}} Approval(s) Attached</p>
+                  </td>
+                </tr>
+              </table>
               {{/if}}
 
               <!-- Assignment Notes -->
@@ -1075,12 +1183,20 @@
                         <td style="padding:4px 0;width:200px;"><strong>FINRA Audience:</strong></td>
                         <td style="padding:4px 0;">{{FINRAAudienceCategory}}</td>
                       </tr>
-                      {{#if Audience}}
+                    </table>
+                  </td>
+                </tr>
+              </table>
+              {{/if}}
+              {{#if Audience}}
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background-color:#f3f2f1;margin:0 0 16px;">
+                <tr>
+                  <td style="padding:0 16px 16px;">
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;"><strong>Audience:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>Audience:</strong></td>
                         <td style="padding:4px 0;">{{Audience}}</td>
                       </tr>
-                      {{/if}}
                     </table>
                   </td>
                 </tr>
@@ -2306,26 +2422,30 @@
                 <tr>
                   <td style="padding:16px;">
                     <p style="margin:0 0 8px;font-weight:600;color:#107c10;">Final Review Results</p>
+                    {{#if LegalReviewOutcome}}
                     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
-                      {{#if LegalReviewOutcome}}
                       <tr>
                         <td style="padding:4px 0;width:200px;"><strong>Legal Review:</strong></td>
                         <td style="padding:4px 0;color:#107c10;font-weight:600;">{{LegalReviewOutcome}}</td>
                       </tr>
-                      {{#if AssignedAttorneyName}}
+                    </table>
+                    {{/if}}
+                    {{#if AssignedAttorneyName}}
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;"><strong>Reviewed By:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>Reviewed By:</strong></td>
                         <td style="padding:4px 0;">{{AssignedAttorneyName}}</td>
                       </tr>
-                      {{/if}}
-                      {{/if}}
-                      {{#if ComplianceReviewOutcome}}
+                    </table>
+                    {{/if}}
+                    {{#if ComplianceReviewOutcome}}
+                    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                       <tr>
-                        <td style="padding:4px 0;"><strong>Compliance Review:</strong></td>
+                        <td style="padding:4px 0;width:200px;"><strong>Compliance Review:</strong></td>
                         <td style="padding:4px 0;color:#107c10;font-weight:600;">{{ComplianceReviewOutcome}}</td>
                       </tr>
-                      {{/if}}
                     </table>
+                    {{/if}}
                   </td>
                 </tr>
               </table>
