@@ -194,7 +194,7 @@ export const usePermissionsStore = create<IPermissionsState>()(
               isAttorney: attorneys.hasPermission,
               isComplianceUser: complianceUsers.hasPermission,
               isAdmin: admin.hasPermission,
-              isSelfApprover: selfApprover.hasPermission || admin.hasPermission,
+              isSelfApprover: selfApprover.hasPermission,
               roles,
               // Derived permissions
               canCreateRequest: submitter.hasPermission || admin.hasPermission,

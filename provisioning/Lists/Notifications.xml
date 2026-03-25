@@ -243,7 +243,7 @@
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td style="padding:20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <table role="presentation" width="600" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff;border-radius:4px;border:1px solid #edebe9;">
           <!-- Header -->
           <tr>
             <td style="background-color:#0078d4;padding:24px 32px;border-radius:4px 4px 0 0;">
@@ -483,7 +483,7 @@
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td style="padding:20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <table role="presentation" width="600" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff;border-radius:4px;border:1px solid #edebe9;">
           <!-- Header -->
           <tr>
             <td style="background-color:#d13438;padding:24px 32px;border-radius:4px 4px 0 0;">
@@ -662,7 +662,7 @@
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td style="padding:20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <table role="presentation" width="600" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff;border-radius:4px;border:1px solid #edebe9;">
           <!-- Header -->
           <tr>
             <td style="background-color:#8764b8;padding:24px 32px;border-radius:4px 4px 0 0;">
@@ -753,7 +753,7 @@
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td style="padding:20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <table role="presentation" width="600" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff;border-radius:4px;border:1px solid #edebe9;">
           <!-- Header -->
           <tr>
             <td style="background-color:#0078d4;padding:24px 32px;border-radius:4px 4px 0 0;">
@@ -996,7 +996,7 @@
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td style="padding:20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <table role="presentation" width="600" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff;border-radius:4px;border:1px solid #edebe9;">
           <!-- Header -->
           <tr>
             <td style="background-color:#ffaa44;padding:24px 32px;border-radius:4px 4px 0 0;">
@@ -1106,7 +1106,7 @@
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td style="padding:20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <table role="presentation" width="600" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff;border-radius:4px;border:1px solid #edebe9;">
           <!-- Header -->
           <tr>
             <td style="background-color:#5c2d91;padding:24px 32px;border-radius:4px 4px 0 0;">
@@ -1256,7 +1256,7 @@
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td style="padding:20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <table role="presentation" width="600" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff;border-radius:4px;border:1px solid #edebe9;">
           <!-- Header -->
           <tr>
             <td style="background-color:#107c10;padding:24px 32px;border-radius:4px 4px 0 0;">
@@ -1346,7 +1346,7 @@
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td style="padding:20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <table role="presentation" width="600" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff;border-radius:4px;border:1px solid #edebe9;">
           <!-- Header -->
           <tr>
             <td style="background-color:#ffaa44;padding:24px 32px;border-radius:4px 4px 0 0;">
@@ -1432,7 +1432,7 @@
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td style="padding:20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <table role="presentation" width="600" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff;border-radius:4px;border:1px solid #edebe9;">
           <!-- Header -->
           <tr>
             <td style="background-color:#a4262c;padding:24px 32px;border-radius:4px 4px 0 0;">
@@ -1520,7 +1520,7 @@
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td style="padding:20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <table role="presentation" width="600" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff;border-radius:4px;border:1px solid #edebe9;">
           <!-- Header -->
           <tr>
             <td style="background-color:#107c10;padding:24px 32px;border-radius:4px 4px 0 0;">
@@ -1606,7 +1606,7 @@
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td style="padding:20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <table role="presentation" width="600" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff;border-radius:4px;border:1px solid #edebe9;">
           <!-- Header -->
           <tr>
             <td style="background-color:#ffaa44;padding:24px 32px;border-radius:4px 4px 0 0;">
@@ -1688,7 +1688,7 @@
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td style="padding:20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <table role="presentation" width="600" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff;border-radius:4px;border:1px solid #edebe9;">
           <!-- Header -->
           <tr>
             <td style="background-color:#a4262c;padding:24px 32px;border-radius:4px 4px 0 0;">
@@ -1786,7 +1786,7 @@
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td style="padding:20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <table role="presentation" width="600" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff;border-radius:4px;border:1px solid #edebe9;">
           <!-- Header -->
           <tr>
             <td style="background-color:#0078d4;padding:24px 32px;border-radius:4px 4px 0 0;">
@@ -1816,6 +1816,7 @@
                       </tr>
                       <tr>
                         <td style="padding:4px 0;"><strong>Resubmitted On:</strong></td>
+                        <!-- TODO: {{ResubmittedOn}} requires RequestModel.ResubmittedOn (DateTime?) — field not yet added to model/SP list -->
                         <td style="padding:4px 0;">{{ResubmittedOn}}</td>
                       </tr>
                     </table>
@@ -1823,6 +1824,7 @@
                 </tr>
               </table>
 
+              <!-- TODO: SubmitterResponseNotes requires RequestModel.SubmitterResponseNotes (string) — field not yet added to model/SP list -->
               {{#if SubmitterResponseNotes}}
               <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 24px;">
                 <p style="margin:0 0 8px;font-weight:600;">Submitter's Response:</p>
@@ -1876,7 +1878,7 @@
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td style="padding:20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <table role="presentation" width="600" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff;border-radius:4px;border:1px solid #edebe9;">
           <!-- Header -->
           <tr>
             <td style="background-color:#0078d4;padding:24px 32px;border-radius:4px 4px 0 0;">
@@ -1906,6 +1908,7 @@
                       </tr>
                       <tr>
                         <td style="padding:4px 0;"><strong>Resubmitted On:</strong></td>
+                        <!-- TODO: {{ResubmittedOn}} requires RequestModel.ResubmittedOn (DateTime?) — field not yet added to model/SP list -->
                         <td style="padding:4px 0;">{{ResubmittedOn}}</td>
                       </tr>
                     </table>
@@ -1913,6 +1916,7 @@
                 </tr>
               </table>
 
+              <!-- TODO: SubmitterResponseNotes requires RequestModel.SubmitterResponseNotes (string) — field not yet added to model/SP list -->
               {{#if SubmitterResponseNotes}}
               <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 24px;">
                 <p style="margin:0 0 8px;font-weight:600;">Submitter's Response:</p>
@@ -1970,7 +1974,7 @@
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td style="padding:20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <table role="presentation" width="600" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff;border-radius:4px;border:1px solid #edebe9;">
           <!-- Header -->
           <tr>
             <td style="background-color:#605e5c;padding:24px 32px;border-radius:4px 4px 0 0;">
@@ -1995,12 +1999,8 @@
                         <td style="padding:4px 0;">{{RequestTitle}}</td>
                       </tr>
                       <tr>
-                        <td style="padding:4px 0;"><strong>On Hold By:</strong></td>
-                        <td style="padding:4px 0;">{{OnHoldByName}}</td>
-                      </tr>
-                      <tr>
                         <td style="padding:4px 0;"><strong>On Hold Since:</strong></td>
-                        <td style="padding:4px 0;">{{OnHoldSince}}</td>
+                        <td style="padding:4px 0;">{{HoldDate}}</td>
                       </tr>
                     </table>
                   </td>
@@ -2009,7 +2009,7 @@
 
               <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 24px;">
                 <p style="margin:0 0 8px;font-weight:600;">Reason:</p>
-                <p style="margin:0;">{{OnHoldReason}}</p>
+                <p style="margin:0;">{{HoldReason}}</p>
               </div>
 
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
@@ -2058,7 +2058,7 @@
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td style="padding:20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <table role="presentation" width="600" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff;border-radius:4px;border:1px solid #edebe9;">
           <!-- Header -->
           <tr>
             <td style="background-color:#0078d4;padding:24px 32px;border-radius:4px 4px 0 0;">
@@ -2137,7 +2137,7 @@
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td style="padding:20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <table role="presentation" width="600" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff;border-radius:4px;border:1px solid #edebe9;">
           <!-- Header -->
           <tr>
             <td style="background-color:#a4262c;padding:24px 32px;border-radius:4px 4px 0 0;">
@@ -2162,10 +2162,6 @@
                         <td style="padding:4px 0;">{{RequestTitle}}</td>
                       </tr>
                       <tr>
-                        <td style="padding:4px 0;"><strong>Cancelled By:</strong></td>
-                        <td style="padding:4px 0;">{{CancelledByName}}</td>
-                      </tr>
-                      <tr>
                         <td style="padding:4px 0;"><strong>Cancelled On:</strong></td>
                         <td style="padding:4px 0;">{{CancelledOn}}</td>
                       </tr>
@@ -2176,7 +2172,7 @@
 
               <div style="background-color:#f3f2f1;border-radius:4px;padding:16px;margin:0 0 24px;">
                 <p style="margin:0 0 8px;font-weight:600;">Cancellation Reason:</p>
-                <p style="margin:0;">{{CancelReason}}</p>
+                <p style="margin:0;">{{CancellationReason}}</p>
               </div>
 
               <table role="presentation" cellspacing="0" cellpadding="0" border="0">
@@ -2229,7 +2225,7 @@
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td style="padding:20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <table role="presentation" width="600" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff;border-radius:4px;border:1px solid #edebe9;">
           <!-- Header -->
           <tr>
             <td style="background-color:#107c10;padding:24px 32px;border-radius:4px 4px 0 0;">
@@ -2368,7 +2364,7 @@
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
     <tr>
       <td style="padding:20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:4px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+        <table role="presentation" width="600" align="center" cellspacing="0" cellpadding="0" border="0" style="background-color:#ffffff;border-radius:4px;border:1px solid #edebe9;">
           <!-- Header -->
           <tr>
             <td style="background-color:#107c10;padding:24px 32px;border-radius:4px 4px 0 0;">

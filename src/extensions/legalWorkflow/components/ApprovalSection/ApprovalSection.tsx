@@ -384,10 +384,10 @@ const AdditionalApprovalItem: React.FC<IAdditionalApprovalItemProps> = ({
           <FormItem>
             <MessageBar
               messageBarType={MessageBarType.info}
-              isMultiline={false}
               styles={{ root: { borderRadius: '4px' } }}
             >
-              Self-approval: Approval date and document upload are not required.
+              You are listed as the approver for this item. As a member of the Self Approvers
+              group, the approval date and document upload are not required for your own approvals.
             </MessageBar>
           </FormItem>
         )}
@@ -1022,10 +1022,11 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
               <FormItem>
                 <MessageBar
                   messageBarType={MessageBarType.info}
-                  isMultiline={false}
                   styles={{ root: { borderRadius: '4px' } }}
                 >
-                  Self-approval: Approval date and document upload are not required.
+                  You are listed as the approver for this item. As a member of the Self Approvers
+                  group, the approval date and document upload are not required for your own
+                  approvals.
                 </MessageBar>
               </FormItem>
             )}

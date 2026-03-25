@@ -732,11 +732,14 @@ namespace LegalWorkflow.Functions.Services
                 "dateoffirstuse" => request.ProposedFirstUseDate.HasValue,
                 "approvalcount" => CountApprovals(request) > 0,
                 "additionalparties" => request.AdditionalParties.Count > 0,
-                "attorneyassignnotes" => !string.IsNullOrEmpty(request.AttorneyAssignNotes),
+                "attorneyassignnotes" or "assignmentnotes" => !string.IsNullOrEmpty(request.AttorneyAssignNotes),
                 "legalreviewnotes" => !string.IsNullOrEmpty(request.LegalReviewNotes),
                 "compliancereviewnotes" => !string.IsNullOrEmpty(request.ComplianceReviewNotes),
                 "holdreason" => !string.IsNullOrEmpty(request.HoldReason),
                 "cancellationreason" => !string.IsNullOrEmpty(request.CancellationReason),
+                "legalreviewoutcome" => request.LegalReviewOutcome != ReviewOutcome.None,
+                "compliancereviewoutcome" => request.ComplianceReviewOutcome != ReviewOutcome.None,
+                "trackingid" => !string.IsNullOrEmpty(request.TrackingId),
 
                 _ => false
             };
@@ -1193,7 +1196,7 @@ namespace LegalWorkflow.Functions.Services
             var encodedHref = WebUtility.HtmlEncode(requestLink);
             var encodedLabel = WebUtility.HtmlEncode(anchorLabel);
 
-            return $"<a href=\"{encodedHref}\" target=\"_blank\" rel=\"noopener noreferrer\" style=\"display:inline-block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;\">{encodedLabel}</a>";
+            return $"<a href=\"{encodedHref}\" target=\"_blank\" rel=\"noopener noreferrer\" style=\"display:block;padding:12px 24px;color:#ffffff;text-decoration:none;font-weight:600;\">{encodedLabel}</a>";
         }
 
         private string BuildRequestLink(RequestModel request)
