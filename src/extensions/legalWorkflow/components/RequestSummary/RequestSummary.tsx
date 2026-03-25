@@ -200,7 +200,7 @@ export const RequestSummary: React.FC<IRequestSummaryProps> = ({
       [DistributionMethod.MobileApp]: 'Mobile App',
       [DistributionMethod.DisplayCardSignage]: 'Display/Signage',
       [DistributionMethod.Handout]: 'Handout',
-      [DistributionMethod.LiveTalkingPoints]: 'Live Talking Points',
+      [DistributionMethod.LiveTalkingPoints]: 'Oral - Written materials not distributed',
       [DistributionMethod.SocialMedia]: 'Social Media',
       [DistributionMethod.InternalUseOnly]: 'Internal Use Only',
     };

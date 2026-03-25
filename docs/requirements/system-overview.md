@@ -160,7 +160,7 @@ RequestTitle (Text) - 3-255 chars, required
 Purpose (Note/Rich) - 10-10,000 chars, required
 SubmissionType (Choice) - New, Material Updates
 SubmissionItem (Text) - Display value for submission item, selected from Submission Items list. If other then specified.
-DistributionMethod (Multi-Choice) - Dodge & Cox Website - U.S., Dodge & Cox Website - Non-U.S., Third Party Website, Email / Mail, Mobile App, Display Card / Signage, Handout, Live - Talking Points, Social Media, Internal Use Only
+DistributionMethod (Multi-Choice) - Dodge & Cox Website - U.S., Dodge & Cox Website - Non-U.S., Third Party Website, Email / Mail, Mobile App, Display Card / Signage, Handout, Oral - Written materials not distributed, Social Media, Internal Use Only
 TargetReturnDate (DateTime) - Future date only, required
 IsRushRequest (Boolean) - Auto-calculated
 RushRationale (Note) - Required if rush, min 10 chars

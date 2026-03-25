@@ -521,7 +521,7 @@ The system supports six distinct user roles, each with specific permissions and 
 | REQ-015 | The system shall capture Purpose (free text, multi-line) |
 | REQ-016 | The system shall capture Submission Type (choice field: New, Material Updates) |
 | REQ-017 | The system shall capture Submission Item (text field displaying value selected from SubmissionItems list, or "Other" with custom specification) |
-| REQ-018 | The system shall capture Distribution Method (multi-choice field: Dodge & Cox Website \- U.S., Dodge & Cox Website \- Non-U.S., Third Party Website, Email / Mail, Mobile App, Display Card / Signage, Handout, Live \- Talking Points, Social Media, Internal Use Only) |
+| REQ-018 | The system shall capture Distribution Method (multi-choice field: Dodge & Cox Website \- U.S., Dodge & Cox Website \- Non-U.S., Third Party Website, Email / Mail, Mobile App, Display Card / Signage, Handout, Oral - Written materials not distributed, Social Media, Internal Use Only) |
 | REQ-019 | The system shall capture Target Return Date (date picker, future dates only, required) |
 | REQ-020 | The system shall calculate and display Is Rush Request (Yes/No boolean, auto-calculated based on turnaround time) |
 | REQ-021 | The system shall capture Rush Rationale (multi-line text, required if IsRushRequest \= Yes, minimum 10 characters) |

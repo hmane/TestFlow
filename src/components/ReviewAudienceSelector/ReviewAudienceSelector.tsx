@@ -52,7 +52,7 @@ const REVIEW_AUDIENCE_OPTIONS: IReviewAudienceOption[] = [
   },
   {
     value: ReviewAudience.Compliance,
-    title: 'Compliance Only',
+    title: 'Marketing Compliance Only',
     description: 'Request will be reviewed by the Compliance team only',
   },
   {

@@ -100,7 +100,7 @@ Select how this communication will be distributed:
 - Mobile App
 - Display Card / Signage
 - Handout
-- Live - Talking Points
+- Oral - Written materials not distributed
 - Social Media
 - Internal Use Only
 

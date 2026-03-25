@@ -39,6 +39,19 @@ export function calculateBusinessDays(start: Date, end: Date): number {
   return count;
 }
 
+export function addBusinessDays(startDate: Date, days: number): Date {
+  const result = new Date(startDate.getTime());
+  let count = 0;
+  while (count < days) {
+    result.setDate(result.getDate() + 1);
+    const day = result.getDay();
+    if (day !== 0 && day !== 6) {
+      count++;
+    }
+  }
+  return result;
+}
+
 export function calculateIsRushRequest(params: ICalculateIsRushRequestParams): boolean {
   const {
     targetReturnDate,

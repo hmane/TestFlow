@@ -48,7 +48,7 @@ export enum DistributionMethod {
   MobileApp = 'Mobile App',
   DisplayCardSignage = 'Display Card / Signage',
   Handout = 'Handout',
-  LiveTalkingPoints = 'Live - Talking Points',
+  LiveTalkingPoints = 'Oral - Written materials not distributed',
   SocialMedia = 'Social Media',
   InternalUseOnly = 'Internal Use Only',
 }

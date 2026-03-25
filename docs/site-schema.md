@@ -78,7 +78,7 @@ This document provides a comprehensive reference for the SharePoint site schema 
 | Purpose | Purpose | Note (Multi-line) | Yes | - | - | 6 lines, no rich text |
 | SubmissionType | Submission Type | Choice | Yes | - | - | `New`, `Material Updates` |
 | SubmissionItem | Submission Item | Text | Yes | 255 | - | Linked to SubmissionItems list |
-| DistributionMethod | Distribution Method | MultiChoice | No | - | - | `Dodge & Cox Website - U.S.`, `Dodge & Cox Website - Non-U.S.`, `Third Party Website`, `Email / Mail`, `Mobile App`, `Display Card / Signage`, `Handout`, `Live - Talking Points`, `Social Media`, `Internal Use Only` (Fill In Choice enabled) |
+| DistributionMethod | Distribution Method | MultiChoice | No | - | - | `Dodge & Cox Website - U.S.`, `Dodge & Cox Website - Non-U.S.`, `Third Party Website`, `Email / Mail`, `Mobile App`, `Display Card / Signage`, `Handout`, `Oral - Written materials not distributed`, `Social Media`, `Internal Use Only` (Fill In Choice enabled) |
 | TargetReturnDate | Target Return Date | DateTime | Yes | - | - | Has field customizer (TurnAroundDate) |
 | IsRushRequest | Is Rush Request | Boolean | No | - | 0 (No) | - |
 | RushRationale | Rush Rationale | Note (Multi-line) | No | - | - | 6 lines, no rich text |

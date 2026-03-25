@@ -240,7 +240,7 @@ When a user selects a request type, a workflow preview appears showing each step
 
 | Field Name | Label | Info Bubble (Tooltip) | Placeholder | Required |
 |-----------|-------|----------------------|-------------|----------|
-| requestTitle | Request Title | | Enter a descriptive title for your request | Yes |
+| requestTitle | Request Title | | e.g. title of the exhibit or white paper | Yes |
 | purpose | Purpose | | Describe the purpose of this request in detail | Yes |
 | submissionType | Submission Type | | Select submission type | Yes |
 | submissionItem | Submission Item | | Select submission item | Yes |
@@ -284,7 +284,7 @@ When a user selects a request type, a workflow preview appears showing each step
 | Option | Title | Description |
 |--------|-------|------------|
 | Legal | Legal Only | Request will be reviewed by the Legal team only |
-| Compliance | Compliance Only | Request will be reviewed by the Compliance team only |
+| Compliance | Marketing Compliance Only | Request will be reviewed by the Compliance team only |
 | Both | Both | Request will be reviewed by both Legal and Compliance teams |
 
 ---

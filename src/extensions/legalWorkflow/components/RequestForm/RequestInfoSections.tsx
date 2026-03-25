@@ -18,6 +18,8 @@ import {
   SPUserField,
 } from 'spfx-toolkit/lib/components/spFields';
 
+import { Link } from '@fluentui/react/lib/Link';
+
 import { Lists } from '@sp/Lists';
 
 import type { ILegalRequest } from '@appTypes/index';
@@ -35,6 +37,7 @@ import {
 } from '@appTypes/index';
 import { PriorSubmissionPicker } from '@components/PriorSubmissionPicker/PriorSubmissionPicker';
 import { ReviewAudienceSelector } from '@components/ReviewAudienceSelector';
+import { TurnAroundTimeModal } from '@components/TurnAroundTimeModal/TurnAroundTimeModal';
 import { useSubmissionItems } from '@stores/submissionItemsStore';
 import {
   TITLE_MAX_LENGTH,
@@ -160,6 +163,9 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
   // Track if "Other" is selected
   const [isOtherSelected, setIsOtherSelected] = React.useState(false);
 
+  // Turnaround time modal
+  const [isTurnAroundModalOpen, setIsTurnAroundModalOpen] = React.useState(false);
+
   /**
    * Handle submission item change - clear submissionItemOther when non-Other is selected
    */
@@ -185,7 +191,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
           <FormLabel isRequired>Request Title</FormLabel>
           <SPTextField
             name='requestTitle'
-            placeholder='Enter a descriptive title for your request'
+            placeholder='e.g. title of the exhibit or white paper'
             mode={SPTextFieldMode.SingleLine}
             maxLength={TITLE_MAX_LENGTH}
             showCharacterCount
@@ -295,7 +301,15 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
         </FormItem>
 
         <FormItem fieldName='targetReturnDate'>
-          <FormLabel isRequired>Target Return Date</FormLabel>
+          <Stack tokens={{ childrenGap: 2 }}>
+            <FormLabel isRequired>Target Return Date</FormLabel>
+            <Link
+              onClick={() => setIsTurnAroundModalOpen(true)}
+              styles={{ root: { fontSize: '12px' } }}
+            >
+              View turnaround times by submission type
+            </Link>
+          </Stack>
           <SPDateField
             name='targetReturnDate'
             placeholder='Select target return date'
@@ -346,6 +360,12 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
           </FormItem>
         )}
       </FormContainer>
+
+      <TurnAroundTimeModal
+        isOpen={isTurnAroundModalOpen}
+        onDismiss={() => setIsTurnAroundModalOpen(false)}
+        submissionItems={submissionItems}
+      />
     </>
   );
 };
@@ -566,23 +586,22 @@ export const ProductAudienceSection: React.FC<ProductAudienceSectionProps> = ({
               <FormLabel infoText='Select the U.S. mutual funds referenced in this communication'>
                 U.S. Funds
               </FormLabel>
-              <SPChoiceField
-                name='usFunds'
-                placeholder='Select U.S. funds'
-                allowMultiple
-                displayType={SPChoiceDisplayType.Checkboxes}
-                choices={US_FUNDS_CHOICES}
-                dataSource={{
-                  type: 'list',
-                  listNameOrId: requestListIdentifier,
-                  fieldInternalName: 'USFunds',
-                }}
-              />
-            </FormItem>
-            <FormItem fieldName='usFundShares'>
-              <FormLabel>&nbsp;</FormLabel>
-              <FormValue>
-                <div style={{ paddingLeft: 30 }}>
+              <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
+                <div>
+                  <SPChoiceField
+                    name='usFunds'
+                    placeholder='Select U.S. funds'
+                    allowMultiple
+                    displayType={SPChoiceDisplayType.Checkboxes}
+                    choices={US_FUNDS_CHOICES}
+                    dataSource={{
+                      type: 'list',
+                      listNameOrId: requestListIdentifier,
+                      fieldInternalName: 'USFunds',
+                    }}
+                  />
+                </div>
+                <div style={{ paddingLeft: 12 }}>
                   <SPChoiceField
                     name='usFundShares'
                     allowMultiple
@@ -595,7 +614,7 @@ export const ProductAudienceSection: React.FC<ProductAudienceSectionProps> = ({
                     }}
                   />
                 </div>
-              </FormValue>
+              </div>
             </FormItem>
           </FormContainer>
           <FormContainer labelWidth='220px'>

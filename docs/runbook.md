@@ -185,7 +185,7 @@ These permissions are calculated at runtime and control UI visibility:
 | Purpose | Purpose | Note | Yes | - | Multi-line, 6 lines, no rich text |
 | SubmissionType | Submission Type | Choice | Yes | - | `New`, `Material Updates` |
 | SubmissionItem | Submission Item | Text | Yes | 255 | Linked to SubmissionItems list |
-| DistributionMethod | Distribution Method | MultiChoice | No | - | Fill-In enabled. Choices: `Dodge & Cox Website - U.S.`, `Dodge & Cox Website - Non-U.S.`, `Third Party Website`, `Email / Mail`, `Mobile App`, `Display Card / Signage`, `Handout`, `Live - Talking Points`, `Social Media`, `Internal Use Only` |
+| DistributionMethod | Distribution Method | MultiChoice | No | - | Fill-In enabled. Choices: `Dodge & Cox Website - U.S.`, `Dodge & Cox Website - Non-U.S.`, `Third Party Website`, `Email / Mail`, `Mobile App`, `Display Card / Signage`, `Handout`, `Oral - Written materials not distributed`, `Social Media`, `Internal Use Only` |
 | TargetReturnDate | Target Return Date | DateTime | Yes | - | Future dates only, has field customizer |
 | IsRushRequest | Is Rush Request | Boolean | No | - | Auto-calculated, badge formatting |
 | RushRationale | Rush Rationale | Note | Conditional | - | Required if IsRushRequest = Yes (min 10 chars) |

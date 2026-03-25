@@ -68,7 +68,7 @@ import './LegalIntakeForm.scss';
  */
 const reviewAudienceOptions: IChoiceGroupOption[] = [
   { key: ReviewAudience.Legal, text: 'Legal Only' },
-  { key: ReviewAudience.Compliance, text: 'Compliance Only' },
+  { key: ReviewAudience.Compliance, text: 'Marketing Compliance Only' },
   { key: ReviewAudience.Both, text: 'Both Legal & Compliance' },
 ];
 
@@ -1003,7 +1003,7 @@ const LegalIntakeFormEditable: React.FC<ILegalIntakeFormEditableProps> = ({
                     ? (selectedAttorneys && selectedAttorneys.length > 0
                         ? 'Attorney(s) selected. Click "Assign Attorney" to proceed.'
                         : 'Select attorney(s), or click "Submit to Assign Attorney" to send to committee.')
-                    : 'Compliance Only selected. Click "Send to Compliance" to proceed.'}
+                    : 'Marketing Compliance Only selected. Click "Send to Compliance" to proceed.'}
               </Text>
               <Stack horizontal tokens={{ childrenGap: 8 }}>
                 {/* Submit to Assign Attorney - only during Legal Intake (not when already at Assign Attorney) */}

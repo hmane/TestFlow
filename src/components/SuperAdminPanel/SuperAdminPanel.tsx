@@ -117,7 +117,7 @@ const COMPLIANCE_REVIEW_STATUS_OPTIONS: IDropdownOption[] = [
  */
 const REVIEW_AUDIENCE_OPTIONS: IDropdownOption[] = [
   { key: ReviewAudience.Legal, text: 'Legal Only' },
-  { key: ReviewAudience.Compliance, text: 'Compliance Only' },
+  { key: ReviewAudience.Compliance, text: 'Marketing Compliance Only' },
   { key: ReviewAudience.Both, text: 'Both Legal & Compliance' },
 ];
 
