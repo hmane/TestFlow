@@ -81,9 +81,11 @@ namespace LegalWorkflow.Functions.Services
             RequestsFields.IsOnHold,
             RequestsFields.OnHoldReason,
             RequestsFields.OnHoldSince,
+            RequestsFields.OnHoldBy,
             RequestsFields.CloseoutOn,
             RequestsFields.CancelledOn,
             RequestsFields.CancelReason,
+            RequestsFields.CancelledBy,
             RequestsFields.AdditionalParty,
             RequestsFields.CommunicationsApprover,
             RequestsFields.CommunicationsApprovalDate,
@@ -450,9 +452,11 @@ namespace LegalWorkflow.Functions.Services
                 IsOnHold = GetFieldValue<bool>(item, RequestsFields.IsOnHold),
                 HoldReason = GetFieldTextValue(item, RequestsFields.OnHoldReason),
                 HoldDate = GetFieldValueNullable<DateTime>(item, RequestsFields.OnHoldSince),
+                OnHoldBy = ParseUserField(item, RequestsFields.OnHoldBy),
                 CompletedOn = GetFieldValueNullable<DateTime>(item, RequestsFields.CloseoutOn),
                 CancelledOn = GetFieldValueNullable<DateTime>(item, RequestsFields.CancelledOn),
                 CancellationReason = GetFieldTextValue(item, RequestsFields.CancelReason),
+                CancelledBy = ParseUserField(item, RequestsFields.CancelledBy),
 
                 // Additional Parties
                 AdditionalParties = ParseMultiUserField(item, RequestsFields.AdditionalParty),

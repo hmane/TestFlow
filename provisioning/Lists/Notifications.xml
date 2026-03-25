@@ -1999,6 +1999,10 @@
                         <td style="padding:4px 0;">{{RequestTitle}}</td>
                       </tr>
                       <tr>
+                        <td style="padding:4px 0;"><strong>On Hold By:</strong></td>
+                        <td style="padding:4px 0;">{{OnHoldByName}}</td>
+                      </tr>
+                      <tr>
                         <td style="padding:4px 0;"><strong>On Hold Since:</strong></td>
                         <td style="padding:4px 0;">{{HoldDate}}</td>
                       </tr>
@@ -2160,6 +2164,10 @@
                       <tr>
                         <td style="padding:4px 0;"><strong>Title:</strong></td>
                         <td style="padding:4px 0;">{{RequestTitle}}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:4px 0;"><strong>Cancelled By:</strong></td>
+                        <td style="padding:4px 0;">{{CancelledByName}}</td>
                       </tr>
                       <tr>
                         <td style="padding:4px 0;"><strong>Cancelled On:</strong></td>

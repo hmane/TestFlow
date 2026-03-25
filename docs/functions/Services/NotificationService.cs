@@ -597,8 +597,10 @@ namespace LegalWorkflow.Functions.Services
                 // Hold/Cancel
                 ["holdreason"] = request.HoldReason,
                 ["holddate"] = request.HoldDate?.ToString("MMMM d, yyyy") ?? "N/A",
+                ["onholdbyname"] = request.OnHoldBy?.Title ?? string.Empty,
                 ["cancellationreason"] = request.CancellationReason,
                 ["cancelledon"] = request.CancelledOn?.ToString("MMMM d, yyyy") ?? "N/A",
+                ["cancelledbyname"] = request.CancelledBy?.Title ?? string.Empty,
 
                 // Completion
                 ["completedon"] = request.CompletedOn?.ToString("MMMM d, yyyy") ?? "N/A",

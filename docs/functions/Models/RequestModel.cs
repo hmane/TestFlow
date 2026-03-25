@@ -212,6 +212,9 @@ namespace LegalWorkflow.Functions.Models
         /// <summary>When request was put on hold</summary>
         public DateTime? HoldDate { get; set; }
 
+        /// <summary>User who put request on hold</summary>
+        public UserInfo? OnHoldBy { get; set; }
+
         /// <summary>When request was completed</summary>
         public DateTime? CompletedOn { get; set; }
 
@@ -220,6 +223,9 @@ namespace LegalWorkflow.Functions.Models
 
         /// <summary>Reason for cancellation</summary>
         public string CancellationReason { get; set; } = string.Empty;
+
+        /// <summary>User who cancelled the request</summary>
+        public UserInfo? CancelledBy { get; set; }
 
         #endregion
 
