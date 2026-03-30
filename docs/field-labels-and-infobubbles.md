@@ -240,7 +240,7 @@ When a user selects a request type, a workflow preview appears showing each step
 
 | Field Name | Label | Info Bubble (Tooltip) | Placeholder | Required |
 |-----------|-------|----------------------|-------------|----------|
-| requestTitle | Request Title | | e.g. title of the exhibit or white paper | Yes |
+| requestTitle | Request Title | | e.g. title of the exhibit or insights paper | Yes |
 | purpose | Purpose | | Describe the purpose of this request in detail | Yes |
 | submissionType | Submission Type | | Select submission type | Yes |
 | submissionItem | Submission Item | | Select submission item | Yes |
@@ -366,7 +366,7 @@ When a user selects a request type, a workflow preview appears showing each step
 |-----------|-------|----------------------|-------------|----------|
 | approver | Approved By | Select the person who approved this item | Search for approver | Yes |
 | approvalDate | Approval Date | Date when the approval was granted | Select approval date | Yes (non-self-approval) |
-| documents | Approval Documents | | Upload up to 10 approval documents (PDF, Word, Excel, PowerPoint, images, emails, etc.) | Yes (non-self-approval) |
+| documents | Approval Documents | | Upload up to 10 approval documents (Emails, PDF, Word, Excel, PowerPoint, images, etc.) | Yes (non-self-approval) |
 | notes | Notes | Optional notes about this approval | Add any notes about this approval (optional) | No |
 
 ### Additional Approvals Section

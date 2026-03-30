@@ -374,7 +374,7 @@ const AdditionalApprovalItem: React.FC<IAdditionalApprovalItemProps> = ({
               hasError={hasDocumentError}
               onFilesChange={handleFilesChange}
               label=""
-              description={`Upload up to ${MAX_APPROVAL_DOCUMENTS} approval documents (PDF, Word, Excel, PowerPoint, images, emails, etc.)`}
+              description={`Upload up to ${MAX_APPROVAL_DOCUMENTS} approval documents (Emails, PDF, Word, Excel, PowerPoint, images, etc.)`}
             />
           </FormItem>
         )}
@@ -1012,7 +1012,7 @@ export const ApprovalSection: React.FC<IApprovalSectionProps> = ({
                   hasError={hasCommDocumentError}
                   onFilesChange={handleCommFilesChange}
                   label=""
-                  description={`Upload up to ${MAX_APPROVAL_DOCUMENTS} approval documents (PDF, Word, Excel, PowerPoint, images, emails, etc.)`}
+                  description={`Upload up to ${MAX_APPROVAL_DOCUMENTS} approval documents (Emails, PDF, Word, Excel, PowerPoint, images, etc.)`}
                 />
               </FormItem>
             )}

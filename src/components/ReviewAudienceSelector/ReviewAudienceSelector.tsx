@@ -46,6 +46,11 @@ interface IReviewAudienceOption {
  */
 const REVIEW_AUDIENCE_OPTIONS: IReviewAudienceOption[] = [
   {
+    value: ReviewAudience.Both,
+    title: 'Both',
+    description: 'Request will be reviewed by both Legal and Compliance teams',
+  },
+  {
     value: ReviewAudience.Legal,
     title: 'Legal Only',
     description: 'Request will be reviewed by the Legal team only',
@@ -54,11 +59,6 @@ const REVIEW_AUDIENCE_OPTIONS: IReviewAudienceOption[] = [
     value: ReviewAudience.Compliance,
     title: 'Marketing Compliance Only',
     description: 'Request will be reviewed by the Compliance team only',
-  },
-  {
-    value: ReviewAudience.Both,
-    title: 'Both',
-    description: 'Request will be reviewed by both Legal and Compliance teams',
   },
 ];
 

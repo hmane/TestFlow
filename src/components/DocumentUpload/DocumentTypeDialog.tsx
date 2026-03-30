@@ -5,7 +5,7 @@
  * - Used when uploading new files (batch type selection)
  * - Used when changing type of existing files
  * - Shows list of files with sizes
- * - Single dropdown for document type (Review or Supplemental)
+ * - Single dropdown for document type (Review or Supporting)
  */
 
 import * as React from 'react';
@@ -58,11 +58,11 @@ export const DocumentTypeDialog: React.FC<IDocumentTypeDialogProps> = ({
   }, [isOpen, currentType]);
 
   /**
-   * Document type options (only Review and Supplemental for attachments)
+   * Document type options (only Review and Supporting for attachments)
    */
   const typeOptions: IDropdownOption[] = React.useMemo(() => [
     { key: DocumentType.Review, text: 'Review' },
-    { key: DocumentType.Supplemental, text: 'Supplemental' },
+    { key: DocumentType.Supplemental, text: 'Supporting' },
   ], []);
 
   /**

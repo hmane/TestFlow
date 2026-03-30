@@ -774,9 +774,9 @@ export const DocumentUpload: React.FC<IDocumentUploadProps> = ({
               <div className="section-divider" />
             )}
 
-            {/* Supplemental Documents Section */}
+            {/* Supporting Documents Section */}
             {renderDocumentSection(
-              'Supplemental Documents',
+              'Supporting Documents',
               DocumentType.Supplemental,
               suppDocs,
               suppStaged,

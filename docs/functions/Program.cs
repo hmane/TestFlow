@@ -78,7 +78,9 @@ namespace LegalWorkflow.Functions
                         return new NotificationConfig
                         {
                             SiteUrl = configuration["SharePoint:SiteUrl"] ?? string.Empty,
-                            EnableDebugLogging = bool.TryParse(configuration["Notifications:EnableDebugLogging"], out var debug) && debug
+                            EnableDebugLogging = bool.TryParse(configuration["Notifications:EnableDebugLogging"], out var debug) && debug,
+                            TestUsersOnly = bool.TryParse(configuration["Notifications:TestUsersOnly"], out var testOnly) && testOnly,
+                            TestUsersGroup = configuration["Notifications:TestUsersGroup"] ?? "LW - Notification Test Users"
                         };
                     });
 

@@ -174,6 +174,17 @@ namespace LegalWorkflow.Functions.Services
                 // Generate the email
                 var email = await GenerateEmailAsync(currentRequest, template, notificationId);
 
+                if (email == null)
+                {
+                    _logger.Info("Notification skipped due to TestUsersOnly filtering", new { NotificationId = notificationId });
+                    tracker.Complete(true, "Skipped — no test user recipients");
+                    return new SendNotificationResponse
+                    {
+                        ShouldSendNotification = false,
+                        Reason = $"Notification '{notificationId}' skipped — no recipients in test users group"
+                    };
+                }
+
                 if (email.To.Count == 0 && email.Cc.Count == 0 && email.Bcc.Count == 0)
                 {
                     _logger.Warning($"Notification '{notificationId}' resolved with no recipients");
@@ -445,7 +456,7 @@ namespace LegalWorkflow.Functions.Services
         /// Generates the email notification from the template and request data.
         /// Resolves group-based recipients by querying SharePoint group members.
         /// </summary>
-        private async Task<EmailResponse> GenerateEmailAsync(RequestModel request, NotificationTemplate template, string notificationId)
+        private async Task<EmailResponse?> GenerateEmailAsync(RequestModel request, NotificationTemplate template, string notificationId)
         {
             // Process the subject with token replacement
             var subject = ReplaceTokens(template.Subject, request);
@@ -457,6 +468,37 @@ namespace LegalWorkflow.Functions.Services
             var recipients = await ResolveRecipientsAsync(template.ToRecipients, request);
             var ccRecipients = await ResolveRecipientsAsync(template.CcRecipients, request);
             var bccRecipients = await ResolveRecipientsAsync(template.BccRecipients, request);
+
+            // Filter recipients to test users only (UAT mode)
+            if (_config.TestUsersOnly)
+            {
+                var testUserEmails = await GetGroupMemberEmailsAsync(_config.TestUsersGroup);
+                var testUserSet = new HashSet<string>(testUserEmails, StringComparer.OrdinalIgnoreCase);
+
+                var originalToCount = recipients.Count;
+                var originalCcCount = ccRecipients.Count;
+                var originalBccCount = bccRecipients.Count;
+
+                recipients = recipients.Where(e => testUserSet.Contains(e)).ToList();
+                ccRecipients = ccRecipients.Where(e => testUserSet.Contains(e)).ToList();
+                bccRecipients = bccRecipients.Where(e => testUserSet.Contains(e)).ToList();
+
+                _logger.Info("TestUsersOnly filtering applied", new
+                {
+                    TestUsersGroup = _config.TestUsersGroup,
+                    TestUserCount = testUserSet.Count,
+                    ToFiltered = $"{originalToCount} → {recipients.Count}",
+                    CcFiltered = $"{originalCcCount} → {ccRecipients.Count}",
+                    BccFiltered = $"{originalBccCount} → {bccRecipients.Count}"
+                });
+
+                // If no To recipients remain after filtering, return null notification
+                if (recipients.Count == 0)
+                {
+                    _logger.Warning($"Notification '{notificationId}' skipped — no To recipients in test users group after filtering");
+                    return null;
+                }
+            }
 
             return new EmailResponse
             {
@@ -1259,5 +1301,20 @@ namespace LegalWorkflow.Functions.Services
         /// Whether to include debug information in logs.
         /// </summary>
         public bool EnableDebugLogging { get; set; } = false;
+
+        /// <summary>
+        /// When true, notifications are only sent to users who are members of the
+        /// "LW - Notification Test Users" SharePoint group. All other recipients
+        /// are filtered out. If no valid recipients remain, the notification is skipped.
+        /// Use this during UAT to prevent accidental emails to real users.
+        /// Set to false in production.
+        /// </summary>
+        public bool TestUsersOnly { get; set; } = false;
+
+        /// <summary>
+        /// The SharePoint group name used when TestUsersOnly is enabled.
+        /// Only members of this group will receive notifications during testing.
+        /// </summary>
+        public string TestUsersGroup { get; set; } = "LW - Notification Test Users";
     }
 }

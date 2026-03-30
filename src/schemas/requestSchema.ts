@@ -498,17 +498,17 @@ export const submitRequestSchema = z
       });
     }
 
-    // Date of First Use must be on or after Target Return Date
+    // Date of First Use must be after Target Return Date (at least 1 day later)
     if (!isRFPSubmission && data.dateOfFirstUse instanceof Date && data.targetReturnDate instanceof Date &&
         !isNaN(data.dateOfFirstUse.getTime()) && !isNaN(data.targetReturnDate.getTime())) {
       const firstUse = new Date(data.dateOfFirstUse.getTime());
       firstUse.setHours(0, 0, 0, 0);
       const targetReturn = new Date(data.targetReturnDate.getTime());
       targetReturn.setHours(0, 0, 0, 0);
-      if (firstUse < targetReturn) {
+      if (firstUse <= targetReturn) {
         ctx.addIssue({
           code: 'custom',
-          message: 'Date of first use cannot be before the target return date',
+          message: 'Date of first use must be after the target return date',
           path: ['dateOfFirstUse'],
         });
       }
@@ -658,11 +658,11 @@ export const submitRequestSchema = z
       }
     } // end !isRFPSubmission
 
-    // At least 1 attachment (Review or Supplemental) is required
+    // At least 1 attachment (Review or Supporting) is required
     if (data._hasAttachments !== true) {
       ctx.addIssue({
         code: 'custom',
-        message: 'At least one attachment (Review or Supplemental document) is required',
+        message: 'At least one attachment (Review or Supporting document) is required',
         path: ['attachments'],
       });
     }

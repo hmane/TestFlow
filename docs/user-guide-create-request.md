@@ -949,7 +949,7 @@ When you click the search box, your recent searches appear for quick access:
 | Search by partial ID | `26-42` or just `42` |
 | Search by year | `CRR-26` finds all 2026 requests |
 | Search by title words | `marketing brochure` |
-| Search by document | `whitepaper.pdf` |
+| Search by document | `insightspaper.pdf` |
 
 ### Keyboard Navigation
 

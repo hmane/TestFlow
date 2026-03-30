@@ -367,7 +367,7 @@ export const DocumentCard: React.FC<IDocumentCardProps> = React.memo(({
     const newType = displayType === DocumentType.Review
       ? DocumentType.Supplemental
       : DocumentType.Review;
-    const newTypeName = displayType === DocumentType.Review ? 'Supplemental' : 'Review';
+    const newTypeName = displayType === DocumentType.Review ? 'Supporting' : 'Review';
 
     return (
       <TooltipHost content={`Change to ${newTypeName}`} directionalHint={DirectionalHint.topCenter}>

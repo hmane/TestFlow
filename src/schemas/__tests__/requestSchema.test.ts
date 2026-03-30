@@ -260,7 +260,25 @@ describe('Request Schema Validation', () => {
 
       if (!result.success) {
         const firstUseError = result.error.issues.find(
-          issue => issue.path[0] === 'dateOfFirstUse' && issue.message.includes('cannot be before')
+          issue => issue.path[0] === 'dateOfFirstUse' && issue.message.includes('must be after')
+        );
+        expect(firstUseError).toBeDefined();
+      }
+    });
+
+    it('should reject date of first use equal to target return date', () => {
+      const data = {
+        ...createValidSubmitData(),
+        targetReturnDate: new Date('2026-03-20T00:00:00Z'),
+        dateOfFirstUse: new Date('2026-03-20T00:00:00Z'),
+      };
+
+      const result = submitRequestSchema.safeParse(data);
+      expect(result.success).toBe(false);
+
+      if (!result.success) {
+        const firstUseError = result.error.issues.find(
+          issue => issue.path[0] === 'dateOfFirstUse' && issue.message.includes('must be after')
         );
         expect(firstUseError).toBeDefined();
       }

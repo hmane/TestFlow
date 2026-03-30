@@ -191,7 +191,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
           <FormLabel isRequired>Request Title</FormLabel>
           <SPTextField
             name='requestTitle'
-            placeholder='e.g. title of the exhibit or white paper'
+            placeholder='e.g. title of the exhibit or insights paper'
             mode={SPTextFieldMode.SingleLine}
             maxLength={TITLE_MAX_LENGTH}
             showCharacterCount
@@ -388,10 +388,12 @@ export const DistributionSection: React.FC<DistributionSectionProps> = ({
   const { control } = useFormContext<ILegalRequest>();
   const targetReturnDate = useWatch({ control, name: 'targetReturnDate' });
 
-  // Date of first use cannot be before target return date (material can't be used before review)
+  // Date of first use must be after target return date (material can't be used before review is complete)
   const dateOfFirstUseMinDate = React.useMemo(() => {
     if (targetReturnDate instanceof Date && !isNaN(targetReturnDate.getTime())) {
-      return targetReturnDate;
+      const nextDay = new Date(targetReturnDate.getTime());
+      nextDay.setDate(nextDay.getDate() + 1);
+      return nextDay;
     }
     return new Date();
   }, [targetReturnDate]);
