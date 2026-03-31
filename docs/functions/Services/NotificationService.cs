@@ -38,8 +38,8 @@ namespace LegalWorkflow.Functions.Services
     /// - ComplianceReviewNotApproved: ComplianceReviewStatus → Completed AND Outcome = Not Approved
     /// - ResubmissionReceivedLegal: LegalReviewStatus Waiting On Submitter → Waiting On Attorney
     /// - ResubmissionReceivedCompliance: ComplianceReviewStatus Waiting On Submitter → Waiting On Compliance
-    /// - RequestOnHold: IsOnHold false → true
-    /// - RequestResumed: IsOnHold true → false
+    /// - RequestOnHold: Status !On Hold → On Hold
+    /// - RequestResumed: Status On Hold → !On Hold
     /// - RequestCancelled: Status → Cancelled
     /// - ReadyForCloseout: Status → Closeout
     /// - RequestCompleted: Status → Completed
@@ -232,31 +232,41 @@ namespace LegalWorkflow.Functions.Services
         /// <returns>Notification template ID or null</returns>
         private string? DetermineNotification(RequestModel current, RequestVersionInfo? previous)
         {
-            // If no previous version, this is a new item - check if submitted
+            // If no previous version is available, only allow a narrowly-scoped
+            // first-version submission inference. For all other cases, skip rather
+            // than risk replaying a prior notification when the flow fires after a
+            // later save or SharePoint version history is temporarily unavailable.
             if (previous == null)
             {
-                if (current.Status == RequestStatus.LegalIntake)
+                if (CanInferInitialSubmission(current))
                 {
-                    // New request submitted directly
-                    _logger.Debug("New request submitted directly to Legal Intake");
+                    _logger.Debug("Initial submission inferred without previous version");
                     return current.IsRushRequest
                         ? NotificationTemplateIds.RushRequestAlert  // Rush takes priority
                         : NotificationTemplateIds.RequestSubmitted;
                 }
-                // Draft save - no notification
+
+                _logger.Debug("Previous version unavailable - skipping notification to avoid replaying stale triggers", new
+                {
+                    RequestId = current.Id,
+                    CurrentVersion = current.Version,
+                    CurrentStatus = current.Status.ToString()
+                });
                 return null;
             }
 
             // Check for status transitions (order matters - check more specific conditions first)
 
             // 1. Hold/Resume notifications
-            if (!previous.IsOnHold && current.IsOnHold)
+            // The workflow records hold state via Status + hold metadata, not a persisted
+            // IsOnHold column. Detect the actual status transition instead.
+            if (previous.Status != RequestStatus.OnHold && current.Status == RequestStatus.OnHold)
             {
                 _logger.Debug("Request put on hold");
                 return NotificationTemplateIds.RequestOnHold;
             }
 
-            if (previous.IsOnHold && !current.IsOnHold)
+            if (previous.Status == RequestStatus.OnHold && current.Status != RequestStatus.OnHold)
             {
                 _logger.Debug("Request resumed from hold");
                 return NotificationTemplateIds.RequestResumed;
@@ -740,7 +750,7 @@ namespace LegalWorkflow.Functions.Services
             {
                 // Boolean flags
                 "isrushrequest" => request.IsRushRequest,
-                "isonhold" => request.IsOnHold,
+                "isonhold" => request.Status == RequestStatus.OnHold,
                 "isforesidereviewrequired" => request.IsForesideReviewRequired,
                 "recordretentiononly" => request.RecordRetentionOnly,
                 "isretailuse" => request.IsRetailUse,
@@ -1247,11 +1257,35 @@ namespace LegalWorkflow.Functions.Services
         {
             if (!string.IsNullOrEmpty(_config.SiteUrl))
             {
-                return $"{_config.SiteUrl.TrimEnd('/')}/Lists/{_listConfig.RequestsListName}/DispForm.aspx?ID={request.Id}";
+                return $"{_config.SiteUrl.TrimEnd('/')}/Lists/{_listConfig.RequestsListName}/EditForm.aspx?ID={request.Id}";
             }
 
             _logger.Warning("NotificationConfig.SiteUrl is not configured — request link tokens will be empty in notification emails");
             return string.Empty;
+        }
+
+        private static bool CanInferInitialSubmission(RequestModel current)
+        {
+            return current.Status == RequestStatus.LegalIntake &&
+                   current.SubmittedOn.HasValue &&
+                   IsInitialVersion(current.Version);
+        }
+
+        private static bool IsInitialVersion(string? version)
+        {
+            if (string.IsNullOrWhiteSpace(version))
+            {
+                return false;
+            }
+
+            var normalized = version.Trim();
+            var parts = normalized.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (parts.Length == 0 || !int.TryParse(parts[0], out var major) || major != 1)
+            {
+                return false;
+            }
+
+            return parts.Skip(1).All(part => int.TryParse(part, out var value) && value == 0);
         }
 
         private static string GetDisplayRequestTitle(RequestModel request)

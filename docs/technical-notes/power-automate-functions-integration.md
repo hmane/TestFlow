@@ -228,7 +228,6 @@ Use this condition:
 ```text
 @or(
   body('Get_changes_for_an_item_or_a_file_(properties_only)')?['HasColumnChanged:Status'],
-  body('Get_changes_for_an_item_or_a_file_(properties_only)')?['HasColumnChanged:IsOnHold'],
   body('Get_changes_for_an_item_or_a_file_(properties_only)')?['HasColumnChanged:LegalReviewStatus'],
   body('Get_changes_for_an_item_or_a_file_(properties_only)')?['HasColumnChanged:LegalReviewOutcome'],
   body('Get_changes_for_an_item_or_a_file_(properties_only)')?['HasColumnChanged:ComplianceReviewStatus'],
@@ -243,6 +242,7 @@ Note:
 
 - the exact `HasColumnChanged:...` token names in Power Automate can vary slightly by connector rendering
 - if the designer exposes them as dynamic fields, use those directly instead of typing the expression manually
+- hold and resume are detected from the `Status` transition to/from `On Hold`; there is no separate persisted `IsOnHold` column in the current Requests schema
 
 ### Function Endpoint
 

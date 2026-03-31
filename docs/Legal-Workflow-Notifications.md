@@ -24,8 +24,8 @@ This document defines all email notifications for the Legal Review System (LRS).
 | `ComplianceChangesRequested` | ComplianceReviewStatus → Waiting On Submitter | To: Submitter, CC: Compliance |
 | `ComplianceReviewNotApproved` | ComplianceReviewStatus → Completed (Not Approved) | To: Submitter, CC: Legal Admin |
 | `ResubmissionReceivedCompliance` | ComplianceReviewStatus: Waiting On Submitter → Waiting On Compliance | To: Compliance, CC: Legal Admin |
-| `RequestOnHold` | IsOnHold: false → true | To: Submitter, Attorney, CC: Legal Admin |
-| `RequestResumed` | IsOnHold: true → false | To: Submitter, Attorney, CC: Legal Admin |
+| `RequestOnHold` | Status: not `On Hold` → `On Hold` | To: Submitter, Attorney, CC: Legal Admin |
+| `RequestResumed` | Status: `On Hold` → previous active status | To: Submitter, Attorney, CC: Legal Admin |
 | `RequestCancelled` | Status → Cancelled | To: Submitter, CC: Attorney, Legal Admin |
 | `ReadyForCloseout` | Status → Closeout | To: Submitter, CC: Legal Admin |
 | `RequestCompleted` | Status → Completed | To: Submitter, CC: Legal Admin, Attorney |
@@ -1707,7 +1707,7 @@ Status changes from `On Hold` → Previous status
 |----------|-------------|---------|
 | `{{RequestId}}` | Unique request identifier | CER-25-0042 |
 | `{{RequestTitle}}` | Request title/description | Q1 Marketing Campaign |
-| `{{RequestUrl}}` | Direct link to request | https://sharepoint.com/sites/legal/Lists/Requests/DispForm.aspx?ID=42 |
+| `{{RequestUrl}}` | Direct link to request | https://sharepoint.com/sites/legal/Lists/Requests/EditForm.aspx?ID=42 |
 | `{{RequestType}}` | Type of request | Communication Request |
 | `{{Status}}` | Current workflow status | In Review |
 | `{{SubmitterName}}` | Request creator name | John Smith |

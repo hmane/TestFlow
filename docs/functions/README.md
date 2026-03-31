@@ -319,8 +319,8 @@ Notifications are triggered based on specific field value transitions:
 | ComplianceReviewNotApproved | ComplianceReviewStatus → Completed AND Outcome = Not Approved |
 | ResubmissionReceivedLegal | LegalReviewStatus: Waiting On Submitter → Waiting On Attorney |
 | ResubmissionReceivedCompliance | ComplianceReviewStatus: Waiting On Submitter → Waiting On Compliance |
-| RequestOnHold | IsOnHold: false → true |
-| RequestResumed | IsOnHold: true → false |
+| RequestOnHold | Status: not `On Hold` → `On Hold` |
+| RequestResumed | Status: `On Hold` → not `On Hold` |
 | RequestCancelled | Status → Cancelled |
 | ReadyForCloseout | Status → Closeout |
 | RequestCompleted | Status → Completed |
