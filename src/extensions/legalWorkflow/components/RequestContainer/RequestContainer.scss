@@ -190,23 +190,6 @@
     background-color: #faf9f8;
   }
 
-  // Warning message for special characters
-  &__comments-warning {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    background-color: #fff4ce;
-    border-bottom: 1px solid #ffb900;
-    font-size: 11px;
-    color: #8a6914;
-
-    i {
-      font-size: 12px;
-      color: #8a6914;
-    }
-  }
-
   &__comments-content {
     flex: 1;
     overflow-y: auto;
@@ -218,70 +201,50 @@
     -moz-user-select: text;
     -ms-user-select: text;
 
-    // PnP ListItemComments overrides
-    .ql-container {
-      min-height: 100px;
-      max-height: 200px;
-      overflow-y: auto;
+    .spfx-comments {
+      border: none;
+      border-radius: 0;
+      overflow: visible;
+      box-shadow: none;
     }
 
-    .ql-editor {
-      font-size: 14px;
-      line-height: 1.5;
-      user-select: text; // Enable text selection in editor
+    .spfx-comments-input-wrap,
+    .spfx-comments-search,
+    .spfx-comments-pagination {
+      padding-left: 0;
+      padding-right: 0;
     }
 
-    // Comment list styling - enable selection
-    .ms-List {
-      max-height: calc(100vh - 400px);
-      overflow-y: auto;
+    .spfx-comments-classic-item {
+      padding-left: 0;
+      padding-right: 0;
+    }
+
+    .spfx-comments-text,
+    .spfx-comments-mentions-input textarea,
+    .spfx-comments-dropdown-name,
+    .spfx-comments-dropdown-email {
       user-select: text;
     }
 
-    .ms-ListItem {
-      border-bottom: 1px solid #edebe9;
-      padding: 12px 0;
-      user-select: text;
-      cursor: text;
-
-      &:last-child {
-        border-bottom: none;
+    .spfx-comments-search {
+      .ms-SearchBox {
+        border-radius: 4px;
       }
 
-      // Ensure all text content is selectable
-      * {
-        user-select: text;
+      .ms-SearchBox-field,
+      .ms-SearchBox-field:focus,
+      .ms-SearchBox-field:focus-visible,
+      input,
+      input:focus,
+      input:focus-visible {
+        outline: none !important;
+        box-shadow: none !important;
       }
     }
 
-    // Comment text content
-    [class*='comment'],
-    [class*='Comment'] {
-      user-select: text;
-      cursor: text;
-    }
-
-    // Disabled state - hide input/add comment controls, show read-only view
-    &--disabled {
-      // Hide the comment input area (Quill editor and submit button)
-      .ql-container,
-      .ql-toolbar,
-      .ql-editor,
-      [class*='commentInput'],
-      [class*='CommentInput'],
-      [class*='addComment'],
-      [class*='AddComment'],
-      [class*='submitButton'],
-      [class*='SubmitButton'],
-      textarea,
-      button[type='submit'] {
-        display: none !important;
-      }
-
-      // Style the comments as read-only
-      .ms-ListItem {
-        opacity: 0.9;
-      }
+    .spfx-comments-preview-modal iframe {
+      background: #fff;
     }
   }
 

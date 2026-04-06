@@ -6,6 +6,7 @@ import * as ReactDOM from 'react-dom';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
 import 'spfx-toolkit/lib/utilities/context/pnpImports/lists';
 import 'spfx-toolkit/lib/utilities/context/pnpImports/files';
+import 'spfx-toolkit/lib/utilities/context/pnpImports/social';
 import LegalWorkflow, { ILegalWorkflowProps } from './components/LegalWorkflow';
 
 /**

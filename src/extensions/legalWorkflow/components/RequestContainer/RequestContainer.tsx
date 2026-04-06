@@ -23,17 +23,15 @@ import { Stack } from '@fluentui/react/lib/Stack';
 import { Text } from '@fluentui/react/lib/Text';
 import { TooltipHost } from '@fluentui/react/lib/Tooltip';
 
-// PnP Controls - SharePoint Comments
-import { ListItemComments } from '@pnp/spfx-controls-react/lib/controls/listItemComments';
-import type { ServiceScope } from '@microsoft/sp-core-library';
-
 // spfx-toolkit - tree-shaken imports
+import { Comments } from 'spfx-toolkit/lib/components/Comments';
 import {
   useConflictDetection,
 } from 'spfx-toolkit/lib/components/ConflictDetector';
 import { ErrorBoundary } from 'spfx-toolkit/lib/components/ErrorBoundary';
 import { LazyManageAccessComponent } from 'spfx-toolkit/lib/components/lazy';
 import { SPContext } from 'spfx-toolkit/lib/utilities/context';
+import type { IPrincipal } from 'spfx-toolkit/lib/types';
 
 // App imports using path aliases
 import { RequestType } from '@appTypes/requestTypes';
@@ -77,6 +75,130 @@ const CloseoutForm = React.lazy(
 );
 
 const REQUEST_CONFLICT_CHECK_INTERVAL_MS = 10000;
+
+interface ICommentLinkSuggestion {
+  name: string;
+  url: string;
+  secondaryText?: string;
+  description?: string;
+  fileType?: string;
+  group?: string;
+}
+
+function getPrincipalKey(user: IPrincipal | undefined): string {
+  if (!user) {
+    return '';
+  }
+
+  return String(user.email || user.id || user.loginName || '')
+    .trim()
+    .toLowerCase();
+}
+
+function clonePrincipalWithRole(user: IPrincipal | undefined, roleLabel: string | undefined): IPrincipal | undefined {
+  if (!user) {
+    return undefined;
+  }
+
+  if (!roleLabel) {
+    return user;
+  }
+
+  return {
+    ...user,
+    jobTitle: roleLabel,
+  };
+}
+
+function getFileExtension(fileName: string): string {
+  const lastDot = fileName.lastIndexOf('.');
+  if (lastDot < 0 || lastDot === fileName.length - 1) {
+    return '';
+  }
+
+  return fileName.substring(lastDot + 1).toLowerCase();
+}
+
+function getCommentLinkKey(url: string): string {
+  return String(url).trim().toLowerCase();
+}
+
+function getCommentLinkDescription(documentType: string): string {
+  const value = String(documentType || '').trim();
+  if (!value) {
+    return 'Document';
+  }
+
+  const normalized = value.toLowerCase();
+
+  if (normalized === 'review') {
+    return 'Review Document';
+  }
+
+  if (normalized === 'supplemental') {
+    return 'Supporting Document';
+  }
+
+  if (normalized === 'review final') {
+    return 'Final Review Document';
+  }
+
+  if (normalized === 'finra') {
+    return 'FINRA Document';
+  }
+
+  if (normalized === 'foreside') {
+    return 'Foreside Document';
+  }
+
+  if (normalized.indexOf('approval') !== -1) {
+    return value.indexOf('Document') !== -1 ? value : `${value} Document`;
+  }
+
+  return `${value} Document`;
+}
+
+function getCommentLinkSecondaryText(url: string): string {
+  try {
+    const parsed = parseUrlSafely(url);
+    if (!parsed) {
+      return url;
+    }
+
+    const normalizedPath = decodeURIComponent(parsed.pathname || url).replace(/\/{2,}/g, '/');
+
+    try {
+      const currentWebUrl = new URL(SPContext.webAbsoluteUrl || window.location.origin, window.location.origin);
+      const currentWebPath = currentWebUrl.pathname.replace(/\/{2,}/g, '/').replace(/\/$/, '');
+
+      if (parsed.origin === currentWebUrl.origin && currentWebPath && normalizedPath.indexOf(`${currentWebPath}/`) === 0) {
+        return normalizedPath.slice(currentWebPath.length + 1);
+      }
+    } catch {
+      // Fall through to the normalized path if current web URL cannot be parsed.
+    }
+
+    return normalizedPath.replace(/^\/+/, '');
+  } catch {
+    return url;
+  }
+}
+
+function parseUrlSafely(url: string): URL | null {
+  try {
+    return new URL(url, window.location.origin);
+  } catch {
+    try {
+      return new URL(encodeURI(url), window.location.origin);
+    } catch {
+      return null;
+    }
+  }
+}
+
+function escapeODataValue(value: string): string {
+  return value.replace(/'/g, "''");
+}
 
 /**
  * Error handler for lazy loaded form errors
@@ -171,9 +293,10 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
   onRequestTypeSelected,
   requestFormComponent: RequestFormComponent,
 }) => {
-  const { currentRequest, storeItemId } = useRequestStore((s) => ({
+  const { currentRequest, storeItemId, isRequestLoading } = useRequestStore((s) => ({
     currentRequest: s.currentRequest,
     storeItemId: s.itemId,
+    isRequestLoading: s.isLoading,
   }));
   const { loadRequest } = useRequestActions();
   const loadDocuments = useDocumentsStore((s) => s.loadDocuments);
@@ -184,6 +307,21 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
   const [isEditingRequestInfo, setIsEditingRequestInfo] = React.useState<boolean>(false);
   const [isConflictMonitorReady, setIsConflictMonitorReady] = React.useState<boolean>(false);
   const effectiveItemId = storeItemId ?? itemId;
+  const commentsItemId = currentRequest?.id ?? effectiveItemId;
+  const highlightedCommentId = React.useMemo(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const rawValue =
+        params.get('commentId') ||
+        params.get('comment') ||
+        params.get('cid') ||
+        params.get('CommentId');
+      const parsedValue = rawValue ? parseInt(rawValue, 10) : NaN;
+      return !isNaN(parsedValue) && parsedValue > 0 ? parsedValue : undefined;
+    } catch {
+      return undefined;
+    }
+  }, []);
   const conflictDetectionSp = React.useMemo(
     () => SPContext.tryGetFreshSP() || SPContext.spPessimistic || SPContext.sp,
     []
@@ -563,11 +701,274 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
    * Comments are hidden for Draft status only
    */
   const shouldShowComments = React.useMemo((): boolean => {
-    if (!effectiveItemId) return false;
+    if (!commentsItemId) return false;
     if (!currentRequest) return false;
     if (currentRequest.status === RequestStatus.Draft) return false;
     return true;
-  }, [effectiveItemId, currentRequest]);
+  }, [commentsItemId, currentRequest]);
+
+  const commentPreferredUsers = React.useMemo((): IPrincipal[] => {
+    if (!currentRequest) {
+      return [];
+    }
+
+    const preferredUsers: IPrincipal[] = [];
+    const seen = new Set<string>();
+    const rolesByKey = new Map<string, Set<string>>();
+
+    const addRole = (user: IPrincipal | undefined, roleLabel: string): void => {
+      const key = getPrincipalKey(user);
+      if (!key) {
+        return;
+      }
+
+      if (!rolesByKey.has(key)) {
+        rolesByKey.set(key, new Set<string>());
+      }
+      rolesByKey.get(key)!.add(roleLabel);
+    };
+
+    addRole(currentRequest.author, 'Requester');
+    addRole(currentRequest.submittedBy, 'Submitter');
+
+    if (currentRequest.additionalParty && Array.isArray(currentRequest.additionalParty)) {
+      for (let i = 0; i < currentRequest.additionalParty.length; i++) {
+        addRole(currentRequest.additionalParty[i], 'Additional Party');
+      }
+    }
+
+    if (currentRequest.attorney && Array.isArray(currentRequest.attorney)) {
+      for (let i = 0; i < currentRequest.attorney.length; i++) {
+        addRole(currentRequest.attorney[i], 'Attorney');
+      }
+    }
+
+    if (currentRequest.approvals && Array.isArray(currentRequest.approvals)) {
+      for (let i = 0; i < currentRequest.approvals.length; i++) {
+        addRole(currentRequest.approvals[i]?.approver, 'Approver');
+      }
+    }
+
+    addRole(currentRequest.legalReviewCompletedBy, 'Legal Reviewer');
+    addRole(currentRequest.complianceReviewCompletedBy, 'Compliance Reviewer');
+    addRole(currentRequest.closeoutBy, 'Closeout Reviewer');
+    addRole(currentRequest.finraCompletedBy, 'FINRA Reviewer');
+    addRole(currentRequest.cancelledBy, 'Cancelled By');
+    addRole(currentRequest.onHoldBy, 'On Hold By');
+
+    const getRoleLabel = (user: IPrincipal | undefined): string | undefined => {
+      const key = getPrincipalKey(user);
+      if (!key || !rolesByKey.has(key)) {
+        return user?.jobTitle;
+      }
+
+      const labels = Array.from(rolesByKey.get(key)!);
+      return labels.join(' · ');
+    };
+
+    const addUser = (user: IPrincipal | undefined): void => {
+      const key = getPrincipalKey(user);
+      if (!key || seen.has(key)) {
+        return;
+      }
+
+      seen.add(key);
+      preferredUsers.push(clonePrincipalWithRole(user, getRoleLabel(user)) as IPrincipal);
+    };
+
+    const addUsers = (users: IPrincipal[] | undefined): void => {
+      if (!users || !Array.isArray(users)) {
+        return;
+      }
+
+      for (let i = 0; i < users.length; i++) {
+        addUser(users[i]);
+      }
+    };
+
+    addUser(currentRequest.author);
+    addUser(currentRequest.submittedBy);
+    addUsers(currentRequest.additionalParty);
+    addUsers(currentRequest.attorney);
+
+    if (currentRequest.approvals && Array.isArray(currentRequest.approvals)) {
+      for (let i = 0; i < currentRequest.approvals.length; i++) {
+        addUser(currentRequest.approvals[i]?.approver);
+      }
+    }
+
+    addUser(currentRequest.legalReviewCompletedBy);
+    addUser(currentRequest.complianceReviewCompletedBy);
+    addUser(currentRequest.closeoutBy);
+    addUser(currentRequest.finraCompletedBy);
+    addUser(currentRequest.cancelledBy);
+    addUser(currentRequest.onHoldBy);
+
+    return preferredUsers;
+  }, [currentRequest]);
+
+  const commentLinkSuggestions = React.useMemo((): ICommentLinkSuggestion[] => {
+    const suggestions: ICommentLinkSuggestion[] = [];
+    const seen = new Set<string>();
+
+    const addLink = (
+      name: string | undefined,
+      url: string | undefined,
+      group: string,
+      description: string
+    ): void => {
+      if (!name || !url) {
+        return;
+      }
+
+      const key = getCommentLinkKey(url);
+      if (!key || seen.has(key)) {
+        return;
+      }
+
+      seen.add(key);
+      suggestions.push({
+        name,
+        url,
+        secondaryText: getCommentLinkSecondaryText(url),
+        description,
+        fileType: getFileExtension(name),
+        group,
+      });
+    };
+
+    documentsByType.forEach((docs, documentType) => {
+      for (let i = 0; i < docs.length; i++) {
+        const doc = docs[i];
+        const typeLabel = String(documentType);
+        addLink(doc.name, doc.url, typeLabel, getCommentLinkDescription(typeLabel));
+      }
+    });
+
+    if (currentRequest?.approvals && Array.isArray(currentRequest.approvals)) {
+      for (let i = 0; i < currentRequest.approvals.length; i++) {
+        const approval = currentRequest.approvals[i];
+        const approvalType = approval?.type ? String(approval.type) : 'Approval';
+        const approvalFiles = approval?.existingFiles || [];
+
+        for (let fileIndex = 0; fileIndex < approvalFiles.length; fileIndex++) {
+          const file = approvalFiles[fileIndex];
+          addLink(
+            file.name,
+            file.url,
+            `${approvalType} Documents`,
+            getCommentLinkDescription(approvalType)
+          );
+        }
+      }
+    }
+
+    suggestions.sort((a, b) => a.name.localeCompare(b.name));
+    return suggestions;
+  }, [currentRequest?.approvals, documentsByType]);
+
+  const handleResolveCommentMentions = React.useCallback(
+    async (query: string): Promise<IPrincipal[]> => {
+      const trimmedQuery = query.trim();
+      if (!trimmedQuery) {
+        return [];
+      }
+
+      try {
+        const escapedQuery = escapeODataValue(trimmedQuery);
+        const users = await SPContext.sp.web.siteUsers
+          .filter(
+            `substringof('${escapedQuery}', Title) or substringof('${escapedQuery}', Email)`
+          )
+          .top(10)();
+
+        const rolesByKey = new Map<string, string>();
+        const addRole = (user: IPrincipal | undefined, roleLabel: string): void => {
+          const key = getPrincipalKey(user);
+          if (!key) {
+            return;
+          }
+
+          const existing = rolesByKey.get(key);
+          rolesByKey.set(key, existing ? `${existing} · ${roleLabel}` : roleLabel);
+        };
+
+        if (currentRequest) {
+          addRole(currentRequest.author, 'Requester');
+          addRole(currentRequest.submittedBy, 'Submitter');
+          if (currentRequest.additionalParty && Array.isArray(currentRequest.additionalParty)) {
+            for (let i = 0; i < currentRequest.additionalParty.length; i++) {
+              addRole(currentRequest.additionalParty[i], 'Additional Party');
+            }
+          }
+          if (currentRequest.attorney && Array.isArray(currentRequest.attorney)) {
+            for (let i = 0; i < currentRequest.attorney.length; i++) {
+              addRole(currentRequest.attorney[i], 'Attorney');
+            }
+          }
+          if (currentRequest.approvals && Array.isArray(currentRequest.approvals)) {
+            for (let i = 0; i < currentRequest.approvals.length; i++) {
+              addRole(currentRequest.approvals[i]?.approver, 'Approver');
+            }
+          }
+        }
+
+        const resolvedUsers: IPrincipal[] = [];
+        const seen = new Set<string>();
+
+        for (let i = 0; i < users.length; i++) {
+          const user = users[i] as {
+            Id?: number;
+            Email?: string;
+            Title?: string;
+            LoginName?: string;
+            JobTitle?: string;
+          };
+          const principal: IPrincipal = {
+            id: String(user.Id || user.Email || user.LoginName || ''),
+            email: user.Email,
+            title: user.Title,
+            loginName: user.LoginName,
+            jobTitle: rolesByKey.get(String(user.Email || user.Id || user.LoginName || '').trim().toLowerCase()) || user.JobTitle,
+          };
+
+          const key = getPrincipalKey(principal);
+          if (!key || seen.has(key)) {
+            continue;
+          }
+
+          seen.add(key);
+          resolvedUsers.push(principal);
+        }
+
+        return resolvedUsers;
+      } catch (error: unknown) {
+        SPContext.logger.warn('RequestContainer: Failed to resolve comment mentions', {
+          query: trimmedQuery,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return [];
+      }
+    },
+    [currentRequest]
+  );
+
+  const handleResolveCommentLinks = React.useCallback(
+    async (query: string): Promise<ICommentLinkSuggestion[]> => {
+      const trimmedQuery = query.trim().toLowerCase();
+      if (!trimmedQuery) {
+        return commentLinkSuggestions.slice(0, 20);
+      }
+
+      const filteredSuggestions = commentLinkSuggestions.filter((link) => {
+        const haystack = `${link.name} ${link.group || ''} ${link.secondaryText || ''} ${link.description || ''} ${link.url}`.toLowerCase();
+        return haystack.indexOf(trimmedQuery) !== -1;
+      });
+
+      return filteredSuggestions.slice(0, 20);
+    },
+    [commentLinkSuggestions]
+  );
 
   /**
    * Determine if we should show the request type selector
@@ -594,6 +995,28 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
       }
     };
   }, []);
+
+  React.useEffect(() => {
+    if (!highlightedCommentId) {
+      return;
+    }
+
+    setIsCommentsOpen(true);
+
+    if (window.innerWidth <= 1200) {
+      if (scrollTimeoutRef.current) {
+        window.clearTimeout(scrollTimeoutRef.current);
+      }
+
+      scrollTimeoutRef.current = window.setTimeout(() => {
+        commentsAreaRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+        scrollTimeoutRef.current = undefined;
+      }, 100);
+    }
+  }, [highlightedCommentId]);
 
   /**
    * Handle comments toggle with auto-scroll on mobile
@@ -814,34 +1237,7 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
    * Render comments panel using PnP ListItemComments control
    */
   const renderCommentsPanel = (): React.ReactElement => {
-    if (!effectiveItemId) return <div />;
-
-
-    // Get serviceScope from SPFx context for ListItemComments
-    // SPContext.spfxContext returns SPFxContextInput which extends BaseComponentContext
-    // Cast through unknown to avoid type mismatch between spfx-toolkit's and local node_modules
-    const serviceScope = SPContext.spfxContext.serviceScope as unknown as ServiceScope;
-
-    if (!serviceScope) {
-      // Fallback if serviceScope is not available
-      return (
-        <div className='request-container__comments-panel'>
-          <div className='request-container__comments-header'>
-            <Text variant='large' styles={{ root: { fontWeight: 600 } }}>
-              Comments
-            </Text>
-          </div>
-          <div className='request-container__comments-content'>
-            <div style={{ padding: '16px', color: '#605e5c', textAlign: 'center' }}>
-              <Icon iconName='Comment' style={{ fontSize: '24px', marginBottom: '8px', display: 'block' }} />
-              <Text variant='small' style={{ color: '#8a8886' }}>
-                Comments are not available
-              </Text>
-            </div>
-          </div>
-        </div>
-      );
-    }
+    if (!commentsItemId) return <div />;
 
     return (
       <div className='request-container__comments-panel'>
@@ -854,23 +1250,34 @@ export const RequestContainer: React.FC<IRequestContainerProps> = ({
           </Stack>
         </div>
 
-        {/* Warning banner for special characters */}
-        <div className='request-container__comments-warning'>
-          <Icon iconName='Warning' styles={{ root: { fontSize: '14px', color: '#797673' } }} />
-          <Text variant='small' styles={{ root: { color: '#605e5c' } }}>
-            Avoid special characters: &lt; &gt; &amp; &quot; &#39; * : ? / \ |
-          </Text>
-        </div>
-
         <div className='request-container__comments-content'>
-          <ListItemComments
-            listId={listId}
-            itemId={String(effectiveItemId)}
-            serviceScope={serviceScope}
-            webUrl={SPContext.webAbsoluteUrl}
-            numberCommentsPerPage={10}
-            label=''
-          />
+          {isRequestLoading || !currentRequest ? (
+            <div style={{ padding: '16px', color: '#605e5c', textAlign: 'center' }}>
+              <Icon iconName='Comment' style={{ fontSize: '24px', marginBottom: '8px', display: 'block' }} />
+              <Text variant='small' style={{ color: '#8a8886' }}>
+                Loading comments...
+              </Text>
+            </div>
+          ) : (
+            <Comments
+              listId={listId}
+              itemId={commentsItemId}
+              layout='classic'
+              numberCommentsPerPage={10}
+              preferredUsers={commentPreferredUsers}
+              onResolveMentions={handleResolveCommentMentions}
+              linkSuggestions={commentLinkSuggestions}
+              onResolveLinkSuggestions={handleResolveCommentLinks}
+              enableSearch={true}
+              enableDocumentPreview={true}
+              enableCommentCollapse={true}
+              collapsedMaxLines={8}
+              confirmDelete={true}
+              sortOrder='newest'
+              highlightedCommentId={highlightedCommentId}
+              label=''
+            />
+          )}
         </div>
       </div>
     );
