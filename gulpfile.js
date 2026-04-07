@@ -22,6 +22,7 @@ addFastServe(build, {
 // Disable SPFx warnings
 build.addSuppression(/Warning - \[sass\]/g);
 build.addSuppression(/Warning - lint.*/g);
+build.addSuppression(/Warning - \[package-solution\].*FieldCustomizer: Admins can make this solution available to all sites in the organization, but field customizers won't automatically appear.*/g);
 
 // Main webpack configuration
 build.configureWebpack.mergeConfig({
@@ -170,6 +171,12 @@ build.configureWebpack.mergeConfig({
         },
         cacheDirectory: path.resolve(__dirname, 'node_modules/.cache/webpack'),
         name: 'spfx-dev-cache',
+      };
+
+      // Silence noisy filesystem-cache serialization warnings from webpack.
+      generatedConfiguration.infrastructureLogging = {
+        ...(generatedConfiguration.infrastructureLogging || {}),
+        level: 'error',
       };
 
       // Development source maps
