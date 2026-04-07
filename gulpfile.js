@@ -27,6 +27,7 @@ build.addSuppression(/Warning - lint.*/g);
 build.configureWebpack.mergeConfig({
   additionalConfiguration: generatedConfiguration => {
     const isProduction = build.getConfig().production;
+    const shouldAnalyzeBundle = process.env.ANALYZE_BUNDLE === 'true';
     const projectNodeModules = path.resolve(__dirname, 'node_modules');
     const sharedDependencyAliases = {
       react: path.resolve(projectNodeModules, 'react'),
@@ -138,17 +139,18 @@ build.configureWebpack.mergeConfig({
       // Production source maps
       generatedConfiguration.devtool = 'hidden-source-map';
 
-      // Bundle analyzer
-      generatedConfiguration.plugins.push(
-        new bundleAnalyzer.BundleAnalyzerPlugin({
-          analyzerMode: 'static',
-          reportFilename: path.join(__dirname, 'temp', 'stats', 'bundle-report.html'),
-          openAnalyzer: false,
-          generateStatsFile: true,
-          statsFilename: path.join(__dirname, 'temp', 'stats', 'bundle-stats.json'),
-          logLevel: 'warn',
-        })
-      );
+      if (shouldAnalyzeBundle) {
+        generatedConfiguration.plugins.push(
+          new bundleAnalyzer.BundleAnalyzerPlugin({
+            analyzerMode: 'static',
+            reportFilename: path.join(__dirname, 'temp', 'stats', 'bundle-report.html'),
+            openAnalyzer: false,
+            generateStatsFile: true,
+            statsFilename: path.join(__dirname, 'temp', 'stats', 'bundle-stats.json'),
+            logLevel: 'warn',
+          })
+        );
+      }
 
       console.log('🏗️  Production build - Optimized for your dependency stack');
     } else {
