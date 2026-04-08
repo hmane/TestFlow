@@ -188,7 +188,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
     <>
       <FormContainer labelWidth='220px'>
         <FormItem fieldName='requestTitle'>
-          <FormLabel isRequired>Request Title</FormLabel>
+          <FormLabel isRequired infoText='This should be the title of the piece being submitted'>Request Title</FormLabel>
           <SPTextField
             name='requestTitle'
             placeholder='e.g. title of the exhibit or insights paper'
@@ -223,7 +223,7 @@ export const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({
         </FormItem>
 
         <FormItem fieldName='submissionType'>
-          <FormLabel isRequired>Submission Type</FormLabel>
+          <FormLabel isRequired infoText='Select material update if this is a revision of an existing exhibit or other document. If you are only updating data, no submission is required.'>Submission Type</FormLabel>
           <SPChoiceField
             name='submissionType'
             placeholder='Select submission type'
@@ -437,7 +437,7 @@ export const DistributionSection: React.FC<DistributionSectionProps> = ({
         </FormItem>
 
         <FormItem fieldName='dateOfFirstUse'>
-          <FormLabel isRequired={isRequired}>Date of First Use</FormLabel>
+          <FormLabel isRequired={isRequired} infoText='This should be the date the exhibit first will be shared with a client or on the Dodge & Cox website. This must be at least one day after the target return date.'>Date of First Use</FormLabel>
           <SPDateField
             name='dateOfFirstUse'
             placeholder='Select date of first use'
@@ -710,7 +710,7 @@ export const PriorSubmissionsSection: React.FC<PriorSubmissionsSectionProps> = (
       />
       <FormContainer labelWidth='220px'>
         <FormItem fieldName='contentId'>
-          <FormLabel>Business Tracking/Content Id</FormLabel>
+          <FormLabel infoText='This should be the Seismic exhibit number(s) (if any). Please include all applicable numbers.'>Business Tracking/Content Id</FormLabel>
           <SPTextField
             name='contentId'
             placeholder='Enter business tracking or content ID'
